@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Skill Kit",
+        "title": "",
         "width": 1200,
         "height": 800,
         "resizable": true

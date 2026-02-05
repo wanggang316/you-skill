@@ -1,5 +1,5 @@
 <script>
-  import { Blend, RefreshCw, Search, Trash2 } from 'lucide-svelte'
+  import { Blend, RefreshCw, Search, Trash2 } from '@lucide/svelte'
 
   let {
     localSearch = $bindable(),

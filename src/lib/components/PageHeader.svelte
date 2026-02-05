@@ -1,5 +1,5 @@
 <script>
-  import { ChevronLeft, HardDrive, Plus } from 'lucide-svelte'
+  import { ChevronLeft, HardDrive, Plus } from '@lucide/svelte'
 
   const { currentView, activeTab, onChangeView, onChangeTab } = $props()
 </script>

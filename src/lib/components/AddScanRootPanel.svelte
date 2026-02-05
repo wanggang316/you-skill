@@ -1,5 +1,5 @@
 <script>
-  import { Plus, X } from 'lucide-svelte'
+  import { Plus, X } from '@lucide/svelte'
 
   let {
     newScanRoot = $bindable(),

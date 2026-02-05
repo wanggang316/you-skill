@@ -1,5 +1,5 @@
 <script>
-  import { ChevronDown, CloudDownload, RefreshCw, Search } from 'lucide-svelte'
+  import { ChevronDown, CloudDownload, RefreshCw, Search } from '@lucide/svelte'
 
   let {
     remoteQuery = $bindable(),
