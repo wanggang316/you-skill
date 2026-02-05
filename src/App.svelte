@@ -10,6 +10,7 @@
     Plus,
     RefreshCw,
     Search,
+    Trash2,
     X
   } from 'lucide-svelte'
   import { api } from './lib/tauri'
@@ -205,6 +206,47 @@
     }
   }
 
+  async function handleBulkUnify() {
+    if (!unmanagedSkills.length) return
+    for (const skill of unmanagedSkills) {
+      if (!skill || !skill.agents || skill.agents.length === 0) continue
+      try {
+        const check = await api.checkCanonicalSkill(skill.name, skill.scope)
+        let prefer = 'current'
+        if (check.exists) {
+          const keepCanonical = window.confirm(
+            `检测到 .agents 下已存在同名 skill：${skill.name}\n确定：保留 .agents 版本\n取消：保留当前版本`
+          )
+          prefer = keepCanonical ? 'canonical' : 'current'
+        }
+        const result = await api.unifySkill({
+          name: skill.name,
+          agent: skill.agents[0],
+          scope: skill.scope,
+          current_path: skill.canonical_path,
+          prefer
+        })
+        if (!result.success) {
+          localError = result.message
+        }
+      } catch (error) {
+        localError = String(error)
+      }
+    }
+    await refreshLocal()
+  }
+
+  async function handleDeleteSkill(skill) {
+    const confirmed = window.confirm(`确认删除 ${skill.name}？此操作不可恢复。`)
+    if (!confirmed) return
+    try {
+      await api.deleteSkill(skill.canonical_path)
+      await refreshLocal()
+    } catch (error) {
+      localError = String(error)
+    }
+  }
+
   function openLinkDialog(skill) {
     if (editingSkillKey === skill.key) {
       editingSkillKey = ''
@@ -389,7 +431,7 @@
             </div>
           {:else}
             <div class="space-y-2">
-              <p class="text-sm font-semibold text-slate-700">统一管理（.agents）</p>
+              <p class="text-sm font-semibold text-slate-700">我的 Skills</p>
               {#if managedSkills.length === 0}
                 <div class="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">
                   暂无统一管理的 skill
@@ -417,6 +459,13 @@
                           title="安装到应用"
                         >
                           <Blend size={14} />
+                        </button>
+                        <button
+                          class="rounded-lg border border-rose-200 p-2 text-xs text-rose-500"
+                          on:click={() => handleDeleteSkill(skill)}
+                          title="删除"
+                        >
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
@@ -460,13 +509,17 @@
               {/if}
             </div>
 
-            <div class="space-y-2">
-              <p class="text-sm font-semibold text-slate-700">未统一管理</p>
-              {#if unmanagedSkills.length === 0}
-                <div class="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">
-                  暂无未统一管理的 skill
+            {#if unmanagedSkills.length > 0}
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <p class="text-sm font-semibold text-slate-700">独立安装（待导入）</p>
+                  <button
+                    class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
+                    on:click={handleBulkUnify}
+                  >
+                    一键导入
+                  </button>
                 </div>
-              {:else}
                 {#each unmanagedSkills as skill}
                   <div class="rounded-2xl border border-slate-200 bg-white p-4">
                     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -481,7 +534,6 @@
                         </div>
                       </div>
                       <div class="flex items-center gap-3 text-xs text-slate-400">
-                        <span>该 skill 已安装 {skill.agents.length} 个应用</span>
                         {#if skill.managed_status === 'mixed'}
                           <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-700">
                             .agents + 独立副本
@@ -493,18 +545,18 @@
                           </span>
                         {/if}
                         <button
-                          class="rounded-lg border border-slate-200 p-2 text-xs text-slate-600"
+                          class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
                           on:click={() => handleUnify(skill)}
                           title="统一管理"
                         >
-                          <Link2 size={14} />
+                          导入
                         </button>
                       </div>
                     </div>
                   </div>
                 {/each}
-              {/if}
-            </div>
+              </div>
+            {/if}
           {/if}
         </div>
       </section>
