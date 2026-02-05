@@ -1,5 +1,6 @@
 <script>
   import { Blend, RefreshCw, Search, Trash2 } from '@lucide/svelte'
+  import IconButton from './IconButton.svelte'
   import { t } from '../i18n'
 
   let {
@@ -50,14 +51,14 @@
           <option value={agent.id}>{agent.display_name}</option>
         {/each}
       </select>
-      <button
-        class="rounded-xl border border-[var(--base-300)] p-2 text-sm text-[var(--base-content)]"
+      <IconButton
+        variant="outline"
         onclick={onRefresh}
         title={$t('local.refresh')}
-        type="button"
+        ariaLabel={$t('local.refresh')}
       >
         <RefreshCw size={16} />
-      </button>
+      </IconButton>
     </div>
     {#if localError}
       <p class="mt-3 text-sm text-[var(--error)]">{localError}</p>
@@ -107,25 +108,27 @@
                   {/if}
                 </div>
                 <div class="flex items-center gap-3 text-xs text-[var(--base-content-faint)]">
-                  <button
-                    class={`rounded-lg border p-2 text-xs ${editingSkillKey === skill.key ? 'border-[var(--base-content)] text-[var(--base-content)]' : 'border-[var(--base-300)] text-[var(--base-content-muted)]'}`}
+                  <IconButton
+                    variant="outline"
+                    class={`rounded-lg p-2 text-xs ${editingSkillKey === skill.key ? 'border-[var(--base-content)] text-[var(--base-content)]' : 'border-[var(--base-300)] text-[var(--base-content-muted)]'}`}
                     onclick={() => onOpenLinkDialog(skill)}
                     title={$t('local.action.installToApps')}
-                    type="button"
+                    ariaLabel={$t('local.action.installToApps')}
                   >
                     <Blend size={14} />
-                  </button>
-                  <button
-                    class="rounded-lg border border-[var(--error-border)] p-2 text-xs text-[var(--error)]"
-                    type="button"
+                  </IconButton>
+                  <IconButton
+                    variant="outline"
+                    class="rounded-lg border-[var(--error-border)] p-2 text-xs text-[var(--error)]"
                     onclick={(event) => {
                       event.stopPropagation()
                       onDeleteSkill(skill)
                     }}
                     title={$t('local.action.delete')}
+                    ariaLabel={$t('local.action.delete')}
                   >
                     <Trash2 size={14} />
-                  </button>
+                  </IconButton>
                 </div>
               </div>
               {#if editingSkillKey === skill.key}

@@ -1,5 +1,6 @@
 <script>
   import { ChevronLeft, HardDrive, Plus, Settings } from '@lucide/svelte'
+  import IconButton from './IconButton.svelte'
   import { t } from '../i18n'
 
   const { currentView, activeTab, onChangeView, onChangeTab } = $props()
@@ -20,42 +21,42 @@
         </p>
       </div>
     </div>
-    <div class="flex items-center gap-3 text-sm">
+    <div class="flex flex-1 items-center justify-between pl-6 text-sm">
       {#if currentView === 'list'}
-        <div class="flex items-center gap-2 rounded-full bg-[var(--base-200)] p-1">
-          <button
-            class={`rounded-full px-4 py-2 ${activeTab === 'local' ? 'bg-[var(--base-100)] text-[var(--base-content)] shadow-sm' : 'text-[var(--base-content-muted)]'}`}
-            onclick={() => onChangeTab('local')}
-            type="button"
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 rounded-full bg-[var(--base-200)] p-1">
+            <button
+              class={`rounded-full px-4 py-2 ${activeTab === 'local' ? 'bg-[var(--base-100)] text-[var(--base-content)] shadow-sm' : 'text-[var(--base-content-muted)]'}`}
+              onclick={() => onChangeTab('local')}
+              type="button"
+            >
+              {$t('header.localTab')}
+            </button>
+            <button
+              class={`rounded-full px-4 py-2 ${activeTab === 'remote' ? 'bg-[var(--base-100)] text-[var(--base-content)] shadow-sm' : 'text-[var(--base-content-muted)]'}`}
+              onclick={() => onChangeTab('remote')}
+              type="button"
+            >
+              {$t('header.remoteTab')}
+            </button>
+          </div>
+          <IconButton
+            variant="primary"
+            onclick={() => onChangeView('add')}
+            title={$t('header.add')}
+            ariaLabel={$t('header.add')}
           >
-            {$t('header.localTab')}
-          </button>
-          <button
-            class={`rounded-full px-4 py-2 ${activeTab === 'remote' ? 'bg-[var(--base-100)] text-[var(--base-content)] shadow-sm' : 'text-[var(--base-content-muted)]'}`}
-            onclick={() => onChangeTab('remote')}
-            type="button"
-          >
-            {$t('header.remoteTab')}
-          </button>
+            <Plus size={16} />
+          </IconButton>
         </div>
-        <button
-          class="flex items-center gap-2 rounded-xl border border-[var(--base-300)] px-3 py-2 text-sm text-[var(--base-content)]"
+        <IconButton
+          variant="outline"
           onclick={() => onChangeView('settings')}
           title={$t('header.settings')}
-          type="button"
+          ariaLabel={$t('header.settings')}
         >
           <Settings size={16} />
-          {$t('header.settings')}
-        </button>
-        <button
-          class="flex items-center gap-2 rounded-xl bg-[var(--primary)] px-3 py-2 text-sm text-[var(--primary-content)]"
-          onclick={() => onChangeView('add')}
-          title={$t('header.add')}
-          type="button"
-        >
-          <Plus size={16} />
-          {$t('header.add')}
-        </button>
+        </IconButton>
       {:else}
         <button
           class="flex items-center gap-2 rounded-xl border border-[var(--base-300)] px-3 py-2 text-sm text-[var(--base-content)]"

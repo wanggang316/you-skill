@@ -1,5 +1,6 @@
 <script>
   import { Plus, X } from '@lucide/svelte'
+  import IconButton from './IconButton.svelte'
   import { t } from '../i18n'
 
   let {
@@ -22,14 +23,14 @@
         placeholder={$t('view.add.placeholder')}
         bind:value={newScanRoot}
       />
-      <button
-        class="rounded-xl bg-[var(--primary)] p-2 text-sm text-[var(--primary-content)]"
+      <IconButton
+        variant="primary"
         onclick={onAddRoot}
         title={$t('view.add.addPath')}
-        type="button"
+        ariaLabel={$t('view.add.addPath')}
       >
         <Plus size={16} />
-      </button>
+      </IconButton>
     </div>
     {#if localError}
       <p class="mt-3 text-sm text-[var(--error)]">{localError}</p>
@@ -41,14 +42,15 @@
             class="flex items-center justify-between rounded-lg bg-[var(--base-200)] px-3 py-2"
           >
             <span>{root}</span>
-            <button
+            <IconButton
+              variant="ghost"
               class="text-[var(--error)]"
               onclick={() => onRemoveRoot(root)}
               title={$t('view.add.removePath')}
-              type="button"
+              ariaLabel={$t('view.add.removePath')}
             >
               <X size={14} />
-            </button>
+            </IconButton>
           </div>
         {/each}
       </div>

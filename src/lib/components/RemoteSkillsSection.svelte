@@ -1,5 +1,6 @@
 <script>
   import { ChevronDown, CloudDownload, RefreshCw, Search } from '@lucide/svelte'
+  import IconButton from './IconButton.svelte'
   import { t } from '../i18n'
 
   let {
@@ -46,14 +47,14 @@
         <input type="checkbox" bind:checked={installGlobal} />
         {$t('remote.installGlobal')}
       </label>
-      <button
-        class="rounded-xl border border-[var(--base-300)] p-2 text-sm text-[var(--base-content)]"
+      <IconButton
+        variant="outline"
         onclick={onSearch}
         title={$t('remote.search')}
-        type="button"
+        ariaLabel={$t('remote.search')}
       >
         <Search size={16} />
-      </button>
+      </IconButton>
     </div>
     {#if remoteError}
       <p class="mt-3 text-sm text-[var(--error)]">{remoteError}</p>
@@ -91,19 +92,19 @@
                 {$t('remote.installs', { count: skill.installs })}
               </p>
             </div>
-            <button
-              class="rounded-xl bg-[var(--primary)] p-2 text-xs text-[var(--primary-content)]"
+            <IconButton
+              variant="primary"
               onclick={() => onInstall(skill)}
               disabled={installingSkill === skill.id}
               title={$t('remote.install')}
-              type="button"
+              ariaLabel={$t('remote.install')}
             >
               {#if installingSkill === skill.id}
                 <RefreshCw size={14} class="animate-spin" />
               {:else}
                 <CloudDownload size={14} />
               {/if}
-            </button>
+            </IconButton>
           </div>
         </div>
       {/each}
@@ -111,18 +112,18 @@
   </div>
 
   <div class="flex items-center justify-center">
-    <button
-      class="rounded-xl border border-[var(--base-300)] p-2 text-sm text-[var(--base-content)]"
+    <IconButton
+      variant="outline"
       onclick={onLoadMore}
       disabled={!remoteHasMore || remoteLoading}
       title={remoteHasMore ? $t('remote.loadMore') : $t('remote.noMore')}
-      type="button"
+      ariaLabel={remoteHasMore ? $t('remote.loadMore') : $t('remote.noMore')}
     >
       {#if remoteLoading}
         <RefreshCw size={16} class="animate-spin" />
       {:else}
         <ChevronDown size={16} />
       {/if}
-    </button>
+    </IconButton>
   </div>
 </section>
