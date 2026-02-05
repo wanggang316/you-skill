@@ -7,6 +7,8 @@ pub struct LocalSkill {
   pub scope: String,
   pub canonical_path: String,
   pub agents: Vec<String>,
+  pub managed_status: String,
+  pub name_conflict: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

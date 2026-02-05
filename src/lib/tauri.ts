@@ -6,6 +6,8 @@ export interface LocalSkill {
   scope: string
   canonical_path: string
   agents: string[]
+  managed_status: 'managed' | 'unmanaged' | 'mixed' | 'unknown'
+  name_conflict: boolean
 }
 
 export interface RemoteSkill {

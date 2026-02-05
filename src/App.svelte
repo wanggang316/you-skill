@@ -49,6 +49,11 @@
     return matchesSearch && matchesAgent
   })
 
+  $: managedSkills = filteredLocalSkills.filter((skill) => skill.managed_status === 'managed')
+  $: unmanagedSkills = filteredLocalSkills.filter((skill) =>
+    ['unmanaged', 'mixed', 'unknown'].includes(skill.managed_status)
+  )
+
   onMount(async () => {
     await loadAgents()
     await refreshLocal()
@@ -286,25 +291,73 @@
               未找到本地技能
             </div>
           {:else}
-            {#each filteredLocalSkills as skill}
-              <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p class="text-base font-semibold">{skill.name}</p>
-                    <div class="mt-2 flex flex-wrap gap-2">
-                      {#each skill.agents as agentId}
-                        <div class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
-                          {agentMap.get(agentId) || agentId}
+            <div class="space-y-2">
+              <p class="text-sm font-semibold text-slate-700">统一管理（.agents）</p>
+              {#if managedSkills.length === 0}
+                <div class="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">
+                  暂无统一管理的 skill
+                </div>
+              {:else}
+                {#each managedSkills as skill}
+                  <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p class="text-base font-semibold">{skill.name}</p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                          {#each skill.agents as agentId}
+                            <div class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                              {agentMap.get(agentId) || agentId}
+                            </div>
+                          {/each}
                         </div>
-                      {/each}
+                      </div>
+                      <div class="flex items-center gap-2 text-xs text-slate-400">
+                        该 skill 已安装 {skill.agents.length} 个应用
+                      </div>
                     </div>
                   </div>
-                  <div class="flex items-center gap-2 text-xs text-slate-400">
-                    该 skill 已安装 {skill.agents.length} 个应用
-                  </div>
+                {/each}
+              {/if}
+            </div>
+
+            <div class="space-y-2">
+              <p class="text-sm font-semibold text-slate-700">未统一管理</p>
+              {#if unmanagedSkills.length === 0}
+                <div class="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">
+                  暂无未统一管理的 skill
                 </div>
-              </div>
-            {/each}
+              {:else}
+                {#each unmanagedSkills as skill}
+                  <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p class="text-base font-semibold">{skill.name}</p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                          {#each skill.agents as agentId}
+                            <div class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                              {agentMap.get(agentId) || agentId}
+                            </div>
+                          {/each}
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2 text-xs text-slate-400">
+                        该 skill 已安装 {skill.agents.length} 个应用
+                        {#if skill.managed_status === 'mixed'}
+                          <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-700">
+                            .agents + 独立副本
+                          </span>
+                        {/if}
+                        {#if skill.name_conflict}
+                          <span class="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] text-rose-700">
+                            有同名
+                          </span>
+                        {/if}
+                      </div>
+                    </div>
+                  </div>
+                {/each}
+              {/if}
+            </div>
           {/if}
         </div>
       </section>
