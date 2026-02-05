@@ -77,5 +77,7 @@ export const api = {
   listAgents: () => invoke<AgentInfo[]>('list_agents'),
   checkCanonicalSkill: (name: string, scope: string) =>
     invoke<CanonicalCheckResult>('check_canonical_skill', { name, scope }),
-  unifySkill: (request: UnifyRequest) => invoke<UnifyResult>('unify_skill', { request })
+  unifySkill: (request: UnifyRequest) => invoke<UnifyResult>('unify_skill', { request }),
+  setAgentLink: (name: string, agent: string, scope: string, linked: boolean) =>
+    invoke('set_agent_link', { name, agent, scope, linked })
 }

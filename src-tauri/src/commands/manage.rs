@@ -1,4 +1,5 @@
 use crate::models::{CanonicalCheckResult, UnifyRequest, UnifyResult};
+use crate::paths::agent_paths;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -79,6 +80,20 @@ pub fn unify_skill(request: UnifyRequest) -> Result<UnifyResult, String> {
     success: true,
     message: "已用当前版本覆盖 .agents 并建立软链接".to_string(),
   })
+}
+
+#[tauri::command]
+pub fn set_agent_link(name: String, agent: String, scope: String, linked: bool) -> Result<(), String> {
+  let canonical_path = canonical_skill_path(&name, &scope)?;
+  let agent_dir = agent_skills_dir(&agent, &scope)?;
+  let link_path = agent_dir.join(sanitize_name(&name));
+
+  if linked {
+    ensure_symlink_dir(&canonical_path, &link_path)?;
+    return Ok(());
+  }
+
+  remove_symlink_if_points_to(&link_path, &canonical_path)
 }
 
 fn copy_dir_or_file(from: &Path, to: &Path) -> Result<(), String> {
@@ -176,6 +191,60 @@ fn ensure_symlink_dir(target: &Path, link_path: &Path) -> Result<(), String> {
   }
 
   create_symlink_dir(target, link_path)
+}
+
+fn remove_symlink_if_points_to(link_path: &Path, target: &Path) -> Result<(), String> {
+  if !link_path.exists() {
+    return Ok(());
+  }
+  let meta = fs::symlink_metadata(link_path).map_err(|e| e.to_string())?;
+  if !meta.file_type().is_symlink() {
+    return Err("当前路径不是软链接，已取消操作".to_string());
+  }
+  let current_target = fs::read_link(link_path).map_err(|e| e.to_string())?;
+  let resolved = if current_target.is_absolute() {
+    current_target
+  } else {
+    link_path
+      .parent()
+      .unwrap_or_else(|| Path::new("/"))
+      .join(current_target)
+  };
+  if resolved != target {
+    return Err("软链接指向不同路径，已取消操作".to_string());
+  }
+  fs::remove_file(link_path).map_err(|e| e.to_string())
+}
+
+fn agent_skills_dir(agent_id: &str, scope: &str) -> Result<PathBuf, String> {
+  let agent = agent_paths()
+    .into_iter()
+    .find(|item| item.id == agent_id)
+    .ok_or("未知的应用类型")?;
+
+  let path = if scope == "global" {
+    agent
+      .global_path
+      .ok_or("该应用不支持全局安装")?
+      .to_string()
+  } else {
+    agent
+      .project_path
+      .ok_or("该应用不支持项目安装")?
+      .to_string()
+  };
+
+  let resolved = if path.starts_with("~/") {
+    let home = dirs_next::home_dir().ok_or("无法获取用户目录")?;
+    home.join(path.trim_start_matches("~/"))
+  } else {
+    env::current_dir()
+      .map_err(|e| e.to_string())?
+      .join(path)
+  };
+
+  fs::create_dir_all(&resolved).map_err(|e| e.to_string())?;
+  Ok(resolved)
 }
 
 #[cfg(target_os = "windows")]

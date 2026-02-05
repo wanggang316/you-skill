@@ -37,6 +37,8 @@
   let installGlobal = true
   let installLog = ''
   let installingSkill = ''
+  let linkBusy = false
+  let editingSkillKey = ''
 
   $: agentMap = new Map(agents.map((agent) => [agent.id, agent.display_name]))
 
@@ -50,7 +52,12 @@
     return matchesSearch && matchesAgent
   })
 
-  $: managedSkills = filteredLocalSkills.filter((skill) => skill.managed_status === 'managed')
+  $: managedSkills = filteredLocalSkills
+    .filter((skill) => skill.managed_status === 'managed')
+    .map((skill) => ({
+      ...skill,
+      key: `${skill.name}::${skill.scope}::${skill.canonical_path}`
+    }))
   $: unmanagedSkills = filteredLocalSkills.filter((skill) =>
     ['unmanaged', 'mixed', 'unknown'].includes(skill.managed_status)
   )
@@ -190,6 +197,31 @@
       }
     } catch (error) {
       localError = String(error)
+    }
+  }
+
+  function openLinkDialog(skill) {
+    editingSkillKey =
+      editingSkillKey === skill.key ? '' : skill.key
+  }
+
+  async function toggleAgentLink(agentId, enabled) {
+    const skill = managedSkills.find((item) => item.key === editingSkillKey)
+    if (!skill || linkBusy) return
+    linkBusy = true
+    try {
+      await api.setAgentLink(skill.name, agentId, skill.scope, enabled)
+      await refreshLocal()
+      const refreshed = (Array.isArray(localSkills) ? localSkills : []).find(
+        (item) => `${item.name}::${item.scope}::${item.canonical_path}` === skill.key
+      )
+      if (refreshed) {
+        editingSkillKey = `${refreshed.name}::${refreshed.scope}::${refreshed.canonical_path}`
+      }
+    } catch (error) {
+      localError = String(error)
+    } finally {
+      linkBusy = false
     }
   }
 </script>
@@ -344,10 +376,32 @@
                           {/each}
                         </div>
                       </div>
-                      <div class="flex items-center gap-2 text-xs text-slate-400">
-                        该 skill 已安装 {skill.agents.length} 个应用
+                      <div class="flex items-center gap-3 text-xs text-slate-400">
+                        <span>该 skill 已安装 {skill.agents.length} 个应用</span>
+                        <button
+                          class={`rounded-lg border p-2 text-xs ${editingSkillKey === skill.key ? 'border-slate-900 text-slate-900' : 'border-slate-200 text-slate-600'}`}
+                          on:click={() => openLinkDialog(skill)}
+                          title="安装到应用"
+                        >
+                          <Link2 size={14} />
+                        </button>
                       </div>
                     </div>
+                    {#if editingSkillKey === skill.key}
+                      <div class="mt-4 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        {#each agents as agent}
+                          <label class="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm">
+                            <span>{agent.display_name}</span>
+                            <input
+                              type="checkbox"
+                              checked={(skill.agents || []).includes(agent.id)}
+                              on:change={(event) => toggleAgentLink(agent.id, event.target.checked)}
+                              disabled={linkBusy}
+                            />
+                          </label>
+                        {/each}
+                      </div>
+                    {/if}
                   </div>
                 {/each}
               {/if}
@@ -498,3 +552,4 @@
     {/if}
   </main>
 </div>
+
