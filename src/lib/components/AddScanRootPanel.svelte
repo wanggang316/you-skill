@@ -1,5 +1,6 @@
 <script>
   import { Plus, X } from '@lucide/svelte'
+  import { t } from '../i18n'
 
   let {
     newScanRoot = $bindable(),
@@ -13,18 +14,18 @@
 <section class="space-y-6">
   <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4">
     <p class="mb-3 text-sm font-semibold text-[var(--base-content-muted)]">
-      新增扫描路径
+      {$t('view.add.title')}
     </p>
     <div class="flex flex-wrap items-center gap-3">
       <input
         class="flex-1 rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] px-4 py-2 text-sm text-[var(--base-content)] placeholder:text-[var(--base-content-subtle)]"
-        placeholder="添加自定义扫描路径（项目根目录）"
+        placeholder={$t('view.add.placeholder')}
         bind:value={newScanRoot}
       />
       <button
         class="rounded-xl bg-[var(--primary)] p-2 text-sm text-[var(--primary-content)]"
         onclick={onAddRoot}
-        title="添加路径"
+        title={$t('view.add.addPath')}
         type="button"
       >
         <Plus size={16} />
@@ -43,7 +44,7 @@
             <button
               class="text-[var(--error)]"
               onclick={() => onRemoveRoot(root)}
-              title="移除路径"
+              title={$t('view.add.removePath')}
               type="button"
             >
               <X size={14} />

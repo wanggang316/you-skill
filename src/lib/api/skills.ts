@@ -65,6 +65,12 @@ export interface UnifyResult {
   message: string
 }
 
+export interface AppSettings {
+  language: 'en' | 'zh'
+  theme: 'system' | 'light' | 'dark'
+  sync_mode: 'symlink' | 'copy'
+}
+
 export const api = {
   scanLocalSkills: () => invoke<LocalSkill[]>('scan_local_skills'),
   getScanRoots: () => invoke<string[]>('get_scan_roots'),
@@ -81,5 +87,8 @@ export const api = {
   unifySkill: (request: UnifyRequest) =>
     invoke<UnifyResult>('unify_skill', { request }),
   setAgentLink: (name: string, agent: string, scope: string, linked: boolean) =>
-    invoke('set_agent_link', { name, agent, scope, linked })
+    invoke('set_agent_link', { name, agent, scope, linked }),
+  getSettings: () => invoke<AppSettings>('get_settings'),
+  updateSettings: (settings: AppSettings) =>
+    invoke<AppSettings>('update_settings', { settings })
 }

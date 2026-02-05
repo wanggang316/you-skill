@@ -1,0 +1,140 @@
+import { derived } from 'svelte/store'
+import { settings } from './stores/settings'
+
+type Dictionary = Record<string, string>
+
+const translations: Record<string, Dictionary> = {
+  en: {
+    'header.subtitle': 'Local management and one-click install',
+    'header.localTab': 'Local Skills',
+    'header.remoteTab': 'Remote Library',
+    'header.add': 'Add',
+    'header.back': 'Back',
+    'header.settings': 'Settings',
+    'view.add.title': 'Add scan path',
+    'view.add.placeholder': 'Add a custom scan path (project root)',
+    'view.add.addPath': 'Add path',
+    'view.add.removePath': 'Remove path',
+    'local.search.placeholder': 'Search local skills or path',
+    'local.agent.all': 'All Agents',
+    'local.refresh': 'Refresh',
+    'local.loading': 'Scanning local skills...',
+    'local.empty': 'No local skills found',
+    'local.section.managed': 'My Skills',
+    'local.section.emptyManaged': 'No managed skills yet',
+    'local.section.unmanaged': 'Standalone installs (to import)',
+    'local.action.importAll': 'Import All',
+    'local.action.import': 'Import',
+    'local.action.delete': 'Delete',
+    'local.action.installToApps': 'Install to apps',
+    'local.action.confirm': 'Confirm',
+    'local.action.selectAll': 'Select all',
+    'local.tag.standalone': 'Standalone copy',
+    'local.tag.nameConflict': 'Duplicate name',
+    'local.tag.conflictManaged': 'Conflicts with .agents',
+    'remote.search.placeholder': 'Search remote skills (name or repo)',
+    'remote.installGlobal': 'Global install',
+    'remote.search': 'Search',
+    'remote.loading': 'Loading remote skills...',
+    'remote.empty': 'No remote skills',
+    'remote.install': 'Install',
+    'remote.loadMore': 'Load more',
+    'remote.noMore': 'No more results',
+    'remote.installs': '{count} 次安装',
+    'settings.general': 'General',
+    'settings.general.subtitle': 'Language, theme, and sync mode',
+    'settings.language': 'Language',
+    'settings.theme': 'Theme',
+    'settings.syncMode': 'Skill sync mode',
+    'settings.theme.system': 'System',
+    'settings.theme.light': 'Light',
+    'settings.theme.dark': 'Dark',
+    'settings.syncMode.symlink': 'Symlink',
+    'settings.syncMode.copy': 'Copy',
+    'settings.about': 'About',
+    'settings.about.subtitle': 'Version and updates',
+    'settings.checkUpdate': 'Check for updates',
+    'settings.checkingUpdate': 'Checking...',
+    'settings.updatePlaceholder': 'Update service not connected',
+    'error.noSkillAgent': 'Unable to determine target app for this skill',
+    'confirm.duplicateSkill':
+      'A skill with the same name already exists in .agents.\nOK: keep the .agents version\nCancel: keep the current version',
+    'confirm.duplicateSkillWithName':
+      'A skill with the same name already exists in .agents: {name}\nOK: keep the .agents version\nCancel: keep the current version',
+    'confirm.deleteSkill': 'Confirm delete {name}? This cannot be undone.',
+    'confirm.duplicateTitle': 'Duplicate skill',
+    'confirm.deleteTitle': 'Delete confirmation'
+  },
+  zh: {
+    'header.subtitle': '本地管理与一键安装',
+    'header.localTab': '本地技能',
+    'header.remoteTab': '远程技能库',
+    'header.add': '新增',
+    'header.back': '返回',
+    'header.settings': '设置',
+    'view.add.title': '新增扫描路径',
+    'view.add.placeholder': '添加自定义扫描路径（项目根目录）',
+    'view.add.addPath': '添加路径',
+    'view.add.removePath': '移除路径',
+    'local.search.placeholder': '搜索本地技能或路径',
+    'local.agent.all': '全部 Agent',
+    'local.refresh': '刷新',
+    'local.loading': '正在扫描本地 skill...',
+    'local.empty': '未找到本地技能',
+    'local.section.managed': '我的 Skills',
+    'local.section.emptyManaged': '暂无统一管理的 skill',
+    'local.section.unmanaged': '独立安装（待导入）',
+    'local.action.importAll': '一键导入',
+    'local.action.import': '导入',
+    'local.action.delete': '删除',
+    'local.action.installToApps': '安装到应用',
+    'local.action.confirm': '确认',
+    'local.action.selectAll': '全选',
+    'local.tag.standalone': '独立副本',
+    'local.tag.nameConflict': '有同名',
+    'local.tag.conflictManaged': '与 .agents 重名',
+    'remote.search.placeholder': '搜索远程技能（名称或仓库）',
+    'remote.installGlobal': '全局安装',
+    'remote.search': '搜索',
+    'remote.loading': '正在加载技能库...',
+    'remote.empty': '暂无技能数据',
+    'remote.install': '一键安装',
+    'remote.loadMore': '加载更多',
+    'remote.noMore': '没有更多了',
+    'remote.installs': '{count} installs',
+    'settings.general': '通用',
+    'settings.general.subtitle': '语言、主题与同步方式',
+    'settings.language': '语言',
+    'settings.theme': '主题',
+    'settings.syncMode': 'Skill 同步方式',
+    'settings.theme.system': '跟随主题',
+    'settings.theme.light': '浅色',
+    'settings.theme.dark': '深色',
+    'settings.syncMode.symlink': '软连接',
+    'settings.syncMode.copy': '复制',
+    'settings.about': '关于',
+    'settings.about.subtitle': '版本与更新',
+    'settings.checkUpdate': '检查更新',
+    'settings.checkingUpdate': '检查中...',
+    'settings.updatePlaceholder': '暂未接入更新服务',
+    'error.noSkillAgent': '无法识别当前 skill 的应用信息',
+    'confirm.duplicateSkill':
+      '检测到 .agents 下已存在同名 skill。\n确定：保留 .agents 版本\n取消：保留当前版本',
+    'confirm.duplicateSkillWithName':
+      '检测到 .agents 下已存在同名 skill：{name}\n确定：保留 .agents 版本\n取消：保留当前版本',
+    'confirm.deleteSkill': '确认删除 {name}？此操作不可恢复。',
+    'confirm.duplicateTitle': '重复技能',
+    'confirm.deleteTitle': '删除确认'
+  }
+}
+
+export const t = derived(settings, ($settings) => {
+  const language = $settings.language || 'en'
+  const dict = translations[language] || translations.en
+  return (key: string, params: Record<string, string | number> = {}) => {
+    const template = dict[key] || translations.en[key] || key
+    return template.replace(/\{(\w+)\}/g, (_, name) =>
+      params[name] === undefined ? '' : String(params[name])
+    )
+  }
+})

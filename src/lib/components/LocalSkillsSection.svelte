@@ -1,5 +1,6 @@
 <script>
   import { Blend, RefreshCw, Search, Trash2 } from '@lucide/svelte'
+  import { t } from '../i18n'
 
   let {
     localSearch = $bindable(),
@@ -36,7 +37,7 @@
         />
         <input
           class="w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] px-9 py-2 text-sm text-[var(--base-content)] placeholder:text-[var(--base-content-subtle)] focus:border-[var(--base-300)] focus:outline-none"
-          placeholder="搜索本地技能或路径"
+          placeholder={$t('local.search.placeholder')}
           bind:value={localSearch}
         />
       </div>
@@ -44,7 +45,7 @@
         class="rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 py-2 text-sm text-[var(--base-content)]"
         bind:value={localAgent}
       >
-        <option value="all">全部 Agent</option>
+        <option value="all">{$t('local.agent.all')}</option>
         {#each agents as agent}
           <option value={agent.id}>{agent.display_name}</option>
         {/each}
@@ -52,7 +53,7 @@
       <button
         class="rounded-xl border border-[var(--base-300)] p-2 text-sm text-[var(--base-content)]"
         onclick={onRefresh}
-        title="刷新"
+        title={$t('local.refresh')}
         type="button"
       >
         <RefreshCw size={16} />
@@ -68,24 +69,24 @@
       <div
         class="rounded-2xl border border-dashed border-[var(--base-300)] bg-[var(--base-100)] p-6 text-center text-sm text-[var(--base-content-muted)]"
       >
-        正在扫描本地 skill...
+        {$t('local.loading')}
       </div>
     {:else if filteredLocalSkills.length === 0}
       <div
         class="rounded-2xl border border-dashed border-[var(--base-300)] bg-[var(--base-100)] p-6 text-center text-sm text-[var(--base-content-muted)]"
       >
-        未找到本地技能
+        {$t('local.empty')}
       </div>
     {:else}
       <div class="space-y-2">
         <p class="text-sm font-semibold text-[var(--base-content-muted)]">
-          我的 Skills
+          {$t('local.section.managed')}
         </p>
         {#if managedSkills.length === 0}
           <div
             class="rounded-xl border border-dashed border-[var(--base-300)] bg-[var(--base-100)] p-4 text-sm text-[var(--base-content-muted)]"
           >
-            暂无统一管理的 skill
+            {$t('local.section.emptyManaged')}
           </div>
         {:else}
           {#each managedSkills as skill}
@@ -109,7 +110,7 @@
                   <button
                     class={`rounded-lg border p-2 text-xs ${editingSkillKey === skill.key ? 'border-[var(--base-content)] text-[var(--base-content)]' : 'border-[var(--base-300)] text-[var(--base-content-muted)]'}`}
                     onclick={() => onOpenLinkDialog(skill)}
-                    title="安装到应用"
+                    title={$t('local.action.installToApps')}
                     type="button"
                   >
                     <Blend size={14} />
@@ -121,7 +122,7 @@
                       event.stopPropagation()
                       onDeleteSkill(skill)
                     }}
-                    title="删除"
+                    title={$t('local.action.delete')}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -138,7 +139,7 @@
                           onToggleSelectAll(event.target.checked)}
                         disabled={linkBusy}
                       />
-                      全选
+                      {$t('local.action.selectAll')}
                     </label>
                     <button
                       class="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[var(--primary-content)]"
@@ -146,7 +147,7 @@
                       disabled={linkBusy}
                       type="button"
                     >
-                      确认
+                      {$t('local.action.confirm')}
                     </button>
                   </div>
                   <div class="mt-3 flex flex-wrap gap-2">
@@ -176,14 +177,14 @@
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <p class="text-sm font-semibold text-[var(--base-content-muted)]">
-              独立安装（待导入）
+              {$t('local.section.unmanaged')}
             </p>
             <button
               class="rounded-lg border border-[var(--base-300)] px-3 py-1.5 text-xs text-[var(--base-content-muted)]"
               onclick={onBulkUnify}
               type="button"
             >
-              一键导入
+              {$t('local.action.importAll')}
             </button>
           </div>
           {#each unmanagedSkills as skill}
@@ -203,21 +204,23 @@
                 </div>
                 <div class="flex items-center gap-3 text-xs text-[var(--base-content-faint)]">
                   {#if skill.managed_status === 'mixed'}
-                    <span class="tag tag-warning">独立副本</span>
+                    <span class="tag tag-warning">{$t('local.tag.standalone')}</span>
                   {/if}
                   {#if skill.name_conflict}
-                    <span class="tag tag-error">有同名</span>
+                    <span class="tag tag-error">{$t('local.tag.nameConflict')}</span>
                   {/if}
                   {#if skill.conflict_with_managed}
-                    <span class="tag tag-neutral">与 .agents 重名</span>
+                    <span class="tag tag-neutral">
+                      {$t('local.tag.conflictManaged')}
+                    </span>
                   {/if}
                   <button
                     class="rounded-lg border border-[var(--base-300)] px-3 py-1.5 text-xs text-[var(--base-content-muted)]"
                     onclick={() => onUnifySkill(skill)}
-                    title="导入"
+                    title={$t('local.action.import')}
                     type="button"
                   >
-                    导入
+                    {$t('local.action.import')}
                   </button>
                   <button
                     class="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs text-[var(--error)]"
@@ -226,9 +229,9 @@
                       event.stopPropagation()
                       onDeleteSkill(skill)
                     }}
-                    title="删除"
+                    title={$t('local.action.delete')}
                   >
-                    删除
+                    {$t('local.action.delete')}
                   </button>
                 </div>
               </div>

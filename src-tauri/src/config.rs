@@ -3,14 +3,35 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
 pub struct AppConfig {
   pub scan_roots: Vec<String>,
+  pub settings: AppSettings,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(default)]
+pub struct AppSettings {
+  pub language: String,
+  pub theme: String,
+  pub sync_mode: String,
 }
 
 impl Default for AppConfig {
   fn default() -> Self {
     Self {
       scan_roots: Vec::new(),
+      settings: AppSettings::default(),
+    }
+  }
+}
+
+impl Default for AppSettings {
+  fn default() -> Self {
+    Self {
+      language: "en".to_string(),
+      theme: "system".to_string(),
+      sync_mode: "symlink".to_string(),
     }
   }
 }

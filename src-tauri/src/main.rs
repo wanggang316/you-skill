@@ -12,6 +12,7 @@ use commands::{
   manage::{check_canonical_skill, unify_skill, set_agent_link},
   remote::fetch_remote_skills,
   scan::{add_scan_root, get_scan_roots, remove_scan_root, scan_local_skills},
+  settings::{get_settings, update_settings},
 };
 
 #[tauri::command]
@@ -34,6 +35,8 @@ fn main() {
       check_canonical_skill,
       unify_skill,
       set_agent_link,
+      get_settings,
+      update_settings,
       fetch_remote_skills,
       install_skill,
       list_agents

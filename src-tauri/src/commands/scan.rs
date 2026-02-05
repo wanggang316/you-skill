@@ -9,6 +9,8 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
 
+const COPY_MARKER_FILE: &str = ".skill-kit-link";
+
 #[tauri::command]
 pub fn get_scan_roots() -> Result<Vec<String>, String> {
   let config = load_config()?;
@@ -286,18 +288,26 @@ fn parse_skill_dir(
     .map(|s| s.to_string_lossy().to_string())
     .unwrap_or_else(|| "unknown".to_string());
 
-  let canonical = fs::canonicalize(skill_dir).ok();
+  let copy_target = read_copy_marker(skill_dir);
+  let canonical = copy_target
+    .as_ref()
+    .map(|p| p.to_path_buf())
+    .or_else(|| fs::canonicalize(skill_dir).ok());
   let canonical_path = canonical
     .as_ref()
     .map(|p| p.to_string_lossy().to_string())
     .unwrap_or_else(|| skill_dir.to_string_lossy().to_string());
 
   let is_link = is_symlink_dir(skill_dir);
-  let is_managed_link = canonical
+  let is_link_target = canonical
     .as_ref()
     .map(|p| is_under_canonical(p, project_canonical, global_canonical))
-    .unwrap_or(false)
-    && is_link;
+    .unwrap_or(false);
+  let is_copy_link = copy_target
+    .as_ref()
+    .map(|p| is_under_canonical(p, project_canonical, global_canonical))
+    .unwrap_or(false);
+  let is_managed_link = (is_link && is_link_target) || is_copy_link;
 
   Some((
     LocalSkill {
@@ -374,6 +384,16 @@ fn is_under_canonical(path: &Path, project_canonical: &Path, global_canonical: &
   let project_str = project_canonical.to_string_lossy();
   let global_str = global_canonical.to_string_lossy();
   path_str.starts_with(project_str.as_ref()) || path_str.starts_with(global_str.as_ref())
+}
+
+fn read_copy_marker(skill_dir: &Path) -> Option<PathBuf> {
+  let marker_path = skill_dir.join(COPY_MARKER_FILE);
+  let content = fs::read_to_string(marker_path).ok()?;
+  let trimmed = content.trim();
+  if trimmed.is_empty() {
+    return None;
+  }
+  Some(PathBuf::from(trimmed))
 }
 
 fn apply_name_conflicts(list: &mut Vec<LocalSkill>) {

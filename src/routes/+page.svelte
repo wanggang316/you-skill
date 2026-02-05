@@ -7,6 +7,8 @@
   import RemoteSkillsSection from '../lib/components/RemoteSkillsSection.svelte'
   import SettingsPanel from '../lib/components/SettingsPanel.svelte'
   import { api } from '../lib/api/skills'
+  import { t } from '../lib/i18n'
+  import { loadSettings } from '../lib/stores/settings'
 
   let currentView = $state('list')
   let activeTab = $state('local')
@@ -77,6 +79,7 @@
   )
 
   onMount(async () => {
+    await loadSettings()
     await loadAgents()
     await refreshLocal()
     await loadRemote(true)
@@ -187,7 +190,7 @@
 
   const handleUnify = async (skill) => {
     if (!skill || !skill.agents || skill.agents.length === 0) {
-      localError = '无法识别当前 skill 的应用信息'
+      localError = $t('error.noSkillAgent')
       return
     }
     const agent = skill.agents[0]
@@ -196,8 +199,8 @@
       let prefer = 'current'
       if (check.exists) {
         const keepCanonical = await confirm(
-          '检测到 .agents 下已存在同名 skill。\n确定：保留 .agents 版本\n取消：保留当前版本',
-          { title: '重复技能' }
+          $t('confirm.duplicateSkill'),
+          { title: $t('confirm.duplicateTitle') }
         )
         prefer = keepCanonical ? 'canonical' : 'current'
       }
@@ -227,8 +230,8 @@
         let prefer = 'current'
         if (check.exists) {
           const keepCanonical = await confirm(
-            `检测到 .agents 下已存在同名 skill：${skill.name}\n确定：保留 .agents 版本\n取消：保留当前版本`,
-            { title: '重复技能' }
+            $t('confirm.duplicateSkillWithName', { name: skill.name }),
+            { title: $t('confirm.duplicateTitle') }
           )
           prefer = keepCanonical ? 'canonical' : 'current'
         }
@@ -251,9 +254,10 @@
 
   const handleDeleteSkill = async (skill) => {
     try {
-      const confirmed = await confirm(`确认删除 ${skill.name}？此操作不可恢复。`, {
-        title: '删除确认'
-      })
+      const confirmed = await confirm(
+        $t('confirm.deleteSkill', { name: skill.name }),
+        { title: $t('confirm.deleteTitle') }
+      )
       if (!confirmed) return
       await api.deleteSkill(skill.canonical_path)
       await refreshLocal()

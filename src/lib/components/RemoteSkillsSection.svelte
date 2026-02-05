@@ -1,5 +1,6 @@
 <script>
   import { ChevronDown, CloudDownload, RefreshCw, Search } from '@lucide/svelte'
+  import { t } from '../i18n'
 
   let {
     remoteQuery = $bindable(),
@@ -28,7 +29,7 @@
         />
         <input
           class="w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] px-9 py-2 text-sm text-[var(--base-content)] placeholder:text-[var(--base-content-subtle)] focus:border-[var(--base-300)] focus:outline-none"
-          placeholder="搜索远程技能（名称或仓库）"
+          placeholder={$t('remote.search.placeholder')}
           bind:value={remoteQuery}
           onkeydown={(event) => event.key === 'Enter' && onSearch()}
         />
@@ -43,12 +44,12 @@
       </select>
       <label class="flex items-center gap-2 text-xs text-[var(--base-content-muted)]">
         <input type="checkbox" bind:checked={installGlobal} />
-        全局安装
+        {$t('remote.installGlobal')}
       </label>
       <button
         class="rounded-xl border border-[var(--base-300)] p-2 text-sm text-[var(--base-content)]"
         onclick={onSearch}
-        title="搜索"
+        title={$t('remote.search')}
         type="button"
       >
         <Search size={16} />
@@ -71,13 +72,13 @@
       <div
         class="rounded-2xl border border-dashed border-[var(--base-300)] bg-[var(--base-100)] p-6 text-center text-sm text-[var(--base-content-muted)]"
       >
-        正在加载技能库...
+        {$t('remote.loading')}
       </div>
     {:else if remoteSkills.length === 0}
       <div
         class="rounded-2xl border border-dashed border-[var(--base-300)] bg-[var(--base-100)] p-6 text-center text-sm text-[var(--base-content-muted)]"
       >
-        暂无技能数据
+        {$t('remote.empty')}
       </div>
     {:else}
       {#each remoteSkills as skill}
@@ -87,14 +88,14 @@
               <p class="text-base font-semibold">{skill.name}</p>
               <p class="text-xs text-[var(--base-content-muted)]">{skill.source}</p>
               <p class="mt-1 text-xs text-[var(--base-content-faint)]">
-                {skill.installs} installs
+                {$t('remote.installs', { count: skill.installs })}
               </p>
             </div>
             <button
               class="rounded-xl bg-[var(--primary)] p-2 text-xs text-[var(--primary-content)]"
               onclick={() => onInstall(skill)}
               disabled={installingSkill === skill.id}
-              title="一键安装"
+              title={$t('remote.install')}
               type="button"
             >
               {#if installingSkill === skill.id}
@@ -114,7 +115,7 @@
       class="rounded-xl border border-[var(--base-300)] p-2 text-sm text-[var(--base-content)]"
       onclick={onLoadMore}
       disabled={!remoteHasMore || remoteLoading}
-      title={remoteHasMore ? '加载更多' : '没有更多了'}
+      title={remoteHasMore ? $t('remote.loadMore') : $t('remote.noMore')}
       type="button"
     >
       {#if remoteLoading}

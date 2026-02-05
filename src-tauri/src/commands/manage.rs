@@ -1,8 +1,11 @@
+use crate::config::load_config;
 use crate::models::{CanonicalCheckResult, UnifyRequest, UnifyResult};
 use crate::paths::agent_paths;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+const COPY_MARKER_FILE: &str = ".skill-kit-link";
 
 #[tauri::command]
 pub fn delete_skill(path: String) -> Result<(), String> {
@@ -49,6 +52,7 @@ pub fn check_canonical_skill(name: String, scope: String) -> Result<CanonicalChe
 pub fn unify_skill(request: UnifyRequest) -> Result<UnifyResult, String> {
   let canonical_path = canonical_skill_path(&request.name, &request.scope)?;
   let current_path = PathBuf::from(&request.current_path);
+  let sync_mode = current_sync_mode();
 
   if !current_path.exists() {
     return Ok(UnifyResult {
@@ -62,10 +66,13 @@ pub fn unify_skill(request: UnifyRequest) -> Result<UnifyResult, String> {
       copy_dir_or_file(&current_path, &canonical_path)?;
     }
     remove_path(&current_path)?;
-    ensure_symlink_dir(&canonical_path, &current_path)?;
+    link_to_canonical(&canonical_path, &current_path, &sync_mode)?;
     return Ok(UnifyResult {
       success: true,
-      message: "已保留 .agents 版本并建立软链接".to_string(),
+      message: match sync_mode.as_str() {
+        "copy" => "已保留 .agents 版本并创建副本".to_string(),
+        _ => "已保留 .agents 版本并建立软链接".to_string(),
+      },
     });
   }
 
@@ -74,11 +81,14 @@ pub fn unify_skill(request: UnifyRequest) -> Result<UnifyResult, String> {
   }
   copy_dir_or_file(&current_path, &canonical_path)?;
   remove_path(&current_path)?;
-  ensure_symlink_dir(&canonical_path, &current_path)?;
+  link_to_canonical(&canonical_path, &current_path, &sync_mode)?;
 
   Ok(UnifyResult {
     success: true,
-    message: "已用当前版本覆盖 .agents 并建立软链接".to_string(),
+    message: match sync_mode.as_str() {
+      "copy" => "已用当前版本覆盖 .agents 并创建副本".to_string(),
+      _ => "已用当前版本覆盖 .agents 并建立软链接".to_string(),
+    },
   })
 }
 
@@ -87,13 +97,24 @@ pub fn set_agent_link(name: String, agent: String, scope: String, linked: bool) 
   let canonical_path = canonical_skill_path(&name, &scope)?;
   let agent_dir = agent_skills_dir(&agent, &scope)?;
   let link_path = agent_dir.join(sanitize_name(&name));
+  let sync_mode = current_sync_mode();
 
   if linked {
-    ensure_symlink_dir(&canonical_path, &link_path)?;
+    link_to_canonical(&canonical_path, &link_path, &sync_mode)?;
     return Ok(());
   }
 
-  remove_symlink_if_points_to(&link_path, &canonical_path)
+  if !link_path.exists() {
+    return Ok(());
+  }
+  let meta = fs::symlink_metadata(&link_path).map_err(|e| e.to_string())?;
+  if meta.file_type().is_symlink() {
+    return remove_symlink_if_points_to(&link_path, &canonical_path);
+  }
+  if sync_mode == "copy" || copy_marker_points_to(&link_path, &canonical_path) {
+    return remove_path(&link_path);
+  }
+  Err("当前路径不是软链接，已取消操作".to_string())
 }
 
 fn copy_dir_or_file(from: &Path, to: &Path) -> Result<(), String> {
@@ -168,6 +189,41 @@ fn remove_path(path: &Path) -> Result<(), String> {
     fs::remove_dir_all(path).map_err(|e| e.to_string())?;
   }
   Ok(())
+}
+
+fn current_sync_mode() -> String {
+  load_config()
+    .map(|config| config.settings.sync_mode)
+    .unwrap_or_else(|_| "symlink".to_string())
+}
+
+fn link_to_canonical(target: &Path, link_path: &Path, sync_mode: &str) -> Result<(), String> {
+  if sync_mode == "copy" {
+    if link_path.exists() {
+      remove_path(link_path)?;
+    }
+    copy_dir_or_file(target, link_path)?;
+    write_copy_marker(link_path, target)?;
+    return Ok(());
+  }
+  ensure_symlink_dir(target, link_path)
+}
+
+fn write_copy_marker(link_path: &Path, canonical_path: &Path) -> Result<(), String> {
+  let marker = link_path.join(COPY_MARKER_FILE);
+  if let Some(parent) = marker.parent() {
+    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+  }
+  fs::write(marker, canonical_path.to_string_lossy().to_string()).map_err(|e| e.to_string())
+}
+
+fn copy_marker_points_to(link_path: &Path, canonical_path: &Path) -> bool {
+  let marker = link_path.join(COPY_MARKER_FILE);
+  let content = fs::read_to_string(marker).ok();
+  match content {
+    Some(text) => PathBuf::from(text.trim()) == canonical_path,
+    None => false,
+  }
 }
 
 fn ensure_symlink_dir(target: &Path, link_path: &Path) -> Result<(), String> {
