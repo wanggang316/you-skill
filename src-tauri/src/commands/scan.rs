@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
 
 #[tauri::command]
@@ -158,6 +159,7 @@ fn parse_canonical_skill_dir(skill_dir: &Path, scope: &str) -> Option<LocalSkill
     agents: Vec::new(),
     managed_status: "managed".to_string(),
     name_conflict: false,
+    created_at: get_created_at(skill_dir),
   })
 }
 
@@ -299,6 +301,7 @@ fn parse_skill_dir(
       agents: Vec::new(),
       managed_status: "unknown".to_string(),
       name_conflict: false,
+      created_at: get_created_at(skill_dir),
     },
     is_managed_link,
   ))
@@ -377,6 +380,18 @@ fn apply_name_conflicts(list: &mut Vec<LocalSkill>) {
       }
     }
   }
+}
+
+fn get_created_at(path: &Path) -> Option<i64> {
+  let metadata = fs::metadata(path).ok()?;
+  let time = metadata.created().or_else(|_| metadata.modified()).ok()?;
+  to_millis(time)
+}
+
+fn to_millis(time: SystemTime) -> Option<i64> {
+  time.duration_since(UNIX_EPOCH)
+    .ok()
+    .map(|duration| duration.as_millis() as i64)
 }
 
 fn expand_home(path: &str) -> Option<PathBuf> {

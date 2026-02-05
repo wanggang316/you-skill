@@ -3,6 +3,7 @@
   import {
     ChevronLeft,
     ChevronDown,
+    Blend,
     CloudDownload,
     HardDrive,
     Link2,
@@ -39,6 +40,9 @@
   let installingSkill = ''
   let linkBusy = false
   let editingSkillKey = ''
+  let editSelection = []
+
+  $: allSelected = agents.length > 0 && editSelection.length === agents.length
 
   $: agentMap = new Map(agents.map((agent) => [agent.id, agent.display_name]))
 
@@ -58,9 +62,10 @@
       ...skill,
       key: `${skill.name}::${skill.scope}::${skill.canonical_path}`
     }))
-  $: unmanagedSkills = filteredLocalSkills.filter((skill) =>
-    ['unmanaged', 'mixed', 'unknown'].includes(skill.managed_status)
-  )
+    .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+  $: unmanagedSkills = filteredLocalSkills
+    .filter((skill) => ['unmanaged', 'mixed', 'unknown'].includes(skill.managed_status))
+    .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
 
   onMount(async () => {
     await loadAgents()
@@ -201,23 +206,50 @@
   }
 
   function openLinkDialog(skill) {
-    editingSkillKey =
-      editingSkillKey === skill.key ? '' : skill.key
+    if (editingSkillKey === skill.key) {
+      editingSkillKey = ''
+      editSelection = []
+      return
+    }
+    editingSkillKey = skill.key
+    editSelection = [...(skill.agents || [])]
   }
 
-  async function toggleAgentLink(agentId, enabled) {
+  function toggleAgentSelection(agentId, enabled) {
+    if (enabled) {
+      if (!editSelection.includes(agentId)) {
+        editSelection = [...editSelection, agentId]
+      }
+    } else {
+      editSelection = editSelection.filter((id) => id !== agentId)
+    }
+  }
+
+  function toggleSelectAll(enabled) {
+    if (enabled) {
+      editSelection = agents.map((agent) => agent.id)
+    } else {
+      editSelection = []
+    }
+  }
+
+  async function confirmAgentLinks() {
     const skill = managedSkills.find((item) => item.key === editingSkillKey)
     if (!skill || linkBusy) return
     linkBusy = true
     try {
-      await api.setAgentLink(skill.name, agentId, skill.scope, enabled)
-      await refreshLocal()
-      const refreshed = (Array.isArray(localSkills) ? localSkills : []).find(
-        (item) => `${item.name}::${item.scope}::${item.canonical_path}` === skill.key
-      )
-      if (refreshed) {
-        editingSkillKey = `${refreshed.name}::${refreshed.scope}::${refreshed.canonical_path}`
+      const currentSet = new Set(skill.agents || [])
+      const targetSet = new Set(editSelection)
+      for (const agent of agents) {
+        const shouldLink = targetSet.has(agent.id)
+        const isLinked = currentSet.has(agent.id)
+        if (shouldLink !== isLinked) {
+          await api.setAgentLink(skill.name, agent.id, skill.scope, shouldLink)
+        }
       }
+      await refreshLocal()
+      editingSkillKey = ''
+      editSelection = []
     } catch (error) {
       localError = String(error)
     } finally {
@@ -368,38 +400,59 @@
                     <div class="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p class="text-base font-semibold">{skill.name}</p>
-                        <div class="mt-2 flex flex-wrap gap-2">
-                          {#each skill.agents as agentId}
-                            <div class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
-                              {agentMap.get(agentId) || agentId}
-                            </div>
-                          {/each}
-                        </div>
+                        {#if editingSkillKey !== skill.key}
+                          <div class="mt-2 flex flex-wrap gap-2">
+                            {#each skill.agents as agentId}
+                              <div class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                                {agentMap.get(agentId) || agentId}
+                              </div>
+                            {/each}
+                          </div>
+                        {/if}
                       </div>
                       <div class="flex items-center gap-3 text-xs text-slate-400">
-                        <span>该 skill 已安装 {skill.agents.length} 个应用</span>
                         <button
                           class={`rounded-lg border p-2 text-xs ${editingSkillKey === skill.key ? 'border-slate-900 text-slate-900' : 'border-slate-200 text-slate-600'}`}
                           on:click={() => openLinkDialog(skill)}
                           title="安装到应用"
                         >
-                          <Link2 size={14} />
+                          <Blend size={14} />
                         </button>
                       </div>
                     </div>
                     {#if editingSkillKey === skill.key}
-                      <div class="mt-4 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        {#each agents as agent}
-                          <label class="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm">
-                            <span>{agent.display_name}</span>
+                      <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <div class="flex items-center justify-between text-xs text-slate-500">
+                          <label class="inline-flex items-center gap-2">
                             <input
                               type="checkbox"
-                              checked={(skill.agents || []).includes(agent.id)}
-                              on:change={(event) => toggleAgentLink(agent.id, event.target.checked)}
+                              checked={allSelected}
+                              on:change={(event) => toggleSelectAll(event.target.checked)}
                               disabled={linkBusy}
                             />
+                            全选
                           </label>
-                        {/each}
+                          <button
+                            class="rounded-lg bg-slate-900 px-3 py-1.5 text-white"
+                            on:click={confirmAgentLinks}
+                            disabled={linkBusy}
+                          >
+                            确认
+                          </button>
+                        </div>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                          {#each agents as agent}
+                          <label class="inline-flex items-center gap-3 rounded-lg bg-white px-3 py-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={editSelection.includes(agent.id)}
+                              on:change={(event) => toggleAgentSelection(agent.id, event.target.checked)}
+                              disabled={linkBusy}
+                            />
+                            <span>{agent.display_name}</span>
+                          </label>
+                          {/each}
+                        </div>
                       </div>
                     {/if}
                   </div>

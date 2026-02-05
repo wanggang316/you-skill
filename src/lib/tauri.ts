@@ -8,6 +8,7 @@ export interface LocalSkill {
   agents: string[]
   managed_status: 'managed' | 'unmanaged' | 'mixed' | 'unknown'
   name_conflict: boolean
+  created_at?: number | null
 }
 
 export interface RemoteSkill {

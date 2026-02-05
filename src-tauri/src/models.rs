@@ -9,6 +9,7 @@ pub struct LocalSkill {
   pub agents: Vec<String>,
   pub managed_status: String,
   pub name_conflict: bool,
+  pub created_at: Option<i64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
