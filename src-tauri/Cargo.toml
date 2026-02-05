@@ -15,6 +15,8 @@ walkdir = "2"
 dirs-next = "2"
 reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking"] }
 tauri-plugin-dialog = "2"
+zip = "2"
+dirs = "5"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

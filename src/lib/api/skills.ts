@@ -71,6 +71,22 @@ export interface AppSettings {
   sync_mode: 'symlink' | 'copy'
 }
 
+export interface DetectedSkill {
+  name: string
+  path: string
+}
+
+export interface InstallZipRequest {
+  zip_path: string
+  agents: string[]
+}
+
+export interface InstallGithubRequest {
+  url: string
+  skill_path: string
+  agents: string[]
+}
+
 export const api = {
   scanLocalSkills: () => invoke<LocalSkill[]>('scan_local_skills'),
   getScanRoots: () => invoke<string[]>('get_scan_roots'),
@@ -90,5 +106,11 @@ export const api = {
     invoke('set_agent_link', { name, agent, scope, linked }),
   getSettings: () => invoke<AppSettings>('get_settings'),
   updateSettings: (settings: AppSettings) =>
-    invoke<AppSettings>('update_settings', { settings })
+    invoke<AppSettings>('update_settings', { settings }),
+  detectGithubSkills: (url: string) =>
+    invoke<DetectedSkill[]>('detect_github_skills', { url }),
+  installZipSkill: (request: InstallZipRequest) =>
+    invoke<InstallResult>('install_zip_skill', { request }),
+  installGithubSkill: (request: InstallGithubRequest) =>
+    invoke<InstallResult>('install_github_skill', { request })
 }

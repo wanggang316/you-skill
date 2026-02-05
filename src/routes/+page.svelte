@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import { confirm } from '@tauri-apps/plugin-dialog'
-  import AddScanRootPanel from '../lib/components/AddScanRootPanel.svelte'
+  import AddSkillModal from '../lib/components/AddSkillModal.svelte'
   import LocalSkillsSection from '../lib/components/LocalSkillsSection.svelte'
   import PageHeader from '../lib/components/PageHeader.svelte'
   import RemoteSkillsSection from '../lib/components/RemoteSkillsSection.svelte'
@@ -12,14 +12,13 @@
 
   let currentView = $state('list')
   let activeTab = $state('local')
+  let addSkillModalOpen = $state(false)
 
   let localSkills = $state([])
   let localSearch = $state('')
   let localAgent = $state('all')
   let localLoading = $state(false)
   let localError = $state('')
-  let scanRoots = $state([])
-  let newScanRoot = $state('')
 
   let remoteSkills = $state([])
   let remoteQuery = $state('')
@@ -101,31 +100,10 @@
     localError = ''
     try {
       localSkills = await api.scanLocalSkills()
-      scanRoots = await api.getScanRoots()
     } catch (error) {
       localError = String(error)
     } finally {
       localLoading = false
-    }
-  }
-
-  const addRoot = async () => {
-    if (!newScanRoot.trim()) return
-    try {
-      scanRoots = await api.addScanRoot(newScanRoot.trim())
-      newScanRoot = ''
-      await refreshLocal()
-    } catch (error) {
-      localError = String(error)
-    }
-  }
-
-  const removeRoot = async (path) => {
-    try {
-      scanRoots = await api.removeScanRoot(path)
-      await refreshLocal()
-    } catch (error) {
-      localError = String(error)
     }
   }
 
@@ -325,18 +303,17 @@
     {activeTab}
     onChangeView={(view) => (currentView = view)}
     onChangeTab={(tab) => (activeTab = tab)}
+    onAddSkill={() => (addSkillModalOpen = true)}
+  />
+
+  <AddSkillModal
+    bind:open={addSkillModalOpen}
+    {agents}
+    onSuccess={refreshLocal}
   />
 
   <main class="mx-auto max-w-6xl px-6 py-6">
-    {#if currentView === 'add'}
-      <AddScanRootPanel
-        bind:newScanRoot
-        {localError}
-        {scanRoots}
-        onAddRoot={addRoot}
-        onRemoveRoot={removeRoot}
-      />
-    {:else if currentView === 'settings'}
+    {#if currentView === 'settings'}
       <SettingsPanel />
     {:else if activeTab === 'local'}
       <LocalSkillsSection

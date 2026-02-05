@@ -3,7 +3,7 @@
   import IconButton from './IconButton.svelte'
   import { t } from '../i18n'
 
-  const { currentView, activeTab, onChangeView, onChangeTab } = $props()
+  const { currentView, activeTab, onChangeView, onChangeTab, onAddSkill } = $props()
 </script>
 
 <header class="border-b border-[var(--base-300)] bg-[var(--base-100)]">
@@ -35,7 +35,7 @@
           </div>
           <IconButton
             variant="primary"
-            onclick={() => onChangeView('add')}
+            onclick={onAddSkill}
             title={$t('header.add')}
             ariaLabel={$t('header.add')}
           >

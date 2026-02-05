@@ -73,3 +73,22 @@ pub struct UnifyResult {
   pub success: bool,
   pub message: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DetectedSkill {
+  pub name: String,
+  pub path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct InstallZipRequest {
+  pub zip_path: String,
+  pub agents: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct InstallGithubRequest {
+  pub url: String,
+  pub skill_path: String,
+  pub agents: Vec<String>,
+}
