@@ -1,13 +1,16 @@
 <script>
   import { onMount } from 'svelte'
   import {
+    ChevronDown,
     CloudDownload,
     Copy,
     HardDrive,
     MoveRight,
+    Plus,
     RefreshCw,
     Search,
-    Trash2
+    Trash2,
+    X
   } from 'lucide-svelte'
   import { api } from './lib/tauri'
 
@@ -34,6 +37,8 @@
   let installGlobal = true
   let installLog = ''
   let installingSkill = ''
+
+  $: agentMap = new Map(agents.map((agent) => [agent.id, agent.display_name]))
 
   $: filteredLocalSkills = localSkills.filter((skill) => {
     const needle = localSearch.trim().toLowerCase()
@@ -237,10 +242,11 @@
               {/each}
             </select>
             <button
-              class="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              class="rounded-xl border border-slate-200 p-2 text-sm"
               on:click={refreshLocal}
+              title="刷新"
             >
-              <RefreshCw size={16} /> 刷新
+              <RefreshCw size={16} />
             </button>
           </div>
           {#if localError}
@@ -257,10 +263,11 @@
               bind:value={newScanRoot}
             />
             <button
-              class="rounded-xl bg-slate-900 px-4 py-2 text-sm text-white"
+              class="rounded-xl bg-slate-900 p-2 text-sm text-white"
               on:click={addRoot}
+              title="添加路径"
             >
-              添加
+              <Plus size={16} />
             </button>
           </div>
           {#if scanRoots.length > 0}
@@ -268,7 +275,9 @@
               {#each scanRoots as root}
                 <div class="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
                   <span>{root}</span>
-                  <button class="text-rose-500" on:click={() => removeRoot(root)}>移除</button>
+                  <button class="text-rose-500" on:click={() => removeRoot(root)} title="移除路径">
+                    <X size={14} />
+                  </button>
                 </div>
               {/each}
             </div>
@@ -290,40 +299,34 @@
                 <div class="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p class="text-base font-semibold">{skill.name}</p>
-                    <p class="text-xs text-slate-500">{skill.description || '暂无描述'}</p>
-                    <p class="mt-1 text-xs text-slate-400">
-                      {skill.agent} · {skill.install_mode}
-                    </p>
+                    <div class="mt-2 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                      {agentMap.get(skill.agent) || skill.agent}
+                    </div>
                   </div>
                   <div class="flex items-center gap-2">
                     <button
-                      class="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs"
+                      class="rounded-lg border border-slate-200 p-2 text-xs"
                       on:click={() => handleCopy(skill.path)}
+                      title="复制"
                     >
-                      <Copy size={14} /> 复制
+                      <Copy size={14} />
                     </button>
                     <button
-                      class="flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs"
+                      class="rounded-lg border border-slate-200 p-2 text-xs"
                       on:click={() => handleMove(skill.path)}
+                      title="移动"
                     >
-                      <MoveRight size={14} /> 移动
+                      <MoveRight size={14} />
                     </button>
                     <button
-                      class="flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-1.5 text-xs text-rose-500"
+                      class="rounded-lg border border-rose-200 p-2 text-xs text-rose-500"
                       on:click={() => handleDelete(skill.path)}
+                      title="删除"
                     >
-                      <Trash2 size={14} /> 删除
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
-                <div class="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                  {skill.path}
-                </div>
-                {#if skill.real_path}
-                  <div class="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                    指向：{skill.real_path}
-                  </div>
-                {/if}
               </div>
             {/each}
           {/if}
@@ -355,10 +358,11 @@
               全局安装
             </label>
             <button
-              class="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              class="rounded-xl border border-slate-200 p-2 text-sm"
               on:click={handleSearchRemote}
+              title="搜索"
             >
-              <Search size={16} /> 搜索
+              <Search size={16} />
             </button>
           </div>
           {#if remoteError}
@@ -390,12 +394,16 @@
                     <p class="mt-1 text-xs text-slate-400">{skill.installs} installs</p>
                   </div>
                   <button
-                    class="flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs text-white"
+                    class="rounded-xl bg-slate-900 p-2 text-xs text-white"
                     on:click={() => handleInstall(skill)}
                     disabled={installingSkill === skill.id}
+                    title="一键安装"
                   >
-                    <CloudDownload size={14} />
-                    {installingSkill === skill.id ? '安装中...' : '一键安装'}
+                    {#if installingSkill === skill.id}
+                      <RefreshCw size={14} class="animate-spin" />
+                    {:else}
+                      <CloudDownload size={14} />
+                    {/if}
                   </button>
                 </div>
               </div>
@@ -405,11 +413,16 @@
 
         <div class="flex items-center justify-center">
           <button
-            class="rounded-xl border border-slate-200 px-4 py-2 text-sm"
+            class="rounded-xl border border-slate-200 p-2 text-sm"
             on:click={loadMoreRemote}
             disabled={!remoteHasMore || remoteLoading}
+            title={remoteHasMore ? '加载更多' : '没有更多了'}
           >
-            {remoteLoading ? '加载中...' : remoteHasMore ? '加载更多' : '没有更多了'}
+            {#if remoteLoading}
+              <RefreshCw size={16} class="animate-spin" />
+            {:else}
+              <ChevronDown size={16} />
+            {/if}
           </button>
         </div>
       </section>
