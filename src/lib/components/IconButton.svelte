@@ -12,10 +12,10 @@
     'inline-flex items-center justify-center rounded-xl p-2 transition'
 
   const variants = {
-    primary: 'bg-[var(--primary)] text-[var(--primary-content)]',
+    primary: 'bg-[var(--primary)] text-[var(--primary-content)] hover:opacity-90',
     outline:
-      'border border-[var(--base-300)] bg-[var(--base-100)] text-[var(--base-content)]',
-    ghost: 'text-[var(--base-content)]'
+      'border border-[var(--base-300)] bg-[var(--base-100)] text-[var(--base-content)] hover:bg-[var(--base-200)]',
+    ghost: 'text-[var(--base-content)] hover:bg-[var(--base-200)]'
   }
 
   const resolvedClass = `${baseClass} ${variants[variant] ?? variants.ghost} ${className}`

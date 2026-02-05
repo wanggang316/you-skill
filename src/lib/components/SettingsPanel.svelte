@@ -74,28 +74,20 @@
   </div>
 
   <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-5">
-    <div>
-      <p class="text-sm font-semibold">{$t('settings.about')}</p>
-      <p class="text-xs text-[var(--base-content-muted)]">
-        {$t('settings.about.subtitle')}
-      </p>
-    </div>
-    <div class="mt-4 flex flex-wrap items-center gap-3">
-      <button
-        class="rounded-xl bg-[var(--primary)] px-4 py-2 text-sm text-[var(--primary-content)]"
-        onclick={handleCheckUpdate}
-        disabled={checkingUpdate}
-        type="button"
-      >
-        {checkingUpdate
-          ? $t('settings.checkingUpdate')
-          : $t('settings.checkUpdate')}
-      </button>
-      {#if updateMessage}
-        <span class="text-sm text-[var(--base-content-muted)]">
-          {updateMessage}
-        </span>
-      {/if}
-    </div>
+    <button
+      class="rounded-xl bg-[var(--primary)] px-4 py-2 text-sm text-[var(--primary-content)] hover:opacity-90"
+      onclick={handleCheckUpdate}
+      disabled={checkingUpdate}
+      type="button"
+    >
+      {checkingUpdate
+        ? $t('settings.checkingUpdate')
+        : $t('settings.checkUpdate')}
+    </button>
+    {#if updateMessage}
+      <span class="mt-3 block text-sm text-[var(--base-content-muted)]">
+        {updateMessage}
+      </span>
+    {/if}
   </div>
 </section>

@@ -145,7 +145,7 @@
                       {$t('local.action.selectAll')}
                     </label>
                     <button
-                      class="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[var(--primary-content)]"
+                      class="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[var(--primary-content)] transition hover:opacity-90"
                       onclick={onConfirmAgentLinks}
                       disabled={linkBusy}
                       type="button"
@@ -183,7 +183,7 @@
               {$t('local.section.unmanaged')}
             </p>
             <button
-              class="rounded-lg border border-[var(--base-300)] px-3 py-1.5 text-xs text-[var(--base-content-muted)]"
+              class="rounded-lg border border-[var(--base-300)] px-3 py-1.5 text-xs text-[var(--base-content-muted)] transition hover:bg-[var(--base-200)]"
               onclick={onBulkUnify}
               type="button"
             >
@@ -218,7 +218,7 @@
                     </span>
                   {/if}
                   <button
-                    class="rounded-lg border border-[var(--base-300)] px-3 py-1.5 text-xs text-[var(--base-content-muted)]"
+                    class="rounded-lg border border-[var(--base-300)] px-3 py-1.5 text-xs text-[var(--base-content-muted)] transition hover:bg-[var(--base-200)]"
                     onclick={() => onUnifySkill(skill)}
                     title={$t('local.action.import')}
                     type="button"
@@ -226,7 +226,7 @@
                     {$t('local.action.import')}
                   </button>
                   <button
-                    class="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs text-[var(--error)]"
+                    class="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs text-[var(--error)] transition hover:bg-[var(--error)] hover:text-[var(--error-content)]"
                     type="button"
                     onclick={(event) => {
                       event.stopPropagation()
