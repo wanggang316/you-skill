@@ -45,6 +45,24 @@ export interface AgentInfo {
   global_path?: string | null
 }
 
+export interface CanonicalCheckResult {
+  exists: boolean
+  canonical_path: string
+}
+
+export interface UnifyRequest {
+  name: string
+  agent: string
+  scope: string
+  current_path: string
+  prefer: 'canonical' | 'current'
+}
+
+export interface UnifyResult {
+  success: boolean
+  message: string
+}
+
 export const api = {
   scanLocalSkills: () => invoke<LocalSkill[]>('scan_local_skills'),
   getScanRoots: () => invoke<string[]>('get_scan_roots'),
@@ -56,5 +74,8 @@ export const api = {
   fetchRemoteSkills: (page?: number, pageSize?: number, query?: string) =>
     invoke<RemoteSkillsResponse>('fetch_remote_skills', { page, pageSize, query }),
   installSkill: (request: InstallRequest) => invoke<InstallResult>('install_skill', { request }),
-  listAgents: () => invoke<AgentInfo[]>('list_agents')
+  listAgents: () => invoke<AgentInfo[]>('list_agents'),
+  checkCanonicalSkill: (name: string, scope: string) =>
+    invoke<CanonicalCheckResult>('check_canonical_skill', { name, scope }),
+  unifySkill: (request: UnifyRequest) => invoke<UnifyResult>('unify_skill', { request })
 }

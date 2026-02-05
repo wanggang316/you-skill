@@ -5,6 +5,7 @@
     ChevronDown,
     CloudDownload,
     HardDrive,
+    Link2,
     Plus,
     RefreshCw,
     Search,
@@ -157,6 +158,38 @@
       installLog = String(error)
     } finally {
       installingSkill = ''
+    }
+  }
+
+  async function handleUnify(skill) {
+    if (!skill || !skill.agents || skill.agents.length === 0) {
+      localError = '无法识别当前 skill 的应用信息'
+      return
+    }
+    const agent = skill.agents[0]
+    try {
+      const check = await api.checkCanonicalSkill(skill.name, skill.scope)
+      let prefer = 'current'
+      if (check.exists) {
+        const keepCanonical = window.confirm(
+          '检测到 .agents 下已存在同名 skill。\n确定：保留 .agents 版本\n取消：保留当前版本'
+        )
+        prefer = keepCanonical ? 'canonical' : 'current'
+      }
+      const result = await api.unifySkill({
+        name: skill.name,
+        agent,
+        scope: skill.scope,
+        current_path: skill.canonical_path,
+        prefer
+      })
+      if (!result.success) {
+        localError = result.message
+      } else {
+        await refreshLocal()
+      }
+    } catch (error) {
+      localError = String(error)
     }
   }
 </script>
@@ -340,8 +373,8 @@
                           {/each}
                         </div>
                       </div>
-                      <div class="flex items-center gap-2 text-xs text-slate-400">
-                        该 skill 已安装 {skill.agents.length} 个应用
+                      <div class="flex items-center gap-3 text-xs text-slate-400">
+                        <span>该 skill 已安装 {skill.agents.length} 个应用</span>
                         {#if skill.managed_status === 'mixed'}
                           <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-700">
                             .agents + 独立副本
@@ -352,6 +385,13 @@
                             有同名
                           </span>
                         {/if}
+                        <button
+                          class="rounded-lg border border-slate-200 p-2 text-xs text-slate-600"
+                          on:click={() => handleUnify(skill)}
+                          title="统一管理"
+                        >
+                          <Link2 size={14} />
+                        </button>
                       </div>
                     </div>
                   </div>
