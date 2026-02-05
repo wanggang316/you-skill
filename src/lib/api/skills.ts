@@ -78,6 +78,7 @@ export interface DetectedSkill {
 
 export interface InstallZipRequest {
   zip_path: string
+  skill_path: string
   agents: string[]
 }
 
@@ -109,6 +110,8 @@ export const api = {
     invoke<AppSettings>('update_settings', { settings }),
   detectGithubSkills: (url: string) =>
     invoke<DetectedSkill[]>('detect_github_skills', { url }),
+  detectZipSkills: (zipPath: string) =>
+    invoke<DetectedSkill[]>('detect_zip_skills', { zipPath }),
   installZipSkill: (request: InstallZipRequest) =>
     invoke<InstallResult>('install_zip_skill', { request }),
   installGithubSkill: (request: InstallGithubRequest) =>

@@ -168,12 +168,19 @@ fn find_skill_md_files(
 pub fn install_zip_skill(request: InstallZipRequest) -> Result<InstallResult, String> {
   use crate::paths::agent_paths;
 
-  // Get the ZIP file name without extension as skill name
-  let zip_path = Path::new(&request.zip_path);
-  let skill_name = zip_path
-    .file_stem()
-    .map(|s| s.to_string_lossy().to_string())
-    .unwrap_or_else(|| "unnamed-skill".to_string());
+  // Get the skill name from the skill_path, or fall back to zip file name
+  let skill_name = if request.skill_path.is_empty() {
+    let zip_path = Path::new(&request.zip_path);
+    zip_path
+      .file_stem()
+      .map(|s| s.to_string_lossy().to_string())
+      .unwrap_or_else(|| "unnamed-skill".to_string())
+  } else {
+    Path::new(&request.skill_path)
+      .file_name()
+      .map(|n| n.to_string_lossy().to_string())
+      .unwrap_or_else(|| "unnamed-skill".to_string())
+  };
 
   // Get global skills directory
   let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
@@ -444,6 +451,38 @@ pub async fn install_github_skill(request: InstallGithubRequest) -> Result<Insta
       message: "安装完成，但部分 Agent 链接失败".to_string(),
     })
   }
+}
+
+/// Detect skills in a ZIP file by extracting to temp and finding SKILL.md files
+#[tauri::command]
+pub fn detect_zip_skills(zip_path: String) -> Result<Vec<DetectedSkill>, String> {
+  // Create temp directory for extraction
+  let temp_dir = std::env::temp_dir().join(format!("skill-kit-zip-detect-{}", std::process::id()));
+
+  // Clean up temp directory if it exists
+  let _ = fs::remove_dir_all(&temp_dir);
+
+  // Create temp directory
+  fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
+
+  // Extract ZIP file
+  let extract_result = extract_zip(&zip_path, &temp_dir);
+
+  if let Err(e) = extract_result {
+    let _ = fs::remove_dir_all(&temp_dir);
+    return Err(e);
+  }
+
+  // Find all SKILL.md files
+  let mut skills = Vec::new();
+  let find_result = find_skill_md_files(&temp_dir, &temp_dir, &mut skills);
+
+  // Clean up temp directory
+  let _ = fs::remove_dir_all(&temp_dir);
+
+  find_result?;
+
+  Ok(skills)
 }
 
 fn copy_dir_all_sync(src: &Path, dst: &Path) -> Result<(), String> {

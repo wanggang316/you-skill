@@ -15,6 +15,10 @@
   // ZIP file state
   let selectedZipPath = $state('')
   let zipFileName = $state('')
+  let isDetectingZip = $state(false)
+  let detectedZipSkills = $state([])
+  let selectedZipSkill = $state(null)
+  let zipError = $state('')
 
   // Github state
   let githubUrl = $state('')
@@ -41,6 +45,10 @@
     activeTab = 'zip'
     selectedZipPath = ''
     zipFileName = ''
+    isDetectingZip = false
+    detectedZipSkills = []
+    selectedZipSkill = null
+    zipError = ''
     githubUrl = ''
     isDetecting = false
     detectedSkills = []
@@ -71,6 +79,29 @@
       }
     } catch (error) {
       console.error('Failed to select zip file:', error)
+    }
+  }
+
+  async function handleDetectZip() {
+    if (!selectedZipPath) return
+
+    isDetectingZip = true
+    zipError = ''
+    detectedZipSkills = []
+    selectedZipSkill = null
+
+    try {
+      const skills = await api.detectZipSkills(selectedZipPath)
+      detectedZipSkills = skills
+      if (skills.length === 0) {
+        zipError = $t('addSkill.noSkillsFound')
+      } else if (skills.length === 1) {
+        selectedZipSkill = skills[0]
+      }
+    } catch (error) {
+      zipError = String(error)
+    } finally {
+      isDetectingZip = false
     }
   }
 
@@ -126,10 +157,17 @@
       if (activeTab === 'zip') {
         if (!selectedZipPath) {
           installError = $t('addSkill.noZipSelected')
+          isInstalling = false
+          return
+        }
+        if (!selectedZipSkill) {
+          installError = $t('addSkill.noSkillSelected')
+          isInstalling = false
           return
         }
         await api.installZipSkill({
           zip_path: selectedZipPath,
+          skill_path: selectedZipSkill.path,
           agents: selectedAgents
         })
       } else {
@@ -156,7 +194,7 @@
   function canConfirm() {
     if (selectedAgents.length === 0) return false
     if (activeTab === 'zip') {
-      return !!selectedZipPath
+      return !!selectedZipPath && !!selectedZipSkill
     } else {
       return !!selectedSkill
     }
@@ -233,6 +271,56 @@
                 </div>
               {/if}
             </button>
+
+            {#if selectedZipPath}
+              <div class="flex gap-2">
+                <button
+                  class="flex-1 rounded-xl bg-[var(--primary)] px-4 py-2 text-sm text-[var(--primary-content)] transition hover:opacity-90 disabled:opacity-50"
+                  onclick={handleDetectZip}
+                  disabled={isDetectingZip}
+                  type="button"
+                >
+                  {#if isDetectingZip}
+                    <Loader2 size={16} class="animate-spin inline mr-1" />
+                  {/if}
+                  {$t('addSkill.zip.detect')}
+                </button>
+              </div>
+            {/if}
+
+            {#if zipError}
+              <div class="flex items-center gap-2 text-sm text-[var(--error)]">
+                <AlertCircle size={16} />
+                <span>{zipError}</span>
+              </div>
+            {/if}
+
+            {#if detectedZipSkills.length > 0}
+              <div class="space-y-2">
+                <p class="text-sm font-medium text-[var(--base-content)]">
+                  {$t('addSkill.zip.selectSkill')}
+                </p>
+                <div class="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] p-2">
+                  {#each detectedZipSkills as skill}
+                    <button
+                      class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedZipSkill?.path === skill.path ? 'bg-[var(--primary)] text-[var(--primary-content)]' : 'bg-[var(--base-100)] text-[var(--base-content)] hover:bg-[var(--base-300)]'}`}
+                      onclick={() => selectedZipSkill = skill}
+                      type="button"
+                    >
+                      <div>
+                        <p class="font-medium">{skill.name}</p>
+                        <p class={`text-xs ${selectedZipSkill?.path === skill.path ? 'text-[var(--primary-content)] opacity-80' : 'text-[var(--base-content-muted)]'}`}>
+                          {skill.path}
+                        </p>
+                      </div>
+                      {#if selectedZipSkill?.path === skill.path}
+                        <Check size={16} />
+                      {/if}
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            {/if}
           </div>
         {:else}
           <!-- GitHub Mode -->

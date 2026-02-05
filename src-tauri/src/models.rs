@@ -83,6 +83,7 @@ pub struct DetectedSkill {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InstallZipRequest {
   pub zip_path: String,
+  pub skill_path: String,
   pub agents: Vec<String>,
 }
 

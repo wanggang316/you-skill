@@ -7,7 +7,7 @@ mod paths;
 
 use commands::{
   agents::list_agents,
-  install::{install_skill, detect_github_skills, install_zip_skill, install_github_skill},
+  install::{install_skill, detect_github_skills, detect_zip_skills, install_zip_skill, install_github_skill},
   manage::{copy_skill, delete_skill, move_skill},
   manage::{check_canonical_skill, unify_skill, set_agent_link},
   remote::fetch_remote_skills,
@@ -41,6 +41,7 @@ fn main() {
       install_skill,
       list_agents,
       detect_github_skills,
+      detect_zip_skills,
       install_zip_skill,
       install_github_skill
     ])
