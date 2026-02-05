@@ -5,6 +5,7 @@
   import LocalSkillsSection from '../lib/components/LocalSkillsSection.svelte'
   import PageHeader from '../lib/components/PageHeader.svelte'
   import RemoteSkillsSection from '../lib/components/RemoteSkillsSection.svelte'
+  import SettingsPanel from '../lib/components/SettingsPanel.svelte'
   import { api } from '../lib/api/skills'
 
   let currentView = $state('list')
@@ -331,6 +332,8 @@
         onAddRoot={addRoot}
         onRemoveRoot={removeRoot}
       />
+    {:else if currentView === 'settings'}
+      <SettingsPanel />
     {:else if activeTab === 'local'}
       <LocalSkillsSection
         bind:localSearch

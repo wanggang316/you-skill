@@ -1,5 +1,5 @@
 <script>
-  import { ChevronLeft, HardDrive, Plus } from '@lucide/svelte'
+  import { ChevronLeft, HardDrive, Plus, Settings } from '@lucide/svelte'
 
   const { currentView, activeTab, onChangeView, onChangeTab } = $props()
 </script>
@@ -35,6 +35,15 @@
             远程技能库
           </button>
         </div>
+        <button
+          class="flex items-center gap-2 rounded-xl border border-[var(--base-300)] px-3 py-2 text-sm text-[var(--base-content)]"
+          onclick={() => onChangeView('settings')}
+          title="设置"
+          type="button"
+        >
+          <Settings size={16} />
+          设置
+        </button>
         <button
           class="flex items-center gap-2 rounded-xl bg-[var(--primary)] px-3 py-2 text-sm text-[var(--primary-content)]"
           onclick={() => onChangeView('add')}
