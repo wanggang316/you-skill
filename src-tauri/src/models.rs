@@ -1,0 +1,51 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LocalSkill {
+  pub name: String,
+  pub description: Option<String>,
+  pub path: String,
+  pub real_path: Option<String>,
+  pub agent: String,
+  pub install_mode: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AgentInfo {
+  pub id: String,
+  pub display_name: String,
+  pub project_path: Option<String>,
+  pub global_path: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RemoteSkill {
+  pub id: String,
+  pub skill_id: String,
+  pub name: String,
+  pub installs: u64,
+  pub source: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RemoteSkillsResponse {
+  pub skills: Vec<RemoteSkill>,
+  pub has_more: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct InstallRequest {
+  pub source: String,
+  pub skill_id: String,
+  pub agent: String,
+  pub global: bool,
+  pub project_dir: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct InstallResult {
+  pub success: bool,
+  pub stdout: String,
+  pub stderr: String,
+  pub message: String,
+}
