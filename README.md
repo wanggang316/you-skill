@@ -1,43 +1,80 @@
-# Svelte + Vite
+# Skill Kit
 
-This template should help get you started developing with Svelte in Vite.
+一个基于 Tauri + Svelte 的桌面端技能管理工具。
 
-## Recommended IDE Setup
+## 功能特性
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+- **本地技能管理** - 扫描、安装和管理本地技能包
+- **远程技能市场** - 浏览和安装远程技能
+- **多语言支持** - 支持中文和英文界面切换
+- **主题切换** - 支持浅色/深色/系统主题
+- **多种同步模式** - 支持符号链接和复制两种同步方式
 
-## Need an official Svelte framework?
+## 技术栈
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+- **Tauri v2** - Rust 构建的轻量级桌面应用框架
+- **Svelte 5** - 响应式前端框架
+- **Vite** - 下一代前端构建工具
+- **Tailwind CSS** - 实用优先的 CSS 框架
+- **Lucide Icons** - 优雅的图标库
 
-## Technical considerations
+## 开发环境
 
-**Why use this over SvelteKit?**
+### 前置要求
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+- [Node.js](https://nodejs.org/) (v18+)
+- [Rust](https://www.rust-lang.org/tools/install)
+- [Tauri CLI](https://tauri.app/start/prerequisites/)
 
-This template contains as little as possible to get started with Vite + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
+### 安装依赖
 
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
-
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `checkJs` in the JS template?**
-
-It is likely that most cases of changing variable types in runtime are likely to be accidental, rather than deliberate. This provides advanced typechecking out of the box. Should you like to take advantage of the dynamically-typed nature of JavaScript, it is trivial to change the configuration.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/sveltejs/svelte-hmr/tree/master/packages/svelte-hmr#preservation-of-local-state).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```js
-// store.js
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
+```bash
+npm install
 ```
+
+### 启动开发服务器
+
+```bash
+npm run tauri:dev
+```
+
+### 构建生产版本
+
+```bash
+npm run tauri:build
+```
+
+## 项目结构
+
+```
+src/
+├── lib/
+│   ├── components/     # Svelte 组件
+│   │   ├── PageHeader.svelte
+│   │   ├── LocalSkillsSection.svelte
+│   │   ├── RemoteSkillsSection.svelte
+│   │   ├── SettingsPanel.svelte
+│   │   ├── AddSkillModal.svelte
+│   │   └── IconButton.svelte
+│   ├── stores/         # Svelte stores (状态管理)
+│   └── i18n/           # 国际化配置
+├── App.svelte          # 根组件
+└── main.js             # 入口文件
+
+src-tauri/
+├── src/                # Rust 源代码
+├── icons/              # 应用图标
+└── tauri.conf.json     # Tauri 配置
+```
+
+## 配置说明
+
+应用设置存储在系统中，可通过设置面板修改：
+
+- **语言** - 切换界面语言 (en/zh)
+- **主题** - 选择界面主题 (system/light/dark)
+- **同步模式** - 技能安装方式 (symlink/copy)
+
+## 许可证
+
+MIT
