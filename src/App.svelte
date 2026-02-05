@@ -1,19 +1,18 @@
 <script>
   import { onMount } from 'svelte'
   import {
+    ChevronLeft,
     ChevronDown,
     CloudDownload,
-    Copy,
     HardDrive,
-    MoveRight,
     Plus,
     RefreshCw,
     Search,
-    Trash2,
     X
   } from 'lucide-svelte'
   import { api } from './lib/tauri'
 
+  let currentView = 'list'
   let activeTab = 'local'
 
   let localSkills = []
@@ -40,14 +39,13 @@
 
   $: agentMap = new Map(agents.map((agent) => [agent.id, agent.display_name]))
 
-  $: filteredLocalSkills = localSkills.filter((skill) => {
+  $: filteredLocalSkills = (Array.isArray(localSkills) ? localSkills : []).filter((skill) => {
     const needle = localSearch.trim().toLowerCase()
     const matchesSearch =
       !needle ||
       skill.name.toLowerCase().includes(needle) ||
-      (skill.description || '').toLowerCase().includes(needle) ||
-      skill.path.toLowerCase().includes(needle)
-    const matchesAgent = localAgent === 'all' || skill.agent === localAgent
+      (skill.description || '').toLowerCase().includes(needle)
+    const matchesAgent = localAgent === 'all' || (skill.agents || []).includes(localAgent)
     return matchesSearch && matchesAgent
   })
 
@@ -101,38 +99,6 @@
     }
   }
 
-  async function handleDelete(path) {
-    const confirmed = window.confirm('确认删除该 skill？此操作不可恢复。')
-    if (!confirmed) return
-    try {
-      await api.deleteSkill(path)
-      await refreshLocal()
-    } catch (error) {
-      localError = String(error)
-    }
-  }
-
-  async function handleCopy(path) {
-    const target = window.prompt('请输入复制目标路径', path)
-    if (!target) return
-    try {
-      await api.copySkill(path, target)
-      await refreshLocal()
-    } catch (error) {
-      localError = String(error)
-    }
-  }
-
-  async function handleMove(path) {
-    const target = window.prompt('请输入移动目标路径', path)
-    if (!target) return
-    try {
-      await api.moveSkill(path, target)
-      await refreshLocal()
-    } catch (error) {
-      localError = String(error)
-    }
-  }
 
   async function loadRemote(reset = false) {
     remoteLoading = true
@@ -202,25 +168,81 @@
           <p class="text-xs text-slate-500">本地管理与一键安装</p>
         </div>
       </div>
-      <div class="flex items-center gap-2 rounded-full bg-slate-100 p-1 text-sm">
-        <button
-          class={`rounded-full px-4 py-2 ${activeTab === 'local' ? 'bg-white shadow-sm' : 'text-slate-500'}`}
-          on:click={() => (activeTab = 'local')}
-        >
-          本地技能
-        </button>
-        <button
-          class={`rounded-full px-4 py-2 ${activeTab === 'remote' ? 'bg-white shadow-sm' : 'text-slate-500'}`}
-          on:click={() => (activeTab = 'remote')}
-        >
-          远程技能库
-        </button>
+      <div class="flex items-center gap-3 text-sm">
+        {#if currentView === 'list'}
+          <div class="flex items-center gap-2 rounded-full bg-slate-100 p-1">
+            <button
+              class={`rounded-full px-4 py-2 ${activeTab === 'local' ? 'bg-white shadow-sm' : 'text-slate-500'}`}
+              on:click={() => (activeTab = 'local')}
+            >
+              本地技能
+            </button>
+            <button
+              class={`rounded-full px-4 py-2 ${activeTab === 'remote' ? 'bg-white shadow-sm' : 'text-slate-500'}`}
+              on:click={() => (activeTab = 'remote')}
+            >
+              远程技能库
+            </button>
+          </div>
+          <button
+            class="flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-sm text-white"
+            on:click={() => (currentView = 'add')}
+            title="新增"
+          >
+            <Plus size={16} />
+            新增
+          </button>
+        {:else}
+          <button
+            class="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            on:click={() => (currentView = 'list')}
+            title="返回"
+          >
+            <ChevronLeft size={16} />
+            返回
+          </button>
+        {/if}
       </div>
     </div>
   </header>
 
   <main class="mx-auto max-w-6xl px-6 py-6">
-    {#if activeTab === 'local'}
+    {#if currentView === 'add'}
+      <section class="space-y-6">
+        <div class="rounded-2xl border border-slate-200 bg-white p-4">
+          <p class="mb-3 text-sm font-semibold text-slate-700">新增扫描路径</p>
+          <div class="flex flex-wrap items-center gap-3">
+            <input
+              class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm"
+              placeholder="添加自定义扫描路径（项目根目录）"
+              bind:value={newScanRoot}
+            />
+            <button
+              class="rounded-xl bg-slate-900 p-2 text-sm text-white"
+              on:click={addRoot}
+              title="添加路径"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+          {#if localError}
+            <p class="mt-3 text-sm text-rose-500">{localError}</p>
+          {/if}
+          {#if scanRoots.length > 0}
+            <div class="mt-3 space-y-2 text-sm text-slate-600">
+              {#each scanRoots as root}
+                <div class="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+                  <span>{root}</span>
+                  <button class="text-rose-500" on:click={() => removeRoot(root)} title="移除路径">
+                    <X size={14} />
+                  </button>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      </section>
+    {:else if activeTab === 'local'}
       <section class="space-y-6">
         <div class="rounded-2xl border border-slate-200 bg-white p-4">
           <div class="flex flex-wrap items-center gap-3">
@@ -254,36 +276,6 @@
           {/if}
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-4">
-          <p class="mb-3 text-sm font-semibold text-slate-700">扫描路径</p>
-          <div class="flex flex-wrap items-center gap-3">
-            <input
-              class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm"
-              placeholder="添加自定义扫描路径（项目根目录）"
-              bind:value={newScanRoot}
-            />
-            <button
-              class="rounded-xl bg-slate-900 p-2 text-sm text-white"
-              on:click={addRoot}
-              title="添加路径"
-            >
-              <Plus size={16} />
-            </button>
-          </div>
-          {#if scanRoots.length > 0}
-            <div class="mt-3 space-y-2 text-sm text-slate-600">
-              {#each scanRoots as root}
-                <div class="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-                  <span>{root}</span>
-                  <button class="text-rose-500" on:click={() => removeRoot(root)} title="移除路径">
-                    <X size={14} />
-                  </button>
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-
         <div class="space-y-3">
           {#if localLoading}
             <div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
@@ -299,32 +291,16 @@
                 <div class="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p class="text-base font-semibold">{skill.name}</p>
-                    <div class="mt-2 inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
-                      {agentMap.get(skill.agent) || skill.agent}
+                    <div class="mt-2 flex flex-wrap gap-2">
+                      {#each skill.agents as agentId}
+                        <div class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                          {agentMap.get(agentId) || agentId}
+                        </div>
+                      {/each}
                     </div>
                   </div>
-                  <div class="flex items-center gap-2">
-                    <button
-                      class="rounded-lg border border-slate-200 p-2 text-xs"
-                      on:click={() => handleCopy(skill.path)}
-                      title="复制"
-                    >
-                      <Copy size={14} />
-                    </button>
-                    <button
-                      class="rounded-lg border border-slate-200 p-2 text-xs"
-                      on:click={() => handleMove(skill.path)}
-                      title="移动"
-                    >
-                      <MoveRight size={14} />
-                    </button>
-                    <button
-                      class="rounded-lg border border-rose-200 p-2 text-xs text-rose-500"
-                      on:click={() => handleDelete(skill.path)}
-                      title="删除"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                  <div class="flex items-center gap-2 text-xs text-slate-400">
+                    该 skill 已安装 {skill.agents.length} 个应用
                   </div>
                 </div>
               </div>

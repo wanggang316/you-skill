@@ -4,10 +4,9 @@ use serde::{Deserialize, Serialize};
 pub struct LocalSkill {
   pub name: String,
   pub description: Option<String>,
-  pub path: String,
-  pub real_path: Option<String>,
-  pub agent: String,
-  pub install_mode: String,
+  pub scope: String,
+  pub canonical_path: String,
+  pub agents: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

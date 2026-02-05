@@ -1,5 +1,5 @@
 use crate::models::{RemoteSkill, RemoteSkillsResponse};
-use reqwest::blocking::Client;
+use reqwest::Client;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -20,7 +20,7 @@ struct ApiResponse {
 }
 
 #[tauri::command]
-pub fn fetch_remote_skills(
+pub async fn fetch_remote_skills(
   page: Option<u32>,
   page_size: Option<u32>,
   query: Option<String>,
@@ -54,20 +54,19 @@ pub fn fetch_remote_skills(
     );
   }
 
-  let response = client.get(&url).send();
-
-  let api_response = match response {
-    Ok(resp) => resp.json::<ApiResponse>().ok(),
+  let mut api_response = match client.get(&url).send().await {
+    Ok(resp) => resp.json::<ApiResponse>().await.ok(),
     Err(_) => None,
+  };
+
+  if api_response.is_none() {
+    api_response = match client.get(base_url).send().await {
+      Ok(resp) => resp.json::<ApiResponse>().await.ok(),
+      Err(_) => None,
+    };
   }
-  .or_else(|| {
-    client
-      .get(base_url)
-      .send()
-      .ok()
-      .and_then(|resp| resp.json::<ApiResponse>().ok())
-  })
-  .ok_or("无法获取 skills.sh 列表")?;
+
+  let api_response = api_response.ok_or("无法获取 skills.sh 列表")?;
 
   let mut skills: Vec<RemoteSkill> = api_response
     .skills
