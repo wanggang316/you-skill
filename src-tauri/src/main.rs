@@ -21,6 +21,7 @@ fn ping() -> String {
 
 fn main() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_dialog::init())
     .invoke_handler(tauri::generate_handler![
       ping,
       scan_local_skills,

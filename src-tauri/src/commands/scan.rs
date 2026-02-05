@@ -160,6 +160,7 @@ fn parse_canonical_skill_dir(skill_dir: &Path, scope: &str) -> Option<LocalSkill
     managed_status: "managed".to_string(),
     name_conflict: false,
     created_at: get_created_at(skill_dir),
+    conflict_with_managed: false,
   })
 }
 
@@ -200,11 +201,13 @@ fn collect_agent_skills(
         }
         managed_names.insert(entry.name.clone());
       } else {
-        skill.managed_status = if managed_names.contains(&skill.name) {
+        let has_managed = managed_names.contains(&skill.name);
+        skill.managed_status = if has_managed {
           "mixed".to_string()
         } else {
           "unmanaged".to_string()
         };
+        skill.conflict_with_managed = has_managed;
         skill.agents.push(agent_id.to_string());
         unmanaged_list.push(skill);
       }
@@ -236,11 +239,13 @@ fn collect_custom_skills(
         if let Some((mut skill, _)) =
           parse_skill_dir(entry.path(), "custom", project_canonical, global_canonical)
         {
-          skill.managed_status = if managed_names.contains(&skill.name) {
+          let has_managed = managed_names.contains(&skill.name);
+          skill.managed_status = if has_managed {
             "mixed".to_string()
           } else {
             "unmanaged".to_string()
           };
+          skill.conflict_with_managed = has_managed;
           unmanaged_list.push(skill);
         }
       }
@@ -252,11 +257,13 @@ fn collect_custom_skills(
         if let Some((mut skill, _)) =
           parse_skill_dir(dir, "custom", project_canonical, global_canonical)
         {
-          skill.managed_status = if managed_names.contains(&skill.name) {
+          let has_managed = managed_names.contains(&skill.name);
+          skill.managed_status = if has_managed {
             "mixed".to_string()
           } else {
             "unmanaged".to_string()
           };
+          skill.conflict_with_managed = has_managed;
           unmanaged_list.push(skill);
         }
       }
@@ -302,6 +309,7 @@ fn parse_skill_dir(
       managed_status: "unknown".to_string(),
       name_conflict: false,
       created_at: get_created_at(skill_dir),
+      conflict_with_managed: false,
     },
     is_managed_link,
   ))

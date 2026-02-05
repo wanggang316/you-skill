@@ -10,6 +10,7 @@ pub struct LocalSkill {
   pub managed_status: String,
   pub name_conflict: bool,
   pub created_at: Option<i64>,
+  pub conflict_with_managed: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -1,5 +1,6 @@
 <script>
   import { onMount } from "svelte";
+  import { confirm } from "@tauri-apps/plugin-dialog";
   import {
     ChevronLeft,
     ChevronDown,
@@ -245,11 +246,11 @@
   }
 
   async function handleDeleteSkill(skill) {
-    const confirmed = window.confirm(
-      `确认删除 ${skill.name}？此操作不可恢复。`,
-    );
-    if (!confirmed) return;
     try {
+      const confirmed = await confirm(`确认删除 ${skill.name}？此操作不可恢复。`, {
+        title: "删除确认",
+      });
+      if (!confirmed) return;
       await api.deleteSkill(skill.canonical_path);
       await refreshLocal();
     } catch (error) {
@@ -490,7 +491,8 @@
                         </button>
                         <button
                           class="rounded-lg border border-rose-200 p-2 text-xs text-rose-500"
-                          on:click={() => handleDeleteSkill(skill)}
+                          type="button"
+                          on:click|stopPropagation={() => handleDeleteSkill(skill)}
                           title="删除"
                         >
                           <Trash2 size={14} />
@@ -595,12 +597,27 @@
                             有同名
                           </span>
                         {/if}
+                        {#if skill.conflict_with_managed}
+                          <span
+                            class="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-600"
+                          >
+                            与 .agents 重名
+                          </span>
+                        {/if}
                         <button
                           class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
                           on:click={() => handleUnify(skill)}
                           title="导入"
                         >
                           导入
+                        </button>
+                        <button
+                          class="rounded-lg border border-rose-200 px-3 py-1.5 text-xs text-rose-500"
+                          type="button"
+                          on:click|stopPropagation={() => handleDeleteSkill(skill)}
+                          title="删除"
+                        >
+                          删除
                         </button>
                       </div>
                     </div>

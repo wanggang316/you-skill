@@ -9,6 +9,7 @@ export interface LocalSkill {
   managed_status: 'managed' | 'unmanaged' | 'mixed' | 'unknown'
   name_conflict: boolean
   created_at?: number | null
+  conflict_with_managed: boolean
 }
 
 export interface RemoteSkill {
