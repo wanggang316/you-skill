@@ -1,5 +1,5 @@
 <script>
-  import { ChevronLeft, HardDrive, Plus, Settings } from '@lucide/svelte'
+  import { ChevronLeft, Plus, Settings } from '@lucide/svelte'
   import IconButton from './IconButton.svelte'
   import { t } from '../i18n'
 
@@ -9,18 +9,9 @@
 <header class="border-b border-[var(--base-300)] bg-[var(--base-100)]">
   <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
     {#if currentView === 'list'}
-      <div class="flex items-center gap-3">
-        <div
-          class="rounded-xl bg-[var(--primary)] p-2 text-[var(--primary-content)]"
-        >
-          <HardDrive size={18} />
-        </div>
-        <div>
-          <p class="text-lg font-semibold">Skill Kit</p>
-          <p class="text-xs text-[var(--base-content-muted)]">
-            {$t('header.subtitle')}
-          </p>
-        </div>
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">⚡️</span>
+        <p class="text-lg font-semibold italic">Skill Kit</p>
       </div>
     {/if}
     <div class="flex flex-1 items-center justify-between {currentView === 'list' ? 'pl-6' : ''} text-sm">
