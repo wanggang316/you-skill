@@ -362,7 +362,7 @@
   }
 </script>
 
-<div class="min-h-screen bg-[var(--base-100)] text-[var(--base-content)]">
+<div class="flex h-screen flex-col overflow-hidden bg-[var(--base-100)] text-[var(--base-content)]">
   <PageHeader
     {currentView}
     {activeTab}
@@ -379,17 +379,18 @@
     onSuccess={refreshLocal}
   />
 
-  <main class="mx-auto max-w-6xl px-6 py-6">
-    {#if currentView === 'detail' && selectedSkill}
-      <SkillDetail
-        skill={selectedSkill}
-        type={selectedSkill.canonical_path ? 'local' : 'remote'}
-        {agents}
-      />
-    {:else if currentView === 'settings'}
-      <SettingsPanel />
-    {:else if activeTab === 'local'}
-      <LocalSkillsSection
+  <main class="flex-1 overflow-y-auto">
+    <div class="mx-auto max-w-6xl px-6 py-6">
+      {#if currentView === 'detail' && selectedSkill}
+        <SkillDetail
+          skill={selectedSkill}
+          type={selectedSkill.canonical_path ? 'local' : 'remote'}
+          {agents}
+        />
+      {:else if currentView === 'settings'}
+        <SettingsPanel />
+      {:else if activeTab === 'local'}
+        <LocalSkillsSection
         bind:localSearch
         bind:localAgent
         {agents}
@@ -434,6 +435,7 @@
         onViewSkill={handleViewSkill}
       />
     {/if}
+    </div>
   </main>
 
   <InstallConfirmModal

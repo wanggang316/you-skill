@@ -6,7 +6,7 @@
   const { currentView, activeTab, skillName, onChangeView, onChangeTab, onAddSkill, onBack } = $props()
 </script>
 
-<header class="border-b border-[var(--base-300)] bg-[var(--base-100)]">
+<header class="sticky top-0 z-50 border-b border-[var(--base-300)] bg-[var(--base-100)]">
   <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
     {#if currentView === 'list'}
       <div class="flex items-center gap-2">
