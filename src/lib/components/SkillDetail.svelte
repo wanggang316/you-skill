@@ -3,6 +3,7 @@
   import { Loader2 } from '@lucide/svelte'
   import { renderMarkdown } from '../utils/markdown'
   import { t } from '../i18n'
+  import { api } from '../api/skills'
 
   let {
     skill,
@@ -34,26 +35,13 @@
   }
 
   async function loadLocalSkillContent() {
-    try {
-      // For local skills, read from file system
-      const { join } = await import('@tauri-apps/api/path')
-      const { readTextFile } = await import('@tauri-apps/plugin-fs')
-
-      const skillMdPath = await join(skill.canonical_path, 'SKILL.md')
-      const fileContent = await readTextFile(skillMdPath)
-      return fileContent
-    } catch (e) {
-      // If SKILL.md doesn't exist, try README.md
-      try {
-        const { join } = await import('@tauri-apps/api/path')
-        const { readTextFile } = await import('@tauri-apps/plugin-fs')
-
-        const readmePath = await join(skill.canonical_path, 'README.md')
-        return await readTextFile(readmePath)
-      } catch {
-        throw new Error('SKILL.md not found in skill directory')
-      }
+    if (!skill.canonical_path) {
+      throw new Error('Skill path is missing')
     }
+
+    console.log('[SkillDetail] Reading skill readme from:', skill.canonical_path)
+    // Use backend API to read file (bypasses frontend FS restrictions)
+    return await api.readSkillReadme(skill.canonical_path)
   }
 
   async function loadRemoteSkillContent() {

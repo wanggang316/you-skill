@@ -14,6 +14,7 @@ use commands::{
   remote::fetch_remote_skills,
   scan::{add_scan_root, get_scan_roots, remove_scan_root, scan_local_skills},
   settings::{get_settings, update_settings},
+  skill::read_skill_readme,
 };
 
 #[tauri::command]
@@ -51,7 +52,8 @@ fn main() {
       set_backup_folder,
       open_backup_folder,
       backup_skills,
-      get_last_backup_time
+      get_last_backup_time,
+      read_skill_readme
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

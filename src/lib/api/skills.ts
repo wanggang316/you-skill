@@ -129,5 +129,6 @@ export const api = {
   setBackupFolder: (path: string) => invoke<string | null>('set_backup_folder', { path }),
   openBackupFolder: (path: string) => invoke<void>('open_backup_folder', { path }),
   backupSkills: (backupFolder: string) => invoke<BackupResult>('backup_skills', { backupFolder }),
-  getLastBackupTime: () => invoke<string | null>('get_last_backup_time')
+  getLastBackupTime: () => invoke<string | null>('get_last_backup_time'),
+  readSkillReadme: (skillPath: string) => invoke<string>('read_skill_readme', { skillPath })
 }
