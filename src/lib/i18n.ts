@@ -21,6 +21,7 @@ const translations: Record<string, Dictionary> = {
     'local.loading': 'Scanning local skills...',
     'local.empty': 'No local skills found',
     'local.section.managed': 'My Skills',
+    'local.section.managedCount': '{count} apps installed',
     'local.section.emptyManaged': 'No managed skills yet',
     'local.section.unmanaged': 'Standalone installs (to import)',
     'local.action.importAll': 'Import All',
@@ -103,7 +104,8 @@ const translations: Record<string, Dictionary> = {
     'installConfirm.selectAgents': 'Select apps to install to:',
     'installConfirm.selectAll': 'Select all',
     'installConfirm.skip': 'Skip',
-    'installConfirm.confirm': 'Confirm'
+    'installConfirm.confirm': 'Confirm',
+    'detail.retry': 'Retry'
   },
   zh: {
     'header.subtitle': '本地管理与一键安装',
@@ -122,6 +124,7 @@ const translations: Record<string, Dictionary> = {
     'local.loading': '正在扫描本地 skill...',
     'local.empty': '未找到本地技能',
     'local.section.managed': '我的 Skills',
+    'local.section.managedCount': '共 {count} 个应用安装',
     'local.section.emptyManaged': '暂无统一管理的 skill',
     'local.section.unmanaged': '独立安装（待导入）',
     'local.action.importAll': '一键导入',
@@ -204,7 +207,8 @@ const translations: Record<string, Dictionary> = {
     'installConfirm.selectAgents': '选择要安装到的应用：',
     'installConfirm.selectAll': '全选',
     'installConfirm.skip': '暂不安装',
-    'installConfirm.confirm': '确认安装'
+    'installConfirm.confirm': '确认安装',
+    'detail.retry': '重试'
   }
 }
 
