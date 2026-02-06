@@ -8,6 +8,7 @@ pub struct AppConfig {
   pub scan_roots: Vec<String>,
   pub settings: AppSettings,
   pub backup_folder: Option<String>,
+  pub last_backup_time: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -24,6 +25,7 @@ impl Default for AppConfig {
       scan_roots: Vec::new(),
       settings: AppSettings::default(),
       backup_folder: None,
+      last_backup_time: None,
     }
   }
 }

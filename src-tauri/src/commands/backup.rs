@@ -19,6 +19,12 @@ pub fn get_backup_folder() -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
+pub fn get_last_backup_time() -> Result<Option<String>, String> {
+  let config = load_config()?;
+  Ok(config.last_backup_time)
+}
+
+#[tauri::command]
 pub fn set_backup_folder(path: String) -> Result<Option<String>, String> {
   let mut config = load_config()?;
   config.backup_folder = Some(path);
@@ -63,7 +69,7 @@ pub fn open_backup_folder(path: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn backup_skills(backup_folder: String) -> Result<BackupResult, String> {
   // 使用 spawn_blocking 将耗时操作放在单独线程执行
-  tokio::task::spawn_blocking(move || {
+  let result = tokio::task::spawn_blocking(move || {
     let home = dirs_next::home_dir().ok_or("无法获取用户目录")?;
     let skills_path = home.join(".agents").join("skills");
 
@@ -139,9 +145,21 @@ pub async fn backup_skills(backup_folder: String) -> Result<BackupResult, String
       success: true,
       message: "备份成功".to_string(),
       backup_path: Some(backup_file_path.to_string_lossy().to_string()),
-      backup_time: Some(backup_time_str),
+      backup_time: Some(backup_time_str.clone()),
     })
   })
   .await
-  .map_err(|e| format!("备份任务执行失败: {}", e))?
+  .map_err(|e| format!("备份任务执行失败: {}", e))?;
+
+  // 如果备份成功，保存备份时间到配置
+  if let Ok(ref backup_result) = result {
+    if backup_result.success {
+      if let Ok(mut config) = load_config() {
+        config.last_backup_time = backup_result.backup_time.clone();
+        let _ = save_config(&config);
+      }
+    }
+  }
+
+  result
 }
