@@ -100,10 +100,13 @@
       {#each remoteSkills as skill}
         {@const installed = isInstalled(skill)}
         {@const isBusy = installingSkill === skill.id || isDownloading}
-        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
         <div
           class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm cursor-pointer"
           onclick={() => onViewSkill(skill)}
+          onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && onViewSkill(skill)}
+          role="button"
+          tabindex="0"
+          aria-label={`View ${skill.name}`}
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="min-w-0 flex-1">
