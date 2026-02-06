@@ -196,10 +196,10 @@
         skill_path: skillPath,
         agents: selectedAgents
       })
-      installLog = result.message
       if (!result.success) {
         installLog = `${result.message}\n${result.stderr || result.stdout}`
       } else {
+        installLog = ''
         await refreshLocal()
       }
     } catch (error) {
