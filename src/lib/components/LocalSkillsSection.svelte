@@ -103,10 +103,13 @@
           </div>
         {:else}
           {#each managedSkills as skill}
-            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
             <div
               class="group rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm cursor-pointer"
               onclick={() => onViewSkill(skill)}
+              onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && onViewSkill(skill)}
+              role="button"
+              tabindex="0"
+              aria-label={`View ${skill.name}`}
             >
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex-1">
@@ -136,7 +139,12 @@
                     {/if}
                   {/if}
                 </div>
-                <div class="flex items-center gap-3 text-xs text-[var(--base-content-faint)] opacity-0 group-hover:opacity-100 transition-opacity" onclick={(e) => e.stopPropagation()}>
+                <div
+                  class="flex items-center gap-3 text-xs text-[var(--base-content-faint)] opacity-0 group-hover:opacity-100 transition-opacity"
+                  onclick={(e) => e.stopPropagation()}
+                  onkeydown={(e) => e.stopPropagation()}
+                  role="presentation"
+                >
                   <IconButton
                     variant="outline"
                     class={`rounded-lg p-2 text-xs ${editingSkillKey === skill.key ? 'border-[var(--base-content)] text-[var(--base-content)]' : 'border-[var(--base-300)] text-[var(--base-content-muted)]'}`}
@@ -223,10 +231,13 @@
             </button>
           </div>
           {#each unmanagedSkills as skill}
-            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
             <div
               class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm cursor-pointer"
               onclick={() => onViewSkill(skill)}
+              onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && onViewSkill(skill)}
+              role="button"
+              tabindex="0"
+              aria-label={`View ${skill.name}`}
             >
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -241,7 +252,12 @@
                     {/each}
                   </div>
                 </div>
-                <div class="flex items-center gap-3 text-xs text-[var(--base-content-faint)]" onclick={(e) => e.stopPropagation()}>
+                <div
+                  class="flex items-center gap-3 text-xs text-[var(--base-content-faint)]"
+                  onclick={(e) => e.stopPropagation()}
+                  onkeydown={(e) => e.stopPropagation()}
+                  role="presentation"
+                >
                   {#if skill.managed_status === 'mixed'}
                     <span class="tag tag-warning">{$t('local.tag.standalone')}</span>
                   {/if}
