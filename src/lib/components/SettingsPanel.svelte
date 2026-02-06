@@ -103,9 +103,9 @@
 </script>
 
 <section class="space-y-2">
-  <!-- Language -->
+  <!-- Language & Theme-->
   <div class="flex flex-col gap-4 rounded-2xl bg-[var(--base-200)] py-2.5 px-4">
-    <div class="flex items-center justify-between border-b border-base-300">
+    <div class="flex items-center justify-between">
       <span class="text-[15px] text-[var(--base-content)]"
         >{$t("settings.language")}</span
       >
@@ -125,10 +125,9 @@
         />
       </div>
     </div>
-    <!-- </div> -->
 
-    <!-- Theme -->
-    <!-- <div class="rounded-2xl bg-[var(--base-200)] py-2.5 px-4"> -->
+    <div class="h-px bg-[var(--base-300)]"></div>
+
     <div class="flex items-center justify-between">
       <span class="text-[15px] text-[var(--base-content)]"
         >{$t("settings.theme")}</span
