@@ -88,6 +88,13 @@ export interface InstallGithubRequest {
   agents: string[]
 }
 
+export interface BackupResult {
+  success: boolean
+  message: string
+  backup_path: string | null
+  backup_time: string | null
+}
+
 export const api = {
   scanLocalSkills: () => invoke<LocalSkill[]>('scan_local_skills'),
   getScanRoots: () => invoke<string[]>('get_scan_roots'),
@@ -115,5 +122,9 @@ export const api = {
   installZipSkill: (request: InstallZipRequest) =>
     invoke<InstallResult>('install_zip_skill', { request }),
   installGithubSkill: (request: InstallGithubRequest) =>
-    invoke<InstallResult>('install_github_skill', { request })
+    invoke<InstallResult>('install_github_skill', { request }),
+  getBackupFolder: () => invoke<string | null>('get_backup_folder'),
+  setBackupFolder: (path: string) => invoke<string | null>('set_backup_folder', { path }),
+  openBackupFolder: (path: string) => invoke<void>('open_backup_folder', { path }),
+  backupSkills: (backupFolder: string) => invoke<BackupResult>('backup_skills', { backupFolder })
 }

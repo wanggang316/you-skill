@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 pub struct AppConfig {
   pub scan_roots: Vec<String>,
   pub settings: AppSettings,
+  pub backup_folder: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -22,6 +23,7 @@ impl Default for AppConfig {
     Self {
       scan_roots: Vec::new(),
       settings: AppSettings::default(),
+      backup_folder: None,
     }
   }
 }

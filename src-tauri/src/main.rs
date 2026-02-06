@@ -7,6 +7,7 @@ mod paths;
 
 use commands::{
   agents::list_agents,
+  backup::{backup_skills, get_backup_folder, set_backup_folder, open_backup_folder},
   install::{install_skill, detect_github_skills, detect_zip_skills, install_zip_skill, install_github_skill},
   manage::{copy_skill, delete_skill, move_skill},
   manage::{check_canonical_skill, unify_skill, set_agent_link},
@@ -43,7 +44,11 @@ fn main() {
       detect_github_skills,
       detect_zip_skills,
       install_zip_skill,
-      install_github_skill
+      install_github_skill,
+      get_backup_folder,
+      set_backup_folder,
+      open_backup_folder,
+      backup_skills
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

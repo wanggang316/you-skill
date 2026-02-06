@@ -5,7 +5,8 @@
     ariaLabel,
     variant = 'ghost',
     disabled = false,
-    class: className = ''
+    class: className = '',
+    children
   } = $props()
 
   const baseClass =
@@ -18,7 +19,7 @@
     ghost: 'text-[var(--base-content)] hover:bg-[var(--base-200)]'
   }
 
-  const resolvedClass = `${baseClass} ${variants[variant] ?? variants.ghost} ${className}`
+  const resolvedClass = $derived(`${baseClass} ${variants[variant] ?? variants.ghost} ${className}`)
 </script>
 
 <button
@@ -29,5 +30,5 @@
   {disabled}
   type="button"
 >
-  <slot />
+  {@render children()}
 </button>

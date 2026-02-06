@@ -83,7 +83,7 @@
       </div>
     {:else}
       {#each remoteSkills as skill}
-        <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4">
+        <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p class="text-base font-semibold">{skill.name}</p>
