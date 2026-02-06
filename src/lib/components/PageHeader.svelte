@@ -3,7 +3,7 @@
   import IconButton from './IconButton.svelte'
   import { t } from '../i18n'
 
-  const { currentView, activeTab, onChangeView, onChangeTab, onAddSkill } = $props()
+  const { currentView, activeTab, skillName, onChangeView, onChangeTab, onAddSkill, onBack } = $props()
 </script>
 
 <header class="border-b border-[var(--base-300)] bg-[var(--base-100)]">
@@ -50,6 +50,19 @@
         >
           <Settings size={16} />
         </IconButton>
+      {:else if currentView === 'detail'}
+        <div class="flex items-center gap-4">
+          <button
+            class="flex items-center gap-2 rounded-xl border border-[var(--base-300)] px-3 py-2 text-sm text-[var(--base-content)] transition hover:bg-[var(--base-200)]"
+            onclick={onBack}
+            title={$t('header.back')}
+            type="button"
+          >
+            <ChevronLeft size={16} />
+            {$t('header.back')}
+          </button>
+          <h1 class="text-lg font-semibold text-[var(--base-content)]">{skillName}</h1>
+        </div>
       {:else}
         <div class="flex items-center gap-4">
           <button

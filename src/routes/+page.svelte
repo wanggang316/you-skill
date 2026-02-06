@@ -8,12 +8,14 @@
   import PageHeader from '../lib/components/PageHeader.svelte'
   import RemoteSkillsSection from '../lib/components/RemoteSkillsSection.svelte'
   import SettingsPanel from '../lib/components/SettingsPanel.svelte'
+  import SkillDetail from '../lib/components/SkillDetail.svelte'
   import { api } from '../lib/api/skills'
   import { t } from '../lib/i18n'
   import { loadSettings } from '../lib/stores/settings'
 
   let currentView = $state('list')
   let activeTab = $state('local')
+  let selectedSkill = $state(null)
   let addSkillModalOpen = $state(false)
 
   let localSkills = $state([])
@@ -348,15 +350,27 @@
       linkBusy = false
     }
   }
+
+  const handleViewSkill = (skill) => {
+    selectedSkill = skill
+    currentView = 'detail'
+  }
+
+  const handleBackToList = () => {
+    currentView = 'list'
+    selectedSkill = null
+  }
 </script>
 
 <div class="min-h-screen bg-[var(--base-100)] text-[var(--base-content)]">
   <PageHeader
     {currentView}
     {activeTab}
+    skillName={selectedSkill?.name}
     onChangeView={(view) => (currentView = view)}
     onChangeTab={(tab) => (activeTab = tab)}
     onAddSkill={() => (addSkillModalOpen = true)}
+    onBack={handleBackToList}
   />
 
   <AddSkillModal
@@ -366,7 +380,13 @@
   />
 
   <main class="mx-auto max-w-6xl px-6 py-6">
-    {#if currentView === 'settings'}
+    {#if currentView === 'detail' && selectedSkill}
+      <SkillDetail
+        skill={selectedSkill}
+        type={selectedSkill.canonical_path ? 'local' : 'remote'}
+        {agents}
+      />
+    {:else if currentView === 'settings'}
       <SettingsPanel />
     {:else if activeTab === 'local'}
       <LocalSkillsSection
@@ -391,6 +411,7 @@
         onConfirmAgentLinks={confirmAgentLinks}
         onBulkUnify={handleBulkUnify}
         onUnifySkill={handleUnify}
+        onViewSkill={handleViewSkill}
       />
     {:else}
       <RemoteSkillsSection
@@ -410,6 +431,7 @@
         onLoadMore={loadMoreRemote}
         onInstall={handleInstall}
         onOpenUrl={handleOpenUrl}
+        onViewSkill={handleViewSkill}
       />
     {/if}
   </main>

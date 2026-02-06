@@ -1,3 +1,6 @@
+@import 'highlight.js/styles/github.css';
+@import './lib/styles/highlight-dark.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -79,6 +82,8 @@
   --tag-neutral-bg: color-mix(in oklch, var(--base-300) 80%, var(--base-100));
   --tag-neutral-text: color-mix(in oklch, var(--base-content) 60%, transparent);
   --error-border: color-mix(in oklch, var(--error) 35%, transparent);
+  --success: var(--color-success);
+  --success-bg: color-mix(in oklch, var(--success) 15%, var(--base-100));
 
   color: var(--base-content);
   background-color: var(--base-100);

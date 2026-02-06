@@ -19,7 +19,8 @@
     onSearch,
     onLoadMore,
     onInstall,
-    onOpenUrl
+    onOpenUrl,
+    onViewSkill
   } = $props()
 
   function handleOpenUrl(skill) {
@@ -99,7 +100,11 @@
       {#each remoteSkills as skill}
         {@const installed = isInstalled(skill)}
         {@const isBusy = installingSkill === skill.id || isDownloading}
-        <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm">
+        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+        <div
+          class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm cursor-pointer"
+          onclick={() => onViewSkill(skill)}
+        >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
@@ -119,7 +124,10 @@
               {#if skill.url}
                 <IconButton
                   variant="outline"
-                  onclick={() => handleOpenUrl(skill)}
+                  onclick={(e) => {
+                    e?.stopPropagation()
+                    handleOpenUrl(skill)
+                  }}
                   disabled={isBusy}
                   title={$t('remote.openUrl')}
                   ariaLabel={$t('remote.openUrl')}
@@ -132,7 +140,10 @@
               {:else}
                 <IconButton
                   variant="primary"
-                  onclick={() => onInstall(skill)}
+                  onclick={(e) => {
+                    e?.stopPropagation()
+                    onInstall(skill)
+                  }}
                   disabled={isBusy}
                   title={installingSkill === skill.id ? $t('remote.downloading') : $t('remote.install')}
                   ariaLabel={installingSkill === skill.id ? $t('remote.downloading') : $t('remote.install')}

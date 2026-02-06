@@ -2,5 +2,11 @@
   "identifier": "default",
   "description": "Default capabilities for the main window",
   "windows": ["main"],
-  "permissions": ["core:default", "dialog:default", "dialog:allow-confirm"]
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "dialog:allow-confirm",
+    "fs:default",
+    "fs:allow-read-text-file"
+  ]
 }

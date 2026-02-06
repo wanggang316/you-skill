@@ -1,5 +1,5 @@
 <script>
-  import { Blend, RefreshCw, Search, Trash2 } from '@lucide/svelte'
+  import { Blend, RefreshCw, Search, Trash2, ChevronsDownUp } from '@lucide/svelte'
   import IconButton from './IconButton.svelte'
   import { t } from '../i18n'
 
@@ -24,8 +24,20 @@
     onToggleAgentSelection,
     onConfirmAgentLinks,
     onBulkUnify,
-    onUnifySkill
+    onUnifySkill,
+    onViewSkill
   } = $props()
+
+  let expandedSkills = $state(new Set())
+
+  function toggleSkillExpand(skillKey) {
+    if (expandedSkills.has(skillKey)) {
+      expandedSkills.delete(skillKey)
+    } else {
+      expandedSkills.add(skillKey)
+    }
+    expandedSkills = expandedSkills
+  }
 </script>
 
 <section class="space-y-6">
@@ -91,27 +103,47 @@
           </div>
         {:else}
           {#each managedSkills as skill}
-            <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm">
+            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+            <div
+              class="group rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm cursor-pointer"
+              onclick={() => onViewSkill(skill)}
+            >
               <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
+                <div class="flex-1">
                   <p class="text-base font-semibold">{skill.name}</p>
                   {#if editingSkillKey !== skill.key}
-                    <div class="mt-2 flex flex-wrap gap-2">
-                      {#each skill.agents as agentId}
-                        <div
-                          class="inline-flex items-center rounded-full bg-[var(--base-200)] px-2.5 py-1 text-xs text-[var(--base-content-subtle)]"
-                        >
-                          {agentMap.get(agentId) || agentId}
-                        </div>
-                      {/each}
-                    </div>
+                    <button
+                      class="mt-2 inline-flex items-center gap-1.5 text-xs text-[var(--base-content-subtle)] transition hover:bg-[var(--base-200)] rounded px-2 py-1 -ml-2"
+                      onclick={(e) => {
+                        e?.stopPropagation()
+                        toggleSkillExpand(skill.key)
+                      }}
+                      type="button"
+                    >
+                      <span>{$t('local.section.managedCount', { count: skill.agents.length })}</span>
+                      <ChevronsDownUp size={12} class={expandedSkills.has(skill.key) ? 'rotate-180' : ''} />
+                    </button>
+                    {#if expandedSkills.has(skill.key)}
+                      <div class="mt-2 flex flex-wrap gap-2">
+                        {#each skill.agents as agentId}
+                          <div
+                            class="inline-flex items-center rounded-full bg-[var(--base-200)] px-2.5 py-1 text-xs text-[var(--base-content-subtle)]"
+                          >
+                            {agentMap.get(agentId) || agentId}
+                          </div>
+                        {/each}
+                      </div>
+                    {/if}
                   {/if}
                 </div>
-                <div class="flex items-center gap-3 text-xs text-[var(--base-content-faint)]">
+                <div class="flex items-center gap-3 text-xs text-[var(--base-content-faint)] opacity-0 group-hover:opacity-100 transition-opacity" onclick={(e) => e.stopPropagation()}>
                   <IconButton
                     variant="outline"
                     class={`rounded-lg p-2 text-xs ${editingSkillKey === skill.key ? 'border-[var(--base-content)] text-[var(--base-content)]' : 'border-[var(--base-300)] text-[var(--base-content-muted)]'}`}
-                    onclick={() => onOpenLinkDialog(skill)}
+                    onclick={(e) => {
+                      e?.stopPropagation()
+                      onOpenLinkDialog(skill)
+                    }}
                     title={$t('local.action.installToApps')}
                     ariaLabel={$t('local.action.installToApps')}
                   >
@@ -191,7 +223,11 @@
             </button>
           </div>
           {#each unmanagedSkills as skill}
-            <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm">
+            <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+            <div
+              class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm cursor-pointer"
+              onclick={() => onViewSkill(skill)}
+            >
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p class="text-base font-semibold">{skill.name}</p>
@@ -205,7 +241,7 @@
                     {/each}
                   </div>
                 </div>
-                <div class="flex items-center gap-3 text-xs text-[var(--base-content-faint)]">
+                <div class="flex items-center gap-3 text-xs text-[var(--base-content-faint)]" onclick={(e) => e.stopPropagation()}>
                   {#if skill.managed_status === 'mixed'}
                     <span class="tag tag-warning">{$t('local.tag.standalone')}</span>
                   {/if}
@@ -219,7 +255,10 @@
                   {/if}
                   <button
                     class="rounded-lg border border-[var(--base-300)] px-3 py-1.5 text-xs text-[var(--base-content-muted)] transition hover:bg-[var(--base-200)]"
-                    onclick={() => onUnifySkill(skill)}
+                    onclick={(e) => {
+                      e?.stopPropagation()
+                      onUnifySkill(skill)
+                    }}
                     title={$t('local.action.import')}
                     type="button"
                   >
