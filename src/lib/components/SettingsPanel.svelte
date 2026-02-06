@@ -70,7 +70,7 @@
       const result = await api.backupSkills(backupFolder)
       if (result.success) {
         lastBackupTime = result.backup_time || ''
-        backupMessage = $t('settings.backup.success')
+        // 成功时不显示文案，直接更新时间
       } else {
         backupMessage = result.message
       }
@@ -92,108 +92,91 @@
 </script>
 
 <section class="space-y-6">
+  <!-- Language -->
   <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-5">
-    <div class="flex items-center justify-between">
-      <div>
-        <p class="text-sm font-semibold">{$t('settings.general')}</p>
-        <p class="text-xs text-[var(--base-content-muted)]">
-          {$t('settings.general.subtitle')}
-        </p>
-      </div>
-    </div>
-    <div class="mt-4 grid gap-4 md:grid-cols-3">
-      <label class="space-y-2 text-sm text-[var(--base-content)]">
-        <span class="text-xs text-[var(--base-content-muted)]">
-          {$t('settings.language')}
-        </span>
-        <select
-          class="w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 py-2"
-          value={$settings.language}
-          onchange={(event) =>
-            updateSettings({ language: event.currentTarget.value })}
-        >
-          <option value="en">English</option>
-          <option value="zh">中文</option>
-        </select>
-      </label>
-      <label class="space-y-2 text-sm text-[var(--base-content)]">
-        <span class="text-xs text-[var(--base-content-muted)]">
-          {$t('settings.theme')}
-        </span>
-        <select
-          class="w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 py-2"
-          value={$settings.theme}
-          onchange={(event) => updateSettings({ theme: event.currentTarget.value })}
-        >
-          <option value="system">{$t('settings.theme.system')}</option>
-          <option value="light">{$t('settings.theme.light')}</option>
-          <option value="dark">{$t('settings.theme.dark')}</option>
-        </select>
-      </label>
-      <label class="space-y-2 text-sm text-[var(--base-content)]">
-        <span class="text-xs text-[var(--base-content-muted)]">
-          {$t('settings.syncMode')}
-        </span>
-        <select
-          class="w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 py-2"
-          value={$settings.syncMode}
-          onchange={(event) =>
-            updateSettings({ syncMode: event.currentTarget.value })}
-        >
-          <option value="symlink">{$t('settings.syncMode.symlink')}</option>
-          <option value="copy">{$t('settings.syncMode.copy')}</option>
-        </select>
-      </label>
-    </div>
+    <label class="space-y-3 text-sm text-[var(--base-content)]">
+      <span class="text-base font-medium text-[var(--base-content)]">{$t('settings.language')}</span>
+      <select
+        class="w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 py-2"
+        value={$settings.language}
+        onchange={(event) => updateSettings({ language: event.currentTarget.value })}
+      >
+        <option value="en">English</option>
+        <option value="zh">中文</option>
+      </select>
+    </label>
   </div>
 
-  <!-- Backup Section -->
+  <!-- Theme -->
   <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-5">
-    <div class="flex items-center justify-between">
-      <div>
-        <p class="text-sm font-semibold">{$t('settings.backup')}</p>
-        <p class="text-xs text-[var(--base-content-muted)]">
-          {$t('settings.backup.subtitle')}
-        </p>
-      </div>
-    </div>
+    <label class="space-y-3 text-sm text-[var(--base-content)]">
+      <span class="text-base font-medium text-[var(--base-content)]">{$t('settings.theme')}</span>
+      <select
+        class="w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 py-2"
+        value={$settings.theme}
+        onchange={(event) => updateSettings({ theme: event.currentTarget.value })}
+      >
+        <option value="system">{$t('settings.theme.system')}</option>
+        <option value="light">{$t('settings.theme.light')}</option>
+        <option value="dark">{$t('settings.theme.dark')}</option>
+      </select>
+    </label>
+  </div>
 
-    <div class="mt-4 space-y-4">
-      <!-- Backup Folder Selection -->
-      <div class="flex items-center gap-2">
-        <button
-          class="flex items-center gap-2 rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] px-4 py-2 text-sm text-[var(--base-content)] hover:bg-[var(--base-300)]"
-          onclick={handleSelectBackupFolder}
-          type="button"
-        >
-          <Folder size={16} />
-          {$t('settings.backup.selectFolder')}
-        </button>
-        {#if backupFolder}
+  <!-- Skill Sync Mode -->
+  <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-5">
+    <label class="space-y-3 text-sm text-[var(--base-content)]">
+      <span class="text-base font-medium text-[var(--base-content)]">{$t('settings.syncMode')}</span>
+      <select
+        class="w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 py-2"
+        value={$settings.syncMode}
+        onchange={(event) => updateSettings({ syncMode: event.currentTarget.value })}
+      >
+        <option value="symlink">{$t('settings.syncMode.symlink')}</option>
+        <option value="copy">{$t('settings.syncMode.copy')}</option>
+      </select>
+    </label>
+  </div>
+
+  <!-- Backup -->
+  <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-5">
+    <div class="space-y-4">
+      <div class="flex items-center justify-between">
+        <p class="text-base font-medium text-[var(--base-content)]">{$t('settings.backup')}</p>
+        {#if lastBackupTime}
+          <span class="text-xs text-[var(--base-content-muted)]">
+            {$t('settings.backup.lastBackup', { time: lastBackupTime })}
+          </span>
+        {:else}
+          <span class="text-xs text-[var(--base-content-muted)]">
+            {$t('settings.backup.noBackupYet')}
+          </span>
+        {/if}
+      </div>
+
+      <!-- Backup Folder Path with Open Icon -->
+      {#if backupFolder}
+        <div class="flex items-center gap-2">
+          <p class="flex-1 text-xs text-[var(--base-content-muted)] break-all">
+            {backupFolder}
+          </p>
           <button
-            class="flex items-center gap-2 rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] px-3 py-2 text-sm text-[var(--base-content)] hover:bg-[var(--base-300)]"
+            class="flex-shrink-0 rounded-lg p-1 text-[var(--base-content-muted)] hover:bg-[var(--base-200)] hover:text-[var(--base-content)]"
             onclick={handleOpenBackupFolder}
             title={$t('settings.backup.openFolder')}
             type="button"
           >
-            <FolderOpen size={16} />
+            <FolderOpen size={14} />
           </button>
-        {/if}
-      </div>
-
-      <!-- Selected Folder Path -->
-      {#if backupFolder}
-        <p class="text-xs text-[var(--base-content-muted)] break-all">
-          {backupFolder}
-        </p>
+        </div>
       {:else}
         <p class="text-xs text-[var(--base-content-muted)]">
           {$t('settings.backup.noFolder')}
         </p>
       {/if}
 
-      <!-- Backup Button and Status -->
-      <div class="flex items-center gap-4">
+      <!-- Backup Button -->
+      <div class="flex items-center gap-2">
         <button
           class="flex items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2 text-sm text-[var(--primary-content)] hover:opacity-90 disabled:opacity-50"
           onclick={handleBackup}
@@ -207,19 +190,17 @@
             {$t('settings.backup.backupNow')}
           {/if}
         </button>
-
-        {#if lastBackupTime}
-          <span class="text-sm text-[var(--base-content-muted)]">
-            {$t('settings.backup.lastBackup', { time: lastBackupTime })}
-          </span>
-        {:else}
-          <span class="text-sm text-[var(--base-content-muted)]">
-            {$t('settings.backup.noBackupYet')}
-          </span>
-        {/if}
+        <button
+          class="flex items-center gap-2 rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] px-4 py-2 text-sm text-[var(--base-content)] hover:bg-[var(--base-300)]"
+          onclick={handleSelectBackupFolder}
+          type="button"
+        >
+          <Folder size={16} />
+          {$t('settings.backup.selectFolder')}
+        </button>
       </div>
 
-      <!-- Backup Message -->
+      <!-- Error Message (only show errors, not success) -->
       {#if backupMessage}
         <span class="block text-sm text-[var(--base-content-muted)]">
           {backupMessage}
@@ -228,16 +209,16 @@
     </div>
   </div>
 
-  <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-5">
+  <!-- Updates -->
+  <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-5 space-y-3">
+    <p class="text-base font-medium text-[var(--base-content)]">{$t('settings.about')}</p>
     <button
       class="rounded-xl bg-[var(--primary)] px-4 py-2 text-sm text-[var(--primary-content)] hover:opacity-90"
       onclick={handleCheckUpdate}
       disabled={checkingUpdate}
       type="button"
     >
-      {checkingUpdate
-        ? $t('settings.checkingUpdate')
-        : $t('settings.checkUpdate')}
+      {checkingUpdate ? $t('settings.checkingUpdate') : $t('settings.checkUpdate')}
     </button>
     {#if updateMessage}
       <span class="mt-3 block text-sm text-[var(--base-content-muted)]">
