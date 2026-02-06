@@ -28,6 +28,8 @@ pub struct RemoteSkill {
   pub name: String,
   pub installs: u64,
   pub source: String,
+  pub url: Option<String>,
+  pub path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

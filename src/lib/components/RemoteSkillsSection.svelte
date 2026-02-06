@@ -1,5 +1,5 @@
 <script>
-  import { ChevronDown, CloudDownload, RefreshCw, Search } from '@lucide/svelte'
+  import { ChevronDown, CloudDownload, ExternalLink, Loader2, RefreshCw, Search, Check } from '@lucide/svelte'
   import IconButton from './IconButton.svelte'
   import { t } from '../i18n'
 
@@ -8,16 +8,30 @@
     installAgent = $bindable(),
     installGlobal = $bindable(),
     agents,
+    localSkills = [],
     remoteLoading,
     remoteSkills,
     remoteError,
     installLog,
     installingSkill,
+    isDownloading,
     remoteHasMore,
     onSearch,
     onLoadMore,
-    onInstall
+    onInstall,
+    onOpenUrl
   } = $props()
+
+  function handleOpenUrl(skill) {
+    if (skill.url) {
+      onOpenUrl(skill.url)
+    }
+  }
+
+  // Check if skill is already installed locally
+  function isInstalled(skill) {
+    return localSkills.some(local => local.name === skill.name)
+  }
 </script>
 
 <section class="space-y-6">
@@ -83,28 +97,54 @@
       </div>
     {:else}
       {#each remoteSkills as skill}
+        {@const installed = isInstalled(skill)}
+        {@const isBusy = installingSkill === skill.id || isDownloading}
         <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p class="text-base font-semibold">{skill.name}</p>
-              <p class="text-xs text-[var(--base-content-muted)]">{skill.source}</p>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <p class="text-base font-semibold truncate">{skill.name} <span class="text-[var(--base-content-muted)] font-normal">({skill.source})</span></p>
+                {#if installed}
+                  <span class="inline-flex items-center gap-1 rounded-full bg-[var(--success-bg)] px-2 py-0.5 text-xs text-[var(--success)]">
+                    <Check size={12} />
+                    {$t('remote.installed')}
+                  </span>
+                {/if}
+              </div>
               <p class="mt-1 text-xs text-[var(--base-content-faint)]">
                 {$t('remote.installs', { count: skill.installs })}
               </p>
             </div>
-            <IconButton
-              variant="primary"
-              onclick={() => onInstall(skill)}
-              disabled={installingSkill === skill.id}
-              title={$t('remote.install')}
-              ariaLabel={$t('remote.install')}
-            >
-              {#if installingSkill === skill.id}
-                <RefreshCw size={14} class="animate-spin" />
-              {:else}
-                <CloudDownload size={14} />
+            <div class="flex items-center gap-2">
+              {#if skill.url}
+                <IconButton
+                  variant="outline"
+                  onclick={() => handleOpenUrl(skill)}
+                  disabled={isBusy}
+                  title={$t('remote.openUrl')}
+                  ariaLabel={$t('remote.openUrl')}
+                >
+                  <ExternalLink size={14} />
+                </IconButton>
               {/if}
-            </IconButton>
+              {#if installed}
+                <span class="text-sm text-[var(--base-content-muted)]">{$t('remote.installed')}</span>
+              {:else}
+                <IconButton
+                  variant="primary"
+                  onclick={() => onInstall(skill)}
+                  disabled={isBusy}
+                  title={installingSkill === skill.id ? $t('remote.downloading') : $t('remote.install')}
+                  ariaLabel={installingSkill === skill.id ? $t('remote.downloading') : $t('remote.install')}
+                >
+                  {#if installingSkill === skill.id}
+                    <Loader2 size={14} class="animate-spin" />
+                  {:else}
+                    <CloudDownload size={14} />
+                  {/if}
+                </IconButton>
+              {/if}
+            </div>
           </div>
         </div>
       {/each}

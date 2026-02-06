@@ -1,22 +1,23 @@
 use crate::models::{RemoteSkill, RemoteSkillsResponse};
 use reqwest::Client;
 use serde::Deserialize;
+use std::time::Duration;
 
 #[derive(Debug, Deserialize)]
-struct ApiSkill {
-  id: String,
-  #[serde(rename = "skillId")]
-  skill_id: String,
-  name: String,
-  installs: u64,
-  source: String,
+struct SkillsResponse {
+  skills: Vec<ApiSkill>,
 }
 
 #[derive(Debug, Deserialize)]
-struct ApiResponse {
-  skills: Vec<ApiSkill>,
-  #[serde(rename = "hasMore")]
-  has_more: bool,
+struct ApiSkill {
+  id: i64,
+  name: String,
+  source: String,
+  url: String,
+  description: Option<String>,
+  #[serde(default)]
+  star_count: i64,
+  path: Option<String>,
 }
 
 #[tauri::command]
@@ -25,8 +26,11 @@ pub async fn fetch_remote_skills(
   page_size: Option<u32>,
   query: Option<String>,
 ) -> Result<RemoteSkillsResponse, String> {
-  let client = Client::new();
-  let base_url = "https://skills.sh/api/skills";
+  let client = Client::builder()
+    .timeout(Duration::from_secs(10))
+    .build()
+    .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+  let base_url = "http://127.0.0.1:8000/api/skills";
 
   let mut url = base_url.to_string();
   let mut params: Vec<(String, String)> = Vec::new();
@@ -54,29 +58,38 @@ pub async fn fetch_remote_skills(
     );
   }
 
-  let mut api_response = match client.get(&url).send().await {
-    Ok(resp) => resp.json::<ApiResponse>().await.ok(),
-    Err(_) => None,
+  let response: SkillsResponse = match client.get(&url).send().await {
+    Ok(resp) => {
+      if resp.status().is_success() {
+        resp.json::<SkillsResponse>().await.map_err(|e| {
+          format!("JSON 解析失败: {}", e)
+        })?
+      } else {
+        return Err(format!(
+          "API 返回错误状态码: {}，请检查 127.0.0.1:8000 服务",
+          resp.status()
+        ));
+      }
+    }
+    Err(e) => {
+      return Err(format!(
+        "无法连接到 127.0.0.1:8000: {}，请确保服务已启动",
+        e
+      ));
+    }
   };
 
-  if api_response.is_none() {
-    api_response = match client.get(base_url).send().await {
-      Ok(resp) => resp.json::<ApiResponse>().await.ok(),
-      Err(_) => None,
-    };
-  }
-
-  let api_response = api_response.ok_or("无法获取 skills.sh 列表")?;
-
-  let mut skills: Vec<RemoteSkill> = api_response
+  let mut skills: Vec<RemoteSkill> = response
     .skills
     .into_iter()
     .map(|skill| RemoteSkill {
-      id: skill.id,
-      skill_id: skill.skill_id,
+      id: skill.id.to_string(),
+      skill_id: skill.id.to_string(),
       name: skill.name,
-      installs: skill.installs,
-      source: skill.source,
+      installs: skill.star_count as u64,
+      source: skill.source.clone(),
+      url: Some(skill.url.clone()).filter(|s| !s.is_empty()),
+      path: skill.path.clone().filter(|s| !s.is_empty()),
     })
     .collect();
 
@@ -93,6 +106,6 @@ pub async fn fetch_remote_skills(
 
   Ok(RemoteSkillsResponse {
     skills,
-    has_more: api_response.has_more,
+    has_more: false,
   })
 }

@@ -18,6 +18,8 @@ export interface RemoteSkill {
   name: string
   installs: number
   source: string
+  url?: string | null
+  path?: string | null
 }
 
 export interface RemoteSkillsResponse {

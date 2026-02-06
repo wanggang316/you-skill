@@ -1,7 +1,9 @@
 <script>
   import { onMount } from 'svelte'
   import { confirm } from '@tauri-apps/plugin-dialog'
+  import { open } from '@tauri-apps/plugin-shell'
   import AddSkillModal from '../lib/components/AddSkillModal.svelte'
+  import InstallConfirmModal from '../lib/components/InstallConfirmModal.svelte'
   import LocalSkillsSection from '../lib/components/LocalSkillsSection.svelte'
   import PageHeader from '../lib/components/PageHeader.svelte'
   import RemoteSkillsSection from '../lib/components/RemoteSkillsSection.svelte'
@@ -36,6 +38,13 @@
   let linkBusy = $state(false)
   let editingSkillKey = $state('')
   let editSelection = $state([])
+
+  // Install confirm modal state
+  let installConfirmModalOpen = $state(false)
+  let pendingInstallSkill = $state(null)
+  let pendingInstallAgents = $state([])
+  let isDownloading = $state(false)
+  let downloadError = $state('')
 
   const allSelected = $derived(
     agents.length > 0 && editSelection.length === agents.length
@@ -143,15 +152,49 @@
   }
 
   const handleInstall = async (skill) => {
-    installLog = ''
+    // First download/detect the skill
+    isDownloading = true
+    downloadError = ''
     installingSkill = skill.id
     try {
-      const result = await api.installSkill({
-        source: skill.source,
-        skill_id: skill.skill_id,
-        agent: installAgent,
-        global: installGlobal,
-        project_dir: null
+      // Detect skills from the GitHub URL
+      const detectedSkills = await api.detectGithubSkills(skill.url)
+      // Find the matching skill by name or path
+      const matchingSkill = detectedSkills.find(
+        s => s.name === skill.name || skill.path?.includes(s.name) || s.path === skill.path
+      )
+      if (!matchingSkill && detectedSkills.length > 0) {
+        // Use first detected skill if no exact match
+        pendingInstallSkill = { ...skill, detectedPath: detectedSkills[0].path }
+      } else if (matchingSkill) {
+        pendingInstallSkill = { ...skill, detectedPath: matchingSkill.path }
+      } else {
+        downloadError = 'No skills found in repository'
+        return
+      }
+      // Open confirm modal after successful download
+      installConfirmModalOpen = true
+    } catch (error) {
+      downloadError = String(error)
+      installLog = String(error)
+    } finally {
+      isDownloading = false
+      installingSkill = ''
+    }
+  }
+
+  const handleConfirmInstall = async (selectedAgents) => {
+    if (!pendingInstallSkill) return
+    installLog = ''
+    installingSkill = pendingInstallSkill.id
+    pendingInstallAgents = selectedAgents
+    try {
+      // Use installGithubSkill API for remote skills
+      const skillPath = pendingInstallSkill.detectedPath || pendingInstallSkill.path || pendingInstallSkill.name
+      const result = await api.installGithubSkill({
+        url: pendingInstallSkill.url,
+        skill_path: skillPath,
+        agents: selectedAgents
       })
       installLog = result.message
       if (!result.success) {
@@ -163,6 +206,16 @@
       installLog = String(error)
     } finally {
       installingSkill = ''
+      pendingInstallSkill = null
+      pendingInstallAgents = []
+    }
+  }
+
+  const handleOpenUrl = async (url) => {
+    try {
+      await open(url)
+    } catch (error) {
+      console.error('Failed to open URL:', error)
     }
   }
 
@@ -345,16 +398,30 @@
         bind:installAgent
         bind:installGlobal
         {agents}
+        {localSkills}
         {remoteLoading}
         {remoteSkills}
         {remoteError}
         {installLog}
         {installingSkill}
+        {isDownloading}
         {remoteHasMore}
         onSearch={handleSearchRemote}
         onLoadMore={loadMoreRemote}
         onInstall={handleInstall}
+        onOpenUrl={handleOpenUrl}
       />
     {/if}
   </main>
+
+  <InstallConfirmModal
+    bind:open={installConfirmModalOpen}
+    skillName={pendingInstallSkill?.name || ''}
+    {agents}
+    onConfirm={handleConfirmInstall}
+    onCancel={() => {
+      pendingInstallSkill = null
+      pendingInstallAgents = []
+    }}
+  />
 </div>

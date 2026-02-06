@@ -38,6 +38,9 @@ const translations: Record<string, Dictionary> = {
     'remote.loading': 'Loading remote skills...',
     'remote.empty': 'No remote skills',
     'remote.install': 'Install',
+    'remote.openUrl': 'Open',
+    'remote.installed': 'Installed',
+    'remote.downloading': 'Downloading...',
     'remote.loadMore': 'Load more',
     'remote.noMore': 'No more results',
     'remote.installs': '{count} 次安装',
@@ -95,7 +98,12 @@ const translations: Record<string, Dictionary> = {
     'addSkill.noZipSelected': 'Please select a ZIP file.',
     'addSkill.noSkillSelected': 'Please select a skill.',
     'addSkill.cancel': 'Cancel',
-    'addSkill.confirm': 'Confirm'
+    'addSkill.confirm': 'Confirm',
+    'installConfirm.title': 'Install "{name}"',
+    'installConfirm.selectAgents': 'Select apps to install to:',
+    'installConfirm.selectAll': 'Select all',
+    'installConfirm.skip': 'Skip',
+    'installConfirm.confirm': 'Confirm'
   },
   zh: {
     'header.subtitle': '本地管理与一键安装',
@@ -131,6 +139,9 @@ const translations: Record<string, Dictionary> = {
     'remote.loading': '正在加载技能库...',
     'remote.empty': '暂无技能数据',
     'remote.install': '一键安装',
+    'remote.openUrl': '打开',
+    'remote.installed': '已安装',
+    'remote.downloading': '下载中...',
     'remote.loadMore': '加载更多',
     'remote.noMore': '没有更多了',
     'remote.installs': '{count} installs',
@@ -188,7 +199,12 @@ const translations: Record<string, Dictionary> = {
     'addSkill.noZipSelected': '请选择一个 ZIP 文件。',
     'addSkill.noSkillSelected': '请选择一个 skill。',
     'addSkill.cancel': '取消',
-    'addSkill.confirm': '确认'
+    'addSkill.confirm': '确认',
+    'installConfirm.title': '安装 "{name}"',
+    'installConfirm.selectAgents': '选择要安装到的应用：',
+    'installConfirm.selectAll': '全选',
+    'installConfirm.skip': '暂不安装',
+    'installConfirm.confirm': '确认安装'
   }
 }
 
