@@ -2,6 +2,7 @@ import { Marked } from 'marked'
 import { markedHighlight } from 'marked-highlight'
 import type { Tokens } from 'marked'
 import hljs from 'highlight.js/lib/common'
+import matter from 'gray-matter'
 
 const CODE_BLOCK_LANG_PATTERN = /\s+/
 

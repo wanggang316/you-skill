@@ -20,7 +20,8 @@
     onLoadMore,
     onInstall,
     onViewSkill,
-    onSortChange
+    onSortChange,
+    onRefresh
   } = $props()
 
   let searchTimeout = $state(null)
@@ -30,9 +31,16 @@
     { value: 'star_count_desc', label: 'Most Stars' }
   ]
 
-  function handleSortChange(event) {
-    const value = event.target.value
-    const [sortBy, sortOrder] = value.split('_')
+  // Local state for select binding, synced with props
+  let sortSelectValue = $state(`${remoteSortBy}_${remoteSortOrder}`)
+
+  // Sync local state when props change
+  $effect(() => {
+    sortSelectValue = `${remoteSortBy}_${remoteSortOrder}`
+  })
+
+  function handleSortChange() {
+    const [sortBy, sortOrder] = sortSelectValue.split('_')
     onSortChange(sortBy, sortOrder)
   }
 
@@ -56,25 +64,34 @@
     <div class="flex flex-wrap items-center gap-3">
       <div class="relative flex-1">
         <Search
-          class="absolute left-3 top-3 text-[var(--base-content-subtle)]"
+          class="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--base-content-subtle)]"
           size={16}
         />
         <input
-          class="w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] px-9 py-2 text-sm text-[var(--base-content)] placeholder:text-[var(--base-content-subtle)] focus:border-[var(--base-300)] focus:outline-none"
+          class="h-9 w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] px-9 text-sm text-[var(--base-content)] placeholder:text-[var(--base-content-subtle)] focus:border-[var(--base-300)] focus:outline-none"
           placeholder={$t('remote.search.placeholder')}
           bind:value={remoteQuery}
           oninput={handleSearchInput}
         />
       </div>
       <select
-        class="rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 py-2 text-sm text-[var(--base-content)]"
-        value={`${remoteSortBy}_${remoteSortOrder}`}
+        class="h-9 rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 text-sm text-[var(--base-content)] focus:border-[var(--base-300)] focus:outline-none cursor-pointer"
+        bind:value={sortSelectValue}
         onchange={handleSortChange}
       >
         {#each sortOptions as option}
           <option value={option.value}>{option.label}</option>
         {/each}
       </select>
+      <IconButton
+        variant="outline"
+        onclick={onRefresh}
+        title={$t('local.refresh')}
+        ariaLabel={$t('local.refresh')}
+        class="h-9 w-9"
+      >
+        <RefreshCw size={16} class={remoteLoading ? 'animate-spin' : ''} />
+      </IconButton>
     </div>
     {#if remoteTotal > 0}
       <p class="mt-2 text-xs text-[var(--base-content-muted)]">
@@ -122,12 +139,6 @@
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <p class="text-base font-semibold truncate">{skill.name} <span class="text-[var(--base-content-muted)] font-normal">({skill.source})</span></p>
-                {#if installed}
-                  <span class="inline-flex items-center gap-1 rounded-full bg-[var(--success-bg)] px-2 py-0.5 text-xs text-[var(--success)]">
-                    <Check size={12} />
-                    {$t('remote.installed')}
-                  </span>
-                {/if}
               </div>
               <p class="mt-1 text-xs text-[var(--base-content-faint)]">
                 {$t('remote.stars', { count: skill.star_count })}
@@ -135,10 +146,17 @@
             </div>
             <div class="flex items-center gap-2" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">
               {#if installed}
-                <span class="text-sm text-[var(--base-content-muted)]">{$t('remote.installed')}</span>
+                <button
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-[var(--success)] bg-transparent px-2 py-0.5 text-xs text-[var(--success)] cursor-default"
+                  type="button"
+                  disabled
+                >
+                  <Check size={12} />
+                  {$t('remote.installed')}
+                </button>
               {:else}
                 <button
-                  class="rounded-lg bg-[var(--primary)] px-4 py-1.5 text-sm text-[var(--primary-content)] transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-[var(--primary)] bg-transparent px-2 py-0.5 text-xs text-[var(--primary)] transition hover:bg-[var(--primary)] hover:text-[var(--primary-content)] disabled:opacity-50 disabled:cursor-not-allowed"
                   onclick={(e) => {
                     e?.stopPropagation()
                     onInstall(skill)
@@ -147,10 +165,8 @@
                   type="button"
                 >
                   {#if installingSkill === skill.id}
-                    <span class="inline-flex items-center gap-1">
-                      <Loader2 size={14} class="animate-spin" />
-                      {$t('remote.downloading')}
-                    </span>
+                    <Loader2 size={12} class="animate-spin" />
+                    {$t('remote.downloading')}
                   {:else}
                     {$t('remote.install')}
                   {/if}

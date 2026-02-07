@@ -454,6 +454,7 @@
         onInstall={handleInstall}
         onViewSkill={handleViewSkill}
         onSortChange={handleSortChange}
+        onRefresh={handleSearchRemote}
       />
     {/if}
     </div>

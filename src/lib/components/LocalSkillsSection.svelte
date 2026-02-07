@@ -55,17 +55,17 @@
     <div class="flex flex-wrap items-center gap-3">
       <div class="relative flex-1">
         <Search
-          class="absolute left-3 top-3 text-[var(--base-content-subtle)]"
+          class="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--base-content-subtle)]"
           size={16}
         />
         <input
-          class="w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] px-9 py-2 text-sm text-[var(--base-content)] placeholder:text-[var(--base-content-subtle)] focus:border-[var(--base-300)] focus:outline-none"
+          class="h-9 w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] px-9 text-sm text-[var(--base-content)] placeholder:text-[var(--base-content-subtle)] focus:border-[var(--base-300)] focus:outline-none"
           placeholder={$t("local.search.placeholder")}
           bind:value={localSearch}
         />
       </div>
       <select
-        class="rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 py-2 text-sm text-[var(--base-content)]"
+        class="h-9 rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 text-sm text-[var(--base-content)] focus:border-[var(--base-300)] focus:outline-none cursor-pointer"
         bind:value={localAgent}
       >
         <option value="all">{$t("local.agent.all")}</option>
@@ -78,6 +78,7 @@
         onclick={onRefresh}
         title={$t("local.refresh")}
         ariaLabel={$t("local.refresh")}
+        class="h-9 w-9"
       >
         <RefreshCw size={16} />
       </IconButton>
@@ -158,7 +159,7 @@
                       <div class="mt-2 flex flex-wrap gap-2">
                         {#each skill.agents as agentId}
                           <div
-                            class="inline-flex items-center rounded-full bg-[var(--base-200)] px-2.5 py-1 text-xs text-[var(--base-content-subtle)]"
+                            class="inline-flex items-center rounded-full border border-[var(--base-300)] bg-[var(--base-100)] px-2.5 py-1 text-xs text-[var(--base-content-subtle)]"
                           >
                             {agentMap.get(agentId) || agentId}
                           </div>
