@@ -1,13 +1,10 @@
 <script>
-  import { ChevronDown, CloudDownload, ExternalLink, Loader2, RefreshCw, Search, Check, ArrowUpDown } from '@lucide/svelte'
+  import { ChevronDown, Loader2, RefreshCw, Search, Check } from '@lucide/svelte'
   import IconButton from './IconButton.svelte'
   import { t } from '../i18n'
 
   let {
     remoteQuery = $bindable(),
-    installAgent = $bindable(),
-    installGlobal = $bindable(),
-    agents,
     localSkills = [],
     remoteLoading,
     remoteSkills,
@@ -22,10 +19,11 @@
     onSearch,
     onLoadMore,
     onInstall,
-    onOpenUrl,
     onViewSkill,
     onSortChange
   } = $props()
+
+  let searchTimeout = $state(null)
 
   const sortOptions = [
     { value: 'star_count_desc', label: 'Most Stars' },
@@ -42,10 +40,13 @@
     onSortChange(sortBy, sortOrder)
   }
 
-  function handleOpenUrl(skill) {
-    if (skill.url) {
-      onOpenUrl(skill.url)
+  function handleSearchInput() {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout)
     }
+    searchTimeout = setTimeout(() => {
+      onSearch()
+    }, 500)
   }
 
   // Check if skill is already installed locally
@@ -66,7 +67,7 @@
           class="w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] px-9 py-2 text-sm text-[var(--base-content)] placeholder:text-[var(--base-content-subtle)] focus:border-[var(--base-300)] focus:outline-none"
           placeholder={$t('remote.search.placeholder')}
           bind:value={remoteQuery}
-          onkeydown={(event) => event.key === 'Enter' && onSearch()}
+          oninput={handleSearchInput}
         />
       </div>
       <select
@@ -78,26 +79,6 @@
           <option value={option.value}>{option.label}</option>
         {/each}
       </select>
-      <select
-        class="rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 py-2 text-sm text-[var(--base-content)]"
-        bind:value={installAgent}
-      >
-        {#each agents as agent}
-          <option value={agent.id}>{agent.display_name}</option>
-        {/each}
-      </select>
-      <label class="flex items-center gap-2 text-xs text-[var(--base-content-muted)]">
-        <input type="checkbox" bind:checked={installGlobal} />
-        {$t('remote.installGlobal')}
-      </label>
-      <IconButton
-        variant="outline"
-        onclick={onSearch}
-        title={$t('remote.search')}
-        ariaLabel={$t('remote.search')}
-      >
-        <Search size={16} />
-      </IconButton>
     </div>
     {#if remoteTotal > 0}
       <p class="mt-2 text-xs text-[var(--base-content-muted)]">
@@ -153,43 +134,31 @@
                 {/if}
               </div>
               <p class="mt-1 text-xs text-[var(--base-content-faint)]">
-                {$t('remote.installs', { count: skill.installs })}
+                {$t('remote.stars', { count: skill.installs })}
               </p>
             </div>
-            <div class="flex items-center gap-2">
-              {#if skill.url}
-                <IconButton
-                  variant="outline"
-                  onclick={(e) => {
-                    e?.stopPropagation()
-                    handleOpenUrl(skill)
-                  }}
-                  disabled={isBusy}
-                  title={$t('remote.openUrl')}
-                  ariaLabel={$t('remote.openUrl')}
-                >
-                  <ExternalLink size={14} />
-                </IconButton>
-              {/if}
+            <div class="flex items-center gap-2" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">
               {#if installed}
                 <span class="text-sm text-[var(--base-content-muted)]">{$t('remote.installed')}</span>
               {:else}
-                <IconButton
-                  variant="primary"
+                <button
+                  class="rounded-lg bg-[var(--primary)] px-4 py-1.5 text-sm text-[var(--primary-content)] transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                   onclick={(e) => {
                     e?.stopPropagation()
                     onInstall(skill)
                   }}
                   disabled={isBusy}
-                  title={installingSkill === skill.id ? $t('remote.downloading') : $t('remote.install')}
-                  ariaLabel={installingSkill === skill.id ? $t('remote.downloading') : $t('remote.install')}
+                  type="button"
                 >
                   {#if installingSkill === skill.id}
-                    <Loader2 size={14} class="animate-spin" />
+                    <span class="inline-flex items-center gap-1">
+                      <Loader2 size={14} class="animate-spin" />
+                      {$t('remote.downloading')}
+                    </span>
                   {:else}
-                    <CloudDownload size={14} />
+                    {$t('remote.install')}
                   {/if}
-                </IconButton>
+                </button>
               {/if}
             </div>
           </div>

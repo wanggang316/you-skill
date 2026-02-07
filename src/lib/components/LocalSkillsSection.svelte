@@ -114,13 +114,21 @@
         {:else}
           {#each managedSkills as skill}
             <div
-              class="group rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm"
+              class="group rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm cursor-pointer"
+              onclick={() => onViewSkill(skill)}
+              onkeydown={(e) => (e.key === "Enter" || e.key === " ") && onViewSkill(skill)}
+              role="button"
+              tabindex="0"
+              aria-label={`View ${skill.name}`}
             >
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex-1">
                   <button
                     class="text-base font-semibold hover:underline cursor-pointer bg-transparent border-none p-0"
-                    onclick={() => onViewSkill(skill)}
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      onViewSkill(skill);
+                    }}
                     type="button"
                   >
                     {skill.name}
@@ -161,6 +169,9 @@
                 </div>
                 <div
                   class="flex items-center gap-3 text-xs text-[var(--base-content-faint)] opacity-0 group-hover:opacity-100 transition-opacity"
+                  onclick={(e) => e.stopPropagation()}
+                  onkeydown={(e) => e.stopPropagation()}
+                  role="presentation"
                 >
                   <IconButton
                     variant="outline"

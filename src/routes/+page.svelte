@@ -430,11 +430,8 @@
     {:else}
       <RemoteSkillsSection
         bind:remoteQuery
-        bind:installAgent
-        bind:installGlobal
         bind:remoteSortBy
         bind:remoteSortOrder
-        {agents}
         {localSkills}
         {remoteLoading}
         {remoteSkills}
@@ -447,7 +444,6 @@
         onSearch={handleSearchRemote}
         onLoadMore={loadMoreRemote}
         onInstall={handleInstall}
-        onOpenUrl={handleOpenUrl}
         onViewSkill={handleViewSkill}
         onSortChange={handleSortChange}
       />
