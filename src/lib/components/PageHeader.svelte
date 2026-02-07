@@ -1,9 +1,9 @@
 <script>
-  import { ChevronLeft, Plus, Settings, Download } from '@lucide/svelte'
+  import { ChevronLeft, Plus, Settings, Download, ArrowUpCircle } from '@lucide/svelte'
   import IconButton from './IconButton.svelte'
   import { t } from '../i18n'
 
-  const { currentView, activeTab, skillName, unmanagedCount, onChangeView, onChangeTab, onAddSkill, onOpenPendingImport, onBack } = $props()
+  const { currentView, activeTab, skillName, unmanagedCount, hasUpdate, onChangeView, onChangeTab, onAddSkill, onOpenPendingImport, onOpenUpdate, onBack } = $props()
 </script>
 
 <header class="sticky top-0 z-50 border-b border-[var(--base-300)] bg-[var(--base-100)]">
@@ -54,6 +54,17 @@
               {$t('header.pendingImport')}
               <span class="ml-1 rounded-full bg-[var(--warning-content)] px-1.5 py-0.5 text-xs text-[var(--warning)]"
 >{unmanagedCount}</span>
+            </button>
+          {/if}
+          {#if hasUpdate}
+            <button
+              class="flex items-center gap-1.5 rounded-xl bg-[var(--success)] px-3 py-2 text-sm font-medium text-[var(--success-content)] transition hover:opacity-90"
+              onclick={onOpenUpdate}
+              title={$t('header.update')}
+              type="button"
+            >
+              <ArrowUpCircle size={16} />
+              {$t('header.update')}
             </button>
           {/if}
           <IconButton

@@ -3,10 +3,15 @@
   import { settings, updateSettings } from "../stores/settings";
   import { api } from "../api/skills";
   import { open } from "@tauri-apps/plugin-dialog";
-  import { FolderOpen, Loader2, ChevronRight } from "@lucide/svelte";
+  import { FolderOpen, Loader2, ChevronRight, Download } from "@lucide/svelte";
 
   let checkingUpdate = $state(false);
   let updateMessage = $state("");
+  let currentVersion = $state("");
+  let hasUpdate = $state(false);
+  let latestVersion = $state("");
+  let downloadUrl = $state("");
+  let isInstalling = $state(false);
 
   // Backup state
   let backupFolder = $state("");
@@ -14,11 +19,34 @@
   let lastBackupTime = $state("");
   let backupMessage = $state("");
 
-  // Load backup folder and last backup time on mount
+  // Load backup folder, last backup time, and version on mount
   $effect(() => {
     loadBackupFolder();
     loadLastBackupTime();
+    loadVersion();
+    checkPendingUpdate();
   });
+
+  const loadVersion = async () => {
+    try {
+      currentVersion = await api.getAppVersion();
+    } catch (error) {
+      console.error("Failed to load app version:", error);
+    }
+  };
+
+  const checkPendingUpdate = async () => {
+    try {
+      const pendingUpdate = await api.getPendingUpdate();
+      if (pendingUpdate && pendingUpdate.has_update) {
+        hasUpdate = true;
+        latestVersion = pendingUpdate.latest_version;
+        downloadUrl = pendingUpdate.download_url;
+      }
+    } catch (error) {
+      console.error("Failed to check pending update:", error);
+    }
+  };
 
   const loadBackupFolder = async () => {
     try {
@@ -45,11 +73,36 @@
   const handleCheckUpdate = async () => {
     checkingUpdate = true;
     updateMessage = "";
+    hasUpdate = false;
     try {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      updateMessage = $t("settings.updatePlaceholder");
+      const result = await api.forceCheckForUpdate();
+      if (result) {
+        hasUpdate = true;
+        latestVersion = result.latest_version;
+        downloadUrl = result.download_url;
+      } else {
+        updateMessage = $t("settings.noUpdateAvailable");
+      }
+    } catch (error) {
+      updateMessage = $t("settings.updateCheckFailed");
+      console.error("Failed to check for update:", error);
     } finally {
       checkingUpdate = false;
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    if (!downloadUrl) return;
+    isInstalling = true;
+    try {
+      await api.downloadAndInstallUpdate(downloadUrl);
+      // If successful, clear pending update
+      await api.clearPendingUpdate();
+      hasUpdate = false;
+    } catch (error) {
+      updateMessage = error instanceof Error ? error.message : $t("settings.updateInstallFailed");
+    } finally {
+      isInstalling = false;
     }
   };
 
@@ -231,19 +284,49 @@
   <!-- Updates -->
   <div class="rounded-2xl bg-[var(--base-200)] py-2.5 px-4">
     <div class="flex items-center justify-between">
-      <span class="text-[15px] text-[var(--base-content)]"
-        >{$t("settings.about")}</span
-      >
-      <button
-        class="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[13px] text-[var(--primary-content)] hover:opacity-90 disabled:opacity-50"
-        onclick={handleCheckUpdate}
-        disabled={checkingUpdate}
-        type="button"
-      >
-        {checkingUpdate
-          ? $t("settings.checkingUpdate")
-          : $t("settings.checkUpdateBtn")}
-      </button>
+      <div class="flex flex-col">
+        <span class="text-[15px] text-[var(--base-content)]"
+          >{$t("settings.about")}</span
+        >
+        {#if currentVersion}
+          <span class="text-xs text-[var(--base-content-muted)]">
+            {$t("settings.currentVersion", { version: currentVersion })}
+          </span>
+        {/if}
+      </div>
+      {#if hasUpdate}
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-[var(--success)] font-medium">
+            {$t("settings.newVersionAvailable", { version: latestVersion })}
+          </span>
+          <button
+            class="flex items-center gap-1.5 rounded-lg bg-[var(--success)] px-3 py-1.5 text-[13px] text-[var(--success-content)] hover:opacity-90 disabled:opacity-50"
+            onclick={handleInstallUpdate}
+            disabled={isInstalling}
+            type="button"
+          >
+            {#if isInstalling}
+              <Loader2 size={13} class="animate-spin" />
+            {:else}
+              <Download size={13} />
+            {/if}
+            {isInstalling
+              ? $t("settings.installingUpdate")
+              : $t("settings.installUpdate")}
+          </button>
+        </div>
+      {:else}
+        <button
+          class="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[13px] text-[var(--primary-content)] hover:opacity-90 disabled:opacity-50"
+          onclick={handleCheckUpdate}
+          disabled={checkingUpdate}
+          type="button"
+        >
+          {checkingUpdate
+            ? $t("settings.checkingUpdate")
+            : $t("settings.checkUpdateBtn")}
+        </button>
+      {/if}
     </div>
     {#if updateMessage}
       <span class="mt-1.5 block text-xs text-[var(--base-content-muted)]"

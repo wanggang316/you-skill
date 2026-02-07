@@ -100,13 +100,26 @@ export interface BackupResult {
   backup_time: string | null
 }
 
+export interface UpdateInfo {
+  has_update: boolean
+  current_version: string
+  latest_version: string
+  download_url: string
+  release_notes: string
+}
+
+export interface UpdateCheckResult {
+  should_check: boolean
+  update_info: UpdateInfo | null
+}
+
 export const api = {
   scanLocalSkills: () => invoke<LocalSkill[]>('scan_local_skills'),
   getScanRoots: () => invoke<string[]>('get_scan_roots'),
   addScanRoot: (path: string) => invoke<string[]>('add_scan_root', { path }),
   removeScanRoot: (path: string) => invoke<string[]>('remove_scan_root', { path }),
   deleteSkill: (path: string) => invoke('delete_skill', { path }),
-  fetchRemoteSkills: (params?: { skip?: number; limit?: number; search?: string; sort_by?: string; sort_order?: string }) =>
+  fetchRemoteSkills: (params?: { skip?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }) =>
     invoke<RemoteSkillsResponse>('fetch_remote_skills', params || {}),
   installSkill: (request: InstallRequest) =>
     invoke<InstallResult>('install_skill', { request }),
@@ -136,4 +149,11 @@ export const api = {
   readSkillReadme: (skillPath: string) => invoke<string>('read_skill_readme', { skillPath }),
   recordInstall: (skillId: string) =>
     invoke<void>('record_skill_install', { skill_id: skillId }),
+  checkForUpdate: () => invoke<UpdateCheckResult>('check_for_update'),
+  forceCheckForUpdate: () => invoke<UpdateInfo | null>('force_check_for_update'),
+  getAppVersion: () => invoke<string>('get_app_version'),
+  getPendingUpdate: () => invoke<UpdateInfo | null>('get_pending_update'),
+  clearPendingUpdate: () => invoke<void>('clear_pending_update'),
+  downloadAndInstallUpdate: (downloadUrl: string) =>
+    invoke<void>('download_and_install_update', { download_url: downloadUrl }),
 }

@@ -15,6 +15,7 @@ use commands::{
   scan::{add_scan_root, get_scan_roots, remove_scan_root, scan_local_skills},
   settings::{get_settings, update_settings},
   skill::read_skill_readme,
+  update::{check_for_update, force_check_for_update, get_app_version, get_pending_update, clear_pending_update, download_and_install_update},
 };
 
 #[tauri::command]
@@ -54,7 +55,13 @@ fn main() {
       open_backup_folder,
       backup_skills,
       get_last_backup_time,
-      read_skill_readme
+      read_skill_readme,
+      check_for_update,
+      force_check_for_update,
+      get_app_version,
+      get_pending_update,
+      clear_pending_update,
+      download_and_install_update
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
