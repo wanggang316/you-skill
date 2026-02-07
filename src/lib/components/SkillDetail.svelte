@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
-  import { Loader2 } from '@lucide/svelte'
-  import { renderMarkdown } from '../utils/markdown'
+  import { Loader2, FileText } from '@lucide/svelte'
+  import { parseMarkdown, renderMarkdownBody } from '../utils/markdown'
   import { t } from '../i18n'
   import { api } from '../api/skills'
 
@@ -12,6 +12,8 @@
   } = $props()
 
   let content = $state('')
+  let parsedFrontmatter = $state({})
+  let hasFrontmatter = $state(false)
   let loading = $state(true)
   let error = $state('')
 
@@ -61,14 +63,23 @@
     loading = true
     error = ''
     try {
+      let rawContent = ''
       if (type === 'local') {
-        content = await loadLocalSkillContent()
+        rawContent = await loadLocalSkillContent()
       } else {
-        content = await loadRemoteSkillContent()
+        rawContent = await loadRemoteSkillContent()
       }
+
+      // Parse frontmatter and body content
+      const parsed = parseMarkdown(rawContent)
+      parsedFrontmatter = parsed.frontmatter
+      hasFrontmatter = parsed.hasFrontmatter
+      content = parsed.content
     } catch (e) {
       error = String(e)
       content = ''
+      parsedFrontmatter = {}
+      hasFrontmatter = false
     } finally {
       loading = false
     }
@@ -166,8 +177,32 @@
       </button>
     </div>
   {:else}
+    <!-- Frontmatter Card -->
+    {#if hasFrontmatter}
+      <div class="frontmatter-card">
+        <div class="frontmatter-header">
+          <FileText size={18} />
+          <span>Skill Metadata</span>
+        </div>
+        <div class="frontmatter-content">
+          {#if parsedFrontmatter.name}
+            <div class="frontmatter-item">
+              <span class="frontmatter-key">Name</span>
+              <span class="frontmatter-value">{parsedFrontmatter.name}</span>
+            </div>
+          {/if}
+          {#if parsedFrontmatter.description}
+            <div class="frontmatter-item">
+              <span class="frontmatter-key">Description</span>
+              <span class="frontmatter-value">{parsedFrontmatter.description}</span>
+            </div>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
     <div class="markdown-content" use:markdownInteractions>
-      {@html renderMarkdown(content)}
+      {@html renderMarkdownBody(content)}
     </div>
   {/if}
 </div>
@@ -413,5 +448,57 @@
     max-width: 100%;
     height: auto;
     border-radius: 0.5rem;
+  }
+
+  /* Frontmatter Card Styles */
+  .frontmatter-card {
+    margin-bottom: 1.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--base-300);
+    background: var(--base-200);
+    overflow: hidden;
+  }
+
+  .frontmatter-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--base-300);
+    color: var(--base-content-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .frontmatter-content {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .frontmatter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .frontmatter-key {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--base-content-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+  }
+
+  .frontmatter-value {
+    font-size: 0.875rem;
+    color: var(--base-content);
+    line-height: 1.5;
+  }
+
+  .frontmatter-item:first-child .frontmatter-value {
+    font-size: 1rem;
+    font-weight: 600;
   }
 </style>

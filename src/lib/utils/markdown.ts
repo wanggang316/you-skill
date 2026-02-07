@@ -148,3 +148,59 @@ export function renderMarkdown(content: string | undefined | null): string {
   const result = markedRenderer.parse(content)
   return typeof result === 'string' ? result : ''
 }
+
+// Parsed frontmatter data structure
+export interface ParsedFrontmatter {
+  name?: string
+  description?: string
+  [key: string]: unknown
+}
+
+// Result of parsing markdown with frontmatter
+export interface ParsedMarkdown {
+  frontmatter: ParsedFrontmatter
+  content: string
+  hasFrontmatter: boolean
+}
+
+/**
+ * Parse markdown content and extract frontmatter
+ * Returns structured data with frontmatter and body content
+ */
+export function parseMarkdown(content: string | undefined | null): ParsedMarkdown {
+  if (!content) {
+    return {
+      frontmatter: {},
+      content: '',
+      hasFrontmatter: false
+    }
+  }
+
+  const parsed = matter(content)
+
+  return {
+    frontmatter: parsed.data as ParsedFrontmatter,
+    content: parsed.content.trim(),
+    hasFrontmatter: parsed.isEmpty === false && Object.keys(parsed.data).length > 0
+  }
+}
+
+/**
+ * Render markdown body only (without frontmatter)
+ */
+export function renderMarkdownBody(content: string | undefined | null): string {
+  const { content: body } = parseMarkdown(content)
+  return renderMarkdown(body)
+}
+
+/**
+ * Format frontmatter value for display
+ */
+export function formatFrontmatterValue(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) return value.join(', ')
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
