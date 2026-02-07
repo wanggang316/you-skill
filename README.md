@@ -56,13 +56,40 @@ npm run tauri:build
 
 ## 发布新版本
 
-1. 更新 [CHANGELOG.md](CHANGELOG.md)
-2. 创建并推送标签：
-   ```bash
-   git tag v0.1.0
-   git push origin v0.1.0
-   ```
-3. GitHub Actions 自动构建并创建 Release
+### 使用发布脚本（推荐）
+
+```bash
+# 发布新版本（自动更新版本号、CHANGELOG、提交、打标签、推送）
+./scripts/release.sh 0.2.0 "添加新功能描述"
+
+# 或者只更新版本号，手动推送
+./scripts/release.sh 0.2.0 "添加新功能描述"
+# 然后选择不推送，手动执行：
+# git push origin main
+# git push origin v0.2.0
+```
+
+脚本会自动：
+1. 更新 `package.json`、`tauri.conf.json`、`Cargo.toml` 的版本号
+2. 更新 `CHANGELOG.md`
+3. 提交更改
+4. 创建带注释的 Git 标签
+5. 推送到远程仓库
+
+### 手动发布
+
+如果不想使用脚本，可以手动操作：
+
+1. 更新以下文件的版本号：
+   - `package.json`
+   - `src-tauri/tauri.conf.json`
+   - `src-tauri/Cargo.toml`
+2. 更新 [CHANGELOG.md](CHANGELOG.md)
+3. 提交更改：`git commit -m "chore: bump version to 0.2.0"`
+4. 创建标签：`git tag -a v0.2.0 -m "Release v0.2.0"`
+5. 推送：`git push origin main && git push origin v0.2.0`
+
+GitHub Actions 会自动构建并创建 Release。
 
 详见 [SIGNING.md](SIGNING.md) 了解代码签名配置。
 
