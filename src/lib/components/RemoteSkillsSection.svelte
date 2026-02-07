@@ -1,5 +1,5 @@
 <script>
-  import { ChevronDown, CloudDownload, ExternalLink, Loader2, RefreshCw, Search, Check } from '@lucide/svelte'
+  import { ChevronDown, CloudDownload, ExternalLink, Loader2, RefreshCw, Search, Check, ArrowUpDown } from '@lucide/svelte'
   import IconButton from './IconButton.svelte'
   import { t } from '../i18n'
 
@@ -16,12 +16,31 @@
     installingSkill,
     isDownloading,
     remoteHasMore,
+    remoteTotal = 0,
+    remoteSortBy = $bindable('star_count'),
+    remoteSortOrder = $bindable('desc'),
     onSearch,
     onLoadMore,
     onInstall,
     onOpenUrl,
-    onViewSkill
+    onViewSkill,
+    onSortChange
   } = $props()
+
+  const sortOptions = [
+    { value: 'star_count_desc', label: 'Most Stars' },
+    { value: 'star_count_asc', label: 'Least Stars' },
+    { value: 'created_at_desc', label: 'Newest' },
+    { value: 'created_at_asc', label: 'Oldest' },
+    { value: 'name_asc', label: 'Name A-Z' },
+    { value: 'name_desc', label: 'Name Z-A' }
+  ]
+
+  function handleSortChange(event) {
+    const value = event.target.value
+    const [sortBy, sortOrder] = value.split('_')
+    onSortChange(sortBy, sortOrder)
+  }
 
   function handleOpenUrl(skill) {
     if (skill.url) {
@@ -52,6 +71,15 @@
       </div>
       <select
         class="rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 py-2 text-sm text-[var(--base-content)]"
+        value={`${remoteSortBy}_${remoteSortOrder}`}
+        onchange={handleSortChange}
+      >
+        {#each sortOptions as option}
+          <option value={option.value}>{option.label}</option>
+        {/each}
+      </select>
+      <select
+        class="rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 py-2 text-sm text-[var(--base-content)]"
         bind:value={installAgent}
       >
         {#each agents as agent}
@@ -71,6 +99,11 @@
         <Search size={16} />
       </IconButton>
     </div>
+    {#if remoteTotal > 0}
+      <p class="mt-2 text-xs text-[var(--base-content-muted)]">
+        {$t('remote.total', { count: remoteTotal })}
+      </p>
+    {/if}
     {#if remoteError}
       <p class="mt-3 text-sm text-[var(--error)]">{remoteError}</p>
     {/if}

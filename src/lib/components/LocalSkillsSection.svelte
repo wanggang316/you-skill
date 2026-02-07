@@ -1,7 +1,13 @@
 <script>
-  import { Blend, RefreshCw, Search, Trash2, ChevronsDownUp } from '@lucide/svelte'
-  import IconButton from './IconButton.svelte'
-  import { t } from '../i18n'
+  import {
+    Blend,
+    RefreshCw,
+    Search,
+    Trash2,
+    ChevronsUpDown,
+  } from "@lucide/svelte";
+  import IconButton from "./IconButton.svelte";
+  import { t } from "../i18n";
 
   let {
     localSearch = $bindable(),
@@ -25,23 +31,27 @@
     onConfirmAgentLinks,
     onBulkUnify,
     onUnifySkill,
-    onViewSkill
-  } = $props()
+    onViewSkill,
+  } = $props();
 
-  let expandedSkills = $state(new Set())
+  let expandedSkills = $state(new Set());
 
-  function toggleSkillExpand(skillKey) {
-    if (expandedSkills.has(skillKey)) {
-      expandedSkills.delete(skillKey)
+  function toggleSkillExpand(skill) {
+    const key = skill.name;
+    const newSet = new Set(expandedSkills);
+    if (newSet.has(key)) {
+      newSet.delete(key);
     } else {
-      expandedSkills.add(skillKey)
+      newSet.add(key);
     }
-    expandedSkills = expandedSkills
+    expandedSkills = newSet;
   }
 </script>
 
 <section class="space-y-6">
-  <div class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4">
+  <div
+    class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4"
+  >
     <div class="flex flex-wrap items-center gap-3">
       <div class="relative flex-1">
         <Search
@@ -50,7 +60,7 @@
         />
         <input
           class="w-full rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] px-9 py-2 text-sm text-[var(--base-content)] placeholder:text-[var(--base-content-subtle)] focus:border-[var(--base-300)] focus:outline-none"
-          placeholder={$t('local.search.placeholder')}
+          placeholder={$t("local.search.placeholder")}
           bind:value={localSearch}
         />
       </div>
@@ -58,7 +68,7 @@
         class="rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 py-2 text-sm text-[var(--base-content)]"
         bind:value={localAgent}
       >
-        <option value="all">{$t('local.agent.all')}</option>
+        <option value="all">{$t("local.agent.all")}</option>
         {#each agents as agent}
           <option value={agent.id}>{agent.display_name}</option>
         {/each}
@@ -66,8 +76,8 @@
       <IconButton
         variant="outline"
         onclick={onRefresh}
-        title={$t('local.refresh')}
-        ariaLabel={$t('local.refresh')}
+        title={$t("local.refresh")}
+        ariaLabel={$t("local.refresh")}
       >
         <RefreshCw size={16} />
       </IconButton>
@@ -82,51 +92,61 @@
       <div
         class="rounded-2xl border border-dashed border-[var(--base-300)] bg-[var(--base-100)] p-6 text-center text-sm text-[var(--base-content-muted)]"
       >
-        {$t('local.loading')}
+        {$t("local.loading")}
       </div>
     {:else if filteredLocalSkills.length === 0}
       <div
         class="rounded-2xl border border-dashed border-[var(--base-300)] bg-[var(--base-100)] p-6 text-center text-sm text-[var(--base-content-muted)]"
       >
-        {$t('local.empty')}
+        {$t("local.empty")}
       </div>
     {:else}
       <div class="space-y-2">
         <p class="text-sm font-semibold text-[var(--base-content-muted)]">
-          {$t('local.section.managed')}
+          {$t("local.section.managed")}
         </p>
         {#if managedSkills.length === 0}
           <div
             class="rounded-xl border border-dashed border-[var(--base-300)] bg-[var(--base-100)] p-4 text-sm text-[var(--base-content-muted)]"
           >
-            {$t('local.section.emptyManaged')}
+            {$t("local.section.emptyManaged")}
           </div>
         {:else}
           {#each managedSkills as skill}
             <div
-              class="group rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm cursor-pointer"
-              onclick={() => onViewSkill(skill)}
-              onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && onViewSkill(skill)}
-              role="button"
-              tabindex="0"
-              aria-label={`View ${skill.name}`}
+              class="group rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm"
             >
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex-1">
-                  <p class="text-base font-semibold">{skill.name}</p>
+                  <button
+                    class="text-base font-semibold hover:underline cursor-pointer bg-transparent border-none p-0"
+                    onclick={() => onViewSkill(skill)}
+                    type="button"
+                  >
+                    {skill.name}
+                  </button>
                   {#if editingSkillKey !== skill.key}
                     <button
-                      class="mt-2 inline-flex items-center gap-1.5 text-xs text-[var(--base-content-subtle)] transition hover:bg-[var(--base-200)] rounded px-2 py-1 -ml-2"
+                      class="mt-2 flex items-center gap-1.5 text-xs text-[var(--base-content-subtle)] transition hover:bg-[var(--base-200)] rounded px-2 py-1 cursor-pointer"
                       onclick={(e) => {
-                        e?.stopPropagation()
-                        toggleSkillExpand(skill.key)
+                        e.stopPropagation();
+                        toggleSkillExpand(skill);
                       }}
                       type="button"
                     >
-                      <span>{$t('local.section.managedCount', { count: skill.agents.length })}</span>
-                      <ChevronsDownUp size={12} class={expandedSkills.has(skill.key) ? 'rotate-180' : ''} />
+                      <span
+                        >{$t("local.section.managedCount", {
+                          count: skill.agents.length,
+                        })}</span
+                      >
+                      <ChevronsUpDown
+                        size={12}
+                        class={expandedSkills.has(skill.name)
+                          ? "rotate-180"
+                          : ""}
+                      />
                     </button>
-                    {#if expandedSkills.has(skill.key)}
+                    {#if expandedSkills.has(skill.name)}
                       <div class="mt-2 flex flex-wrap gap-2">
                         {#each skill.agents as agentId}
                           <div
@@ -141,19 +161,16 @@
                 </div>
                 <div
                   class="flex items-center gap-3 text-xs text-[var(--base-content-faint)] opacity-0 group-hover:opacity-100 transition-opacity"
-                  onclick={(e) => e.stopPropagation()}
-                  onkeydown={(e) => e.stopPropagation()}
-                  role="presentation"
                 >
                   <IconButton
                     variant="outline"
-                    class={`rounded-lg p-2 text-xs ${editingSkillKey === skill.key ? 'border-[var(--base-content)] text-[var(--base-content)]' : 'border-[var(--base-300)] text-[var(--base-content-muted)]'}`}
+                    class={`rounded-lg p-2 text-xs ${editingSkillKey === skill.key ? "border-[var(--base-content)] text-[var(--base-content)]" : "border-[var(--base-300)] text-[var(--base-content-muted)]"}`}
                     onclick={(e) => {
-                      e?.stopPropagation()
-                      onOpenLinkDialog(skill)
+                      e?.stopPropagation();
+                      onOpenLinkDialog(skill);
                     }}
-                    title={$t('local.action.installToApps')}
-                    ariaLabel={$t('local.action.installToApps')}
+                    title={$t("local.action.installToApps")}
+                    ariaLabel={$t("local.action.installToApps")}
                   >
                     <Blend size={14} />
                   </IconButton>
@@ -161,19 +178,23 @@
                     variant="outline"
                     class="rounded-lg border-[var(--error-border)] p-2 text-xs text-[var(--error)]"
                     onclick={(event) => {
-                      event.stopPropagation()
-                      onDeleteSkill(skill)
+                      event.stopPropagation();
+                      onDeleteSkill(skill);
                     }}
-                    title={$t('local.action.delete')}
-                    ariaLabel={$t('local.action.delete')}
+                    title={$t("local.action.delete")}
+                    ariaLabel={$t("local.action.delete")}
                   >
                     <Trash2 size={14} />
                   </IconButton>
                 </div>
               </div>
               {#if editingSkillKey === skill.key}
-                <div class="mt-4 rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] p-3">
-                  <div class="flex items-center justify-between text-xs text-[var(--base-content-muted)]">
+                <div
+                  class="mt-4 rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] p-3"
+                >
+                  <div
+                    class="flex items-center justify-between text-xs text-[var(--base-content-muted)]"
+                  >
                     <label class="inline-flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -182,7 +203,7 @@
                           onToggleSelectAll(event.target.checked)}
                         disabled={linkBusy}
                       />
-                      {$t('local.action.selectAll')}
+                      {$t("local.action.selectAll")}
                     </label>
                     <button
                       class="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[var(--primary-content)] transition hover:opacity-90"
@@ -190,7 +211,7 @@
                       disabled={linkBusy}
                       type="button"
                     >
-                      {$t('local.action.confirm')}
+                      {$t("local.action.confirm")}
                     </button>
                   </div>
                   <div class="mt-3 flex flex-wrap gap-2">
@@ -202,7 +223,10 @@
                           type="checkbox"
                           checked={editSelection.includes(agent.id)}
                           onchange={(event) =>
-                            onToggleAgentSelection(agent.id, event.target.checked)}
+                            onToggleAgentSelection(
+                              agent.id,
+                              event.target.checked,
+                            )}
                           disabled={linkBusy}
                         />
                         <span>{agent.display_name}</span>
@@ -220,21 +244,22 @@
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <p class="text-sm font-semibold text-[var(--base-content-muted)]">
-              {$t('local.section.unmanaged')}
+              {$t("local.section.unmanaged")}
             </p>
             <button
               class="rounded-lg border border-[var(--base-300)] px-3 py-1.5 text-xs text-[var(--base-content-muted)] transition hover:bg-[var(--base-200)]"
               onclick={onBulkUnify}
               type="button"
             >
-              {$t('local.action.importAll')}
+              {$t("local.action.importAll")}
             </button>
           </div>
           {#each unmanagedSkills as skill}
             <div
               class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm cursor-pointer"
               onclick={() => onViewSkill(skill)}
-              onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && onViewSkill(skill)}
+              onkeydown={(e) =>
+                (e.key === "Enter" || e.key === " ") && onViewSkill(skill)}
               role="button"
               tabindex="0"
               aria-label={`View ${skill.name}`}
@@ -258,38 +283,42 @@
                   onkeydown={(e) => e.stopPropagation()}
                   role="presentation"
                 >
-                  {#if skill.managed_status === 'mixed'}
-                    <span class="tag tag-warning">{$t('local.tag.standalone')}</span>
+                  {#if skill.managed_status === "mixed"}
+                    <span class="tag tag-warning"
+                      >{$t("local.tag.standalone")}</span
+                    >
                   {/if}
                   {#if skill.name_conflict}
-                    <span class="tag tag-error">{$t('local.tag.nameConflict')}</span>
+                    <span class="tag tag-error"
+                      >{$t("local.tag.nameConflict")}</span
+                    >
                   {/if}
                   {#if skill.conflict_with_managed}
                     <span class="tag tag-neutral">
-                      {$t('local.tag.conflictManaged')}
+                      {$t("local.tag.conflictManaged")}
                     </span>
                   {/if}
                   <button
                     class="rounded-lg border border-[var(--base-300)] px-3 py-1.5 text-xs text-[var(--base-content-muted)] transition hover:bg-[var(--base-200)]"
                     onclick={(e) => {
-                      e?.stopPropagation()
-                      onUnifySkill(skill)
+                      e?.stopPropagation();
+                      onUnifySkill(skill);
                     }}
-                    title={$t('local.action.import')}
+                    title={$t("local.action.import")}
                     type="button"
                   >
-                    {$t('local.action.import')}
+                    {$t("local.action.import")}
                   </button>
                   <button
                     class="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs text-[var(--error)] transition hover:bg-[var(--error)] hover:text-[var(--error-content)]"
                     type="button"
                     onclick={(event) => {
-                      event.stopPropagation()
-                      onDeleteSkill(skill)
+                      event.stopPropagation();
+                      onDeleteSkill(skill);
                     }}
-                    title={$t('local.action.delete')}
+                    title={$t("local.action.delete")}
                   >
-                    {$t('local.action.delete')}
+                    {$t("local.action.delete")}
                   </button>
                 </div>
               </div>

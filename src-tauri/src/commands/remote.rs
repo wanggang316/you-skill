@@ -6,6 +6,9 @@ use std::time::Duration;
 #[derive(Debug, Deserialize)]
 struct SkillsResponse {
   skills: Vec<ApiSkill>,
+  total: i64,
+  page: i32,
+  page_size: i32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -22,9 +25,11 @@ struct ApiSkill {
 
 #[tauri::command]
 pub async fn fetch_remote_skills(
-  page: Option<u32>,
-  page_size: Option<u32>,
-  query: Option<String>,
+  skip: Option<u32>,
+  limit: Option<u32>,
+  search: Option<String>,
+  sort_by: Option<String>,
+  sort_order: Option<String>,
 ) -> Result<RemoteSkillsResponse, String> {
   let client = Client::builder()
     .timeout(Duration::from_secs(10))
@@ -35,17 +40,26 @@ pub async fn fetch_remote_skills(
   let mut url = base_url.to_string();
   let mut params: Vec<(String, String)> = Vec::new();
 
-  if let Some(page) = page {
-    params.push(("page".to_string(), page.to_string()));
+  // Pagination params
+  if let Some(skip) = skip {
+    params.push(("skip".to_string(), skip.to_string()));
   }
-  if let Some(limit) = page_size {
+  if let Some(limit) = limit {
     params.push(("limit".to_string(), limit.to_string()));
   }
-  if let Some(search) = query.clone() {
-    if !search.trim().is_empty() {
-      params.push(("search".to_string(), search.trim().to_string()));
+
+  // Search param
+  if let Some(query) = search {
+    if !query.trim().is_empty() {
+      params.push(("search".to_string(), query.trim().to_string()));
     }
   }
+
+  // Sorting params - default to star_count desc
+  let sort_by = sort_by.unwrap_or_else(|| "star_count".to_string());
+  let sort_order = sort_order.unwrap_or_else(|| "desc".to_string());
+  params.push(("sort_by".to_string(), sort_by));
+  params.push(("sort_order".to_string(), sort_order));
 
   if !params.is_empty() {
     url.push('?');
@@ -79,7 +93,9 @@ pub async fn fetch_remote_skills(
     }
   };
 
-  let mut skills: Vec<RemoteSkill> = response
+  let total = response.total;
+  let page_size = response.page_size as i64;
+  let skills: Vec<RemoteSkill> = response
     .skills
     .into_iter()
     .map(|skill| RemoteSkill {
@@ -93,19 +109,13 @@ pub async fn fetch_remote_skills(
     })
     .collect();
 
-  if let Some(search) = query {
-    let needle = search.to_lowercase();
-    if !needle.trim().is_empty() {
-      skills.retain(|skill| {
-        skill.name.to_lowercase().contains(&needle)
-          || skill.source.to_lowercase().contains(&needle)
-          || skill.skill_id.to_lowercase().contains(&needle)
-      });
-    }
-  }
+  // Calculate if there are more results
+  let current_count = skills.len() as i64;
+  let has_more = current_count > 0 && (response.page as i64 * page_size + current_count) < total;
 
   Ok(RemoteSkillsResponse {
     skills,
-    has_more: false,
+    total,
+    has_more,
   })
 }

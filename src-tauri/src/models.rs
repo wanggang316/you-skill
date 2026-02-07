@@ -35,6 +35,7 @@ pub struct RemoteSkill {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RemoteSkillsResponse {
   pub skills: Vec<RemoteSkill>,
+  pub total: i64,
   pub has_more: bool,
 }
 

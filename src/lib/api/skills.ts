@@ -24,6 +24,7 @@ export interface RemoteSkill {
 
 export interface RemoteSkillsResponse {
   skills: RemoteSkill[]
+  total: number
   has_more: boolean
 }
 
@@ -103,8 +104,8 @@ export const api = {
   addScanRoot: (path: string) => invoke<string[]>('add_scan_root', { path }),
   removeScanRoot: (path: string) => invoke<string[]>('remove_scan_root', { path }),
   deleteSkill: (path: string) => invoke('delete_skill', { path }),
-  fetchRemoteSkills: (page?: number, pageSize?: number, query?: string) =>
-    invoke<RemoteSkillsResponse>('fetch_remote_skills', { page, pageSize, query }),
+  fetchRemoteSkills: (params?: { skip?: number; limit?: number; search?: string; sort_by?: string; sort_order?: string }) =>
+    invoke<RemoteSkillsResponse>('fetch_remote_skills', params || {}),
   installSkill: (request: InstallRequest) =>
     invoke<InstallResult>('install_skill', { request }),
   listAgents: () => invoke<AgentInfo[]>('list_agents'),

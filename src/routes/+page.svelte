@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte'
   import { confirm } from '@tauri-apps/plugin-dialog'
   import { open } from '@tauri-apps/plugin-shell'
@@ -26,11 +26,14 @@
 
   let remoteSkills = $state([])
   let remoteQuery = $state('')
-  let remotePage = $state(1)
-  let remotePageSize = $state(50)
+  let remoteSkip = $state(0)
+  let remoteLimit = $state(20)
   let remoteHasMore = $state(false)
   let remoteLoading = $state(false)
   let remoteError = $state('')
+  let remoteTotal = $state(0)
+  let remoteSortBy = $state('star_count')
+  let remoteSortOrder = $state('desc')
 
   let agents = $state([])
   let installAgent = $state('cursor')
@@ -123,14 +126,18 @@
     remoteError = ''
     try {
       if (reset) {
-        remotePage = 1
+        remoteSkip = 0
+        remoteSkills = []
       }
-      const response = await api.fetchRemoteSkills(
-        remotePage,
-        remotePageSize,
-        remoteQuery
-      )
+      const response = await api.fetchRemoteSkills({
+        skip: remoteSkip,
+        limit: remoteLimit,
+        search: remoteQuery,
+        sort_by: remoteSortBy,
+        sort_order: remoteSortOrder
+      })
       remoteHasMore = response.has_more
+      remoteTotal = response.total
       if (reset) {
         remoteSkills = response.skills
       } else {
@@ -149,8 +156,14 @@
 
   const loadMoreRemote = async () => {
     if (!remoteHasMore) return
-    remotePage += 1
+    remoteSkip += remoteLimit
     await loadRemote(false)
+  }
+
+  const handleSortChange = async (sortBy: string, sortOrder: string) => {
+    remoteSortBy = sortBy
+    remoteSortOrder = sortOrder
+    await loadRemote(true)
   }
 
   const handleInstall = async (skill) => {
@@ -419,6 +432,8 @@
         bind:remoteQuery
         bind:installAgent
         bind:installGlobal
+        bind:remoteSortBy
+        bind:remoteSortOrder
         {agents}
         {localSkills}
         {remoteLoading}
@@ -428,11 +443,13 @@
         {installingSkill}
         {isDownloading}
         {remoteHasMore}
+        {remoteTotal}
         onSearch={handleSearchRemote}
         onLoadMore={loadMoreRemote}
         onInstall={handleInstall}
         onOpenUrl={handleOpenUrl}
         onViewSkill={handleViewSkill}
+        onSortChange={handleSortChange}
       />
     {/if}
     </div>
