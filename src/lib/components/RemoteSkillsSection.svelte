@@ -27,26 +27,13 @@
   let searchTimeout = $state(null)
 
   const sortOptions = [
-    { value: 'heat_score_desc', label: 'Most Popular' },
-    { value: 'star_count_desc', label: 'Most Stars' }
+    { value: 'heat_score', label: 'Most Popular' },
+    { value: 'star_count', label: 'Most Stars' }
   ]
 
-  let sortSelectRef = $state(null)
-
-  // Sync select element value when props change from parent
-  $effect(() => {
-    const newValue = `${remoteSortBy}_${remoteSortOrder}`
-    if (sortSelectRef && sortSelectRef.value !== newValue) {
-      sortSelectRef.value = newValue
-    }
-  })
-
-  function handleSortChange(event) {
-    const value = event.target.value
-    const [sortBy, sortOrder] = value.split('_')
-    if (sortBy && sortOrder) {
-      onSortChange(sortBy, sortOrder)
-    }
+  function handleSortChange() {
+    // remoteSortBy is updated via bind:value, always use 'desc'
+    onSortChange(remoteSortBy, 'desc')
   }
 
   function handleSearchInput() {
@@ -81,7 +68,7 @@
       </div>
       <select
         class="h-9 rounded-xl border border-[var(--base-300)] bg-[var(--base-100)] px-3 text-sm text-[var(--base-content)] focus:border-[var(--base-300)] focus:outline-none cursor-pointer"
-        bind:this={sortSelectRef}
+        bind:value={remoteSortBy}
         onchange={handleSortChange}
       >
         {#each sortOptions as option}
