@@ -182,7 +182,7 @@
       <div class="frontmatter-card">
         <div class="frontmatter-header">
           <FileText size={18} />
-          <span>Skill Metadata</span>
+          <span>Skill Frontmatter</span>
         </div>
         <div class="frontmatter-content">
           {#if parsedFrontmatter.name}
