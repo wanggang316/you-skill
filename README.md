@@ -44,6 +44,28 @@ npm run tauri:dev
 npm run tauri:build
 ```
 
+## 下载安装
+
+从 [Releases](https://github.com/YOUR_USERNAME/skill-kit/releases) 页面下载对应平台的安装包：
+
+- **macOS**: `You-Skills_0.1.0_aarch64.dmg` (Apple Silicon) / `You-Skills_0.1.0_x64.dmg` (Intel)
+- **Windows**: `You-Skills_0.1.0_x64-setup.exe`
+- **Linux**: `you-skills_0.1.0_amd64.deb` / `you-skills-0.1.0-1.x86_64.rpm`
+
+> **注意**: macOS 版本需要 macOS 10.13 或更高版本。首次打开时可能需要前往 **系统设置 > 隐私与安全性** 允许运行。
+
+## 发布新版本
+
+1. 更新 [CHANGELOG.md](CHANGELOG.md)
+2. 创建并推送标签：
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+3. GitHub Actions 自动构建并创建 Release
+
+详见 [SIGNING.md](SIGNING.md) 了解代码签名配置。
+
 ## 项目结构
 
 ```
