@@ -42,7 +42,7 @@ pub async fn fetch_remote_skills(
     .timeout(Duration::from_secs(10))
     .build()
     .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
-  let base_url = "http://127.0.0.1:8000/api/skills";
+  let base_url = "https://you-skills-console.vercel.app/api/skills";
 
   let mut url = base_url.to_string();
   let mut params: Vec<(String, String)> = Vec::new();
@@ -90,17 +90,11 @@ pub async fn fetch_remote_skills(
           format!("JSON 解析失败: {}", e)
         })?
       } else {
-        return Err(format!(
-          "API 返回错误状态码: {}，请检查 127.0.0.1:8000 服务",
-          resp.status()
-        ));
+        return Err(format!("API 返回错误: {}", resp.status()));
       }
     }
     Err(e) => {
-      return Err(format!(
-        "无法连接到 127.0.0.1:8000: {}，请确保服务已启动",
-        e
-      ));
+      return Err(format!("网络连接失败: {}", e));
     }
   };
 
@@ -140,7 +134,7 @@ pub async fn record_skill_install(skill_id: String) -> Result<(), String> {
     .build()
     .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
-  let url = format!("http://127.0.0.1:8000/api/skills/{}/install", skill_id);
+  let url = format!("https://you-skills-console.vercel.app/api/skills/{}/install", skill_id);
 
   let response = client
     .post(&url)
