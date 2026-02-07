@@ -19,6 +19,7 @@ struct ApiSkill {
   name: String,
   source: String,
   url: String,
+  #[allow(dead_code)]
   description: Option<String>,
   #[serde(default)]
   star_count: i64,
