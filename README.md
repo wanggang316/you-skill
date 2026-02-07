@@ -1,4 +1,4 @@
-# Skill Kit
+# You Skills
 
 一个基于 Tauri + Svelte 的桌面端技能管理工具。
 

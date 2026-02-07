@@ -5,6 +5,7 @@
     Search,
     Trash2,
     ChevronsUpDown,
+    Download,
   } from "@lucide/svelte";
   import IconButton from "./IconButton.svelte";
   import { t } from "../i18n";
@@ -32,6 +33,7 @@
     onBulkUnify,
     onUnifySkill,
     onViewSkill,
+    onOpenPendingImport,
   } = $props();
 
   let expandedSkills = $state(new Set());
@@ -108,9 +110,24 @@
         </p>
         {#if managedSkills.length === 0}
           <div
-            class="rounded-xl border border-dashed border-[var(--base-300)] bg-[var(--base-100)] p-4 text-sm text-[var(--base-content-muted)]"
+            class="rounded-xl border border-dashed border-[var(--base-300)] bg-[var(--base-100)] p-6 text-center"
           >
-            {$t("local.section.emptyManaged")}
+            <p class="text-sm text-[var(--base-content-muted)] mb-4">
+              {$t("local.section.emptyManaged")}
+            </p>
+            {#if unmanagedSkills.length > 0}
+              <p class="text-sm text-[var(--base-content)] mb-4">
+                {$t("local.section.pendingImportPrompt", { count: unmanagedSkills.length })}
+              </p>
+              <button
+                class="inline-flex items-center gap-2 rounded-xl bg-[var(--warning)] px-4 py-2 text-sm font-medium text-[var(--warning-content)] transition hover:opacity-90"
+                onclick={onOpenPendingImport}
+                type="button"
+              >
+                <Download size={16} />
+                {$t('header.pendingImport')}
+              </button>
+            {/if}
           </div>
         {:else}
           {#each managedSkills as skill}
@@ -251,93 +268,6 @@
           {/each}
         {/if}
       </div>
-
-      {#if unmanagedSkills.length > 0}
-        <div class="space-y-2">
-          <div class="flex items-center justify-between">
-            <p class="text-sm font-semibold text-[var(--base-content-muted)]">
-              {$t("local.section.unmanaged")}
-            </p>
-            <button
-              class="rounded-lg border border-[var(--base-300)] px-3 py-1.5 text-xs text-[var(--base-content-muted)] transition hover:bg-[var(--base-200)]"
-              onclick={onBulkUnify}
-              type="button"
-            >
-              {$t("local.action.importAll")}
-            </button>
-          </div>
-          {#each unmanagedSkills as skill}
-            <div
-              class="rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] p-4 transition hover:bg-[var(--base-200)] hover:shadow-sm cursor-pointer"
-              onclick={() => onViewSkill(skill)}
-              onkeydown={(e) =>
-                (e.key === "Enter" || e.key === " ") && onViewSkill(skill)}
-              role="button"
-              tabindex="0"
-              aria-label={`View ${skill.name}`}
-            >
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p class="text-base font-semibold">{skill.name}</p>
-                  <div class="mt-2 flex flex-wrap gap-2">
-                    {#each skill.agents as agentId}
-                      <div
-                        class="inline-flex items-center rounded-full bg-[var(--base-200)] px-2.5 py-1 text-xs text-[var(--base-content-subtle)]"
-                      >
-                        {agentMap.get(agentId) || agentId}
-                      </div>
-                    {/each}
-                  </div>
-                </div>
-                <div
-                  class="flex items-center gap-3 text-xs text-[var(--base-content-faint)]"
-                  onclick={(e) => e.stopPropagation()}
-                  onkeydown={(e) => e.stopPropagation()}
-                  role="presentation"
-                >
-                  {#if skill.managed_status === "mixed"}
-                    <span class="tag tag-warning"
-                      >{$t("local.tag.standalone")}</span
-                    >
-                  {/if}
-                  {#if skill.name_conflict}
-                    <span class="tag tag-error"
-                      >{$t("local.tag.nameConflict")}</span
-                    >
-                  {/if}
-                  {#if skill.conflict_with_managed}
-                    <span class="tag tag-neutral">
-                      {$t("local.tag.conflictManaged")}
-                    </span>
-                  {/if}
-                  <button
-                    class="rounded-lg border border-[var(--base-300)] px-3 py-1.5 text-xs text-[var(--base-content-muted)] transition hover:bg-[var(--base-200)]"
-                    onclick={(e) => {
-                      e?.stopPropagation();
-                      onUnifySkill(skill);
-                    }}
-                    title={$t("local.action.import")}
-                    type="button"
-                  >
-                    {$t("local.action.import")}
-                  </button>
-                  <button
-                    class="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs text-[var(--error)] transition hover:bg-[var(--error)] hover:text-[var(--error-content)]"
-                    type="button"
-                    onclick={(event) => {
-                      event.stopPropagation();
-                      onDeleteSkill(skill);
-                    }}
-                    title={$t("local.action.delete")}
-                  >
-                    {$t("local.action.delete")}
-                  </button>
-                </div>
-              </div>
-            </div>
-          {/each}
-        </div>
-      {/if}
     {/if}
   </div>
 </section>

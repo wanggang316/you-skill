@@ -44,7 +44,7 @@ impl Default for AppSettings {
 
 pub fn config_path() -> Result<PathBuf, String> {
   let home = dirs_next::home_dir().ok_or("无法获取用户目录")?;
-  Ok(home.join(".skill-kit").join("config.json"))
+  Ok(home.join(".you-skills").join("config.json"))
 }
 
 pub fn load_config() -> Result<AppConfig, String> {

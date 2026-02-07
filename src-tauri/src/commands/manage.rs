@@ -5,7 +5,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const COPY_MARKER_FILE: &str = ".skill-kit-link";
+const COPY_MARKER_FILE: &str = ".you-skills-link";
 
 #[tauri::command]
 pub fn delete_skill(path: String) -> Result<(), String> {

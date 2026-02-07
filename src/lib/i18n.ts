@@ -11,6 +11,7 @@ const translations: Record<string, Dictionary> = {
     'header.add': 'Add',
     'header.back': 'Back',
     'header.settings': 'Settings',
+    'header.pendingImport': 'Pending Import',
     'view.add.title': 'Add scan path',
     'view.add.placeholder': 'Add a custom scan path (project root)',
     'view.add.addPath': 'Add path',
@@ -112,7 +113,13 @@ const translations: Record<string, Dictionary> = {
     'installConfirm.selectAll': 'Select all',
     'installConfirm.skip': 'Skip',
     'installConfirm.confirm': 'Confirm',
-    'detail.retry': 'Retry'
+    'detail.retry': 'Retry',
+    'pendingImport.title': 'Pending Imports',
+    'pendingImport.description': 'You have {count} standalone installed skill(s). We recommend importing them into Your Skills for unified management.',
+    'pendingImport.empty': 'No pending skills to import',
+    'pendingImport.open': 'Open',
+    'pendingImport.openFolder': 'Open folder',
+    'local.section.pendingImportPrompt': 'You have {count} standalone installed skill(s). We recommend importing them into Your Skills for unified management.'
   },
   zh: {
     'header.subtitle': '本地管理与一键安装',
@@ -121,6 +128,7 @@ const translations: Record<string, Dictionary> = {
     'header.add': '新增',
     'header.back': '返回',
     'header.settings': '设置',
+    'header.pendingImport': '待导入',
     'view.add.title': '新增扫描路径',
     'view.add.placeholder': '添加自定义扫描路径（项目根目录）',
     'view.add.addPath': '添加路径',
@@ -222,7 +230,13 @@ const translations: Record<string, Dictionary> = {
     'installConfirm.selectAll': '全选',
     'installConfirm.skip': '暂不安装',
     'installConfirm.confirm': '确认安装',
-    'detail.retry': '重试'
+    'detail.retry': '重试',
+    'pendingImport.title': '待导入 Skills',
+    'pendingImport.description': '你有 {count} 个独立安装的 skill，建议导入到 Your Skills 统一进行管理。',
+    'pendingImport.empty': '暂无待导入的 skill',
+    'pendingImport.open': '打开',
+    'pendingImport.openFolder': '打开文件夹',
+    'local.section.pendingImportPrompt': '你有 {count} 个独立安装的 skill，建议导入到 Your Skills 统一进行管理。'
   }
 }
 

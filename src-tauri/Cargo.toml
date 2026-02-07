@@ -1,8 +1,8 @@
 [package]
-name = "skill-kit"
+name = "you-skills"
 version = "0.1.0"
 description = "Skill manager desktop app"
-authors = ["skill-kit"]
+authors = ["gumpwang2020@gmail.com"]
 edition = "2021"
 build = "build.rs"
 

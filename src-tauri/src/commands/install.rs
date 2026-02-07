@@ -53,7 +53,7 @@ pub async fn detect_github_skills(url: String) -> Result<Vec<DetectedSkill>, Str
   let (owner, repo) = parse_github_url(&url)?;
 
   // Create temp directory
-  let temp_dir = std::env::temp_dir().join(format!("skill-kit-clone-{}-{}", owner, repo));
+  let temp_dir = std::env::temp_dir().join(format!("you-skills-clone-{}-{}", owner, repo));
 
   // Clean up temp directory if it exists
   let _ = fs::remove_dir_all(&temp_dir);
@@ -330,7 +330,7 @@ pub async fn install_github_skill(request: InstallGithubRequest) -> Result<Insta
   let (owner, repo) = parse_github_url(&request.url)?;
 
   // Create temp directory
-  let temp_dir = std::env::temp_dir().join(format!("skill-kit-clone-{}-{}", owner, repo));
+  let temp_dir = std::env::temp_dir().join(format!("you-skills-clone-{}-{}", owner, repo));
 
   // Clean up temp directory if it exists
   let _ = fs::remove_dir_all(&temp_dir);
@@ -457,7 +457,7 @@ pub async fn install_github_skill(request: InstallGithubRequest) -> Result<Insta
 #[tauri::command]
 pub fn detect_zip_skills(zip_path: String) -> Result<Vec<DetectedSkill>, String> {
   // Create temp directory for extraction
-  let temp_dir = std::env::temp_dir().join(format!("skill-kit-zip-detect-{}", std::process::id()));
+  let temp_dir = std::env::temp_dir().join(format!("you-skills-zip-detect-{}", std::process::id()));
 
   // Clean up temp directory if it exists
   let _ = fs::remove_dir_all(&temp_dir);

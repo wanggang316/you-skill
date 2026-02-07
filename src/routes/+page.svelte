@@ -4,6 +4,7 @@
   import { open } from '@tauri-apps/plugin-shell'
   import AddSkillModal from '../lib/components/AddSkillModal.svelte'
   import InstallConfirmModal from '../lib/components/InstallConfirmModal.svelte'
+  import PendingImportModal from '../lib/components/PendingImportModal.svelte'
   import LocalSkillsSection from '../lib/components/LocalSkillsSection.svelte'
   import PageHeader from '../lib/components/PageHeader.svelte'
   import RemoteSkillsSection from '../lib/components/RemoteSkillsSection.svelte'
@@ -43,6 +44,9 @@
   let linkBusy = $state(false)
   let editingSkillKey = $state('')
   let editSelection = $state([])
+
+  // Pending import modal state
+  let pendingImportModalOpen = $state(false)
 
   // Install confirm modal state
   let installConfirmModalOpen = $state(false)
@@ -90,6 +94,8 @@
       )
       .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
   )
+
+  const unmanagedCount = $derived(unmanagedSkills.length)
 
   onMount(async () => {
     await loadSettings()
@@ -388,9 +394,11 @@
     {currentView}
     {activeTab}
     skillName={selectedSkill?.name}
+    {unmanagedCount}
     onChangeView={(view) => (currentView = view)}
     onChangeTab={(tab) => (activeTab = tab)}
     onAddSkill={() => (addSkillModalOpen = true)}
+    onOpenPendingImport={() => (pendingImportModalOpen = true)}
     onBack={handleBackToList}
   />
 
@@ -434,6 +442,7 @@
         onBulkUnify={handleBulkUnify}
         onUnifySkill={handleUnify}
         onViewSkill={handleViewSkill}
+        onOpenPendingImport={() => (pendingImportModalOpen = true)}
       />
     {:else}
       <RemoteSkillsSection
@@ -469,5 +478,14 @@
       pendingInstallSkill = null
       pendingInstallAgents = []
     }}
+  />
+
+  <PendingImportModal
+    bind:open={pendingImportModalOpen}
+    {unmanagedSkills}
+    {agentMap}
+    onImport={handleUnify}
+    onImportAll={handleBulkUnify}
+    onDelete={handleDeleteSkill}
   />
 </div>

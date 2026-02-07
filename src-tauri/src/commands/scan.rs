@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
 
-const COPY_MARKER_FILE: &str = ".skill-kit-link";
+const COPY_MARKER_FILE: &str = ".you-skills-link";
 
 #[tauri::command]
 pub fn get_scan_roots() -> Result<Vec<String>, String> {
