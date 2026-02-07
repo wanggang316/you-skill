@@ -9,6 +9,7 @@ pub struct AppConfig {
   pub settings: AppSettings,
   pub backup_folder: Option<String>,
   pub last_backup_time: Option<String>,
+  pub api_key: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -26,6 +27,7 @@ impl Default for AppConfig {
       settings: AppSettings::default(),
       backup_folder: None,
       last_backup_time: None,
+      api_key: None,
     }
   }
 }

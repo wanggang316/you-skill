@@ -3,6 +3,8 @@ use reqwest::Client;
 use serde::Deserialize;
 use std::time::Duration;
 
+const API_KEY: &str = "4586a151c7950fa482a099dfa916ff9d616d02d9f10e710c31819607aabb9fff";
+
 #[derive(Debug, Deserialize)]
 struct SkillsResponse {
   skills: Vec<ApiSkill>,
@@ -72,7 +74,11 @@ pub async fn fetch_remote_skills(
     );
   }
 
-  let response: SkillsResponse = match client.get(&url).send().await {
+  let response: SkillsResponse = match client
+    .get(&url)
+    .header("X-API-Key", API_KEY)
+    .send()
+    .await {
     Ok(resp) => {
       if resp.status().is_success() {
         resp.json::<SkillsResponse>().await.map_err(|e| {

@@ -72,6 +72,11 @@ const translations: Record<string, Dictionary> = {
     'settings.backup.openFolder': 'Open folder',
     'settings.backup.success': 'Backup completed successfully',
     'settings.backup.noFolder': 'Please select a backup folder first',
+    'settings.apiKey.title': 'API Key',
+    'settings.apiKey.placeholder': 'Enter X-API-Key (optional)',
+    'settings.apiKey.save': 'Save',
+    'settings.apiKey.saved': 'API key saved',
+    'settings.apiKey.error': 'Failed to save API key',
     'error.noSkillAgent': 'Unable to determine target app for this skill',
     'confirm.duplicateSkill':
       'A skill with the same name already exists in .agents.\nOK: keep the .agents version\nCancel: keep the current version',
@@ -176,6 +181,11 @@ const translations: Record<string, Dictionary> = {
     'settings.backup.openFolder': '打开文件夹',
     'settings.backup.success': '备份成功',
     'settings.backup.noFolder': '请先选择备份文件夹',
+    'settings.apiKey.title': 'API Key',
+    'settings.apiKey.placeholder': '输入 X-API-Key（可选）',
+    'settings.apiKey.save': '保存',
+    'settings.apiKey.saved': 'API key 已保存',
+    'settings.apiKey.error': '保存失败',
     'error.noSkillAgent': '无法识别当前 skill 的应用信息',
     'confirm.duplicateSkill':
       '检测到 .agents 下已存在同名 skill。\n确定：保留 .agents 版本\n取消：保留当前版本',
