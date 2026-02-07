@@ -32,7 +32,7 @@
   let remoteLoading = $state(false)
   let remoteError = $state('')
   let remoteTotal = $state(0)
-  let remoteSortBy = $state('star_count')
+  let remoteSortBy = $state('heat_score')
   let remoteSortOrder = $state('desc')
 
   let agents = $state([])
@@ -215,6 +215,14 @@
         installLog = `${result.message}\n${result.stderr || result.stdout}`
       } else {
         installLog = ''
+        // Record install count on backend
+        if (pendingInstallSkill?.id) {
+          try {
+            await api.recordInstall(pendingInstallSkill.id)
+          } catch (e) {
+            console.error('Failed to record install:', e)
+          }
+        }
         await refreshLocal()
       }
     } catch (error) {

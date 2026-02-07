@@ -14,7 +14,7 @@
     isDownloading,
     remoteHasMore,
     remoteTotal = 0,
-    remoteSortBy = $bindable('star_count'),
+    remoteSortBy = $bindable('heat_score'),
     remoteSortOrder = $bindable('desc'),
     onSearch,
     onLoadMore,
@@ -26,12 +26,8 @@
   let searchTimeout = $state(null)
 
   const sortOptions = [
-    { value: 'star_count_desc', label: 'Most Stars' },
-    { value: 'star_count_asc', label: 'Least Stars' },
-    { value: 'created_at_desc', label: 'Newest' },
-    { value: 'created_at_asc', label: 'Oldest' },
-    { value: 'name_asc', label: 'Name A-Z' },
-    { value: 'name_desc', label: 'Name Z-A' }
+    { value: 'heat_score_desc', label: 'Most Popular' },
+    { value: 'star_count_desc', label: 'Most Stars' }
   ]
 
   function handleSortChange(event) {
@@ -134,7 +130,7 @@
                 {/if}
               </div>
               <p class="mt-1 text-xs text-[var(--base-content-faint)]">
-                {$t('remote.stars', { count: skill.installs })}
+                {$t('remote.stars', { count: skill.star_count })}
               </p>
             </div>
             <div class="flex items-center gap-2" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">

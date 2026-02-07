@@ -22,6 +22,10 @@ struct ApiSkill {
   description: Option<String>,
   #[serde(default)]
   star_count: i64,
+  #[serde(default)]
+  heat_score: i64,
+  #[serde(default)]
+  install_count: i64,
   path: Option<String>,
 }
 
@@ -57,8 +61,8 @@ pub async fn fetch_remote_skills(
     }
   }
 
-  // Sorting params - default to star_count desc
-  let sort_by = sort_by.unwrap_or_else(|| "star_count".to_string());
+  // Sorting params - default to heat_score desc
+  let sort_by = sort_by.unwrap_or_else(|| "heat_score".to_string());
   let sort_order = sort_order.unwrap_or_else(|| "desc".to_string());
   params.push(("sort_by".to_string(), sort_by));
   params.push(("sort_order".to_string(), sort_order));
@@ -108,7 +112,9 @@ pub async fn fetch_remote_skills(
       id: skill.id.to_string(),
       skill_id: skill.id.to_string(),
       name: skill.name,
-      installs: skill.star_count as u64,
+      star_count: skill.star_count as u64,
+      heat_score: skill.heat_score as u64,
+      install_count: skill.install_count as u64,
       source: skill.source.clone(),
       url: Some(skill.url.clone()).filter(|s| !s.is_empty()),
       path: skill.path.clone().filter(|s| !s.is_empty()),
@@ -124,4 +130,31 @@ pub async fn fetch_remote_skills(
     total,
     has_more,
   })
+}
+
+#[tauri::command]
+pub async fn record_skill_install(skill_id: String) -> Result<(), String> {
+  let client = Client::builder()
+    .timeout(Duration::from_secs(10))
+    .build()
+    .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+  let url = format!("http://127.0.0.1:8000/api/skills/{}/install", skill_id);
+
+  let response = client
+    .post(&url)
+    .header("X-API-Key", API_KEY)
+    .send()
+    .await;
+
+  match response {
+    Ok(resp) => {
+      if resp.status().is_success() {
+        Ok(())
+      } else {
+        Err(format!("API returned error: {}", resp.status()))
+      }
+    }
+    Err(e) => Err(format!("Failed to record install: {}", e)),
+  }
 }

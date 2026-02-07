@@ -16,7 +16,9 @@ export interface RemoteSkill {
   id: string
   skill_id: string
   name: string
-  installs: number
+  star_count: number
+  heat_score: number
+  install_count: number
   source: string
   url?: string | null
   path?: string | null
@@ -131,5 +133,7 @@ export const api = {
   openBackupFolder: (path: string) => invoke<void>('open_backup_folder', { path }),
   backupSkills: (backupFolder: string) => invoke<BackupResult>('backup_skills', { backupFolder }),
   getLastBackupTime: () => invoke<string | null>('get_last_backup_time'),
-  readSkillReadme: (skillPath: string) => invoke<string>('read_skill_readme', { skillPath })
+  readSkillReadme: (skillPath: string) => invoke<string>('read_skill_readme', { skillPath }),
+  recordInstall: (skillId: string) =>
+    invoke<void>('record_skill_install', { skill_id: skillId }),
 }
