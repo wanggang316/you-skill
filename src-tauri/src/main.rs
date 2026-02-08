@@ -4,6 +4,7 @@ mod commands;
 mod config;
 mod models;
 mod paths;
+mod tray;
 
 use commands::{
   agents::list_agents,
@@ -16,6 +17,7 @@ use commands::{
   settings::{get_settings, update_settings},
   skill::read_skill_readme,
 };
+use tray::{setup_tray, update_tray_skills, TrayState};
 
 #[tauri::command]
 fn ping() -> String {
@@ -29,6 +31,16 @@ fn main() {
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
     .plugin(tauri_plugin_process::init())
+    .manage(TrayState {
+      skills: std::sync::Mutex::new(Vec::new()),
+    })
+    .setup(|app| {
+      // Setup tray icon and menu
+      if let Err(e) = setup_tray(app.handle()) {
+        eprintln!("Failed to setup tray: {}", e);
+      }
+      Ok(())
+    })
     .invoke_handler(tauri::generate_handler![
       ping,
       scan_local_skills,
@@ -56,7 +68,8 @@ fn main() {
       open_backup_folder,
       backup_skills,
       get_last_backup_time,
-      read_skill_readme
+      read_skill_readme,
+      update_tray_skills
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
