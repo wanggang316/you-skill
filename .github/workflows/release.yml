@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: '${{ github.ref_name }}',
-              name: 'You Skills ${{ github.ref_name }}',
+              name: 'YouSkill ${{ github.ref_name }}',
               body: 'Release ${{ github.ref_name }}',
               draft: true,
               prerelease: false
@@ -36,18 +36,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
-            name: 'macOS Apple Silicon'
-          - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
-            name: 'macOS Intel'
-          - platform: 'ubuntu-22.04'
-            args: ''
-            name: 'Linux'
-          - platform: 'windows-latest'
-            args: ''
-            name: 'Windows'
+          - platform: "macos-latest"
+            args: "--target aarch64-apple-darwin"
+            name: "macOS Apple Silicon"
+          - platform: "macos-latest"
+            args: "--target x86_64-apple-darwin"
+            name: "macOS Intel"
+          - platform: "ubuntu-22.04"
+            args: ""
+            name: "Linux"
+          - platform: "windows-latest"
+            args: ""
+            name: "Windows"
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -57,7 +57,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install Rust stable
         uses: dtolnay/rust-action@stable

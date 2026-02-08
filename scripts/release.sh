@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# You Skills 发布脚本
+# YouSkill 发布脚本
 # 用法: ./scripts/release.sh <版本号> [发布说明]
 # 示例: ./scripts/release.sh 0.2.0 "添加新功能X"
 
@@ -30,7 +30,7 @@ if [[ ! "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     exit 1
 fi
 
-echo -e "${GREEN}🚀 开始发布 You Skills v${NEW_VERSION}${NC}"
+echo -e "${GREEN}🚀 开始发布 YouSkill v${NEW_VERSION}${NC}"
 echo ""
 
 # 获取当前版本
