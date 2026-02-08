@@ -10,17 +10,6 @@ pub struct AppConfig {
   pub backup_folder: Option<String>,
   pub last_backup_time: Option<String>,
   pub api_key: Option<String>,
-  pub last_update_check: Option<u64>,
-  pub pending_update: Option<UpdateInfo>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct UpdateInfo {
-  pub has_update: bool,
-  pub current_version: String,
-  pub latest_version: String,
-  pub download_url: String,
-  pub release_notes: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -39,8 +28,6 @@ impl Default for AppConfig {
       backup_folder: None,
       last_backup_time: None,
       api_key: None,
-      last_update_check: None,
-      pending_update: None,
     }
   }
 }

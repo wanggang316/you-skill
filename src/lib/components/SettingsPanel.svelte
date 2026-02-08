@@ -4,14 +4,18 @@
   import { api } from "../api/skills";
   import { open } from "@tauri-apps/plugin-dialog";
   import { FolderOpen, Loader2, ChevronRight, Download } from "@lucide/svelte";
+  import { check } from "@tauri-apps/plugin-updater";
+  import { relaunch } from "@tauri-apps/plugin-process";
+  import { getVersion } from "@tauri-apps/api/app";
 
   let checkingUpdate = $state(false);
   let updateMessage = $state("");
   let currentVersion = $state("");
   let hasUpdate = $state(false);
   let latestVersion = $state("");
-  let downloadUrl = $state("");
+  let updateInstance = $state(null);
   let isInstalling = $state(false);
+  let downloadProgress = $state(0);
 
   // Backup state
   let backupFolder = $state("");
@@ -24,27 +28,13 @@
     loadBackupFolder();
     loadLastBackupTime();
     loadVersion();
-    checkPendingUpdate();
   });
 
   const loadVersion = async () => {
     try {
-      currentVersion = await api.getAppVersion();
+      currentVersion = await getVersion();
     } catch (error) {
       console.error("Failed to load app version:", error);
-    }
-  };
-
-  const checkPendingUpdate = async () => {
-    try {
-      const pendingUpdate = await api.getPendingUpdate();
-      if (pendingUpdate && pendingUpdate.has_update) {
-        hasUpdate = true;
-        latestVersion = pendingUpdate.latest_version;
-        downloadUrl = pendingUpdate.download_url;
-      }
-    } catch (error) {
-      console.error("Failed to check pending update:", error);
     }
   };
 
@@ -74,12 +64,13 @@
     checkingUpdate = true;
     updateMessage = "";
     hasUpdate = false;
+    downloadProgress = 0;
     try {
-      const result = await api.forceCheckForUpdate();
-      if (result) {
+      const update = await check();
+      if (update) {
         hasUpdate = true;
-        latestVersion = result.latest_version;
-        downloadUrl = result.download_url;
+        latestVersion = update.version;
+        updateInstance = update;
       } else {
         updateMessage = $t("settings.noUpdateAvailable");
       }
@@ -92,16 +83,27 @@
   };
 
   const handleInstallUpdate = async () => {
-    if (!downloadUrl) return;
+    if (!updateInstance) return;
     isInstalling = true;
+    downloadProgress = 0;
     try {
-      await api.downloadAndInstallUpdate(downloadUrl);
-      // If successful, clear pending update
-      await api.clearPendingUpdate();
-      hasUpdate = false;
+      await updateInstance.downloadAndInstall((event) => {
+        switch (event.event) {
+          case "Started":
+            downloadProgress = 0;
+            break;
+          case "Progress":
+            downloadProgress = event.data.chunkLength;
+            break;
+          case "Finished":
+            downloadProgress = 100;
+            break;
+        }
+      });
+      // 安装完成后重启应用
+      await relaunch();
     } catch (error) {
       updateMessage = error instanceof Error ? error.message : $t("settings.updateInstallFailed");
-    } finally {
       isInstalling = false;
     }
   };

@@ -6,4 +6,3 @@ pub mod remote;
 pub mod scan;
 pub mod settings;
 pub mod skill;
-pub mod update;

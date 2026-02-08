@@ -13,6 +13,8 @@
   import { api } from "../lib/api/skills";
   import { t } from "../lib/i18n";
   import { loadSettings } from "../lib/stores/settings";
+  import { check } from "@tauri-apps/plugin-updater";
+  import { getVersion } from "@tauri-apps/api/app";
 
   let currentView = $state("list");
   let activeTab = $state("local");
@@ -50,6 +52,7 @@
 
   // Update state
   let hasUpdate = $state(false);
+  let latestVersion = $state("");
 
   // Install confirm modal state
   let installConfirmModalOpen = $state(false);
@@ -110,9 +113,10 @@
 
   const checkForUpdate = async () => {
     try {
-      const result = await api.checkForUpdate();
-      if (result.update_info) {
+      const update = await check();
+      if (update) {
         hasUpdate = true;
+        latestVersion = update.version;
       }
     } catch (error) {
       console.error("Failed to check for update:", error);
