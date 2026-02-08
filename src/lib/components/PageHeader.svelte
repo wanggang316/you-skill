@@ -29,9 +29,19 @@
 >
   <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
     {#if currentView === "list"}
-      <div class="flex items-center gap-2">
-        <span class="text-2xl">⚡️</span>
-        <p class="text-lg font-semibold italic">YouSkill</p>
+      <div class="flex items-center gap-2 text-[var(--base-content)]">
+        <svg
+          width="28"
+          viewBox="0 0 433 455"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M0 263.506L265.588 0L205.547 180.705H433L153.889 455L217.987 263.506H0Z"
+            fill="currentColor"
+          />
+        </svg>
+        <p class="text-lg italic">YouSkill</p>
       </div>
     {/if}
     <div
