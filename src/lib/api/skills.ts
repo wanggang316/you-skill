@@ -136,4 +136,6 @@ export const api = {
   readSkillReadme: (skillPath: string) => invoke<string>('read_skill_readme', { skillPath }),
   recordInstall: (skillId: string) =>
     invoke<void>('record_skill_install', { skill_id: skillId }),
+  updateTraySkills: (skills: LocalSkill[]) =>
+    invoke<void>('update_tray_skills', { skills }),
 }

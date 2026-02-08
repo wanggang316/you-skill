@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { confirm } from '@tauri-apps/plugin-dialog'
   import { open } from '@tauri-apps/plugin-shell'
+  import { listen } from '@tauri-apps/api/event'
   import AddSkillModal from '../lib/components/AddSkillModal.svelte'
   import InstallConfirmModal from '../lib/components/InstallConfirmModal.svelte'
   import PendingImportModal from '../lib/components/PendingImportModal.svelte'
@@ -97,11 +98,27 @@
 
   const unmanagedCount = $derived(unmanagedSkills.length)
 
-  onMount(async () => {
-    await loadSettings()
-    await loadAgents()
-    await refreshLocal()
-    await loadRemote(true)
+  onMount(() => {
+    let unlisten: (() => void) | undefined
+
+    const init = async () => {
+      await loadSettings()
+      await loadAgents()
+      await refreshLocal()
+      await loadRemote(true)
+
+      // Listen for tray menu events
+      unlisten = await listen('open-install-modal', () => {
+        activeTab = 'remote'
+        addSkillModalOpen = true
+      })
+    }
+
+    init()
+
+    return () => {
+      unlisten?.()
+    }
   })
 
   const loadAgents = async () => {
@@ -120,6 +137,12 @@
     localError = ''
     try {
       localSkills = await api.scanLocalSkills()
+      // Sync skills to tray menu
+      try {
+        await api.updateTraySkills(localSkills)
+      } catch (e) {
+        console.error('Failed to update tray skills:', e)
+      }
     } catch (error) {
       localError = String(error)
     } finally {
