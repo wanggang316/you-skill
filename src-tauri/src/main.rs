@@ -45,10 +45,11 @@ fn main() {
       // Handle window close event - hide to tray instead of quitting
       let main_window = app.get_webview_window("main").unwrap();
       let window_clone = main_window.clone();
+
       main_window.on_window_event(move |event| {
         if let tauri::WindowEvent::CloseRequested { api, .. } = event {
           // Prevent the window from closing
-          api.prevent_default();
+          api.prevent_close();
           // Just hide the window instead
           let _ = window_clone.hide();
         }

@@ -11,7 +11,19 @@
   import RemoteSkillsSection from '../lib/components/RemoteSkillsSection.svelte'
   import SettingsPanel from '../lib/components/SettingsPanel.svelte'
   import SkillDetail from '../lib/components/SkillDetail.svelte'
-  import { api } from '../lib/api/skills'
+  import {
+  scanLocalSkills,
+  fetchRemoteSkills,
+  listAgents,
+  detectGithubSkills,
+  installGithubSkill,
+  recordInstall,
+  checkCanonicalSkill,
+  unifySkill,
+  deleteSkill,
+  setAgentLink,
+  updateTraySkills,
+} from '../lib/api/skills'
   import { t } from '../lib/i18n'
   import { loadSettings } from '../lib/stores/settings'
   import { check } from '@tauri-apps/plugin-updater'
@@ -145,7 +157,7 @@
 
   const loadAgents = async () => {
     try {
-      agents = await api.listAgents()
+      agents = await listAgents()
       if (agents.length > 0) {
         installAgent = agents[0].id
       }
@@ -158,10 +170,10 @@
     localLoading = true
     localError = ''
     try {
-      localSkills = await api.scanLocalSkills()
+      localSkills = await scanLocalSkills()
       // Sync skills to tray menu
       try {
-        await api.updateTraySkills(localSkills)
+        await updateTraySkills(localSkills)
       } catch (e) {
         console.error('Failed to update tray skills:', e)
       }
@@ -180,7 +192,7 @@
         remoteSkip = 0
         remoteSkills = []
       }
-      const response = await api.fetchRemoteSkills({
+      const response = await fetchRemoteSkills({
         skip: remoteSkip,
         limit: remoteLimit,
         search: remoteQuery,
@@ -224,7 +236,7 @@
     installingSkill = skill.id
     try {
       // Detect skills from the GitHub URL
-      const detectedSkills = await api.detectGithubSkills(skill.url)
+      const detectedSkills = await detectGithubSkills(skill.url)
       // Find the matching skill by name or path
       const matchingSkill = detectedSkills.find(
         s => s.name === skill.name || skill.path?.includes(s.name) || s.path === skill.path
@@ -257,7 +269,7 @@
     try {
       // Use installGithubSkill API for remote skills
       const skillPath = pendingInstallSkill.detectedPath || pendingInstallSkill.path || pendingInstallSkill.name
-      const result = await api.installGithubSkill({
+      const result = await installGithubSkill({
         url: pendingInstallSkill.url,
         skill_path: skillPath,
         agents: selectedAgents
@@ -269,7 +281,7 @@
         // Record install count on backend
         if (pendingInstallSkill?.id) {
           try {
-            await api.recordInstall(pendingInstallSkill.id)
+            await recordInstall(pendingInstallSkill.id)
           } catch (e) {
             console.error('Failed to record install:', e)
           }
@@ -300,7 +312,7 @@
     }
     const agent = skill.agents[0]
     try {
-      const check = await api.checkCanonicalSkill(skill.name, skill.scope)
+      const check = await checkCanonicalSkill(skill.name, skill.scope)
       let prefer = 'current'
       if (check.exists) {
         const keepCanonical = await confirm(
@@ -309,7 +321,7 @@
         )
         prefer = keepCanonical ? 'canonical' : 'current'
       }
-      const result = await api.unifySkill({
+      const result = await unifySkill({
         name: skill.name,
         agent,
         scope: skill.scope,
@@ -331,7 +343,7 @@
     for (const skill of unmanagedSkills) {
       if (!skill || !skill.agents || skill.agents.length === 0) continue
       try {
-        const check = await api.checkCanonicalSkill(skill.name, skill.scope)
+        const check = await checkCanonicalSkill(skill.name, skill.scope)
         let prefer = 'current'
         if (check.exists) {
           const keepCanonical = await confirm(
@@ -340,7 +352,7 @@
           )
           prefer = keepCanonical ? 'canonical' : 'current'
         }
-        const result = await api.unifySkill({
+        const result = await unifySkill({
           name: skill.name,
           agent: skill.agents[0],
           scope: skill.scope,
@@ -364,7 +376,7 @@
         { title: $t('confirm.deleteTitle') }
       )
       if (!confirmed) return
-      await api.deleteSkill(skill.canonical_path)
+      await deleteSkill(skill.canonical_path)
       await refreshLocal()
     } catch (error) {
       localError = String(error)
@@ -410,7 +422,7 @@
         const shouldLink = targetSet.has(agent.id)
         const isLinked = currentSet.has(agent.id)
         if (shouldLink !== isLinked) {
-          await api.setAgentLink(skill.name, agent.id, skill.scope, shouldLink)
+          await setAgentLink(skill.name, agent.id, skill.scope, shouldLink)
         }
       }
       await refreshLocal()

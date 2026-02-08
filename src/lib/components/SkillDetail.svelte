@@ -3,7 +3,7 @@
   import { Loader2, FileText } from '@lucide/svelte'
   import { parseMarkdown, renderMarkdownBody } from '../utils/markdown'
   import { t } from '../i18n'
-  import { api } from '../api/skills'
+  import { readSkillReadme } from '../api/skills'
 
   let {
     skill,
@@ -43,7 +43,7 @@
 
     console.log('[SkillDetail] Reading skill readme from:', skill.canonical_path)
     // Use backend API to read file (bypasses frontend FS restrictions)
-    return await api.readSkillReadme(skill.canonical_path)
+    return await readSkillReadme(skill.canonical_path)
   }
 
   async function loadRemoteSkillContent() {

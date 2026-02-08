@@ -1,5 +1,5 @@
 import { derived, get, writable } from 'svelte/store'
-import { api } from '../api/skills'
+import { getSettings as fetchSettings, updateSettings as persistSettings } from '../api'
 
 export type ThemeMode = 'system' | 'light' | 'dark'
 export type LanguageMode = 'en' | 'zh'
@@ -77,7 +77,7 @@ const toApi = (value: AppSettings) => ({
 
 export const loadSettings = async () => {
   try {
-    const remote = await api.getSettings()
+    const remote = await fetchSettings()
     const merged = { ...defaultSettings, ...fromApi(remote) }
     settings.set(merged)
     applyTheme(merged.theme)
@@ -97,7 +97,7 @@ export const updateSettings = async (patch: Partial<AppSettings>) => {
   applyTheme(next.theme)
   syncSystemTheme(next.theme)
   try {
-    await api.updateSettings(toApi(next))
+    await persistSettings(toApi(next))
   } catch (error) {
     console.error(error)
   }

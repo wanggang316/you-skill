@@ -1,7 +1,7 @@
 <script>
   import { X, FileArchive, Github, Check, AlertCircle, Loader2 } from '@lucide/svelte'
   import { t } from '../i18n'
-  import { api } from '../api/skills'
+  import { detectZipSkills, detectGithubSkills, installZipSkill, installGithubSkill } from '../api/skills'
 
   let {
     open = $bindable(false),
@@ -91,7 +91,7 @@
     selectedZipSkill = null
 
     try {
-      const skills = await api.detectZipSkills(selectedZipPath)
+      const skills = await detectZipSkills(selectedZipPath)
       detectedZipSkills = skills
       if (skills.length === 0) {
         zipError = $t('addSkill.noSkillsFound')
@@ -114,7 +114,7 @@
     selectedSkill = null
 
     try {
-      const skills = await api.detectGithubSkills(githubUrl.trim())
+      const skills = await detectGithubSkills(githubUrl.trim())
       detectedSkills = skills
       if (skills.length === 0) {
         githubError = $t('addSkill.noSkillsFound')
@@ -165,7 +165,7 @@
           isInstalling = false
           return
         }
-        await api.installZipSkill({
+        await installZipSkill({
           zip_path: selectedZipPath,
           skill_path: selectedZipSkill.path,
           agents: selectedAgents
@@ -175,7 +175,7 @@
           installError = $t('addSkill.noSkillSelected')
           return
         }
-        await api.installGithubSkill({
+        await installGithubSkill({
           url: githubUrl,
           skill_path: selectedSkill.path,
           agents: selectedAgents

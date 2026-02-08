@@ -1,4 +1,12 @@
-import { invoke } from '@tauri-apps/api/core'
+/**
+ * Skills API
+ *
+ * 处理技能管理相关的 IPC 调用
+ */
+
+import { apiCall } from './index'
+
+// ============ Types ============
 
 export interface LocalSkill {
   name: string
@@ -70,12 +78,6 @@ export interface UnifyResult {
   message: string
 }
 
-export interface AppSettings {
-  language: 'en' | 'zh'
-  theme: 'system' | 'light' | 'dark'
-  sync_mode: 'symlink' | 'copy'
-}
-
 export interface DetectedSkill {
   name: string
   path: string
@@ -93,49 +95,144 @@ export interface InstallGithubRequest {
   agents: string[]
 }
 
-export interface BackupResult {
-  success: boolean
-  message: string
-  backup_path: string | null
-  backup_time: string | null
+// ============ Local Skills ============
+
+/**
+ * 扫描本地技能
+ */
+export async function scanLocalSkills(): Promise<LocalSkill[]> {
+  return apiCall<LocalSkill[]>('scan_local_skills')
 }
 
-export const api = {
-  scanLocalSkills: () => invoke<LocalSkill[]>('scan_local_skills'),
-  getScanRoots: () => invoke<string[]>('get_scan_roots'),
-  addScanRoot: (path: string) => invoke<string[]>('add_scan_root', { path }),
-  removeScanRoot: (path: string) => invoke<string[]>('remove_scan_root', { path }),
-  deleteSkill: (path: string) => invoke('delete_skill', { path }),
-  fetchRemoteSkills: (params?: { skip?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string }) =>
-    invoke<RemoteSkillsResponse>('fetch_remote_skills', params || {}),
-  installSkill: (request: InstallRequest) =>
-    invoke<InstallResult>('install_skill', { request }),
-  listAgents: () => invoke<AgentInfo[]>('list_agents'),
-  checkCanonicalSkill: (name: string, scope: string) =>
-    invoke<CanonicalCheckResult>('check_canonical_skill', { name, scope }),
-  unifySkill: (request: UnifyRequest) =>
-    invoke<UnifyResult>('unify_skill', { request }),
-  setAgentLink: (name: string, agent: string, scope: string, linked: boolean) =>
-    invoke('set_agent_link', { name, agent, scope, linked }),
-  getSettings: () => invoke<AppSettings>('get_settings'),
-  updateSettings: (settings: AppSettings) =>
-    invoke<AppSettings>('update_settings', { settings }),
-  detectGithubSkills: (url: string) =>
-    invoke<DetectedSkill[]>('detect_github_skills', { url }),
-  detectZipSkills: (zipPath: string) =>
-    invoke<DetectedSkill[]>('detect_zip_skills', { zipPath }),
-  installZipSkill: (request: InstallZipRequest) =>
-    invoke<InstallResult>('install_zip_skill', { request }),
-  installGithubSkill: (request: InstallGithubRequest) =>
-    invoke<InstallResult>('install_github_skill', { request }),
-  getBackupFolder: () => invoke<string | null>('get_backup_folder'),
-  setBackupFolder: (path: string) => invoke<string | null>('set_backup_folder', { path }),
-  openBackupFolder: (path: string) => invoke<void>('open_backup_folder', { path }),
-  backupSkills: (backupFolder: string) => invoke<BackupResult>('backup_skills', { backupFolder }),
-  getLastBackupTime: () => invoke<string | null>('get_last_backup_time'),
-  readSkillReadme: (skillPath: string) => invoke<string>('read_skill_readme', { skillPath }),
-  recordInstall: (skillId: string) =>
-    invoke<void>('record_skill_install', { skill_id: skillId }),
-  updateTraySkills: (skills: LocalSkill[]) =>
-    invoke<void>('update_tray_skills', { skills }),
+/**
+ * 获取扫描根目录列表
+ */
+export async function getScanRoots(): Promise<string[]> {
+  return apiCall<string[]>('get_scan_roots')
+}
+
+/**
+ * 添加扫描根目录
+ */
+export async function addScanRoot(path: string): Promise<string[]> {
+  return apiCall<string[]>('add_scan_root', { path })
+}
+
+/**
+ * 移除扫描根目录
+ */
+export async function removeScanRoot(path: string): Promise<string[]> {
+  return apiCall<string[]>('remove_scan_root', { path })
+}
+
+/**
+ * 删除技能
+ */
+export async function deleteSkill(path: string): Promise<void> {
+  return apiCall<void>('delete_skill', { path })
+}
+
+// ============ Remote Skills ============
+
+/**
+ * 获取远程技能列表
+ */
+export async function fetchRemoteSkills(
+  params?: { skip?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string },
+): Promise<RemoteSkillsResponse> {
+  return apiCall<RemoteSkillsResponse>('fetch_remote_skills', params || {})
+}
+
+/**
+ * 安装技能
+ */
+export async function installSkill(request: InstallRequest): Promise<InstallResult> {
+  return apiCall<InstallResult>('install_skill', { request })
+}
+
+// ============ Agents ============
+
+/**
+ * 列出所有代理
+ */
+export async function listAgents(): Promise<AgentInfo[]> {
+  return apiCall<AgentInfo[]>('list_agents')
+}
+
+// ============ Skill Management ============
+
+/**
+ * 检查规范技能是否存在
+ */
+export async function checkCanonicalSkill(name: string, scope: string): Promise<CanonicalCheckResult> {
+  return apiCall<CanonicalCheckResult>('check_canonical_skill', { name, scope })
+}
+
+/**
+ * 统一技能
+ */
+export async function unifySkill(request: UnifyRequest): Promise<UnifyResult> {
+  return apiCall<UnifyResult>('unify_skill', { request })
+}
+
+/**
+ * 设置代理链接
+ */
+export async function setAgentLink(name: string, agent: string, scope: string, linked: boolean): Promise<void> {
+  return apiCall<void>('set_agent_link', { name, agent, scope, linked })
+}
+
+// ============ Detection ============
+
+/**
+ * 从 GitHub URL 检测技能
+ */
+export async function detectGithubSkills(url: string): Promise<DetectedSkill[]> {
+  return apiCall<DetectedSkill[]>('detect_github_skills', { url })
+}
+
+/**
+ * 从 ZIP 文件检测技能
+ */
+export async function detectZipSkills(zipPath: string): Promise<DetectedSkill[]> {
+  return apiCall<DetectedSkill[]>('detect_zip_skills', { zipPath })
+}
+
+// ============ Installation ============
+
+/**
+ * 从 ZIP 文件安装技能
+ */
+export async function installZipSkill(request: InstallZipRequest): Promise<InstallResult> {
+  return apiCall<InstallResult>('install_zip_skill', { request })
+}
+
+/**
+ * 从 GitHub 安装技能
+ */
+export async function installGithubSkill(request: InstallGithubRequest): Promise<InstallResult> {
+  return apiCall<InstallResult>('install_github_skill', { request })
+}
+
+// ============ Other ============
+
+/**
+ * 读取技能 README 文件
+ */
+export async function readSkillReadme(skillPath: string): Promise<string> {
+  return apiCall<string>('read_skill_readme', { skillPath })
+}
+
+/**
+ * 记录技能安装
+ */
+export async function recordInstall(skillId: string): Promise<void> {
+  return apiCall<void>('record_skill_install', { skill_id: skillId })
+}
+
+/**
+ * 更新托盘技能列表
+ */
+export async function updateTraySkills(skills: LocalSkill[]): Promise<void> {
+  return apiCall<void>('update_tray_skills', { skills })
 }

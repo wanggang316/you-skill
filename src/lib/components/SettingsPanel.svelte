@@ -1,7 +1,13 @@
 <script>
   import { t } from "../i18n";
   import { settings, updateSettings } from "../stores/settings";
-  import { api } from "../api/skills";
+  import {
+  getBackupFolder,
+  setBackupFolder,
+  openBackupFolder,
+  backupSkills,
+  getLastBackupTime,
+} from "../api";
   import { open } from "@tauri-apps/plugin-dialog";
   import { FolderOpen, Loader2, ChevronRight, Download } from "@lucide/svelte";
   import { check } from "@tauri-apps/plugin-updater";
@@ -40,7 +46,7 @@
 
   const loadBackupFolder = async () => {
     try {
-      const folder = await api.getBackupFolder();
+      const folder = await getBackupFolder();
       if (folder) {
         backupFolder = folder;
       }
@@ -51,7 +57,7 @@
 
   const loadLastBackupTime = async () => {
     try {
-      const time = await api.getLastBackupTime();
+      const time = await getLastBackupTime();
       if (time) {
         lastBackupTime = time;
       }
@@ -118,7 +124,7 @@
       if (selected) {
         const folder = Array.isArray(selected) ? selected[0] : selected;
         backupFolder = folder;
-        await api.setBackupFolder(folder);
+        await setBackupFolder(folder);
       }
     } catch (error) {
       console.error("Failed to select backup folder:", error);
@@ -134,7 +140,7 @@
     isBackingUp = true;
     backupMessage = "";
     try {
-      const result = await api.backupSkills(backupFolder);
+      const result = await backupSkills(backupFolder);
       if (result.success) {
         lastBackupTime = result.backup_time || "";
       } else {
@@ -150,7 +156,7 @@
   const handleOpenBackupFolder = async () => {
     if (!backupFolder) return;
     try {
-      await api.openBackupFolder(backupFolder);
+      await openBackupFolder(backupFolder);
     } catch (error) {
       console.error("Failed to open backup folder:", error);
     }
