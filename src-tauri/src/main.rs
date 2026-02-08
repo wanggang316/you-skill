@@ -68,8 +68,8 @@ fn main() {
       open_backup_folder,
       backup_skills,
       get_last_backup_time,
-      read_skill_readme,
-      update_tray_skills
+      update_tray_skills,
+      read_skill_readme
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

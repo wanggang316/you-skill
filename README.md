@@ -1,4 +1,4 @@
-# You Skills
+# YouSkill
 
 一个基于 Tauri + Svelte 的桌面端技能管理工具。
 
@@ -46,11 +46,11 @@ npm run tauri:build
 
 ## 下载安装
 
-从 [Releases](https://github.com/YOUR_USERNAME/skill-kit/releases) 页面下载对应平台的安装包：
+从 [Releases](https://github.com/YOUR_USERNAME/you-skill/releases) 页面下载对应平台的安装包：
 
-- **macOS**: `You-Skills_0.1.0_aarch64.dmg` (Apple Silicon) / `You-Skills_0.1.0_x64.dmg` (Intel)
-- **Windows**: `You-Skills_0.1.0_x64-setup.exe`
-- **Linux**: `you-skills_0.1.0_amd64.deb` / `you-skills-0.1.0-1.x86_64.rpm`
+- **macOS**: `YouSkill_0.1.0_aarch64.dmg` (Apple Silicon) / `YouSkill_0.1.0_x64.dmg` (Intel)
+- **Windows**: `YouSkill_0.1.0_x64-setup.exe`
+- **Linux**: `you-skill_0.1.0_amd64.deb` / `you-skill-0.1.0-1.x86_64.rpm`
 
 > **注意**: macOS 版本需要 macOS 10.13 或更高版本。首次打开时可能需要前往 **系统设置 > 隐私与安全性** 允许运行。
 

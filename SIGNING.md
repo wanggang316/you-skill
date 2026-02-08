@@ -81,10 +81,10 @@ GitHub Actions 工作流已配置自动公证，无需手动操作。
 npm run tauri:build
 
 # 验证签名
-codesign -dv --verbose=4 src-tauri/target/release/bundle/macos/You\ Skills.app
+codesign -dv --verbose=4 src-tauri/target/release/bundle/macos/YouSkill.app
 
 # 验证公证（发布后）
-spctl --assess --type install --context context:primary-similarity src-tauri/target/release/bundle/macos/You\ Skills.app
+spctl --assess --type install --context context:primary-similarity src-tauri/target/release/bundle/macos/YouSkill.app
 ```
 
 ---
@@ -98,4 +98,4 @@ spctl --assess --type install --context context:primary-similarity src-tauri/tar
    git push origin v0.1.0
    ```
 3. GitHub Actions 自动构建并创建 Release
-4. 在 [Releases](https://github.com/YOUR_USERNAME/skill-kit/releases) 页面下载各平台安装包
+4. 在 [Releases](https://github.com/YOUR_USERNAME/you-skill/releases) 页面下载各平台安装包
