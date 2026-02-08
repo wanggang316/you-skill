@@ -77,7 +77,7 @@ fn build_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
   // Load tray icon
   let tray_icon = load_tray_icon();
 
-  // Create tray icon
+  // Create tray icon (only created once at startup)
   let _tray = TrayIconBuilder::new()
     .icon(tray_icon)
     .menu(&menu)
@@ -142,13 +142,11 @@ pub async fn update_tray_skills(
   app: AppHandle,
   skills: Vec<LocalSkill>,
 ) -> Result<(), String> {
-  // Update state
+  // Update state only - don't recreate tray to prevent duplicates
   if let Some(state) = app.try_state::<TrayState>() {
     if let Ok(mut guard) = state.skills.lock() {
       *guard = skills;
     }
   }
-
-  // Rebuild tray menu
-  build_tray_menu(&app).map_err(|e| e.to_string())
+  Ok(())
 }
