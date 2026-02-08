@@ -2,7 +2,7 @@ use crate::models::LocalSkill;
 use image::ImageDecoder;
 use std::sync::Mutex;
 use tauri::{
-    menu::{Menu, MenuItem, PredefinedMenuItem, SubmenuBuilder},
+    menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager,
 };
@@ -34,35 +34,8 @@ fn load_tray_icon() -> tauri::image::Image<'static> {
 }
 
 fn build_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    // Get skills from state or empty vec
-    let skills: Vec<LocalSkill> = app
-        .try_state::<TrayState>()
-        .and_then(|state| state.skills.lock().ok().map(|s| s.clone()))
-        .unwrap_or_default();
-
-    // Build skills submenu
-    let mut skills_submenu = SubmenuBuilder::new(app, "Skills List");
-    if skills.is_empty() {
-        let no_skills =
-            MenuItem::with_id(app, "no-skills", "No skills found", false, None::<&str>)?;
-        skills_submenu = skills_submenu.item(&no_skills);
-    } else {
-        for skill in &skills {
-            let skill_name = skill.name.clone();
-            let item = MenuItem::with_id(
-                app,
-                format!("skill:{}", skill.name),
-                skill_name,
-                true,
-                None::<&str>,
-            )?;
-            skills_submenu = skills_submenu.item(&item);
-        }
-    }
-    let skills_submenu = skills_submenu.build()?;
-
     // Create menu items
-    let open_item = MenuItem::with_id(app, "open", "Open YouSkills", true, None::<&str>)?;
+    let open_item = MenuItem::with_id(app, "open", "Open YouSkill", true, None::<&str>)?;
     let install_item = MenuItem::with_id(app, "install", "Install New", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -70,13 +43,7 @@ fn build_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     // Build menu
     let menu = Menu::with_items(
         app,
-        &[
-            &skills_submenu,
-            &install_item,
-            &open_item,
-            &separator,
-            &quit_item,
-        ],
+        &[&open_item, &install_item, &separator, &quit_item],
     )?;
 
     // Load tray icon
@@ -97,10 +64,6 @@ fn build_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 }
                 "install" => {
                     show_main_window_with_install(app);
-                }
-                id if id.starts_with("skill:") => {
-                    // Skill item clicked - just show the main window for now
-                    show_main_window(app);
                 }
                 _ => {}
             }
