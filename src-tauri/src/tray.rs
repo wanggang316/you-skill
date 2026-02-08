@@ -5,6 +5,7 @@ use tauri::{
 };
 use crate::models::LocalSkill;
 use std::sync::Mutex;
+use image::ImageDecoder;
 
 // Store skills in app state for tray menu
 pub struct TrayState {
@@ -15,6 +16,21 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
   // Build tray menu
   build_tray_menu(app)?;
   Ok(())
+}
+
+fn load_tray_icon() -> tauri::image::Image<'static> {
+  // Load PNG from bytes and convert to RGBA
+  let png_data = include_bytes!("../icons/icon.png");
+  let decoder = image::codecs::png::PngDecoder::new(std::io::Cursor::new(png_data)).unwrap();
+  let (width, height) = decoder.dimensions();
+  let mut rgba_vec = vec![0u8; (width * height * 4) as usize];
+
+  {
+    let decoder = image::codecs::png::PngDecoder::new(std::io::Cursor::new(png_data)).unwrap();
+    ImageDecoder::read_image(decoder, &mut rgba_vec.as_mut_slice()).unwrap();
+  }
+
+  tauri::image::Image::new_owned(rgba_vec, width, height)
 }
 
 fn build_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
@@ -58,8 +74,12 @@ fn build_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     &[&skills_submenu, &separator, &install_item, &open_item, &quit_item],
   )?;
 
-  // Create tray icon with icon from file
+  // Load tray icon
+  let tray_icon = load_tray_icon();
+
+  // Create tray icon
   let _tray = TrayIconBuilder::new()
+    .icon(tray_icon)
     .menu(&menu)
     .show_menu_on_left_click(true)
     .on_menu_event(|app, event| {

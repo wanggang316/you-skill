@@ -1,5 +1,5 @@
 [package]
-name = "you-skills"
+name = "you-skill"
 version = "0.1.0"
 description = "Skill manager desktop app"
 authors = ["gumpwang2020@gmail.com"]
@@ -23,6 +23,7 @@ tauri-plugin-process = "2"
 zip = "2"
 dirs = "5"
 chrono = "0.4"
+image = "0.25"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
