@@ -1,5 +1,5 @@
 use tauri::{
-  menu::{Menu, MenuItem, SubmenuBuilder},
+  menu::{Menu, MenuItem, PredefinedMenuItem, SubmenuBuilder},
   tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
   AppHandle, Emitter, Manager,
 };
@@ -65,13 +65,13 @@ fn build_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
   let open_item = MenuItem::with_id(app, "open", "Open YouSkills", true, None::<&str>)?;
   let install_item =
     MenuItem::with_id(app, "install", "Install New", true, None::<&str>)?;
-  let separator = MenuItem::with_id(app, "sep1", "", true, None::<&str>)?;
+  let separator = PredefinedMenuItem::separator(app)?;
   let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
   // Build menu
   let menu = Menu::with_items(
     app,
-    &[&skills_submenu, &separator, &install_item, &open_item, &quit_item],
+    &[&skills_submenu, &install_item, &open_item, &separator, &quit_item],
   )?;
 
   // Load tray icon

@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use tauri::Manager;
+
 mod commands;
 mod config;
 mod models;
@@ -39,6 +41,17 @@ fn main() {
       if let Err(e) = setup_tray(app.handle()) {
         eprintln!("Failed to setup tray: {}", e);
       }
+
+      // Handle window close event - hide to tray instead of quitting
+      let main_window = app.get_webview_window("main").unwrap();
+      let window_clone = main_window.clone();
+      main_window.on_window_event(move |event| {
+        if let tauri::WindowEvent::CloseRequested { .. } = event {
+          // Prevent app from closing, just hide the window
+          window_clone.hide().unwrap();
+        }
+      });
+
       Ok(())
     })
     .invoke_handler(tauri::generate_handler![
