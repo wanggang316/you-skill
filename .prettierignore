@@ -1,0 +1,38 @@
+# Build outputs
+dist/
+build/
+.svelte-kit/
+target/
+
+# Dependencies
+node_modules/
+
+# Lock files
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Static assets that shouldn't be formatted
+*.svg
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico

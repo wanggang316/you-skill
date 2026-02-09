@@ -28,7 +28,7 @@ pub fn move_skill(from: String, to: String) -> Result<(), String> {
     Err(_) => {
       copy_dir_or_file(&from_path, &to_path)?;
       delete_skill(from_path.to_string_lossy().to_string())
-    }
+    },
   }
 }
 
@@ -93,7 +93,12 @@ pub fn unify_skill(request: UnifyRequest) -> Result<UnifyResult, String> {
 }
 
 #[tauri::command]
-pub fn set_agent_link(name: String, agent: String, scope: String, linked: bool) -> Result<(), String> {
+pub fn set_agent_link(
+  name: String,
+  agent: String,
+  scope: String,
+  linked: bool,
+) -> Result<(), String> {
   let canonical_path = canonical_skill_path(&name, &scope)?;
   let agent_dir = agent_skills_dir(&agent, &scope)?;
   let link_path = agent_dir.join(sanitize_name(&name));
@@ -279,10 +284,7 @@ fn agent_skills_dir(agent_id: &str, scope: &str) -> Result<PathBuf, String> {
     .ok_or("未知的应用类型")?;
 
   let path = if scope == "global" {
-    agent
-      .global_path
-      .ok_or("该应用不支持全局安装")?
-      .to_string()
+    agent.global_path.ok_or("该应用不支持全局安装")?.to_string()
   } else {
     agent
       .project_path
@@ -294,9 +296,7 @@ fn agent_skills_dir(agent_id: &str, scope: &str) -> Result<PathBuf, String> {
     let home = dirs_next::home_dir().ok_or("无法获取用户目录")?;
     home.join(path.trim_start_matches("~/"))
   } else {
-    env::current_dir()
-      .map_err(|e| e.to_string())?
-      .join(path)
+    env::current_dir().map_err(|e| e.to_string())?.join(path)
   };
 
   fs::create_dir_all(&resolved).map_err(|e| e.to_string())?;

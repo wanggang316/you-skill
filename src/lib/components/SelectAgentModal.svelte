@@ -20,9 +20,7 @@
     if (open) {
       // Use initialSelection if provided, otherwise select all
       selectedAgents =
-        initialSelection.length > 0
-          ? [...initialSelection]
-          : agents.map((a) => a.id);
+        initialSelection.length > 0 ? [...initialSelection] : agents.map((a) => a.id);
     }
   });
 
@@ -58,34 +56,22 @@
     }
   }
 
-  const allSelected = $derived(
-    selectedAgents.length === agents.length && agents.length > 0,
-  );
+  const allSelected = $derived(selectedAgents.length === agents.length && agents.length > 0);
   const hasSelection = $derived(selectedAgents.length > 0);
 </script>
 
-<Modal
-  bind:open
-  title={title || $t("selectAgent.defaultTitle")}
-  onClose={closeModal}
->
+<Modal bind:open title={title || $t("selectAgent.defaultTitle")} onClose={closeModal}>
   <div class="flex h-full max-h-[90vh] w-full max-w-md flex-col">
     <!-- Content -->
     <div class="flex-1 overflow-y-auto p-6 pt-16">
-      <p class="mb-4 text-sm text-base-content-muted">
+      <p class="text-base-content-muted mb-4 text-sm">
         {$t("selectAgent.description")}
       </p>
 
       <!-- Select All -->
-      <div
-        class="mb-3 flex items-center justify-between text-xs text-base-content-muted"
-      >
+      <div class="text-base-content-muted mb-3 flex items-center justify-between text-xs">
         <label class="inline-flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={allSelected}
-            onchange={toggleSelectAll}
-          />
+          <input type="checkbox" checked={allSelected} onchange={toggleSelectAll} />
           {$t("selectAgent.selectAll")}
         </label>
       </div>
@@ -94,7 +80,7 @@
       <div class="mt-3 flex flex-wrap gap-2">
         {#each agents as agent}
           <label
-            class="inline-flex items-center gap-3 rounded-lg bg-base-200 px-3 py-2 text-sm text-base-content cursor-pointer transition hover:bg-base-300"
+            class="bg-base-200 text-base-content hover:bg-base-300 inline-flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm transition"
           >
             <input
               type="checkbox"
@@ -109,10 +95,10 @@
 
     <!-- Footer -->
     <div
-      class="flex items-center justify-between border-t border-base-300 px-6 py-4 bg-base-100 rounded-b-2xl"
+      class="border-base-300 bg-base-100 flex items-center justify-between rounded-b-2xl border-t px-6 py-4"
     >
       <button
-        class="text-sm text-base-content-muted transition hover:text-base-content"
+        class="text-base-content-muted hover:text-base-content text-sm transition"
         onclick={closeModal}
         disabled={isInstalling}
         type="button"
@@ -120,15 +106,15 @@
         {$t("selectAgent.cancel")}
       </button>
       <button
-        class="rounded-xl bg-primary px-6 py-2 text-sm text-primary-content transition hover:bg-primary-hover disabled:opacity-50"
+        class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-6 py-2 text-sm transition disabled:opacity-50"
         onclick={handleConfirm}
         disabled={!hasSelection || isInstalling}
         type="button"
       >
         {#if isInstalling}
-          <Loader2 size={16} class="animate-spin inline mr-1" />
+          <Loader2 size={16} class="mr-1 inline animate-spin" />
         {:else}
-          <Check size={16} class="inline mr-1" />
+          <Check size={16} class="mr-1 inline" />
         {/if}
         {$t("selectAgent.confirm")}
       </button>

@@ -3,25 +3,17 @@
   import IconButton from "./ui/IconButton.svelte";
   import { t } from "../i18n";
 
-  let {
-    newScanRoot = $bindable(),
-    localError,
-    scanRoots,
-    onAddRoot,
-    onRemoveRoot,
-  } = $props();
+  let { newScanRoot = $bindable(), localError, scanRoots, onAddRoot, onRemoveRoot } = $props();
 </script>
 
 <section class="space-y-6">
-  <div
-    class="rounded-2xl border border-base-300 bg-base-100 p-4"
-  >
-    <p class="mb-3 text-sm font-semibold text-base-content-muted">
+  <div class="border-base-300 bg-base-100 rounded-2xl border p-4">
+    <p class="text-base-content-muted mb-3 text-sm font-semibold">
       {$t("view.add.title")}
     </p>
     <div class="flex flex-wrap items-center gap-3">
       <input
-        class="flex-1 rounded-xl border border-base-300 bg-base-200 px-4 py-2 text-sm text-base-content placeholder:text-base-content-subtle"
+        class="border-base-300 bg-base-200 text-base-content placeholder:text-base-content-subtle flex-1 rounded-xl border px-4 py-2 text-sm"
         placeholder={$t("view.add.placeholder")}
         bind:value={newScanRoot}
       />
@@ -35,14 +27,12 @@
       </IconButton>
     </div>
     {#if localError}
-      <p class="mt-3 text-sm text-error">{localError}</p>
+      <p class="text-error mt-3 text-sm">{localError}</p>
     {/if}
     {#if scanRoots.length > 0}
-      <div class="mt-3 space-y-2 text-sm text-base-content-muted">
+      <div class="text-base-content-muted mt-3 space-y-2 text-sm">
         {#each scanRoots as root}
-          <div
-            class="flex items-center justify-between rounded-lg bg-base-200 px-3 py-2"
-          >
+          <div class="bg-base-200 flex items-center justify-between rounded-lg px-3 py-2">
             <span>{root}</span>
             <IconButton
               variant="ghost"

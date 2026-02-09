@@ -1,12 +1,5 @@
 <script>
-  import {
-    FileArchive,
-    Github,
-    Check,
-    AlertCircle,
-    Loader2,
-    Folder,
-  } from "@lucide/svelte";
+  import { FileArchive, Github, Check, AlertCircle, Loader2, Folder } from "@lucide/svelte";
   import { t } from "../i18n";
   import {
     detectZipSkills,
@@ -288,7 +281,7 @@
     <!-- Content -->
     <div class="flex-1 overflow-y-auto p-6 pt-16">
       <!-- Tabs -->
-      <div class="mb-6 flex gap-2 rounded-full bg-base-200 p-1">
+      <div class="bg-base-200 mb-6 flex gap-2 rounded-full p-1">
         <button
           class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "zip" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
           onclick={() => (activeTab = "zip")}
@@ -318,28 +311,24 @@
       <!-- ZIP Mode -->
       {#if activeTab === "zip"}
         <div class="space-y-4">
-          <p class="text-sm text-base-content-muted">
+          <p class="text-base-content-muted text-sm">
             {$t("addSkill.zip.description")}
           </p>
           <button
-            class="w-full rounded-xl border-2 border-dashed border-base-300 p-8 transition hover:border-primary hover:bg-base-200"
+            class="border-base-300 hover:border-primary hover:bg-base-200 w-full rounded-xl border-2 border-dashed p-8 transition"
             onclick={handleSelectZipFile}
             type="button"
           >
             {#if selectedZipPath}
-              <div
-                class="flex items-center justify-center gap-2 text-base-content"
-              >
+              <div class="text-base-content flex items-center justify-center gap-2">
                 <FileArchive size={20} class="text-primary" />
                 <span class="font-medium">{zipFileName}</span>
               </div>
-              <p class="mt-2 text-xs text-base-content-muted">
+              <p class="text-base-content-muted mt-2 text-xs">
                 {$t("addSkill.zip.clickToChange")}
               </p>
             {:else}
-              <div
-                class="flex flex-col items-center gap-2 text-base-content-muted"
-              >
+              <div class="text-base-content-muted flex flex-col items-center gap-2">
                 <FileArchive size={32} />
                 <span>{$t("addSkill.zip.selectFile")}</span>
               </div>
@@ -349,13 +338,13 @@
           {#if selectedZipPath}
             <div class="flex gap-2">
               <button
-                class="flex-1 rounded-xl bg-primary px-4 py-2 text-sm text-primary-content transition hover:bg-primary-hover disabled:opacity-50"
+                class="bg-primary text-primary-content hover:bg-primary-hover flex-1 rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
                 onclick={handleDetectZip}
                 disabled={isDetectingZip}
                 type="button"
               >
                 {#if isDetectingZip}
-                  <Loader2 size={16} class="animate-spin inline mr-1" />
+                  <Loader2 size={16} class="mr-1 inline animate-spin" />
                 {/if}
                 {$t("addSkill.zip.detect")}
               </button>
@@ -363,7 +352,7 @@
           {/if}
 
           {#if zipError}
-            <div class="flex items-center gap-2 text-sm text-error">
+            <div class="text-error flex items-center gap-2 text-sm">
               <AlertCircle size={16} />
               <span>{zipError}</span>
             </div>
@@ -371,11 +360,11 @@
 
           {#if detectedZipSkills.length > 0}
             <div class="space-y-2">
-              <p class="text-sm font-medium text-base-content">
+              <p class="text-base-content text-sm font-medium">
                 {$t("addSkill.zip.selectSkill")}
               </p>
               <div
-                class="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-base-300 bg-base-200 p-2"
+                class="border-base-300 bg-base-200 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-2"
               >
                 {#each detectedZipSkills as skill}
                   <button
@@ -403,28 +392,24 @@
       {:else if activeTab === "folder"}
         <!-- Folder Mode -->
         <div class="space-y-4">
-          <p class="text-sm text-base-content-muted">
+          <p class="text-base-content-muted text-sm">
             {$t("addSkill.folder.description")}
           </p>
           <button
-            class="w-full rounded-xl border-2 border-dashed border-base-300 p-8 transition hover:border-primary hover:bg-base-200"
+            class="border-base-300 hover:border-primary hover:bg-base-200 w-full rounded-xl border-2 border-dashed p-8 transition"
             onclick={handleSelectFolder}
             type="button"
           >
             {#if selectedFolderPath}
-              <div
-                class="flex items-center justify-center gap-2 text-base-content"
-              >
+              <div class="text-base-content flex items-center justify-center gap-2">
                 <Folder size={20} class="text-primary" />
                 <span class="font-medium">{folderName}</span>
               </div>
-              <p class="mt-2 text-xs text-base-content-muted">
+              <p class="text-base-content-muted mt-2 text-xs">
                 {$t("addSkill.folder.clickToChange")}
               </p>
             {:else}
-              <div
-                class="flex flex-col items-center gap-2 text-base-content-muted"
-              >
+              <div class="text-base-content-muted flex flex-col items-center gap-2">
                 <Folder size={32} />
                 <span>{$t("addSkill.folder.selectFolder")}</span>
               </div>
@@ -434,13 +419,13 @@
           {#if selectedFolderPath}
             <div class="flex gap-2">
               <button
-                class="flex-1 rounded-xl bg-primary px-4 py-2 text-sm text-primary-content transition hover:bg-primary-hover disabled:opacity-50"
+                class="bg-primary text-primary-content hover:bg-primary-hover flex-1 rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
                 onclick={handleDetectFolder}
                 disabled={isDetectingFolder}
                 type="button"
               >
                 {#if isDetectingFolder}
-                  <Loader2 size={16} class="animate-spin inline mr-1" />
+                  <Loader2 size={16} class="mr-1 inline animate-spin" />
                 {/if}
                 {$t("addSkill.folder.detect")}
               </button>
@@ -448,7 +433,7 @@
           {/if}
 
           {#if folderError}
-            <div class="flex items-center gap-2 text-sm text-error">
+            <div class="text-error flex items-center gap-2 text-sm">
               <AlertCircle size={16} />
               <span>{folderError}</span>
             </div>
@@ -456,11 +441,11 @@
 
           {#if detectedFolderSkills.length > 0}
             <div class="space-y-2">
-              <p class="text-sm font-medium text-base-content">
+              <p class="text-base-content text-sm font-medium">
                 {$t("addSkill.folder.selectSkill")}
               </p>
               <div
-                class="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-base-300 bg-base-200 p-2"
+                class="border-base-300 bg-base-200 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-2"
               >
                 {#each detectedFolderSkills as skill}
                   <button
@@ -488,19 +473,19 @@
       {:else}
         <!-- GitHub Mode -->
         <div class="space-y-4">
-          <p class="text-sm text-base-content-muted">
+          <p class="text-base-content-muted text-sm">
             {$t("addSkill.github.description")}
           </p>
           <div class="flex gap-2">
             <input
               type="text"
-              class="flex-1 rounded-xl border border-base-300 bg-base-200 px-4 py-2 text-sm text-base-content placeholder:text-base-content-subtle focus:border-primary focus:outline-none"
+              class="border-base-300 bg-base-200 text-base-content placeholder:text-base-content-subtle focus:border-primary flex-1 rounded-xl border px-4 py-2 text-sm focus:outline-none"
               placeholder={$t("addSkill.github.urlPlaceholder")}
               bind:value={githubUrl}
               onkeydown={(e) => e.key === "Enter" && handleDetectGithub()}
             />
             <button
-              class="rounded-xl bg-primary px-4 py-2 text-sm text-primary-content transition hover:bg-primary-hover disabled:opacity-50"
+              class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
               onclick={handleDetectGithub}
               disabled={!githubUrl.trim() || isDetecting}
               type="button"
@@ -514,7 +499,7 @@
           </div>
 
           {#if githubError}
-            <div class="flex items-center gap-2 text-sm text-error">
+            <div class="text-error flex items-center gap-2 text-sm">
               <AlertCircle size={16} />
               <span>{githubError}</span>
             </div>
@@ -522,11 +507,11 @@
 
           {#if detectedSkills.length > 0}
             <div class="space-y-2">
-              <p class="text-sm font-medium text-base-content">
+              <p class="text-base-content text-sm font-medium">
                 {$t("addSkill.github.selectSkill")}
               </p>
               <div
-                class="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-base-300 bg-base-200 p-2"
+                class="border-base-300 bg-base-200 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-2"
               >
                 {#each detectedSkills as skill}
                   <button
@@ -556,13 +541,13 @@
       <!-- Agent Selection -->
       <div class="mt-6 space-y-3">
         <div class="flex items-center justify-between">
-          <p class="text-sm font-medium text-base-content">
+          <p class="text-base-content text-sm font-medium">
             {$t("addSkill.selectAgents")}
           </p>
           <div class="flex gap-2">
             {#if allSelected}
               <button
-                class="text-xs text-base-content-muted transition hover:text-base-content"
+                class="text-base-content-muted hover:text-base-content text-xs transition"
                 onclick={deselectAllAgents}
                 type="button"
               >
@@ -570,7 +555,7 @@
               </button>
             {:else}
               <button
-                class="text-xs text-base-content-muted transition hover:text-base-content"
+                class="text-base-content-muted hover:text-base-content text-xs transition"
                 onclick={selectAllAgents}
                 type="button"
               >
@@ -597,7 +582,7 @@
       </div>
 
       {#if installError}
-        <div class="mt-4 flex items-center gap-2 text-sm text-error">
+        <div class="text-error mt-4 flex items-center gap-2 text-sm">
           <AlertCircle size={16} />
           <span>{installError}</span>
         </div>
@@ -606,10 +591,10 @@
 
     <!-- Footer -->
     <div
-      class="flex justify-end gap-3 border-t border-base-300 px-6 py-4 bg-base-100 rounded-b-2xl"
+      class="border-base-300 bg-base-100 flex justify-end gap-3 rounded-b-2xl border-t px-6 py-4"
     >
       <button
-        class="rounded-xl border border-base-300 px-4 py-2 text-sm text-base-content transition hover:bg-base-200"
+        class="border-base-300 text-base-content hover:bg-base-200 rounded-xl border px-4 py-2 text-sm transition"
         onclick={closeModal}
         disabled={isInstalling}
         type="button"
@@ -617,7 +602,7 @@
         {$t("addSkill.cancel")}
       </button>
       <button
-        class="rounded-xl bg-primary px-4 py-2 text-sm text-primary-content transition hover:bg-primary-hover disabled:opacity-50"
+        class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
         onclick={handleConfirm}
         disabled={!canConfirm() || isInstalling}
         type="button"

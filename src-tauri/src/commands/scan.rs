@@ -417,7 +417,8 @@ fn get_created_at(path: &Path) -> Option<i64> {
 }
 
 fn to_millis(time: SystemTime) -> Option<i64> {
-  time.duration_since(UNIX_EPOCH)
+  time
+    .duration_since(UNIX_EPOCH)
     .ok()
     .map(|duration| duration.as_millis() as i64)
 }

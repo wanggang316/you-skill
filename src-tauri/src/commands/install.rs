@@ -1,4 +1,6 @@
-use crate::models::{DetectedSkill, InstallGithubRequest, InstallRequest, InstallResult, InstallZipRequest};
+use crate::models::{
+  DetectedSkill, InstallGithubRequest, InstallRequest, InstallResult, InstallZipRequest,
+};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -61,7 +63,13 @@ pub async fn detect_github_skills(url: String) -> Result<Vec<DetectedSkill>, Str
   // Clone repository
   let git_url = format!("https://github.com/{}/{}.git", owner, repo);
   let clone_result = Command::new("git")
-    .args(&["clone", "--depth", "1", &git_url, temp_dir.to_str().unwrap()])
+    .args(&[
+      "clone",
+      "--depth",
+      "1",
+      &git_url,
+      temp_dir.to_str().unwrap(),
+    ])
     .output();
 
   match clone_result {
@@ -70,7 +78,7 @@ pub async fn detect_github_skills(url: String) -> Result<Vec<DetectedSkill>, Str
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!("Failed to clone repository: {}", stderr));
       }
-    }
+    },
     Err(e) => return Err(format!("Failed to execute git clone: {}", e)),
   }
 
@@ -217,7 +225,10 @@ pub fn install_zip_skill(request: InstallZipRequest) -> Result<InstallResult, St
     let source_dir = temp_dir.join(&request.skill_path);
     if !source_dir.exists() {
       let _ = fs::remove_dir_all(&temp_dir);
-      return Err(format!("Skill path not found in ZIP: {}", request.skill_path));
+      return Err(format!(
+        "Skill path not found in ZIP: {}",
+        request.skill_path
+      ));
     }
 
     copy_dir_all_sync(&source_dir, &skill_dir)?;
@@ -267,7 +278,10 @@ pub fn install_zip_skill(request: InstallZipRequest) -> Result<InstallResult, St
           if let Err(e) = symlink_dir(&skill_dir, &symlink_path) {
             // On Windows, if symlink fails, copy the directory instead
             if let Err(copy_err) = copy_dir_all(&skill_dir, &symlink_path) {
-              errors.push(format!("{}: symlink failed ({}), copy failed ({})", agent.display_name, e, copy_err));
+              errors.push(format!(
+                "{}: symlink failed ({}), copy failed ({})",
+                agent.display_name, e, copy_err
+              ));
             }
           }
         }
@@ -361,7 +375,13 @@ pub async fn install_github_skill(request: InstallGithubRequest) -> Result<Insta
   // Clone repository
   let git_url = format!("https://github.com/{}/{}.git", owner, repo);
   let clone_result = Command::new("git")
-    .args(&["clone", "--depth", "1", &git_url, temp_dir.to_str().unwrap()])
+    .args(&[
+      "clone",
+      "--depth",
+      "1",
+      &git_url,
+      temp_dir.to_str().unwrap(),
+    ])
     .output();
 
   match clone_result {
@@ -370,7 +390,7 @@ pub async fn install_github_skill(request: InstallGithubRequest) -> Result<Insta
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!("Failed to clone repository: {}", stderr));
       }
-    }
+    },
     Err(e) => return Err(format!("Failed to execute git clone: {}", e)),
   }
 
@@ -448,7 +468,10 @@ pub async fn install_github_skill(request: InstallGithubRequest) -> Result<Insta
           if let Err(e) = symlink_dir(&target_dir, &symlink_path) {
             // On Windows, if symlink fails, copy the directory instead
             if let Err(copy_err) = copy_dir_all_sync(&target_dir, &symlink_path) {
-              errors.push(format!("{}: symlink failed ({}), copy failed ({})", agent.display_name, e, copy_err));
+              errors.push(format!(
+                "{}: symlink failed ({}), copy failed ({})",
+                agent.display_name, e, copy_err
+              ));
             }
           }
         }
@@ -576,7 +599,9 @@ pub fn detect_folder_skills(folder_path: String) -> Result<Vec<DetectedSkill>, S
 
 /// Install a skill from a folder to .agents/skills/ folder and create symlinks to selected agents
 #[tauri::command]
-pub fn install_folder_skill(request: crate::models::InstallFolderRequest) -> Result<InstallResult, String> {
+pub fn install_folder_skill(
+  request: crate::models::InstallFolderRequest,
+) -> Result<InstallResult, String> {
   use crate::paths::agent_paths;
 
   // Get skill name and source directory
@@ -661,7 +686,10 @@ pub fn install_folder_skill(request: crate::models::InstallFolderRequest) -> Res
           if let Err(e) = symlink_dir(&target_dir, &symlink_path) {
             // On Windows, if symlink fails, copy the directory instead
             if let Err(copy_err) = copy_dir_all_sync(&target_dir, &symlink_path) {
-              errors.push(format!("{}: symlink failed ({}), copy failed ({})", agent.display_name, e, copy_err));
+              errors.push(format!(
+                "{}: symlink failed ({}), copy failed ({})",
+                agent.display_name, e, copy_err
+              ));
             }
           }
         }

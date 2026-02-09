@@ -4,101 +4,101 @@
  * 处理技能管理相关的 IPC 调用
  */
 
-import { apiCall } from './index'
+import { apiCall } from "./index";
 
 // ============ Types ============
 
 export interface LocalSkill {
-  name: string
-  description?: string | null
-  scope: string
-  canonical_path: string
-  agents: string[]
-  managed_status: 'managed' | 'unmanaged' | 'mixed' | 'unknown'
-  name_conflict: boolean
-  created_at?: number | null
-  conflict_with_managed: boolean
+  name: string;
+  description?: string | null;
+  scope: string;
+  canonical_path: string;
+  agents: string[];
+  managed_status: "managed" | "unmanaged" | "mixed" | "unknown";
+  name_conflict: boolean;
+  created_at?: number | null;
+  conflict_with_managed: boolean;
 }
 
 export interface RemoteSkill {
-  id: string
-  skill_id: string
-  name: string
-  star_count: number
-  heat_score: number
-  install_count: number
-  source: string
-  url?: string | null
-  path?: string | null
+  id: string;
+  skill_id: string;
+  name: string;
+  star_count: number;
+  heat_score: number;
+  install_count: number;
+  source: string;
+  url?: string | null;
+  path?: string | null;
 }
 
 export interface RemoteSkillsResponse {
-  skills: RemoteSkill[]
-  total: number
-  has_more: boolean
+  skills: RemoteSkill[];
+  total: number;
+  has_more: boolean;
 }
 
 export interface InstallRequest {
-  source: string
-  skill_id: string
-  agent: string
-  global: boolean
-  project_dir?: string | null
+  source: string;
+  skill_id: string;
+  agent: string;
+  global: boolean;
+  project_dir?: string | null;
 }
 
 export interface InstallResult {
-  success: boolean
-  stdout: string
-  stderr: string
-  message: string
+  success: boolean;
+  stdout: string;
+  stderr: string;
+  message: string;
 }
 
 export interface AgentInfo {
-  id: string
-  display_name: string
-  project_path?: string | null
-  global_path?: string | null
+  id: string;
+  display_name: string;
+  project_path?: string | null;
+  global_path?: string | null;
 }
 
 export interface CanonicalCheckResult {
-  exists: boolean
-  canonical_path: string
+  exists: boolean;
+  canonical_path: string;
 }
 
 export interface UnifyRequest {
-  name: string
-  agent: string
-  scope: string
-  current_path: string
-  prefer: 'canonical' | 'current'
+  name: string;
+  agent: string;
+  scope: string;
+  current_path: string;
+  prefer: "canonical" | "current";
 }
 
 export interface UnifyResult {
-  success: boolean
-  message: string
+  success: boolean;
+  message: string;
 }
 
 export interface DetectedSkill {
-  name: string
-  path: string
+  name: string;
+  path: string;
 }
 
 export interface InstallZipRequest {
-  zip_path: string
-  skill_path: string
-  agents: string[]
+  zip_path: string;
+  skill_path: string;
+  agents: string[];
 }
 
 export interface InstallGithubRequest {
-  url: string
-  skill_path: string
-  agents: string[]
+  url: string;
+  skill_path: string;
+  agents: string[];
 }
 
 export interface InstallFolderRequest {
-  folder_path: string
-  skill_path: string
-  agents: string[]
+  folder_path: string;
+  skill_path: string;
+  agents: string[];
 }
 
 // ============ Local Skills ============
@@ -107,35 +107,35 @@ export interface InstallFolderRequest {
  * 扫描本地技能
  */
 export async function scanLocalSkills(): Promise<LocalSkill[]> {
-  return apiCall<LocalSkill[]>('scan_local_skills')
+  return apiCall<LocalSkill[]>("scan_local_skills");
 }
 
 /**
  * 获取扫描根目录列表
  */
 export async function getScanRoots(): Promise<string[]> {
-  return apiCall<string[]>('get_scan_roots')
+  return apiCall<string[]>("get_scan_roots");
 }
 
 /**
  * 添加扫描根目录
  */
 export async function addScanRoot(path: string): Promise<string[]> {
-  return apiCall<string[]>('add_scan_root', { path })
+  return apiCall<string[]>("add_scan_root", { path });
 }
 
 /**
  * 移除扫描根目录
  */
 export async function removeScanRoot(path: string): Promise<string[]> {
-  return apiCall<string[]>('remove_scan_root', { path })
+  return apiCall<string[]>("remove_scan_root", { path });
 }
 
 /**
  * 删除技能
  */
 export async function deleteSkill(path: string): Promise<void> {
-  return apiCall<void>('delete_skill', { path })
+  return apiCall<void>("delete_skill", { path });
 }
 
 // ============ Remote Skills ============
@@ -143,17 +143,21 @@ export async function deleteSkill(path: string): Promise<void> {
 /**
  * 获取远程技能列表
  */
-export async function fetchRemoteSkills(
-  params?: { skip?: number; limit?: number; search?: string; sortBy?: string; sortOrder?: string },
-): Promise<RemoteSkillsResponse> {
-  return apiCall<RemoteSkillsResponse>('fetch_remote_skills', params || {})
+export async function fetchRemoteSkills(params?: {
+  skip?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: string;
+}): Promise<RemoteSkillsResponse> {
+  return apiCall<RemoteSkillsResponse>("fetch_remote_skills", params || {});
 }
 
 /**
  * 安装技能
  */
 export async function installSkill(request: InstallRequest): Promise<InstallResult> {
-  return apiCall<InstallResult>('install_skill', { request })
+  return apiCall<InstallResult>("install_skill", { request });
 }
 
 // ============ Agents ============
@@ -162,7 +166,7 @@ export async function installSkill(request: InstallRequest): Promise<InstallResu
  * 列出所有代理
  */
 export async function listAgents(): Promise<AgentInfo[]> {
-  return apiCall<AgentInfo[]>('list_agents')
+  return apiCall<AgentInfo[]>("list_agents");
 }
 
 // ============ Skill Management ============
@@ -170,22 +174,30 @@ export async function listAgents(): Promise<AgentInfo[]> {
 /**
  * 检查规范技能是否存在
  */
-export async function checkCanonicalSkill(name: string, scope: string): Promise<CanonicalCheckResult> {
-  return apiCall<CanonicalCheckResult>('check_canonical_skill', { name, scope })
+export async function checkCanonicalSkill(
+  name: string,
+  scope: string
+): Promise<CanonicalCheckResult> {
+  return apiCall<CanonicalCheckResult>("check_canonical_skill", { name, scope });
 }
 
 /**
  * 统一技能
  */
 export async function unifySkill(request: UnifyRequest): Promise<UnifyResult> {
-  return apiCall<UnifyResult>('unify_skill', { request })
+  return apiCall<UnifyResult>("unify_skill", { request });
 }
 
 /**
  * 设置代理链接
  */
-export async function setAgentLink(name: string, agent: string, scope: string, linked: boolean): Promise<void> {
-  return apiCall<void>('set_agent_link', { name, agent, scope, linked })
+export async function setAgentLink(
+  name: string,
+  agent: string,
+  scope: string,
+  linked: boolean
+): Promise<void> {
+  return apiCall<void>("set_agent_link", { name, agent, scope, linked });
 }
 
 // ============ Detection ============
@@ -194,14 +206,14 @@ export async function setAgentLink(name: string, agent: string, scope: string, l
  * 从 GitHub URL 检测技能
  */
 export async function detectGithubSkills(url: string): Promise<DetectedSkill[]> {
-  return apiCall<DetectedSkill[]>('detect_github_skills', { url })
+  return apiCall<DetectedSkill[]>("detect_github_skills", { url });
 }
 
 /**
  * 从 ZIP 文件检测技能
  */
 export async function detectZipSkills(zipPath: string): Promise<DetectedSkill[]> {
-  return apiCall<DetectedSkill[]>('detect_zip_skills', { zipPath })
+  return apiCall<DetectedSkill[]>("detect_zip_skills", { zipPath });
 }
 
 // ============ Installation ============
@@ -210,28 +222,28 @@ export async function detectZipSkills(zipPath: string): Promise<DetectedSkill[]>
  * 从 ZIP 文件安装技能
  */
 export async function installZipSkill(request: InstallZipRequest): Promise<InstallResult> {
-  return apiCall<InstallResult>('install_zip_skill', { request })
+  return apiCall<InstallResult>("install_zip_skill", { request });
 }
 
 /**
  * 从 GitHub 安装技能
  */
 export async function installGithubSkill(request: InstallGithubRequest): Promise<InstallResult> {
-  return apiCall<InstallResult>('install_github_skill', { request })
+  return apiCall<InstallResult>("install_github_skill", { request });
 }
 
 /**
  * 从文件夹检测技能
  */
 export async function detectFolderSkills(folderPath: string): Promise<DetectedSkill[]> {
-  return apiCall<DetectedSkill[]>('detect_folder_skills', { folderPath })
+  return apiCall<DetectedSkill[]>("detect_folder_skills", { folderPath });
 }
 
 /**
  * 从文件夹安装技能
  */
 export async function installFolderSkill(request: InstallFolderRequest): Promise<InstallResult> {
-  return apiCall<InstallResult>('install_folder_skill', { request })
+  return apiCall<InstallResult>("install_folder_skill", { request });
 }
 
 // ============ Other ============
@@ -240,26 +252,26 @@ export async function installFolderSkill(request: InstallFolderRequest): Promise
  * 读取技能 README 文件
  */
 export async function readSkillReadme(skillPath: string): Promise<string> {
-  return apiCall<string>('read_skill_readme', { skillPath })
+  return apiCall<string>("read_skill_readme", { skillPath });
 }
 
 /**
  * 在文件管理器中打开文件
  */
 export async function openInFileManager(filePath: string): Promise<void> {
-  return apiCall<void>('open_in_file_manager', { filePath })
+  return apiCall<void>("open_in_file_manager", { filePath });
 }
 
 /**
  * 记录技能安装
  */
 export async function recordInstall(skillId: string): Promise<void> {
-  return apiCall<void>('record_skill_install', { skill_id: skillId })
+  return apiCall<void>("record_skill_install", { skill_id: skillId });
 }
 
 /**
  * 更新托盘技能列表
  */
 export async function updateTraySkills(skills: LocalSkill[]): Promise<void> {
-  return apiCall<void>('update_tray_skills', { skills })
+  return apiCall<void>("update_tray_skills", { skills });
 }

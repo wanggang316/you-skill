@@ -1,6 +1,6 @@
+use chrono::Local;
 use std::fs;
 use std::path::Path;
-use chrono::Local;
 
 use crate::config::{load_config, save_config};
 
@@ -95,11 +95,11 @@ pub async fn backup_skills(backup_folder: String) -> Result<BackupResult, String
     let backup_file_path = backup_path.join(&filename);
 
     // 创建 ZIP 文件
-    let file = fs::File::create(&backup_file_path)
-      .map_err(|e| format!("创建备份文件失败: {}", e))?;
+    let file =
+      fs::File::create(&backup_file_path).map_err(|e| format!("创建备份文件失败: {}", e))?;
     let mut zip = zip::ZipWriter::new(file);
-    let options: zip::write::FileOptions<()> = zip::write::FileOptions::default()
-      .compression_method(zip::CompressionMethod::Deflated);
+    let options: zip::write::FileOptions<()> =
+      zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
     // 遍历 skills 目录并添加到 ZIP
     fn add_dir_to_zip<P: AsRef<Path>>(
@@ -114,19 +114,21 @@ pub async fn backup_skills(backup_folder: String) -> Result<BackupResult, String
       for entry in fs::read_dir(current_path).map_err(|e| format!("读取目录失败: {}", e))? {
         let entry = entry.map_err(|e| format!("读取条目失败: {}", e))?;
         let path = entry.path();
-        let name = path.strip_prefix(base_path)
+        let name = path
+          .strip_prefix(base_path)
           .map_err(|_| format!("路径处理失败"))?
           .to_string_lossy()
           .to_string();
 
         if path.is_file() {
           let mut file = fs::File::open(&path).map_err(|e| format!("打开文件失败: {}", e))?;
-          zip.start_file(name, options)
+          zip
+            .start_file(name, options)
             .map_err(|e| format!("添加文件到 ZIP 失败: {}", e))?;
-          std::io::copy(&mut file, zip)
-            .map_err(|e| format!("写入文件到 ZIP 失败: {}", e))?;
+          std::io::copy(&mut file, zip).map_err(|e| format!("写入文件到 ZIP 失败: {}", e))?;
         } else if path.is_dir() {
-          zip.add_directory(name.clone(), options)
+          zip
+            .add_directory(name.clone(), options)
             .map_err(|e| format!("添加目录到 ZIP 失败: {}", e))?;
           add_dir_to_zip(zip, base_path, &path, options)?;
         }
@@ -136,7 +138,9 @@ pub async fn backup_skills(backup_folder: String) -> Result<BackupResult, String
 
     add_dir_to_zip(&mut zip, &skills_path, &skills_path, options)?;
 
-    zip.finish().map_err(|e| format!("完成 ZIP 文件失败: {}", e))?;
+    zip
+      .finish()
+      .map_err(|e| format!("完成 ZIP 文件失败: {}", e))?;
 
     // 格式化备份时间显示
     let backup_time_str = now.format("%Y-%m-%d %H:%M:%S").to_string();

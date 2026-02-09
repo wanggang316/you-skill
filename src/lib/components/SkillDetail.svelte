@@ -1,263 +1,259 @@
 <script>
-  import { onMount } from 'svelte'
-  import { Loader2, FileText } from '@lucide/svelte'
-  import { parseMarkdown, renderMarkdownBody } from '../utils/markdown'
-  import { t } from '../i18n'
-  import { readSkillReadme, openInFileManager } from '../api/skills'
-  import { open } from '@tauri-apps/plugin-shell'
+  import { onMount } from "svelte";
+  import { Loader2, FileText } from "@lucide/svelte";
+  import { parseMarkdown, renderMarkdownBody } from "../utils/markdown";
+  import { t } from "../i18n";
+  import { readSkillReadme, openInFileManager } from "../api/skills";
+  import { open } from "@tauri-apps/plugin-shell";
 
-  let {
-    skill,
-    type,
-    agents
-  } = $props()
+  let { skill, type, agents } = $props();
 
-  let content = $state('')
-  let parsedFrontmatter = $state({})
-  let hasFrontmatter = $state(false)
-  let loading = $state(true)
-  let error = $state('')
+  let content = $state("");
+  let parsedFrontmatter = $state({});
+  let hasFrontmatter = $state(false);
+  let loading = $state(true);
+  let error = $state("");
 
   // Convert GitHub URL to raw content URL
   function convertToRawUrl(url, path) {
-    if (!url || !path) return null
+    if (!url || !path) return null;
 
     // Handle github.com URLs
-    if (url.includes('github.com')) {
+    if (url.includes("github.com")) {
       // Extract owner and repo from URL like https://github.com/owner/repo
-      const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/)
+      const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
       if (match) {
-        const [, owner, repo] = match
+        const [, owner, repo] = match;
         // Remove .git suffix if present
-        const cleanRepo = repo.replace(/\.git$/, '')
+        const cleanRepo = repo.replace(/\.git$/, "");
         // Construct raw URL: https://raw.githubusercontent.com/owner/repo/refs/heads/main/path/SKILL.md
-        return `https://raw.githubusercontent.com/${owner}/${cleanRepo}/refs/heads/main/${path}/SKILL.md`
+        return `https://raw.githubusercontent.com/${owner}/${cleanRepo}/refs/heads/main/${path}/SKILL.md`;
       }
     }
-    return null
+    return null;
   }
 
   // Build GitHub web URL for a specific path
-  function buildGitHubUrl(url, path, relativePath = '') {
-    if (!url) return null
+  function buildGitHubUrl(url, path, relativePath = "") {
+    if (!url) return null;
 
     // Handle github.com URLs
-    if (url.includes('github.com')) {
+    if (url.includes("github.com")) {
       // Extract owner and repo from URL like https://github.com/owner/repo
-      const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/)
+      const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
       if (match) {
-        const [, owner, repo] = match
+        const [, owner, repo] = match;
         // Remove .git suffix if present
-        const cleanRepo = repo.replace(/\.git$/, '')
+        const cleanRepo = repo.replace(/\.git$/, "");
         // Build the full path
-        let fullPath = path || ''
+        let fullPath = path || "";
         if (relativePath) {
           // Resolve relative path
-          if (relativePath.startsWith('/')) {
+          if (relativePath.startsWith("/")) {
             // Absolute relative path
-            fullPath = relativePath.substring(1)
+            fullPath = relativePath.substring(1);
           } else {
             // Relative path - join with existing path
-            fullPath = fullPath ? `${fullPath}/${relativePath}` : relativePath
+            fullPath = fullPath ? `${fullPath}/${relativePath}` : relativePath;
           }
         }
         // Construct web URL: https://github.com/owner/repo/tree/main/path
-        return `https://github.com/${owner}/${cleanRepo}/tree/main/${fullPath}`
+        return `https://github.com/${owner}/${cleanRepo}/tree/main/${fullPath}`;
       }
     }
-    return null
+    return null;
   }
 
   // Get the base URL for resolving relative links
   function getBaseUrl() {
-    if (!skill.url) return null
-    return buildGitHubUrl(skill.url, skill.path || '')
+    if (!skill.url) return null;
+    return buildGitHubUrl(skill.url, skill.path || "");
   }
 
   // Resolve local file path for relative links
   function resolveLocalPath(relativePath) {
-    if (!skill.canonical_path) return null
+    if (!skill.canonical_path) return null;
 
     // canonical_path is the skill directory path (e.g., /Users/xxx/skills/my-skill)
-    const dirPath = skill.canonical_path
+    const dirPath = skill.canonical_path;
 
-    if (relativePath.startsWith('/')) {
+    if (relativePath.startsWith("/")) {
       // Absolute path (relative to repo root)
       // For now, just treat as relative to current skill directory
-      return dirPath + relativePath
+      return dirPath + relativePath;
     } else {
       // Relative path - join with directory
       // Handle ./ and ../
-      const parts = dirPath.split('/')
-      const relParts = relativePath.split('/')
+      const parts = dirPath.split("/");
+      const relParts = relativePath.split("/");
 
       for (const part of relParts) {
-        if (part === '..') {
-          parts.pop()
-        } else if (part !== '.') {
-          parts.push(part)
+        if (part === "..") {
+          parts.pop();
+        } else if (part !== ".") {
+          parts.push(part);
         }
       }
 
-      return parts.join('/')
+      return parts.join("/");
     }
   }
 
   async function loadLocalSkillContent() {
     if (!skill.canonical_path) {
-      throw new Error('Skill path is missing')
+      throw new Error("Skill path is missing");
     }
 
-    console.log('[SkillDetail] Reading skill readme from:', skill.canonical_path)
+    console.log("[SkillDetail] Reading skill readme from:", skill.canonical_path);
     // Use backend API to read file (bypasses frontend FS restrictions)
-    return await readSkillReadme(skill.canonical_path)
+    return await readSkillReadme(skill.canonical_path);
   }
 
   async function loadRemoteSkillContent() {
-    const rawUrl = convertToRawUrl(skill.url, skill.path)
+    const rawUrl = convertToRawUrl(skill.url, skill.path);
     if (!rawUrl) {
-      throw new Error('Unable to construct raw URL for this skill')
+      throw new Error("Unable to construct raw URL for this skill");
     }
 
-    const response = await fetch(rawUrl)
+    const response = await fetch(rawUrl);
     if (!response.ok) {
-      throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`)
+      throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
     }
-    return await response.text()
+    return await response.text();
   }
 
   async function loadContent() {
-    loading = true
-    error = ''
+    loading = true;
+    error = "";
     try {
-      let rawContent = ''
-      if (type === 'local') {
-        rawContent = await loadLocalSkillContent()
+      let rawContent = "";
+      if (type === "local") {
+        rawContent = await loadLocalSkillContent();
       } else {
-        rawContent = await loadRemoteSkillContent()
+        rawContent = await loadRemoteSkillContent();
       }
 
       // Parse frontmatter and body content
-      const parsed = parseMarkdown(rawContent)
-      parsedFrontmatter = parsed.frontmatter
-      hasFrontmatter = parsed.hasFrontmatter
-      content = parsed.content
+      const parsed = parseMarkdown(rawContent);
+      parsedFrontmatter = parsed.frontmatter;
+      hasFrontmatter = parsed.hasFrontmatter;
+      content = parsed.content;
     } catch (e) {
-      error = String(e)
-      content = ''
-      parsedFrontmatter = {}
-      hasFrontmatter = false
+      error = String(e);
+      content = "";
+      parsedFrontmatter = {};
+      hasFrontmatter = false;
     } finally {
-      loading = false
+      loading = false;
     }
   }
 
   function markdownInteractions(node) {
     const handleClick = async (event) => {
-      const button = event.target.closest('.markdown-code-block__copy')
+      const button = event.target.closest(".markdown-code-block__copy");
       if (button) {
-        event.preventDefault()
-        event.stopPropagation()
+        event.preventDefault();
+        event.stopPropagation();
 
-        const block = button.closest('.markdown-code-block')
-        const codeElement = block?.querySelector('code')
-        const codeContent = codeElement?.textContent ?? ''
+        const block = button.closest(".markdown-code-block");
+        const codeElement = block?.querySelector("code");
+        const codeContent = codeElement?.textContent ?? "";
 
-        if (!codeContent) return
+        if (!codeContent) return;
 
         try {
-          await navigator.clipboard.writeText(codeContent)
+          await navigator.clipboard.writeText(codeContent);
         } catch (err) {
           // Fallback copy
-          const textarea = document.createElement('textarea')
-          textarea.value = codeContent
-          textarea.setAttribute('readonly', '')
-          textarea.style.position = 'absolute'
-          textarea.style.left = '-9999px'
-          document.body.appendChild(textarea)
-          textarea.select()
+          const textarea = document.createElement("textarea");
+          textarea.value = codeContent;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "absolute";
+          textarea.style.left = "-9999px";
+          document.body.appendChild(textarea);
+          textarea.select();
           try {
-            document.execCommand('copy')
+            document.execCommand("copy");
           } catch {}
-          document.body.removeChild(textarea)
+          document.body.removeChild(textarea);
         }
 
-        button.classList.add('copied')
-        const timerId = button.dataset.copyTimeout
+        button.classList.add("copied");
+        const timerId = button.dataset.copyTimeout;
         if (timerId) {
-          window.clearTimeout(Number(timerId))
+          window.clearTimeout(Number(timerId));
         }
         const timeoutHandle = window.setTimeout(() => {
-          button.classList.remove('copied')
-          delete button.dataset.copyTimeout
-        }, 1500)
-        button.dataset.copyTimeout = String(timeoutHandle)
-        return
+          button.classList.remove("copied");
+          delete button.dataset.copyTimeout;
+        }, 1500);
+        button.dataset.copyTimeout = String(timeoutHandle);
+        return;
       }
 
-      const link = event.target.closest('a[href]')
+      const link = event.target.closest("a[href]");
       if (link) {
-        const href = link.getAttribute('href')
-        if (href?.startsWith('http://') || href?.startsWith('https://')) {
-          event.preventDefault()
-          event.stopPropagation()
-          await open(href)
-        } else if (href && !href.startsWith('#')) {
+        const href = link.getAttribute("href");
+        if (href?.startsWith("http://") || href?.startsWith("https://")) {
+          event.preventDefault();
+          event.stopPropagation();
+          await open(href);
+        } else if (href && !href.startsWith("#")) {
           // Handle relative links
-          event.preventDefault()
-          event.stopPropagation()
+          event.preventDefault();
+          event.stopPropagation();
 
-          if (type === 'local') {
+          if (type === "local") {
             // For local skills, reveal in file manager
-            const localPath = resolveLocalPath(href)
+            const localPath = resolveLocalPath(href);
             if (localPath) {
-              await openInFileManager(localPath)
+              await openInFileManager(localPath);
             }
           } else if (getBaseUrl()) {
             // For remote skills, build GitHub URL
-            const fullUrl = buildGitHubUrl(skill.url, skill.path || '', href)
+            const fullUrl = buildGitHubUrl(skill.url, skill.path || "", href);
             if (fullUrl) {
-              await open(fullUrl)
+              await open(fullUrl);
             }
           }
         }
       }
-    }
+    };
 
-    node.addEventListener('click', handleClick)
+    node.addEventListener("click", handleClick);
 
     return {
       destroy() {
-        node.removeEventListener('click', handleClick)
+        node.removeEventListener("click", handleClick);
       },
-    }
+    };
   }
 
   onMount(() => {
-    loadContent()
-  })
+    loadContent();
+  });
 
   // Reload when skill changes
   $effect(() => {
     if (skill) {
-      loadContent()
+      loadContent();
     }
-  })
+  });
 </script>
 
-<div class="max-w-4xl mx-auto">
+<div class="mx-auto max-w-4xl">
   {#if loading}
     <div class="flex items-center justify-center py-12">
-      <Loader2 size={32} class="animate-spin text-base-content-muted" />
+      <Loader2 size={32} class="text-base-content-muted animate-spin" />
     </div>
   {:else if error}
-    <div class="rounded-2xl border border-error-border bg-base-100 p-6 text-center">
+    <div class="border-error-border bg-base-100 rounded-2xl border p-6 text-center">
       <p class="text-error">{error}</p>
       <button
-        class="mt-4 rounded-lg bg-primary px-4 py-2 text-sm text-primary-content transition hover:bg-primary-hover"
+        class="bg-primary text-primary-content hover:bg-primary-hover mt-4 rounded-lg px-4 py-2 text-sm transition"
         onclick={loadContent}
       >
-        {$t('detail.retry')}
+        {$t("detail.retry")}
       </button>
     </div>
   {:else}

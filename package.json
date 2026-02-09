@@ -8,16 +8,27 @@
     "build": "vite build",
     "preview": "vite preview",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "format": "npm run format:frontend && npm run format:backend",
+    "format:frontend": "prettier --write \"**/*.{svelte,js,ts,css,scss,json}\"",
+    "format:backend": "cd src-tauri && cargo fmt",
+    "format:check": "npm run format:check:frontend && npm run format:check:backend",
+    "format:check:frontend": "prettier --check \"**/*.{svelte,js,ts,css,scss,json}\"",
+    "format:check:backend": "cd src-tauri && cargo fmt --check",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "@tailwindcss/vite": "^4.1.11",
     "@tauri-apps/cli": "^2.10.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.8.1",
+    "prettier-plugin-svelte": "^3.4.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
     "svelte": "^5.43.8",
     "tailwindcss": "^4.1.11",
     "vite": "^7.2.4",
-    "vite-plugin-node-polyfills": "^0.25.0",
-    "@tailwindcss/vite": "^4.1.11"
+    "vite-plugin-node-polyfills": "^0.25.0"
   },
   "dependencies": {
     "@lucide/svelte": "^0.563.1",

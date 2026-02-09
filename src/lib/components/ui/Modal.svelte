@@ -48,7 +48,7 @@
 {#if open}
   <div
     bind:this={modalElement}
-    class="fixed inset-0 flex items-center justify-center z-[10010] animate-backdrop"
+    class="animate-backdrop fixed inset-0 z-[10010] flex items-center justify-center"
     style="background-color: var(--overlay);"
     class:animate-backdrop-close={closing}
     role="dialog"
@@ -60,14 +60,14 @@
     }}
   >
     <!-- Modal container -->
-    <div class="relative animate-modal" class:animate-modal-close={closing}>
+    <div class="animate-modal relative" class:animate-modal-close={closing}>
       <!-- Background layer: responsible for visual effects and border clipping -->
       <div
-        class="bg-base-100 max-w-[90vw] max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden relative pointer-events-none border-[1px] border-base-200"
+        class="bg-base-100 border-base-200 pointer-events-none relative max-h-[90vh] max-w-[90vw] overflow-hidden rounded-2xl border-[1px] shadow-2xl"
         style="border-radius: 20px; z-index: 1;"
       >
         <!-- Reserve content space -->
-        <div class="px-0 py-0 invisible">
+        <div class="invisible px-0 py-0">
           {#if children}
             {@render children()}
           {/if}
@@ -75,17 +75,14 @@
       </div>
 
       <!-- Content layer: independent of background layer, not affected by clipping -->
-      <div
-        class="absolute inset-0 max-w-4xl bg-transparent"
-        style="z-index: 2;"
-      >
+      <div class="absolute inset-0 max-w-4xl bg-transparent" style="z-index: 2;">
         <!-- Header with close button and title -->
         {#if showCloseButton || title}
           <div
-            class="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-5 py-4"
+            class="absolute top-0 right-0 left-0 z-20 flex items-center justify-between px-5 py-4"
           >
             {#if title}
-              <h3 class="text-base font-medium text-base-content">
+              <h3 class="text-base-content text-base font-medium">
                 {title}
               </h3>
             {/if}

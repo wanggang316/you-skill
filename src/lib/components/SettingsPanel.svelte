@@ -2,12 +2,12 @@
   import { t } from "../i18n";
   import { settings, updateSettings } from "../stores/settings";
   import {
-  getBackupFolder,
-  setBackupFolder,
-  openBackupFolder,
-  backupSkills,
-  getLastBackupTime,
-} from "../api";
+    getBackupFolder,
+    setBackupFolder,
+    openBackupFolder,
+    backupSkills,
+    getLastBackupTime,
+  } from "../api";
   import { open } from "@tauri-apps/plugin-dialog";
   import { FolderOpen, Loader2, ChevronRight, Download } from "@lucide/svelte";
   import { check } from "@tauri-apps/plugin-updater";
@@ -165,47 +165,41 @@
 
 <section class="space-y-2">
   <!-- Language & Theme-->
-  <div class="flex flex-col gap-4 rounded-2xl bg-base-200 py-2.5 px-4">
+  <div class="bg-base-200 flex flex-col gap-4 rounded-2xl px-4 py-2.5">
     <div class="flex items-center justify-between">
-      <span class="text-[15px] text-base-content"
-        >{$t("settings.language")}</span
-      >
+      <span class="text-base-content text-[15px]">{$t("settings.language")}</span>
       <div class="relative">
         <select
-          class="appearance-none rounded-lg bg-base-300 px-3 py-1.5 pr-9 text-[14px] text-base-content text-right focus:outline-none min-w-[120px] hover:bg-base-100 transition-colors cursor-pointer"
+          class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
           value={$settings.language}
-          onchange={(event) =>
-            updateSettings({ language: event.currentTarget.value })}
+          onchange={(event) => updateSettings({ language: event.currentTarget.value })}
         >
           <option value="en">English</option>
           <option value="zh">中文</option>
         </select>
         <ChevronRight
-          class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-base-content-muted"
+          class="text-base-content-muted pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rotate-90"
           size={14}
         />
       </div>
     </div>
 
-    <div class="h-px bg-base-300"></div>
+    <div class="bg-base-300 h-px"></div>
 
     <div class="flex items-center justify-between">
-      <span class="text-[15px] text-base-content"
-        >{$t("settings.theme")}</span
-      >
+      <span class="text-base-content text-[15px]">{$t("settings.theme")}</span>
       <div class="relative">
         <select
-          class="appearance-none rounded-lg bg-base-300 px-3 py-1.5 pr-9 text-[14px] text-base-content text-right focus:outline-none min-w-[120px] hover:bg-base-100 transition-colors cursor-pointer"
+          class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
           value={$settings.theme}
-          onchange={(event) =>
-            updateSettings({ theme: event.currentTarget.value })}
+          onchange={(event) => updateSettings({ theme: event.currentTarget.value })}
         >
           <option value="system">{$t("settings.theme.system")}</option>
           <option value="light">{$t("settings.theme.light")}</option>
           <option value="dark">{$t("settings.theme.dark")}</option>
         </select>
         <ChevronRight
-          class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-base-content-muted"
+          class="text-base-content-muted pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rotate-90"
           size={14}
         />
       </div>
@@ -213,23 +207,20 @@
   </div>
 
   <!-- Skill Sync Mode -->
-  <div class="rounded-2xl bg-base-200 py-2.5 px-4">
+  <div class="bg-base-200 rounded-2xl px-4 py-2.5">
     <div class="flex items-center justify-between">
-      <span class="text-[15px] text-base-content"
-        >{$t("settings.syncMode")}</span
-      >
+      <span class="text-base-content text-[15px]">{$t("settings.syncMode")}</span>
       <div class="relative">
         <select
-          class="appearance-none rounded-lg bg-base-300 px-3 py-1.5 pr-9 text-[14px] text-base-content text-right focus:outline-none min-w-[120px] hover:bg-base-100 transition-colors cursor-pointer"
+          class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
           value={$settings.syncMode}
-          onchange={(event) =>
-            updateSettings({ syncMode: event.currentTarget.value })}
+          onchange={(event) => updateSettings({ syncMode: event.currentTarget.value })}
         >
           <option value="symlink">{$t("settings.syncMode.symlink")}</option>
           <option value="copy">{$t("settings.syncMode.copy")}</option>
         </select>
         <ChevronRight
-          class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-base-content-muted"
+          class="text-base-content-muted pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rotate-90"
           size={14}
         />
       </div>
@@ -237,14 +228,12 @@
   </div>
 
   <!-- Backup -->
-  <div class="rounded-2xl bg-base-200 py-2.5 px-4">
+  <div class="bg-base-200 rounded-2xl px-4 py-2.5">
     <div class="flex items-center justify-between">
-      <span class="text-[15px] text-base-content"
-        >{$t("settings.backup")}</span
-      >
+      <span class="text-base-content text-[15px]">{$t("settings.backup")}</span>
       <div class="flex items-center gap-3">
         {#if backupFolder}
-          <span class="text-xs text-base-content-muted">
+          <span class="text-base-content-muted text-xs">
             {#if lastBackupTime}
               {$t("settings.backup.lastBackup", { time: lastBackupTime })}
             {:else}
@@ -253,27 +242,23 @@
           </span>
         {/if}
         <button
-          class="flex items-center rounded-lg bg-primary px-3 py-1.5 text-[13px] text-primary-content hover:bg-primary-hover disabled:opacity-50"
+          class="bg-primary text-primary-content hover:bg-primary-hover flex items-center rounded-lg px-3 py-1.5 text-[13px] disabled:opacity-50"
           onclick={handleBackup}
           disabled={isBackingUp}
           type="button"
         >
           {#if isBackingUp}
-            <Loader2 size={13} class="animate-spin mr-1.5" />
+            <Loader2 size={13} class="mr-1.5 animate-spin" />
           {/if}
-          {isBackingUp
-            ? $t("settings.backup.backingUp")
-            : $t("settings.backup.backupNow")}
+          {isBackingUp ? $t("settings.backup.backingUp") : $t("settings.backup.backupNow")}
         </button>
       </div>
     </div>
     {#if backupFolder}
       <div class="mt-1.5 flex items-center gap-2">
-        <span class="text-xs text-base-content-muted break-all"
-          >{backupFolder}</span
-        >
+        <span class="text-base-content-muted text-xs break-all">{backupFolder}</span>
         <button
-          class="rounded p-1 text-base-content-muted hover:bg-base-300 hover:text-base-content"
+          class="text-base-content-muted hover:bg-base-300 hover:text-base-content rounded p-1"
           onclick={handleOpenBackupFolder}
           title={$t("settings.backup.openFolder")}
           type="button"
@@ -290,56 +275,48 @@
   </div>
 
   <!-- Updates -->
-  <div class="rounded-2xl bg-base-200 py-2.5 px-4">
+  <div class="bg-base-200 rounded-2xl px-4 py-2.5">
     <div class="flex items-center justify-between">
       <div class="flex flex-col">
-        <span class="text-[15px] text-base-content"
-          >{$t("settings.about")}</span
-        >
+        <span class="text-base-content text-[15px]">{$t("settings.about")}</span>
         {#if currentVersion}
-          <span class="text-xs text-base-content-muted">
+          <span class="text-base-content-muted text-xs">
             {$t("settings.currentVersion", { version: currentVersion })}
           </span>
         {/if}
       </div>
       {#if hasUpdate}
         <div class="flex items-center gap-2">
-          <span class="text-xs text-success font-medium">
+          <span class="text-success text-xs font-medium">
             {$t("settings.newVersionAvailable", { version: latestVersion })}
           </span>
           <button
-            class="flex items-center rounded-lg bg-success px-3 py-1.5 text-[13px] text-success-content hover:bg-primary-hover disabled:opacity-50"
+            class="bg-success text-success-content hover:bg-primary-hover flex items-center rounded-lg px-3 py-1.5 text-[13px] disabled:opacity-50"
             onclick={handleInstallUpdate}
             disabled={isInstalling}
             type="button"
           >
             {#if isInstalling}
-              <Loader2 size={13} class="animate-spin mr-1.5" />
+              <Loader2 size={13} class="mr-1.5 animate-spin" />
             {:else}
               <Download size={13} class="mr-1.5" />
             {/if}
-            {isInstalling
-              ? $t("settings.installingUpdate")
-              : $t("settings.installUpdate")}
+            {isInstalling ? $t("settings.installingUpdate") : $t("settings.installUpdate")}
           </button>
         </div>
       {:else}
         <button
-          class="rounded-lg bg-primary px-3 py-1.5 text-[13px] text-primary-content hover:bg-primary-hover disabled:opacity-50"
+          class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px] disabled:opacity-50"
           onclick={handleCheckUpdate}
           disabled={checkingUpdate}
           type="button"
         >
-          {checkingUpdate
-            ? $t("settings.checkingUpdate")
-            : $t("settings.checkUpdateBtn")}
+          {checkingUpdate ? $t("settings.checkingUpdate") : $t("settings.checkUpdateBtn")}
         </button>
       {/if}
     </div>
     {#if updateMessage}
-      <span class="mt-1.5 block text-xs text-base-content-muted"
-        >{updateMessage}</span
-      >
+      <span class="text-base-content-muted mt-1.5 block text-xs">{updateMessage}</span>
     {/if}
   </div>
 </section>

@@ -10,14 +10,19 @@ mod tray;
 
 use commands::{
   agents::list_agents,
-  backup::{backup_skills, get_backup_folder, set_backup_folder, open_backup_folder, get_last_backup_time},
-  install::{install_skill, detect_github_skills, detect_zip_skills, install_zip_skill, install_github_skill, detect_folder_skills, install_folder_skill},
+  backup::{
+    backup_skills, get_backup_folder, get_last_backup_time, open_backup_folder, set_backup_folder,
+  },
+  install::{
+    detect_folder_skills, detect_github_skills, detect_zip_skills, install_folder_skill,
+    install_github_skill, install_skill, install_zip_skill,
+  },
+  manage::{check_canonical_skill, set_agent_link, unify_skill},
   manage::{copy_skill, delete_skill, move_skill},
-  manage::{check_canonical_skill, unify_skill, set_agent_link},
   remote::{fetch_remote_skills, record_skill_install},
   scan::{add_scan_root, get_scan_roots, remove_scan_root, scan_local_skills},
   settings::{get_settings, update_settings},
-  skill::{read_skill_readme, open_in_file_manager},
+  skill::{open_in_file_manager, read_skill_readme},
 };
 use tray::{setup_tray, update_tray_skills, TrayState};
 

@@ -89,8 +89,5 @@ pub async fn read_skill_readme(skill_path: String) -> Result<String, String> {
     }
   }
 
-  Err(format!(
-    "No SKILL.md or README.md found in: {}",
-    skill_path
-  ))
+  Err(format!("No SKILL.md or README.md found in: {}", skill_path))
 }

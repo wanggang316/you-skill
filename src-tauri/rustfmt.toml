@@ -1,0 +1,29 @@
+# Rust formatter configuration (stable options)
+
+# Maximum line width
+max_width = 100
+
+# Use spaces for indentation
+hard_tabs = false
+tab_spaces = 2
+
+# Edition
+edition = "2021"
+
+# Use field init shorthand
+use_field_init_shorthand = true
+
+# Use try shorthand
+use_try_shorthand = true
+
+# Reorder imports
+reorder_imports = true
+
+# Reorder modules
+reorder_modules = true
+
+# Remove nested parens
+remove_nested_parens = true
+
+# Match block trailing comma
+match_block_trailing_comma = true
