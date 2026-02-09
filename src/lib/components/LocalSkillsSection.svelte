@@ -82,9 +82,9 @@
       </div>
     {:else}
       <div class="space-y-2">
-        <p class="text-base-content-muted text-sm font-semibold">
+        <!-- <p class="text-base-content-muted text-sm font-semibold">
           {$t("local.section.managed")}
-        </p>
+        </p> -->
         {#if managedSkills.length === 0}
           <div class="border-base-300 bg-base-100 rounded-xl border border-dashed p-6 text-center">
             <p class="text-base-content-muted mb-4 text-sm">
@@ -107,7 +107,7 @@
         {:else}
           {#each managedSkills as skill}
             <div
-              class="group border-base-300 bg-base-100 hover:bg-base-200  rounded-2xl border p-4 transition"
+              class="group border-base-300 bg-base-100 hover:bg-base-200 rounded-2xl border p-4 transition"
               onclick={() => onViewSkill(skill)}
               onkeydown={(e) => (e.key === "Enter" || e.key === " ") && onViewSkill(skill)}
               role="button"

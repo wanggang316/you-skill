@@ -131,7 +131,7 @@
   --overlay: var(--color-overlay);
 
   /* 内容颜色变体 */
-  --base-content-muted: color-mix(in oklch, var(--base-content) 70%, transparent);
+  --base-content-muted: color-mix(in oklch, var(--base-content) 60%, transparent);
   --base-content-subtle: color-mix(in oklch, var(--base-content) 55%, transparent);
   --base-content-faint: color-mix(in oklch, var(--base-content) 40%, transparent);
 

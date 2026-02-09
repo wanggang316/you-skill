@@ -1,5 +1,5 @@
 <script>
-  import { ChevronDown, Loader2, RefreshCw, Search, Check, ChevronsUpDown } from "@lucide/svelte";
+  import { ChevronDown, Loader2, RefreshCw, Search, Check, ChevronsUpDown, Star } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
   import { t } from "../i18n";
 
@@ -91,11 +91,11 @@
         <RefreshCw size={16} class={remoteLoading ? "animate-spin" : ""} />
       </IconButton>
     </div>
-    {#if remoteTotal > 0}
+    <!-- {#if remoteTotal > 0}
       <p class="text-base-content-muted mt-2 text-xs">
         {$t("remote.total", { count: remoteTotal })}
       </p>
-    {/if}
+    {/if} -->
     {#if remoteError}
       <p class="text-error mt-3 text-sm">{remoteError}</p>
     {/if}
@@ -108,7 +108,7 @@
     {/if}
   </div>
 
-  <div class="space-y-3">
+  <div class="space-y-0">
     {#if remoteLoading && remoteSkills.length === 0}
       <div
         class="border-base-300 bg-base-100 text-base-content-muted rounded-2xl border border-dashed p-6 text-center text-sm"
@@ -126,7 +126,7 @@
         {@const installed = isInstalled(skill)}
         {@const isBusy = installingSkill === skill.id || isDownloading}
         <div
-          class="border-base-300 bg-base-100 hover:bg-base-200 rounded-2xl border p-4 transition"
+          class="border-base-300 bg-base-100 hover:bg-base-200  border-b px-4 py-3 transition"
           onclick={() => onViewSkill(skill)}
           onkeydown={(e) => (e.key === "Enter" || e.key === " ") && onViewSkill(skill)}
           role="button"
@@ -138,7 +138,7 @@
               <div class="flex items-center gap-2">
                 <p class="truncate text-base font-medium">
                   {skill.name}
-                  <span class="text-base-content-muted font-normal">({skill.source})</span>
+                  <span class="text-base-content/70 font-normal text-sm">({skill.source})</span>
                 </p>
                 {#if installed}
                   <span
