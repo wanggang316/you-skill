@@ -95,6 +95,12 @@ export interface InstallGithubRequest {
   agents: string[]
 }
 
+export interface InstallFolderRequest {
+  folder_path: string
+  skill_path: string
+  agents: string[]
+}
+
 // ============ Local Skills ============
 
 /**
@@ -214,6 +220,20 @@ export async function installGithubSkill(request: InstallGithubRequest): Promise
   return apiCall<InstallResult>('install_github_skill', { request })
 }
 
+/**
+ * 从文件夹检测技能
+ */
+export async function detectFolderSkills(folderPath: string): Promise<DetectedSkill[]> {
+  return apiCall<DetectedSkill[]>('detect_folder_skills', { folderPath })
+}
+
+/**
+ * 从文件夹安装技能
+ */
+export async function installFolderSkill(request: InstallFolderRequest): Promise<InstallResult> {
+  return apiCall<InstallResult>('install_folder_skill', { request })
+}
+
 // ============ Other ============
 
 /**
@@ -221,6 +241,13 @@ export async function installGithubSkill(request: InstallGithubRequest): Promise
  */
 export async function readSkillReadme(skillPath: string): Promise<string> {
   return apiCall<string>('read_skill_readme', { skillPath })
+}
+
+/**
+ * 在文件管理器中打开文件
+ */
+export async function openInFileManager(filePath: string): Promise<void> {
+  return apiCall<void>('open_in_file_manager', { filePath })
 }
 
 /**

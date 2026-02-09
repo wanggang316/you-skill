@@ -5,6 +5,7 @@
     Settings,
     Download,
     ArrowUpCircle,
+    ExternalLink,
   } from "@lucide/svelte";
   import IconButton from "./IconButton.svelte";
   import { t } from "../i18n";
@@ -21,6 +22,7 @@
     onOpenPendingImport,
     onOpenUpdate,
     onBack,
+    onDetailAction,
   } = $props();
 </script>
 
@@ -115,19 +117,31 @@
           </IconButton>
         </div>
       {:else if currentView === "detail"}
-        <div class="flex items-center gap-4">
-          <button
-            class="flex items-center gap-2 rounded-xl border border-[var(--base-300)] px-3 py-2 text-sm text-[var(--base-content)] transition hover:bg-[var(--base-200)]"
-            onclick={onBack}
-            title={$t("header.back")}
-            type="button"
-          >
-            <ChevronLeft size={16} />
-            {$t("header.back")}
-          </button>
-          <h1 class="text-lg font-semibold text-[var(--base-content)]">
-            {skillName}
-          </h1>
+        <div class="flex items-center justify-between w-full">
+          <div class="flex items-center gap-4">
+            <button
+              class="flex items-center gap-2 rounded-xl border border-[var(--base-300)] px-3 py-2 text-sm text-[var(--base-content)] transition hover:bg-[var(--base-200)]"
+              onclick={onBack}
+              title={$t("header.back")}
+              type="button"
+            >
+              <ChevronLeft size={16} />
+              {$t("header.back")}
+            </button>
+            <h1 class="text-lg font-semibold text-[var(--base-content)]">
+              {skillName}
+            </h1>
+          </div>
+          {#if onDetailAction}
+            <IconButton
+              variant="outline"
+              onclick={onDetailAction}
+              title={$t("detail.openInBrowser")}
+              ariaLabel={$t("detail.openInBrowser")}
+            >
+              <ExternalLink size={16} />
+            </IconButton>
+          {/if}
         </div>
       {:else}
         <div class="flex items-center gap-4">

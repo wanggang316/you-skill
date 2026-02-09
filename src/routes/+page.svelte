@@ -444,6 +444,47 @@
     currentView = 'list'
     selectedSkill = null
   }
+
+  // Build GitHub web URL for a specific path
+  function buildGitHubUrl(url, path) {
+    if (!url) return null
+
+    // Handle github.com URLs
+    if (url.includes('github.com')) {
+      // Extract owner and repo from URL like https://github.com/owner/repo
+      const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/)
+      if (match) {
+        const [, owner, repo] = match
+        // Remove .git suffix if present
+        const cleanRepo = repo.replace(/\.git$/, '')
+        // Construct web URL: https://github.com/owner/repo/tree/main/path
+        return `https://github.com/${owner}/${cleanRepo}/tree/main/${path || ''}`
+      }
+    }
+    return null
+  }
+
+  const handleDetailAction = async () => {
+    if (!selectedSkill) return
+
+    // For remote skills, open GitHub URL with path
+    if (selectedSkill.url) {
+      try {
+        const fullUrl = buildGitHubUrl(selectedSkill.url, selectedSkill.path || '') || selectedSkill.url
+        await open(fullUrl)
+      } catch (error) {
+        console.error('Failed to open URL:', error)
+      }
+    } else if (selectedSkill.canonical_path) {
+      // For local skills, open in file manager
+      const { openInFileManager } = await import('../lib/api/skills')
+      try {
+        await openInFileManager(selectedSkill.canonical_path)
+      } catch (error) {
+        console.error('Failed to open in file manager:', error)
+      }
+    }
+  }
 </script>
 
 <div class="flex h-screen flex-col overflow-hidden bg-[var(--base-100)] text-[var(--base-content)]">
@@ -459,6 +500,7 @@
     onOpenPendingImport={() => (pendingImportModalOpen = true)}
     onOpenUpdate={handleOpenUpdate}
     onBack={handleBackToList}
+    onDetailAction={selectedSkill ? handleDetailAction : null}
   />
 
   <AddSkillModal

@@ -3,7 +3,8 @@
   import { Loader2, FileText } from '@lucide/svelte'
   import { parseMarkdown, renderMarkdownBody } from '../utils/markdown'
   import { t } from '../i18n'
-  import { readSkillReadme } from '../api/skills'
+  import { readSkillReadme, openInFileManager } from '../api/skills'
+  import { open } from '@tauri-apps/plugin-shell'
 
   let {
     skill,
@@ -34,6 +35,72 @@
       }
     }
     return null
+  }
+
+  // Build GitHub web URL for a specific path
+  function buildGitHubUrl(url, path, relativePath = '') {
+    if (!url) return null
+
+    // Handle github.com URLs
+    if (url.includes('github.com')) {
+      // Extract owner and repo from URL like https://github.com/owner/repo
+      const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/)
+      if (match) {
+        const [, owner, repo] = match
+        // Remove .git suffix if present
+        const cleanRepo = repo.replace(/\.git$/, '')
+        // Build the full path
+        let fullPath = path || ''
+        if (relativePath) {
+          // Resolve relative path
+          if (relativePath.startsWith('/')) {
+            // Absolute relative path
+            fullPath = relativePath.substring(1)
+          } else {
+            // Relative path - join with existing path
+            fullPath = fullPath ? `${fullPath}/${relativePath}` : relativePath
+          }
+        }
+        // Construct web URL: https://github.com/owner/repo/tree/main/path
+        return `https://github.com/${owner}/${cleanRepo}/tree/main/${fullPath}`
+      }
+    }
+    return null
+  }
+
+  // Get the base URL for resolving relative links
+  function getBaseUrl() {
+    if (!skill.url) return null
+    return buildGitHubUrl(skill.url, skill.path || '')
+  }
+
+  // Resolve local file path for relative links
+  function resolveLocalPath(relativePath) {
+    if (!skill.canonical_path) return null
+
+    // canonical_path is the skill directory path (e.g., /Users/xxx/skills/my-skill)
+    const dirPath = skill.canonical_path
+
+    if (relativePath.startsWith('/')) {
+      // Absolute path (relative to repo root)
+      // For now, just treat as relative to current skill directory
+      return dirPath + relativePath
+    } else {
+      // Relative path - join with directory
+      // Handle ./ and ../
+      const parts = dirPath.split('/')
+      const relParts = relativePath.split('/')
+
+      for (const part of relParts) {
+        if (part === '..') {
+          parts.pop()
+        } else if (part !== '.') {
+          parts.push(part)
+        }
+      }
+
+      return parts.join('/')
+    }
   }
 
   async function loadLocalSkillContent() {
@@ -134,8 +201,25 @@
         if (href?.startsWith('http://') || href?.startsWith('https://')) {
           event.preventDefault()
           event.stopPropagation()
-          const { open } = await import('@tauri-apps/plugin-shell')
           await open(href)
+        } else if (href && !href.startsWith('#')) {
+          // Handle relative links
+          event.preventDefault()
+          event.stopPropagation()
+
+          if (type === 'local') {
+            // For local skills, reveal in file manager
+            const localPath = resolveLocalPath(href)
+            if (localPath) {
+              await openInFileManager(localPath)
+            }
+          } else if (getBaseUrl()) {
+            // For remote skills, build GitHub URL
+            const fullUrl = buildGitHubUrl(skill.url, skill.path || '', href)
+            if (fullUrl) {
+              await open(fullUrl)
+            }
+          }
         }
       }
     }

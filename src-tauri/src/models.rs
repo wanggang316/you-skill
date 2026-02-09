@@ -98,3 +98,10 @@ pub struct InstallGithubRequest {
   pub skill_path: String,
   pub agents: Vec<String>,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct InstallFolderRequest {
+  pub folder_path: String,
+  pub skill_path: String,
+  pub agents: Vec<String>,
+}

@@ -502,3 +502,121 @@ fn copy_dir_all_sync(src: &Path, dst: &Path) -> Result<(), String> {
 
   Ok(())
 }
+
+/// Detect skills in a folder by finding SKILL.md files
+#[tauri::command]
+pub fn detect_folder_skills(folder_path: String) -> Result<Vec<DetectedSkill>, String> {
+  let folder = Path::new(&folder_path);
+
+  if !folder.exists() || !folder.is_dir() {
+    return Err("Folder does not exist or is not a directory".to_string());
+  }
+
+  let mut skills = Vec::new();
+  find_skill_md_files(folder, folder, &mut skills)?;
+
+  Ok(skills)
+}
+
+/// Install a skill from a folder to .agents/skills/ folder and create symlinks to selected agents
+#[tauri::command]
+pub fn install_folder_skill(request: crate::models::InstallFolderRequest) -> Result<InstallResult, String> {
+  use crate::paths::agent_paths;
+
+  // Get skill name from the skill path
+  let skill_path = Path::new(&request.skill_path);
+  let skill_name = skill_path
+    .file_name()
+    .map(|n| n.to_string_lossy().to_string())
+    .unwrap_or_else(|| "unnamed-skill".to_string());
+
+  // Get global skills directory
+  let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
+  let agents_skills_dir = home_dir.join(".agents/skills");
+
+  // Ensure directory exists
+  fs::create_dir_all(&agents_skills_dir).map_err(|e| e.to_string())?;
+
+  // Get source directory
+  let source_dir = Path::new(&request.folder_path).join(&request.skill_path);
+
+  if !source_dir.exists() {
+    return Err(format!("Skill path not found: {}", request.skill_path));
+  }
+
+  // Copy skill to .agents/skills/
+  let target_dir = agents_skills_dir.join(&skill_name);
+
+  // Remove existing directory if it exists
+  if target_dir.exists() {
+    fs::remove_dir_all(&target_dir).map_err(|e| e.to_string())?;
+  }
+
+  // Copy directory
+  copy_dir_all_sync(&source_dir, &target_dir)?;
+
+  // Create symlinks for selected agents
+  let agent_paths = agent_paths();
+  let mut errors = Vec::new();
+
+  for agent_id in &request.agents {
+    if let Some(agent) = agent_paths.iter().find(|a| a.id == *agent_id) {
+      if let Some(global_path) = agent.global_path {
+        let expanded_path = expand_tilde(global_path)?;
+        let agent_skill_dir = Path::new(&expanded_path);
+
+        // Ensure parent directory exists
+        if let Some(parent) = agent_skill_dir.parent() {
+          fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+
+        // Create symlink
+        let symlink_path = agent_skill_dir.join(&skill_name);
+
+        // Remove existing symlink or directory
+        if symlink_path.exists() || symlink_path.is_symlink() {
+          if symlink_path.is_dir() && !symlink_path.is_symlink() {
+            fs::remove_dir_all(&symlink_path).map_err(|e| e.to_string())?;
+          } else {
+            fs::remove_file(&symlink_path).map_err(|e| e.to_string())?;
+          }
+        }
+
+        #[cfg(unix)]
+        {
+          use std::os::unix::fs::symlink;
+          if let Err(e) = symlink(&target_dir, &symlink_path) {
+            errors.push(format!("{}: {}", agent.display_name, e));
+          }
+        }
+
+        #[cfg(windows)]
+        {
+          use std::os::windows::fs::symlink_dir;
+          if let Err(e) = symlink_dir(&target_dir, &symlink_path) {
+            // On Windows, if symlink fails, copy the directory instead
+            if let Err(copy_err) = copy_dir_all_sync(&target_dir, &symlink_path) {
+              errors.push(format!("{}: symlink failed ({}), copy failed ({})", agent.display_name, e, copy_err));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if errors.is_empty() {
+    Ok(InstallResult {
+      success: true,
+      stdout: format!("Skill '{}' installed successfully from folder", skill_name),
+      stderr: String::new(),
+      message: "安装成功".to_string(),
+    })
+  } else {
+    Ok(InstallResult {
+      success: true,
+      stdout: format!("Skill '{}' installed with some warnings", skill_name),
+      stderr: errors.join("\n"),
+      message: "安装完成，但部分 Agent 链接失败".to_string(),
+    })
+  }
+}
