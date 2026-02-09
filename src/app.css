@@ -1,11 +1,9 @@
+@import "tailwindcss";
 @import "highlight.js/styles/github.css";
 @import "./lib/styles/highlight-dark.css";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-:root {
+/* 使用 Tailwind @theme 指令定义主题变量 */
+@theme {
   --color-base-100: oklch(100% 0 0);
   --color-base-200: oklch(98% 0 0);
   --color-base-300: oklch(95% 0 0);
@@ -26,8 +24,62 @@
   --color-warning-content: oklch(41% 0.112 45.904);
   --color-error: oklch(71% 0.194 13.428);
   --color-error-content: oklch(27% 0.105 12.094);
+
+  /* 遮罩层颜色 */
   --color-overlay: oklch(21% 0.006 285.885 / 0.3);
 
+  /* 深色主题颜色 */
+  --color-base-100-dark: oklch(0.2308 0 0);
+  --color-base-200-dark: oklch(0.2838 0.0047 247.99);
+  --color-base-300-dark: oklch(0.3268 0.0055 236.68);
+  --color-base-content-dark: oklch(0.934 0 0);
+  --color-primary-dark: oklch(62.43% 0.206 255.523);
+  --color-primary-content-dark: oklch(96% 0.018 272.314);
+  --color-secondary-dark: oklch(65% 0.241 354.308);
+  --color-secondary-content-dark: oklch(94% 0.028 342.258);
+  --color-accent-dark: oklch(77% 0.152 181.912);
+  --color-accent-content-dark: oklch(38% 0.063 188.416);
+  --color-neutral-dark: oklch(14% 0.005 285.823);
+  --color-neutral-content-dark: oklch(92% 0.004 286.32);
+  --color-info-dark: oklch(74% 0.16 232.661);
+  --color-info-content-dark: oklch(29% 0.066 243.157);
+  --color-success-dark: oklch(76% 0.177 163.223);
+  --color-success-content-dark: oklch(37% 0.077 168.94);
+  --color-warning-dark: oklch(82% 0.189 84.429);
+  --color-warning-content-dark: oklch(41% 0.112 45.904);
+  --color-error-dark: oklch(71% 0.194 13.428);
+  --color-error-content-dark: oklch(27% 0.105 12.094);
+  --color-overlay-dark: oklch(21% 0.006 285.885 / 0.6);
+}
+
+/* 浅色主题（默认） */
+:root {
+  /* 颜色定义 */
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(98% 0 0);
+  --color-base-300: oklch(95% 0 0);
+  --color-base-content: oklch(21% 0.006 285.885);
+  --color-primary: oklch(62.43% 0.206 255.523);
+  --color-primary-content: oklch(93% 0.034 272.788);
+  --color-secondary: oklch(65% 0.241 354.308);
+  --color-secondary-content: oklch(94% 0.028 342.258);
+  --color-accent: oklch(77% 0.152 181.912);
+  --color-accent-content: oklch(38% 0.063 188.416);
+  --color-neutral: oklch(14% 0.005 285.823);
+  --color-neutral-content: oklch(92% 0.004 286.32);
+  --color-info: oklch(74% 0.16 232.661);
+  --color-info-content: oklch(29% 0.066 243.157);
+  --color-success: oklch(76% 0.177 163.223);
+  --color-success-content: oklch(37% 0.077 168.94);
+  --color-warning: oklch(82% 0.189 84.429);
+  --color-warning-content: oklch(41% 0.112 45.904);
+  --color-error: oklch(71% 0.194 13.428);
+  --color-error-content: oklch(27% 0.105 12.094);
+
+  /* 遮罩层颜色 */
+  --color-overlay: oklch(21% 0.006 285.885 / 0.3);
+
+  /* 深色主题颜色 */
   --color-base-100-dark: oklch(0.2308 0 0);
   --color-base-200-dark: oklch(0.2838 0.0047 247.99);
   --color-base-300-dark: oklch(0.3268 0.0055 236.68);
@@ -50,6 +102,7 @@
   --color-error-content-dark: oklch(27% 0.105 12.094);
   --color-overlay-dark: oklch(21% 0.006 285.885 / 0.6);
 
+  /* 变量映射 */
   --base-100: var(--color-base-100);
   --base-200: var(--color-base-200);
   --base-300: var(--color-base-300);
@@ -72,35 +125,24 @@
   --error-content: var(--color-error-content);
   --overlay: var(--color-overlay);
 
-  --base-content-muted: color-mix(
-    in oklch,
-    var(--base-content) 70%,
-    transparent
-  );
-  --base-content-subtle: color-mix(
-    in oklch,
-    var(--base-content) 55%,
-    transparent
-  );
-  --base-content-faint: color-mix(
-    in oklch,
-    var(--base-content) 40%,
-    transparent
-  );
+  /* 内容颜色变体 */
+  --base-content-muted: color-mix(in oklch, var(--base-content) 70%, transparent);
+  --base-content-subtle: color-mix(in oklch, var(--base-content) 55%, transparent);
+  --base-content-faint: color-mix(in oklch, var(--base-content) 40%, transparent);
+
+  /* 标签颜色 */
   --tag-warning-bg: color-mix(in oklch, var(--warning) 20%, var(--base-100));
-  --tag-warning-text: color-mix(
-    in oklch,
-    var(--warning) 55%,
-    var(--base-content)
-  );
+  --tag-warning-text: color-mix(in oklch, var(--warning) 55%, var(--base-content));
   --tag-error-bg: color-mix(in oklch, var(--error) 22%, var(--base-100));
   --tag-error-text: color-mix(in oklch, var(--error) 60%, var(--base-content));
   --tag-neutral-bg: color-mix(in oklch, var(--base-300) 80%, var(--base-100));
   --tag-neutral-text: color-mix(in oklch, var(--base-content) 60%, transparent);
+
+  /* 边框颜色 */
   --error-border: color-mix(in oklch, var(--error) 35%, transparent);
-  --success: var(--color-success);
   --success-bg: color-mix(in oklch, var(--success) 15%, var(--base-100));
 
+  /* Hover 状态颜色 */
   --primary-hover: color-mix(in oklch, var(--primary) 85%, transparent);
   --warning-hover: color-mix(in oklch, var(--warning) 85%, transparent);
   --success-hover: color-mix(in oklch, var(--success) 85%, transparent);
@@ -116,7 +158,9 @@
     sans-serif;
 }
 
+/* 深色主题 */
 [data-theme="dark"] {
+  /* 颜色映射到深色主题 */
   --color-base-100: var(--color-base-100-dark);
   --color-base-200: var(--color-base-200-dark);
   --color-base-300: var(--color-base-300-dark);
@@ -138,6 +182,7 @@
   --color-error: var(--color-error-dark);
   --color-error-content: var(--color-error-content-dark);
 
+  /* 变量映射到深色主题 */
   --base-100: var(--color-base-100-dark);
   --base-200: var(--color-base-200-dark);
   --base-300: var(--color-base-300-dark);
@@ -160,9 +205,17 @@
   --error-content: var(--color-error-content-dark);
   --overlay: var(--color-overlay-dark);
 
+  /* Hover 状态颜色 - 深色模式 */
   --primary-hover: color-mix(in oklch, var(--color-primary-dark) 85%, transparent);
   --warning-hover: color-mix(in oklch, var(--color-warning-dark) 85%, transparent);
   --success-hover: color-mix(in oklch, var(--color-success-dark) 85%, transparent);
+}
+
+[data-theme="dark"] .shadow-2xl {
+  --tw-shadow: 0 32px 64px -28px color-mix(in oklch, var(--overlay) 10%, var(--base-100) 5%);
+  --tw-shadow-colored: 0 32px 64px -28px color-mix(in oklch, var(--overlay) 10%, var(--base-100) 5%);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+    var(--tw-shadow);
 }
 
 html,
@@ -184,6 +237,343 @@ button {
     color 0.15s,
     border-color 0.15s,
     opacity 0.15s;
+}
+
+/* Markdown 样式 */
+.markdown-content {
+  line-height: 1.8;
+  color: var(--base-content);
+}
+
+.markdown-content h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1.5rem 0 1rem 0;
+  color: var(--base-content);
+  border-bottom: 2px solid var(--base-300);
+  padding-bottom: 0.5rem;
+}
+
+.markdown-content h2 {
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin: 1.25rem 0 0.75rem 0;
+  color: var(--base-content);
+  border-bottom: 1px solid var(--base-300);
+  padding-bottom: 0.25rem;
+}
+
+.markdown-content h3 {
+  font-size: 1.125rem;
+  font-weight: 500;
+  margin: 1rem 0 0.5rem 0;
+  color: var(--base-content);
+}
+
+.markdown-content h4 {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0.75rem 0 0.5rem 0;
+  color: var(--base-content);
+}
+
+.markdown-content h5 {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0.5rem 0 0.25rem 0;
+  color: var(--base-content);
+}
+
+.markdown-content h6 {
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin: 0.5rem 0 0.25rem 0;
+  color: color-mix(in oklch, var(--base-content) 80%, transparent);
+}
+
+.markdown-content p {
+  margin: 0.5rem 0;
+  line-height: 1.8;
+  font-weight: 400;
+}
+
+.markdown-content strong {
+  font-weight: 600;
+  color: var(--base-content);
+}
+
+.markdown-content em {
+  font-style: italic;
+  color: var(--base-content);
+}
+
+.markdown-content code:not(.hljs) {
+  background-color: var(--base-300);
+  color: var(--base-content);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: "Fira Code", "Monaco", "Consolas", "Courier New", monospace;
+  font-size: 0.875em;
+  border: 1px solid var(--base-300);
+}
+
+.markdown-content pre {
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.markdown-content pre code {
+  font-family: "Fira Code", "Monaco", "Consolas", "Courier New", monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.markdown-content .markdown-code-block {
+  margin: 1.25rem 0;
+  border-radius: 0.75rem;
+  border: 1px solid var(--base-300);
+  background-color: var(--base-200);
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.markdown-content .markdown-code-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.9rem;
+  background-color: rgba(148, 163, 184, 0.12);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  font-size: 0.75rem;
+  line-height: 1;
+  color: color-mix(in oklch, var(--base-content) 80%, transparent);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
+.markdown-content .markdown-code-block__language {
+  font-family: "Fira Code", "Monaco", "Consolas", "Courier New", monospace;
+}
+
+.markdown-content .markdown-code-block__copy {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.markdown-content .markdown-code-block__copy:hover {
+  background-color: var(--color-neutral);
+  color: var(--color-neutral-content);
+}
+
+.markdown-content .markdown-code-block__copy-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  pointer-events: none;
+}
+
+.markdown-content .markdown-code-block__copy-icon .code-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.markdown-content .markdown-code-block__copy-label {
+  display: none;
+  font-size: 0.7rem;
+  pointer-events: none;
+}
+
+.markdown-content .markdown-code-block__copy.copied {
+  background-color: transparent;
+  color: var(--color-base-content);
+}
+
+.markdown-content .markdown-code-block__copy.copied .markdown-code-block__copy-icon {
+  display: none;
+}
+
+.markdown-content .markdown-code-block__copy.copied .markdown-code-block__copy-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.markdown-content .markdown-code-block pre {
+  margin: 0;
+  background: transparent;
+}
+
+.markdown-content .markdown-code-block pre code {
+  background: transparent;
+  display: block;
+  padding: 1.1rem 1.25rem;
+}
+
+pre.code-block {
+  margin: 0;
+  padding: 0;
+  font-family: "Fira Code", "Monaco", "Consolas", "Courier New", monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--base-content);
+  background-color: var(--base-200);
+  border-radius: 0.75rem;
+  overflow-x: auto;
+}
+
+pre.code-block code {
+  display: block;
+  font: inherit;
+  background: transparent;
+  color: inherit;
+}
+
+pre.code-block--compact {
+  font-size: 0.7rem;
+  border-radius: 0.65rem;
+}
+
+.markdown-content ul {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.markdown-content ol {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.markdown-content li {
+  margin: 0.25rem 0;
+  line-height: 1.6;
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid var(--primary);
+  background-color: var(--base-200);
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0 0.25rem 0.25rem 0;
+  color: color-mix(in oklch, var(--base-content) 80%, transparent);
+  font-style: italic;
+}
+
+.markdown-content a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.2s;
+}
+
+.markdown-content a:hover {
+  text-decoration-color: var(--primary);
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid var(--base-300);
+  margin: 2rem 0;
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  border: 1px solid var(--base-300);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.markdown-content th,
+.markdown-content td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--base-300);
+}
+
+.markdown-content th {
+  background-color: var(--base-200);
+  font-weight: 600;
+  color: var(--base-content);
+}
+
+.markdown-content tr:last-child td {
+  border-bottom: none;
+}
+
+/* 推理过程的特殊样式 - 浅色模式 */
+.reasoning-content {
+  line-height: 1.5;
+  color: color-mix(in oklch, var(--base-content) 60%, transparent);
+}
+
+.reasoning-content h1,
+.reasoning-content h2,
+.reasoning-content h3,
+.reasoning-content h4,
+.reasoning-content h5,
+.reasoning-content h6 {
+  color: color-mix(in oklch, var(--base-content) 70%, transparent);
+  border-color: color-mix(in oklch, var(--base-300) 80%, transparent);
+}
+
+.reasoning-content strong {
+  font-weight: 600;
+  color: color-mix(in oklch, var(--base-content) 65%, transparent);
+}
+
+.reasoning-content code:not(.hljs) {
+  background-color: color-mix(in oklch, var(--base-300) 50%, transparent);
+  color: color-mix(in oklch, var(--base-content) 70%, transparent);
+  border-color: color-mix(in oklch, var(--base-300) 60%, transparent);
+}
+
+.reasoning-content pre {
+  background-color: color-mix(in oklch, var(--base-200) 80%, transparent);
+  border-color: color-mix(in oklch, var(--base-300) 60%, transparent);
+}
+
+.reasoning-content pre code {
+  color: color-mix(in oklch, var(--base-content) 70%, transparent);
+}
+
+.reasoning-content blockquote {
+  border-left-color: color-mix(in oklch, var(--primary) 60%, transparent);
+  background-color: color-mix(in oklch, var(--base-200) 70%, transparent);
+  color: color-mix(in oklch, var(--base-content) 65%, transparent);
+}
+
+/* 动画：与类名 pulse-scale 对应 */
+@keyframes pulse-scale {
+  0%,
+  100% {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+.favorite-highlight {
+  background-color: color-mix(in oklch, var(--color-warning) 22%, transparent);
+}
+
+[data-theme="dark"] .favorite-highlight {
+  background-color: color-mix(in oklch, var(--color-warning) 30%, transparent);
 }
 
 @layer components {

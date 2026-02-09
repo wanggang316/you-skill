@@ -134,3 +134,44 @@
 [data-theme="dark"] .hljs-tag {
   /* purposely ignored */
 }
+
+/* 推理过程的特殊样式 - 深色模式 */
+[data-theme="dark"] .reasoning-content {
+  color: color-mix(in oklch, var(--base-content) 60%, transparent);
+}
+
+[data-theme="dark"] .reasoning-content h1,
+[data-theme="dark"] .reasoning-content h2,
+[data-theme="dark"] .reasoning-content h3,
+[data-theme="dark"] .reasoning-content h4,
+[data-theme="dark"] .reasoning-content h5,
+[data-theme="dark"] .reasoning-content h6 {
+  color: color-mix(in oklch, var(--base-content) 75%, transparent);
+  border-color: color-mix(in oklch, var(--base-300) 70%, transparent);
+}
+
+[data-theme="dark"] .reasoning-content strong {
+  font-weight: 600;
+  color: color-mix(in oklch, var(--base-content) 70%, transparent);
+}
+
+[data-theme="dark"] .reasoning-content code:not(.hljs) {
+  background-color: color-mix(in oklch, var(--base-300) 60%, transparent);
+  color: color-mix(in oklch, var(--base-content) 75%, transparent);
+  border-color: color-mix(in oklch, var(--base-300) 80%, transparent);
+}
+
+[data-theme="dark"] .reasoning-content pre {
+  background-color: color-mix(in oklch, var(--base-200) 90%, transparent);
+  border-color: color-mix(in oklch, var(--base-300) 70%, transparent);
+}
+
+[data-theme="dark"] .reasoning-content pre code {
+  color: color-mix(in oklch, var(--base-content) 75%, transparent);
+}
+
+[data-theme="dark"] .reasoning-content blockquote {
+  border-left-color: color-mix(in oklch, var(--primary) 70%, transparent);
+  background-color: color-mix(in oklch, var(--base-200) 80%, transparent);
+  color: color-mix(in oklch, var(--base-content) 70%, transparent);
+}
