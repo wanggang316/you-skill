@@ -200,8 +200,31 @@ pub fn install_zip_skill(request: InstallZipRequest) -> Result<InstallResult, St
   // Create skill directory
   fs::create_dir_all(&skill_dir).map_err(|e| e.to_string())?;
 
-  // Extract ZIP
-  extract_zip(&request.zip_path, &skill_dir)?;
+  // If skill_path is empty, extract entire ZIP (single skill in root)
+  // Otherwise, extract to temp and copy only the specified subdirectory
+  if request.skill_path.is_empty() {
+    // Single skill in ZIP root - extract directly
+    extract_zip(&request.zip_path, &skill_dir)?;
+  } else {
+    // Multi-skill ZIP - extract to temp first
+    let temp_dir = std::env::temp_dir().join(format!("you-skills-install-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&temp_dir);
+    fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
+
+    extract_zip(&request.zip_path, &temp_dir)?;
+
+    // Copy only the specified skill subdirectory
+    let source_dir = temp_dir.join(&request.skill_path);
+    if !source_dir.exists() {
+      let _ = fs::remove_dir_all(&temp_dir);
+      return Err(format!("Skill path not found in ZIP: {}", request.skill_path));
+    }
+
+    copy_dir_all_sync(&source_dir, &skill_dir)?;
+
+    // Clean up temp directory
+    let _ = fs::remove_dir_all(&temp_dir);
+  }
 
   // Create symlinks for selected agents
   let agent_paths = agent_paths();
@@ -473,8 +496,24 @@ pub fn detect_zip_skills(zip_path: String) -> Result<Vec<DetectedSkill>, String>
     return Err(e);
   }
 
-  // Find all SKILL.md files
   let mut skills = Vec::new();
+
+  // First, check if root directory has SKILL.md (single skill in ZIP root)
+  let root_skill_md = temp_dir.join("SKILL.md");
+  if root_skill_md.exists() {
+    // Get skill name from ZIP file name
+    let zip_filename = Path::new(&zip_path)
+      .file_stem()
+      .map(|s| s.to_string_lossy().to_string())
+      .unwrap_or_else(|| "skill".to_string());
+
+    skills.push(DetectedSkill {
+      name: zip_filename,
+      path: String::new(), // Empty path means root
+    });
+  }
+
+  // Then, search for SKILL.md in subdirectories
   let find_result = find_skill_md_files(&temp_dir, &temp_dir, &mut skills);
 
   // Clean up temp directory
@@ -513,6 +552,23 @@ pub fn detect_folder_skills(folder_path: String) -> Result<Vec<DetectedSkill>, S
   }
 
   let mut skills = Vec::new();
+
+  // First, check if the folder itself has SKILL.md (single skill folder)
+  let root_skill_md = folder.join("SKILL.md");
+  if root_skill_md.exists() {
+    // Get skill name from folder name
+    let folder_name = folder
+      .file_name()
+      .map(|n| n.to_string_lossy().to_string())
+      .unwrap_or_else(|| "skill".to_string());
+
+    skills.push(DetectedSkill {
+      name: folder_name,
+      path: String::new(), // Empty path means root
+    });
+  }
+
+  // Then, search for SKILL.md in subdirectories
   find_skill_md_files(folder, folder, &mut skills)?;
 
   Ok(skills)
@@ -523,12 +579,24 @@ pub fn detect_folder_skills(folder_path: String) -> Result<Vec<DetectedSkill>, S
 pub fn install_folder_skill(request: crate::models::InstallFolderRequest) -> Result<InstallResult, String> {
   use crate::paths::agent_paths;
 
-  // Get skill name from the skill path
-  let skill_path = Path::new(&request.skill_path);
-  let skill_name = skill_path
-    .file_name()
-    .map(|n| n.to_string_lossy().to_string())
-    .unwrap_or_else(|| "unnamed-skill".to_string());
+  // Get skill name and source directory
+  // If skill_path is empty, use the folder name as skill name and folder_path as source
+  let (skill_name, source_dir) = if request.skill_path.is_empty() {
+    let folder = Path::new(&request.folder_path);
+    let name = folder
+      .file_name()
+      .map(|n| n.to_string_lossy().to_string())
+      .unwrap_or_else(|| "skill".to_string());
+    (name, folder.to_path_buf())
+  } else {
+    let skill_path = Path::new(&request.skill_path);
+    let name = skill_path
+      .file_name()
+      .map(|n| n.to_string_lossy().to_string())
+      .unwrap_or_else(|| "unnamed-skill".to_string());
+    let source = Path::new(&request.folder_path).join(&request.skill_path);
+    (name, source)
+  };
 
   // Get global skills directory
   let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
@@ -536,9 +604,6 @@ pub fn install_folder_skill(request: crate::models::InstallFolderRequest) -> Res
 
   // Ensure directory exists
   fs::create_dir_all(&agents_skills_dir).map_err(|e| e.to_string())?;
-
-  // Get source directory
-  let source_dir = Path::new(&request.folder_path).join(&request.skill_path);
 
   if !source_dir.exists() {
     return Err(format!("Skill path not found: {}", request.skill_path));
