@@ -163,7 +163,7 @@
   };
 </script>
 
-<section class="space-y-2">
+<section class="space-y-4">
   <!-- Language & Theme-->
   <div class="bg-base-200 flex flex-col gap-4 rounded-2xl px-4 py-2.5">
     <div class="flex items-center justify-between">
