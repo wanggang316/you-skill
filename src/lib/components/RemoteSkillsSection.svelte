@@ -1,5 +1,5 @@
 <script>
-  import { ChevronDown, Loader2, RefreshCw, Search, Check } from "@lucide/svelte";
+  import { ChevronDown, Loader2, RefreshCw, Search, Check, ChevronsUpDown } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
   import { t } from "../i18n";
 
@@ -52,7 +52,7 @@
 </script>
 
 <section class="space-y-6">
-  <div class="border-base-300 bg-base-100 rounded-2xl border p-4">
+  <div class="border-base-300 bg-base-100 rounded-2xl py-1">
     <div class="flex flex-wrap items-center gap-3">
       <div class="relative flex-1">
         <Search
@@ -66,15 +66,21 @@
           oninput={handleSearchInput}
         />
       </div>
-      <select
-        class="border-base-300 bg-base-100 text-base-content focus:border-base-300 h-9 cursor-pointer rounded-xl border px-3 text-sm focus:outline-none"
-        bind:value={remoteSortBy}
-        onchange={handleSortChange}
-      >
-        {#each sortOptions as option}
-          <option value={option.value}>{option.label}</option>
-        {/each}
-      </select>
+      <div class="relative">
+        <select
+          class="border-base-300 bg-base-100 text-base-content focus:border-base-300 h-9 cursor-pointer appearance-none rounded-xl border pr-8 pl-3 text-sm focus:outline-none"
+          bind:value={remoteSortBy}
+            onchange={handleSortChange}
+          >
+          {#each sortOptions as option}
+            <option value={option.value}>{option.label}</option>
+          {/each}
+        </select>
+        <ChevronsUpDown
+            class="text-base-content-subtle pointer-events-none absolute top-1/2 right-3 -translate-y-1/2"
+            size={14}
+          />
+      </div>
       <IconButton
         variant="outline"
         onclick={onRefresh}

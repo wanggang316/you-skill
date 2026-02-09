@@ -403,11 +403,7 @@
       });
       if (!confirmed) return;
       // Use deleteSkillComplete to properly delete symlinks first, then source
-      await deleteSkillComplete(
-        skill.canonical_path,
-        skill.scope,
-        skill.agents || []
-      );
+      await deleteSkillComplete(skill.canonical_path, skill.scope, skill.agents || []);
       await refreshLocal();
     } catch (error) {
       localError = String(error);
