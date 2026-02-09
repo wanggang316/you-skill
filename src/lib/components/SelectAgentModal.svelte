@@ -19,9 +19,10 @@
   $effect(() => {
     if (open) {
       // Use initialSelection if provided, otherwise select all
-      selectedAgents = initialSelection.length > 0
-        ? [...initialSelection]
-        : agents.map((a) => a.id);
+      selectedAgents =
+        initialSelection.length > 0
+          ? [...initialSelection]
+          : agents.map((a) => a.id);
     }
   });
 
@@ -64,11 +65,11 @@
 </script>
 
 <Modal
-  bind:open={open}
+  bind:open
   title={title || $t("selectAgent.defaultTitle")}
   onClose={closeModal}
 >
-  <div class="flex h-full max-h-[90vh] w-full max-w-md flex-col bg-base-100">
+  <div class="flex h-full max-h-[90vh] w-full max-w-md flex-col">
     <!-- Content -->
     <div class="flex-1 overflow-y-auto p-6 pt-16">
       <p class="mb-4 text-sm text-[var(--base-content-muted)]">

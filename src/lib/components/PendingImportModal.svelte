@@ -1,8 +1,8 @@
 <script>
-  import { FolderOpen, Trash2, Download } from '@lucide/svelte'
-  import { t } from '../i18n'
-  import { open } from '@tauri-apps/plugin-shell'
-  import Modal from './ui/Modal.svelte'
+  import { FolderOpen, Trash2, Download } from "@lucide/svelte";
+  import { t } from "../i18n";
+  import { open } from "@tauri-apps/plugin-shell";
+  import Modal from "./ui/Modal.svelte";
 
   let {
     open: isOpen = $bindable(false),
@@ -10,56 +10,58 @@
     agentMap = new Map(),
     onImport = () => {},
     onImportAll = () => {},
-    onDelete = () => {}
-  } = $props()
+    onDelete = () => {},
+  } = $props();
 
   function closeModal() {
-    isOpen = false
+    isOpen = false;
   }
 
   async function handleOpenFolder(skill) {
     try {
       if (skill.canonical_path) {
-        await open(skill.canonical_path)
+        await open(skill.canonical_path);
       }
     } catch (error) {
-      console.error('Failed to open folder:', error)
+      console.error("Failed to open folder:", error);
     }
   }
 
   function handleImport(skill) {
-    onImport(skill)
+    onImport(skill);
   }
 
   function handleImportAll() {
-    onImportAll()
-    closeModal()
+    onImportAll();
+    closeModal();
   }
 
   function handleDelete(skill) {
-    onDelete(skill)
+    onDelete(skill);
   }
 </script>
 
 <Modal
   bind:open={isOpen}
-  title={$t('pendingImport.title')}
+  title={$t("pendingImport.title")}
   onClose={closeModal}
 >
-  <div class="flex h-full max-h-[90vh] w-full max-w-lg flex-col bg-base-100">
+  <div class="flex h-full max-h-[90vh] w-full max-w-lg flex-col">
     <!-- Content -->
     <div class="flex-1 overflow-y-auto p-6 pt-16">
       <!-- Description -->
       <div class="mb-6 rounded-xl bg-[var(--base-200)] p-4">
         <p class="text-sm text-[var(--base-content)]">
-          {$t('pendingImport.description', { count: unmanagedSkills.length })}
+          {$t("pendingImport.description", { count: unmanagedSkills.length })}
         </p>
       </div>
 
       <!-- Skills List -->
       {#if unmanagedSkills.length === 0}
-        <div class="rounded-xl border border-dashed border-[var(--base-300)] bg-[var(--base-100)] p-8 text-center text-sm text-[var(--base-content-muted)]">
-          {$t('pendingImport.empty')}
+        <div
+          class="rounded-xl border border-dashed border-[var(--base-300)] bg-[var(--base-100)] p-8 text-center text-sm text-[var(--base-content-muted)]"
+        >
+          {$t("pendingImport.empty")}
         </div>
       {:else}
         <div class="space-y-3">
@@ -80,17 +82,26 @@
                     {/each}
                   </div>
                   {#if skill.canonical_path}
-                    <p class="mt-2 text-xs text-[var(--base-content-muted)] truncate" title={skill.canonical_path}>
+                    <p
+                      class="mt-2 text-xs text-[var(--base-content-muted)] truncate"
+                      title={skill.canonical_path}
+                    >
                       {skill.canonical_path}
                     </p>
                   {/if}
                 </div>
-                <div class="flex items-center gap-2 text-xs text-[var(--base-content-faint)]">
+                <div
+                  class="flex items-center gap-2 text-xs text-[var(--base-content-faint)]"
+                >
                   {#if skill.managed_status === "mixed"}
-                    <span class="tag tag-warning">{$t("local.tag.standalone")}</span>
+                    <span class="tag tag-warning"
+                      >{$t("local.tag.standalone")}</span
+                    >
                   {/if}
                   {#if skill.name_conflict}
-                    <span class="tag tag-error">{$t("local.tag.nameConflict")}</span>
+                    <span class="tag tag-error"
+                      >{$t("local.tag.nameConflict")}</span
+                    >
                   {/if}
                   {#if skill.conflict_with_managed}
                     <span class="tag tag-neutral">
@@ -100,25 +111,25 @@
                   <button
                     class="rounded-lg border border-[var(--base-300)] px-3 py-1.5 text-xs text-[var(--base-content-muted)] transition hover:bg-[var(--base-200)] flex items-center"
                     onclick={() => handleOpenFolder(skill)}
-                    title={$t('pendingImport.openFolder')}
+                    title={$t("pendingImport.openFolder")}
                     type="button"
                   >
                     <FolderOpen size={14} class="mr-1" />
-                    {$t('pendingImport.open')}
+                    {$t("pendingImport.open")}
                   </button>
                   <button
                     class="rounded-lg border border-[var(--base-300)] px-3 py-1.5 text-xs text-[var(--base-content-muted)] transition hover:bg-[var(--primary)] hover:text-[var(--primary-content)] hover:border-[var(--primary)]"
                     onclick={() => handleImport(skill)}
-                    title={$t('local.action.import')}
+                    title={$t("local.action.import")}
                     type="button"
                   >
-                    {$t('local.action.import')}
+                    {$t("local.action.import")}
                   </button>
                   <button
                     class="rounded-lg border border-[var(--error-border)] px-3 py-1.5 text-xs text-[var(--error)] transition hover:bg-[var(--error)] hover:text-[var(--error-content)]"
                     type="button"
                     onclick={() => handleDelete(skill)}
-                    title={$t('local.action.delete')}
+                    title={$t("local.action.delete")}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -131,7 +142,9 @@
     </div>
 
     <!-- Footer -->
-    <div class="flex justify-end gap-3 border-t border-[var(--base-300)] px-6 py-4 bg-[var(--base-100)] rounded-b-2xl">
+    <div
+      class="flex justify-end gap-3 border-t border-[var(--base-300)] px-6 py-4 bg-[var(--base-100)] rounded-b-2xl"
+    >
       <button
         class="rounded-xl bg-[var(--warning)] px-4 py-2 text-sm text-[var(--warning-content)] transition hover:bg-[var(--warning-hover)] disabled:opacity-50 flex items-center"
         onclick={handleImportAll}
@@ -139,7 +152,7 @@
         type="button"
       >
         <Download size={16} class="mr-2" />
-        {$t('local.action.importAll')}
+        {$t("local.action.importAll")}
       </button>
     </div>
   </div>

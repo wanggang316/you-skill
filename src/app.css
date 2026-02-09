@@ -126,13 +126,29 @@
   --overlay: var(--color-overlay);
 
   /* 内容颜色变体 */
-  --base-content-muted: color-mix(in oklch, var(--base-content) 70%, transparent);
-  --base-content-subtle: color-mix(in oklch, var(--base-content) 55%, transparent);
-  --base-content-faint: color-mix(in oklch, var(--base-content) 40%, transparent);
+  --base-content-muted: color-mix(
+    in oklch,
+    var(--base-content) 70%,
+    transparent
+  );
+  --base-content-subtle: color-mix(
+    in oklch,
+    var(--base-content) 55%,
+    transparent
+  );
+  --base-content-faint: color-mix(
+    in oklch,
+    var(--base-content) 40%,
+    transparent
+  );
 
   /* 标签颜色 */
   --tag-warning-bg: color-mix(in oklch, var(--warning) 20%, var(--base-100));
-  --tag-warning-text: color-mix(in oklch, var(--warning) 55%, var(--base-content));
+  --tag-warning-text: color-mix(
+    in oklch,
+    var(--warning) 55%,
+    var(--base-content)
+  );
   --tag-error-bg: color-mix(in oklch, var(--error) 22%, var(--base-100));
   --tag-error-text: color-mix(in oklch, var(--error) 60%, var(--base-content));
   --tag-neutral-bg: color-mix(in oklch, var(--base-300) 80%, var(--base-100));
@@ -143,9 +159,9 @@
   --success-bg: color-mix(in oklch, var(--success) 15%, var(--base-100));
 
   /* Hover 状态颜色 */
-  --primary-hover: color-mix(in oklch, var(--primary) 85%, transparent);
-  --warning-hover: color-mix(in oklch, var(--warning) 85%, transparent);
-  --success-hover: color-mix(in oklch, var(--success) 85%, transparent);
+  --primary-hover: color-mix(in oklch, var(--primary) 80%, transparent);
+  --warning-hover: color-mix(in oklch, var(--warning) 80%, transparent);
+  --success-hover: color-mix(in oklch, var(--success) 80%, transparent);
 
   color: var(--base-content);
   background-color: var(--base-100);
@@ -206,15 +222,30 @@
   --overlay: var(--color-overlay-dark);
 
   /* Hover 状态颜色 - 深色模式 */
-  --primary-hover: color-mix(in oklch, var(--color-primary-dark) 85%, transparent);
-  --warning-hover: color-mix(in oklch, var(--color-warning-dark) 85%, transparent);
-  --success-hover: color-mix(in oklch, var(--color-success-dark) 85%, transparent);
+  --primary-hover: color-mix(
+    in oklch,
+    var(--color-primary-dark) 80%,
+    transparent
+  );
+  --warning-hover: color-mix(
+    in oklch,
+    var(--color-warning-dark) 80%,
+    transparent
+  );
+  --success-hover: color-mix(
+    in oklch,
+    var(--color-success-dark) 80%,
+    transparent
+  );
 }
 
 [data-theme="dark"] .shadow-2xl {
-  --tw-shadow: 0 32px 64px -28px color-mix(in oklch, var(--overlay) 10%, var(--base-100) 5%);
-  --tw-shadow-colored: 0 32px 64px -28px color-mix(in oklch, var(--overlay) 10%, var(--base-100) 5%);
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+  --tw-shadow: 0 32px 64px -28px
+    color-mix(in oklch, var(--overlay) 10%, var(--base-100) 5%);
+  --tw-shadow-colored: 0 32px 64px -28px
+    color-mix(in oklch, var(--overlay) 10%, var(--base-100) 5%);
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
     var(--tw-shadow);
 }
 
@@ -400,11 +431,15 @@ button {
   color: var(--color-base-content);
 }
 
-.markdown-content .markdown-code-block__copy.copied .markdown-code-block__copy-icon {
+.markdown-content
+  .markdown-code-block__copy.copied
+  .markdown-code-block__copy-icon {
   display: none;
 }
 
-.markdown-content .markdown-code-block__copy.copied .markdown-code-block__copy-label {
+.markdown-content
+  .markdown-code-block__copy.copied
+  .markdown-code-block__copy-label {
   display: inline-flex;
   align-items: center;
   justify-content: center;

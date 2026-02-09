@@ -14,9 +14,9 @@
 
   const variants = {
     primary:
-      "bg-[var(--primary)] text-[var(--primary-content)] hover:bg-[var(--primary)]/50",
+      "bg-[var(--primary)] text-[var(--primary-content)] hover:bg-[var(--primary)]/80",
     outline:
-      "border border-[var(--base-300)] bg-[var(--base-100)] text-[var(--base-content)] hover:bg-[var(--base-200)]",
+      "border border-[var(--base-300)] bg-[var(--base-100)] text-[var(--base-content)] hover:bg-[var(--base-300)]",
     ghost: "text-[var(--base-content)] hover:bg-[var(--base-200)]",
   };
 

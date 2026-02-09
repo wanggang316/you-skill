@@ -288,7 +288,7 @@
     <!-- Content -->
     <div class="flex-1 overflow-y-auto p-6 pt-16">
       <!-- Tabs -->
-      <div class="mb-6 flex gap-2 rounded-full bg-[var(--base-200)] p-1">
+      <div class="mb-6 flex gap-2 rounded-full bg-base-200 p-1">
         <button
           class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "zip" ? "bg-[var(--base-100)] text-[var(--base-content)] shadow-sm" : "text-[var(--base-content-muted)] hover:text-[var(--base-content)]"}`}
           onclick={() => (activeTab = "zip")}
