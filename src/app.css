@@ -25,6 +25,11 @@
   --color-error: oklch(71% 0.194 13.428);
   --color-error-content: oklch(27% 0.105 12.094);
 
+  /* Hover 状态颜色 */
+  --color-primary-hover: oklch(62.43% 0.206 255.523 / 0.85);
+  --color-warning-hover: oklch(82% 0.189 84.429 / 0.85);
+  --color-success-hover: oklch(76% 0.177 163.223 / 0.85);
+
   /* 遮罩层颜色 */
   --color-overlay: oklch(21% 0.006 285.885 / 0.3);
 

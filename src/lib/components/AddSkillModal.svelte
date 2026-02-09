@@ -315,7 +315,7 @@
             {$t("addSkill.zip.description")}
           </p>
           <button
-            class="border-base-300 hover:border-primary hover:bg-base-200 w-full rounded-xl border-2 border-dashed p-8 transition"
+            class="border-base-300 hover:border-primary hover:bg-base-300 w-full rounded-xl border-2 border-dashed p-8 transition"
             onclick={handleSelectZipFile}
             type="button"
           >
