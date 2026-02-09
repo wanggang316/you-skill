@@ -21,6 +21,7 @@
     checkCanonicalSkill,
     unifySkill,
     deleteSkill,
+    deleteSkillComplete,
     setAgentLink,
     updateTraySkills,
   } from "../lib/api/skills";
@@ -401,7 +402,12 @@
         title: $t("confirm.deleteTitle"),
       });
       if (!confirmed) return;
-      await deleteSkill(skill.canonical_path);
+      // Use deleteSkillComplete to properly delete symlinks first, then source
+      await deleteSkillComplete(
+        skill.canonical_path,
+        skill.scope,
+        skill.agents || []
+      );
       await refreshLocal();
     } catch (error) {
       localError = String(error);

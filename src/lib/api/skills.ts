@@ -138,6 +138,21 @@ export async function deleteSkill(path: string): Promise<void> {
   return apiCall<void>("delete_skill", { path });
 }
 
+/**
+ * 完整删除技能（先删除软链接，再删除源文件）
+ */
+export async function deleteSkillComplete(
+  canonicalPath: string,
+  scope: string,
+  agents: string[]
+): Promise<void> {
+  return apiCall<void>("delete_skill_complete", {
+    canonicalPath,
+    scope,
+    agents,
+  });
+}
+
 // ============ Remote Skills ============
 
 /**

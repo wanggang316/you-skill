@@ -18,6 +18,41 @@ pub fn delete_skill(path: String) -> Result<(), String> {
   Ok(())
 }
 
+/// Delete a skill completely:
+/// 1. First remove symlinks/copies from all agent directories
+/// 2. Then delete the canonical source file in .agents/skills/
+#[tauri::command]
+pub fn delete_skill_complete(
+  canonical_path: String,
+  scope: String,
+  agents: Vec<String>,
+) -> Result<(), String> {
+  let skill_path = PathBuf::from(&canonical_path);
+
+  // Get the actual folder name from the canonical path
+  let folder_name = skill_path
+    .file_name()
+    .map(|s| s.to_string_lossy().to_string())
+    .ok_or("无法获取技能文件夹名")?;
+
+  // Step 1: Remove symlinks/copies from all agent directories
+  for agent_id in &agents {
+    if let Ok(agent_dir) = agent_skills_dir(agent_id, &scope) {
+      let link_path = agent_dir.join(&folder_name);
+      if link_path.exists() || link_path.is_symlink() {
+        remove_path(&link_path)?;
+      }
+    }
+  }
+
+  // Step 2: Delete the canonical source file
+  if skill_path.exists() {
+    remove_path(&skill_path)?;
+  }
+
+  Ok(())
+}
+
 #[tauri::command]
 pub fn move_skill(from: String, to: String) -> Result<(), String> {
   let from_path = PathBuf::from(from);
