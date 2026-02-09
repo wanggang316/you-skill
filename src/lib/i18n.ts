@@ -139,12 +139,12 @@ const translations: Record<string, Dictionary> = {
     "detail.openRepo": "Open Repository",
     "pendingImport.title": "Pending Imports",
     "pendingImport.description":
-      "You have {count} standalone installed skill(s). We recommend importing them into Your Skills for unified management.",
+      "You have {count} standalone installed skill(s). We recommend importing them into YouSkill for unified management.",
     "pendingImport.empty": "No pending skills to import",
     "pendingImport.open": "Open",
     "pendingImport.openFolder": "Open folder",
     "local.section.pendingImportPrompt":
-      "You have {count} standalone installed skill(s). We recommend importing them into Your Skills for unified management.",
+      "You have {count} standalone installed skill(s). We recommend importing them into YouSkill for unified management.",
   },
   zh: {
     "header.subtitle": "本地管理与一键安装",
@@ -281,12 +281,12 @@ const translations: Record<string, Dictionary> = {
     "detail.openRepo": "打开仓库",
     "pendingImport.title": "待导入 Skills",
     "pendingImport.description":
-      "你有 {count} 个独立安装的 skill，建议导入到 Your Skills 统一进行管理。",
+      "你有 {count} 个独立安装的 skill，建议导入到 YouSkill 统一进行管理。",
     "pendingImport.empty": "暂无待导入的 skill",
     "pendingImport.open": "打开",
     "pendingImport.openFolder": "打开文件夹",
     "local.section.pendingImportPrompt":
-      "你有 {count} 个独立安装的 skill，建议导入到 Your Skills 统一进行管理。",
+      "你有 {count} 个独立安装的 skill，建议导入到 YouSkill 统一进行管理。",
   },
 };
 

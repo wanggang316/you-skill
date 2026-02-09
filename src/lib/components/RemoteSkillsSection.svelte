@@ -126,7 +126,7 @@
         {@const installed = isInstalled(skill)}
         {@const isBusy = installingSkill === skill.id || isDownloading}
         <div
-          class="border-base-300 bg-base-100 hover:bg-base-200 cursor-pointer rounded-2xl border p-4 transition"
+          class="border-base-300 bg-base-100 hover:bg-base-200 rounded-2xl border p-4 transition"
           onclick={() => onViewSkill(skill)}
           onkeydown={(e) => (e.key === "Enter" || e.key === " ") && onViewSkill(skill)}
           role="button"
@@ -136,7 +136,7 @@
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <p class="truncate text-base font-semibold">
+                <p class="truncate text-base font-medium">
                   {skill.name}
                   <span class="text-base-content-muted font-normal">({skill.source})</span>
                 </p>

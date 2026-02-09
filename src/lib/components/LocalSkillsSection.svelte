@@ -107,7 +107,7 @@
         {:else}
           {#each managedSkills as skill}
             <div
-              class="group border-base-300 bg-base-100 hover:bg-base-200 cursor-pointer rounded-2xl border p-4 transition"
+              class="group border-base-300 bg-base-100 hover:bg-base-200  rounded-2xl border p-4 transition"
               onclick={() => onViewSkill(skill)}
               onkeydown={(e) => (e.key === "Enter" || e.key === " ") && onViewSkill(skill)}
               role="button"
@@ -117,7 +117,7 @@
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex-1">
                   <button
-                    class="cursor-pointer border-none bg-transparent p-0 text-base font-semibold hover:underline"
+                    class="cursor-pointer border-none bg-transparent p-0 text-base font-medium"
                     onclick={(e) => {
                       e.stopPropagation();
                       onViewSkill(skill);

@@ -74,7 +74,7 @@
         <div class="flex items-center gap-2">
           {#if unmanagedCount > 0}
             <button
-              class="bg-warning text-warning-content hover:bg-warning-hover flex items-center rounded-xl px-3 py-2 text-sm font-medium transition"
+              class="bg-warning text-warning-content hover:bg-warning-hover flex items-center rounded-xl px-3 py-1.5 text-sm font-medium transition"
               onclick={onOpenPendingImport}
               title={$t("header.pendingImport")}
               type="button"
