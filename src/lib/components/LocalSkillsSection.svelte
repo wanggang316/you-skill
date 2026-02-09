@@ -6,7 +6,7 @@
     Blend,
     Download,
   } from "@lucide/svelte";
-  import IconButton from "./IconButton.svelte";
+  import IconButton from "./ui/IconButton.svelte";
   import { t } from "../i18n";
 
   let {
@@ -99,11 +99,11 @@
                 {$t("local.section.pendingImportPrompt", { count: unmanagedSkills.length })}
               </p>
               <button
-                class="inline-flex items-center gap-2 rounded-xl bg-[var(--warning)] px-4 py-2 text-sm font-medium text-[var(--warning-content)] transition hover:opacity-90"
+                class="inline-flex items-center rounded-xl bg-[var(--warning)] px-4 py-2 text-sm font-medium text-[var(--warning-content)] transition hover:bg-[var(--warning-hover)]"
                 onclick={onOpenPendingImport}
                 type="button"
               >
-                <Download size={16} />
+                <Download size={16} class="mr-2" />
                 {$t('header.pendingImport')}
               </button>
             {/if}

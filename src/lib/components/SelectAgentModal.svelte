@@ -1,6 +1,7 @@
 <script>
-  import { X, Check, Loader2 } from "@lucide/svelte";
+  import { Check, Loader2 } from "@lucide/svelte";
   import { t } from "../i18n";
+  import Modal from "./ui/Modal.svelte";
 
   let {
     open = $bindable(false),
@@ -62,95 +63,74 @@
   const hasSelection = $derived(selectedAgents.length > 0);
 </script>
 
-{#if open}
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)]"
-    onclick={(e) => e.target === e.currentTarget && closeModal()}
-  >
-    <div
-      class="flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] shadow-xl"
-    >
-      <!-- Header -->
+<Modal
+  bind:open={open}
+  title={title || $t("selectAgent.defaultTitle")}
+  onClose={closeModal}
+>
+  <div class="flex h-full max-h-[90vh] w-full max-w-md flex-col bg-base-100">
+    <!-- Content -->
+    <div class="flex-1 overflow-y-auto p-6 pt-16">
+      <p class="mb-4 text-sm text-[var(--base-content-muted)]">
+        {$t("selectAgent.description")}
+      </p>
+
+      <!-- Select All -->
       <div
-        class="flex items-center justify-between border-b border-[var(--base-300)] px-6 py-4"
+        class="mb-3 flex items-center justify-between text-xs text-[var(--base-content-muted)]"
       >
-        <h2 class="text-lg font-semibold">
-          {title || $t("selectAgent.defaultTitle")}
-        </h2>
-        <button
-          class="rounded-lg p-1 text-[var(--base-content-muted)] transition hover:bg-[var(--base-200)] hover:text-[var(--base-content)]"
-          onclick={closeModal}
-          type="button"
-        >
-          <X size={20} />
-        </button>
+        <label class="inline-flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onchange={toggleSelectAll}
+          />
+          {$t("selectAgent.selectAll")}
+        </label>
       </div>
 
-      <!-- Content -->
-      <div class="flex-1 overflow-y-auto p-6">
-        <p class="mb-4 text-sm text-[var(--base-content-muted)]">
-          {$t("selectAgent.description")}
-        </p>
-
-        <!-- Select All -->
-        <div
-          class="mb-3 flex items-center justify-between text-xs text-[var(--base-content-muted)]"
-        >
-          <label class="inline-flex items-center gap-2">
+      <!-- Agent List - 复用 Local Skills 的布局样式 -->
+      <div class="mt-3 flex flex-wrap gap-2">
+        {#each agents as agent}
+          <label
+            class="inline-flex items-center gap-3 rounded-lg bg-[var(--base-200)] px-3 py-2 text-sm text-[var(--base-content)] cursor-pointer transition hover:bg-[var(--base-300)]"
+          >
             <input
               type="checkbox"
-              checked={allSelected}
-              onchange={toggleSelectAll}
+              checked={selectedAgents.includes(agent.id)}
+              onchange={() => toggleAgent(agent.id)}
             />
-            {$t("selectAgent.selectAll")}
+            <span>{agent.display_name}</span>
           </label>
-        </div>
-
-        <!-- Agent List - 复用 Local Skills 的布局样式 -->
-        <div class="mt-3 flex flex-wrap gap-2">
-          {#each agents as agent}
-            <label
-              class="inline-flex items-center gap-3 rounded-lg bg-[var(--base-200)] px-3 py-2 text-sm text-[var(--base-content)] cursor-pointer transition hover:bg-[var(--base-300)]"
-            >
-              <input
-                type="checkbox"
-                checked={selectedAgents.includes(agent.id)}
-                onchange={() => toggleAgent(agent.id)}
-              />
-              <span>{agent.display_name}</span>
-            </label>
-          {/each}
-        </div>
-      </div>
-
-      <!-- Footer -->
-      <div
-        class="flex items-center justify-between border-t border-[var(--base-300)] px-6 py-4"
-      >
-        <button
-          class="text-sm text-[var(--base-content-muted)] transition hover:text-[var(--base-content)]"
-          onclick={closeModal}
-          disabled={isInstalling}
-          type="button"
-        >
-          {$t("selectAgent.cancel")}
-        </button>
-        <button
-          class="rounded-xl bg-[var(--primary)] px-6 py-2 text-sm text-[var(--primary-content)] transition hover:opacity-90 disabled:opacity-50"
-          onclick={handleConfirm}
-          disabled={!hasSelection || isInstalling}
-          type="button"
-        >
-          {#if isInstalling}
-            <Loader2 size={16} class="animate-spin inline mr-1" />
-          {:else}
-            <Check size={16} class="inline mr-1" />
-          {/if}
-          {$t("selectAgent.confirm")}
-        </button>
+        {/each}
       </div>
     </div>
+
+    <!-- Footer -->
+    <div
+      class="flex items-center justify-between border-t border-[var(--base-300)] px-6 py-4 bg-[var(--base-100)] rounded-b-2xl"
+    >
+      <button
+        class="text-sm text-[var(--base-content-muted)] transition hover:text-[var(--base-content)]"
+        onclick={closeModal}
+        disabled={isInstalling}
+        type="button"
+      >
+        {$t("selectAgent.cancel")}
+      </button>
+      <button
+        class="rounded-xl bg-[var(--primary)] px-6 py-2 text-sm text-[var(--primary-content)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
+        onclick={handleConfirm}
+        disabled={!hasSelection || isInstalling}
+        type="button"
+      >
+        {#if isInstalling}
+          <Loader2 size={16} class="animate-spin inline mr-1" />
+        {:else}
+          <Check size={16} class="inline mr-1" />
+        {/if}
+        {$t("selectAgent.confirm")}
+      </button>
+    </div>
   </div>
-{/if}
+</Modal>

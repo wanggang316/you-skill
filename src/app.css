@@ -1,5 +1,5 @@
-@import 'highlight.js/styles/github.css';
-@import './lib/styles/highlight-dark.css';
+@import "highlight.js/styles/github.css";
+@import "./lib/styles/highlight-dark.css";
 
 @tailwind base;
 @tailwind components;
@@ -72,11 +72,27 @@
   --error-content: var(--color-error-content);
   --overlay: var(--color-overlay);
 
-  --base-content-muted: color-mix(in oklch, var(--base-content) 70%, transparent);
-  --base-content-subtle: color-mix(in oklch, var(--base-content) 55%, transparent);
-  --base-content-faint: color-mix(in oklch, var(--base-content) 40%, transparent);
+  --base-content-muted: color-mix(
+    in oklch,
+    var(--base-content) 70%,
+    transparent
+  );
+  --base-content-subtle: color-mix(
+    in oklch,
+    var(--base-content) 55%,
+    transparent
+  );
+  --base-content-faint: color-mix(
+    in oklch,
+    var(--base-content) 40%,
+    transparent
+  );
   --tag-warning-bg: color-mix(in oklch, var(--warning) 20%, var(--base-100));
-  --tag-warning-text: color-mix(in oklch, var(--warning) 55%, var(--base-content));
+  --tag-warning-text: color-mix(
+    in oklch,
+    var(--warning) 55%,
+    var(--base-content)
+  );
   --tag-error-bg: color-mix(in oklch, var(--error) 22%, var(--base-100));
   --tag-error-text: color-mix(in oklch, var(--error) 60%, var(--base-content));
   --tag-neutral-bg: color-mix(in oklch, var(--base-300) 80%, var(--base-100));
@@ -85,9 +101,18 @@
   --success: var(--color-success);
   --success-bg: color-mix(in oklch, var(--success) 15%, var(--base-100));
 
+  --primary-hover: color-mix(in oklch, var(--primary) 85%, transparent);
+  --warning-hover: color-mix(in oklch, var(--warning) 85%, transparent);
+  --success-hover: color-mix(in oklch, var(--success) 85%, transparent);
+
   color: var(--base-content);
   background-color: var(--base-100);
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
     sans-serif;
 }
 
@@ -134,6 +159,10 @@
   --error: var(--color-error-dark);
   --error-content: var(--color-error-content-dark);
   --overlay: var(--color-overlay-dark);
+
+  --primary-hover: color-mix(in oklch, var(--color-primary-dark) 85%, transparent);
+  --warning-hover: color-mix(in oklch, var(--color-warning-dark) 85%, transparent);
+  --success-hover: color-mix(in oklch, var(--color-success-dark) 85%, transparent);
 }
 
 html,
@@ -150,12 +179,11 @@ body {
 }
 
 button {
-  transition: background-color 0.15s, color 0.15s, border-color 0.15s,
-    opacity 0.15s, filter 0.15s;
-}
-
-button:not(:disabled):hover {
-  filter: brightness(0.97);
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
 }
 
 @layer components {

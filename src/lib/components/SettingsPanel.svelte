@@ -253,13 +253,13 @@
           </span>
         {/if}
         <button
-          class="flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[13px] text-[var(--primary-content)] hover:opacity-90 disabled:opacity-50"
+          class="flex items-center rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[13px] text-[var(--primary-content)] hover:bg-[var(--primary-hover)] disabled:opacity-50"
           onclick={handleBackup}
           disabled={isBackingUp}
           type="button"
         >
           {#if isBackingUp}
-            <Loader2 size={13} class="animate-spin" />
+            <Loader2 size={13} class="animate-spin mr-1.5" />
           {/if}
           {isBackingUp
             ? $t("settings.backup.backingUp")
@@ -308,15 +308,15 @@
             {$t("settings.newVersionAvailable", { version: latestVersion })}
           </span>
           <button
-            class="flex items-center gap-1.5 rounded-lg bg-[var(--success)] px-3 py-1.5 text-[13px] text-[var(--success-content)] hover:opacity-90 disabled:opacity-50"
+            class="flex items-center rounded-lg bg-[var(--success)] px-3 py-1.5 text-[13px] text-[var(--success-content)] hover:bg-[var(--primary-hover)] disabled:opacity-50"
             onclick={handleInstallUpdate}
             disabled={isInstalling}
             type="button"
           >
             {#if isInstalling}
-              <Loader2 size={13} class="animate-spin" />
+              <Loader2 size={13} class="animate-spin mr-1.5" />
             {:else}
-              <Download size={13} />
+              <Download size={13} class="mr-1.5" />
             {/if}
             {isInstalling
               ? $t("settings.installingUpdate")
@@ -325,7 +325,7 @@
         </div>
       {:else}
         <button
-          class="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[13px] text-[var(--primary-content)] hover:opacity-90 disabled:opacity-50"
+          class="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[13px] text-[var(--primary-content)] hover:bg-[var(--primary-hover)] disabled:opacity-50"
           onclick={handleCheckUpdate}
           disabled={checkingUpdate}
           type="button"

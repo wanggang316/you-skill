@@ -254,7 +254,7 @@
     <div class="rounded-2xl border border-[var(--error-border)] bg-[var(--base-100)] p-6 text-center">
       <p class="text-[var(--error)]">{error}</p>
       <button
-        class="mt-4 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm text-[var(--primary-content)] transition hover:opacity-90"
+        class="mt-4 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm text-[var(--primary-content)] transition hover:bg-[var(--primary-hover)]"
         onclick={loadContent}
       >
         {$t('detail.retry')}

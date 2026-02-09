@@ -7,7 +7,7 @@
     ArrowUpCircle,
     ExternalLink,
   } from "@lucide/svelte";
-  import IconButton from "./IconButton.svelte";
+  import IconButton from "./ui/IconButton.svelte";
   import { t } from "../i18n";
 
   const {
@@ -83,12 +83,12 @@
         <div class="flex items-center gap-2">
           {#if unmanagedCount > 0}
             <button
-              class="flex items-center gap-1.5 rounded-xl bg-[var(--warning)] px-3 py-2 text-sm font-medium text-[var(--warning-content)] transition hover:opacity-90"
+              class="flex items-center rounded-xl bg-[var(--warning)] px-3 py-2 text-sm font-medium text-[var(--warning-content)] transition hover:bg-[var(--warning-hover)]"
               onclick={onOpenPendingImport}
               title={$t("header.pendingImport")}
               type="button"
             >
-              <Download size={16} />
+              <Download size={16} class="mr-1.5" />
               {$t("header.pendingImport")}
               <span
                 class="ml-1 rounded-full bg-[var(--warning-content)] px-1.5 py-0.5 text-xs text-[var(--warning)]"
@@ -98,12 +98,12 @@
           {/if}
           {#if hasUpdate}
             <button
-              class="flex items-center gap-1.5 rounded-xl bg-[var(--success)] px-3 py-2 text-sm font-medium text-[var(--success-content)] transition hover:opacity-90"
+              class="flex items-center rounded-xl bg-[var(--success)] px-3 py-2 text-sm font-medium text-[var(--success-content)] transition hover:bg-[var(--success-hover)]"
               onclick={onOpenUpdate}
               title={$t("header.update")}
               type="button"
             >
-              <ArrowUpCircle size={16} />
+              <ArrowUpCircle size={16} class="mr-1.5" />
               {$t("header.update")}
             </button>
           {/if}
@@ -120,12 +120,12 @@
         <div class="flex items-center justify-between w-full">
           <div class="flex items-center gap-4">
             <button
-              class="flex items-center gap-2 rounded-xl border border-[var(--base-300)] px-3 py-2 text-sm text-[var(--base-content)] transition hover:bg-[var(--base-200)]"
+              class="flex items-center rounded-xl border border-[var(--base-300)] px-3 py-2 text-sm text-[var(--base-content)] transition hover:bg-[var(--base-200)]"
               onclick={onBack}
               title={$t("header.back")}
               type="button"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={16} class="mr-2" />
               {$t("header.back")}
             </button>
             <h1 class="text-lg font-semibold text-[var(--base-content)]">
@@ -146,12 +146,12 @@
       {:else}
         <div class="flex items-center gap-4">
           <button
-            class="flex items-center gap-2 rounded-xl border border-[var(--base-300)] px-3 py-2 text-sm text-[var(--base-content)] transition hover:bg-[var(--base-200)]"
+            class="flex items-center rounded-xl border border-[var(--base-300)] px-3 py-2 text-sm text-[var(--base-content)] transition hover:bg-[var(--base-200)]"
             onclick={() => onChangeView("list")}
             title={$t("header.back")}
             type="button"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={16} class="mr-2" />
             {$t("header.back")}
           </button>
           <h1 class="text-lg font-semibold text-[var(--base-content)]">

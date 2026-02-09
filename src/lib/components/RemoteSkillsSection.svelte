@@ -1,6 +1,6 @@
 <script>
   import { ChevronDown, Loader2, RefreshCw, Search, Check } from '@lucide/svelte'
-  import IconButton from './IconButton.svelte'
+  import IconButton from './ui/IconButton.svelte'
   import { t } from '../i18n'
 
   let {
@@ -139,16 +139,16 @@
             <div class="flex items-center gap-2" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">
               {#if installed}
                 <button
-                  class="inline-flex items-center gap-1.5 rounded-lg border border-[var(--success)] bg-transparent px-2 py-0.5 text-xs text-[var(--success)] cursor-default"
+                  class="inline-flex items-center rounded-lg border border-[var(--success)] bg-transparent px-2 py-0.5 text-xs text-[var(--success)] cursor-default"
                   type="button"
                   disabled
                 >
-                  <Check size={12} />
+                  <Check size={12} class="mr-1.5" />
                   {$t('remote.installed')}
                 </button>
               {:else}
                 <button
-                  class="inline-flex items-center gap-1.5 rounded-lg border border-[var(--primary)] bg-transparent px-2 py-0.5 text-xs text-[var(--primary)] transition hover:bg-[var(--primary)] hover:text-[var(--primary-content)] disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="inline-flex items-center rounded-lg border border-[var(--primary)] bg-transparent px-2 py-0.5 text-xs text-[var(--primary)] transition hover:bg-[var(--primary)] hover:text-[var(--primary-content)] disabled:opacity-50 disabled:cursor-not-allowed"
                   onclick={(e) => {
                     e?.stopPropagation()
                     onInstall(skill)
@@ -157,7 +157,7 @@
                   type="button"
                 >
                   {#if installingSkill === skill.id}
-                    <Loader2 size={12} class="animate-spin" />
+                    <Loader2 size={12} class="animate-spin mr-1.5" />
                     {$t('remote.downloading')}
                   {:else}
                     {$t('remote.install')}
