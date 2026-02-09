@@ -10,6 +10,7 @@
     installFolderSkill,
   } from "../api/skills";
   import Modal from "./ui/Modal.svelte";
+  import AgentSelector from "./AgentSelector.svelte";
 
   let { open = $bindable(false), agents = [], onSuccess = () => {} } = $props();
 
@@ -183,22 +184,6 @@
     }
   }
 
-  function toggleAgent(agentId) {
-    if (selectedAgents.includes(agentId)) {
-      selectedAgents = selectedAgents.filter((id) => id !== agentId);
-    } else {
-      selectedAgents = [...selectedAgents, agentId];
-    }
-  }
-
-  function selectAllAgents() {
-    selectedAgents = agents.map((a) => a.id);
-  }
-
-  function deselectAllAgents() {
-    selectedAgents = [];
-  }
-
   async function handleConfirm() {
     if (selectedAgents.length === 0) {
       installError = $t("addSkill.noAgentsSelected");
@@ -272,8 +257,6 @@
       return !!selectedSkill;
     }
   }
-
-  const allSelected = $derived(selectedAgents.length === agents.length);
 </script>
 
 <Modal bind:open title={$t("addSkill.title")} onClose={closeModal}>
@@ -315,7 +298,7 @@
             {$t("addSkill.zip.description")}
           </p>
           <button
-            class="border-base-300 hover:border-primary hover:bg-base-300 w-full rounded-xl border-2 border-dashed p-8 transition"
+            class="border-base-300 hover:border-primary hover:bg-base-200 w-full rounded-xl border-2 border-dashed p-8 transition"
             onclick={handleSelectZipFile}
             type="button"
           >
@@ -540,45 +523,10 @@
 
       <!-- Agent Selection -->
       <div class="mt-6 space-y-3">
-        <div class="flex items-center justify-between">
-          <p class="text-base-content text-sm font-medium">
-            {$t("addSkill.selectAgents")}
-          </p>
-          <div class="flex gap-2">
-            {#if allSelected}
-              <button
-                class="text-base-content-muted hover:text-base-content text-xs transition"
-                onclick={deselectAllAgents}
-                type="button"
-              >
-                {$t("addSkill.deselectAll")}
-              </button>
-            {:else}
-              <button
-                class="text-base-content-muted hover:text-base-content text-xs transition"
-                onclick={selectAllAgents}
-                type="button"
-              >
-                {$t("addSkill.selectAll")}
-              </button>
-            {/if}
-          </div>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          {#each agents as agent}
-            <label
-              class={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${selectedAgents.includes(agent.id) ? "border-primary bg-primary text-primary-content" : "border-base-300 bg-base-100 text-base-content hover:bg-base-200"}`}
-            >
-              <input
-                type="checkbox"
-                class="hidden"
-                checked={selectedAgents.includes(agent.id)}
-                onchange={() => toggleAgent(agent.id)}
-              />
-              <span>{agent.display_name}</span>
-            </label>
-          {/each}
-        </div>
+        <p class="text-base-content text-sm font-medium">
+          {$t("addSkill.selectAgents")}
+        </p>
+        <AgentSelector {agents} selectedIds={selectedAgents} />
       </div>
 
       {#if installError}

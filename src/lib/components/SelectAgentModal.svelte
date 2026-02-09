@@ -2,6 +2,7 @@
   import { Check, Loader2 } from "@lucide/svelte";
   import { t } from "../i18n";
   import Modal from "./ui/Modal.svelte";
+  import AgentSelector from "./AgentSelector.svelte";
 
   let {
     open = $bindable(false),
@@ -29,22 +30,6 @@
     onCancel();
   }
 
-  function toggleAgent(agentId) {
-    if (selectedAgents.includes(agentId)) {
-      selectedAgents = selectedAgents.filter((id) => id !== agentId);
-    } else {
-      selectedAgents = [...selectedAgents, agentId];
-    }
-  }
-
-  function toggleSelectAll() {
-    if (selectedAgents.length === agents.length) {
-      selectedAgents = [];
-    } else {
-      selectedAgents = agents.map((a) => a.id);
-    }
-  }
-
   async function handleConfirm() {
     if (selectedAgents.length === 0) return;
     isInstalling = true;
@@ -56,7 +41,6 @@
     }
   }
 
-  const allSelected = $derived(selectedAgents.length === agents.length && agents.length > 0);
   const hasSelection = $derived(selectedAgents.length > 0);
 </script>
 
@@ -68,29 +52,8 @@
         {$t("selectAgent.description")}
       </p>
 
-      <!-- Select All -->
-      <div class="text-base-content-muted mb-3 flex items-center justify-between text-xs">
-        <label class="inline-flex items-center gap-2">
-          <input type="checkbox" checked={allSelected} onchange={toggleSelectAll} />
-          {$t("selectAgent.selectAll")}
-        </label>
-      </div>
-
-      <!-- Agent List - 复用 Local Skills 的布局样式 -->
-      <div class="mt-3 flex flex-wrap gap-2">
-        {#each agents as agent}
-          <label
-            class="bg-base-200 text-base-content hover:bg-base-300 inline-flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm transition"
-          >
-            <input
-              type="checkbox"
-              checked={selectedAgents.includes(agent.id)}
-              onchange={() => toggleAgent(agent.id)}
-            />
-            <span>{agent.display_name}</span>
-          </label>
-        {/each}
-      </div>
+      <!-- Agent List -->
+      <AgentSelector {agents} selectedIds={selectedAgents} />
     </div>
 
     <!-- Footer -->
