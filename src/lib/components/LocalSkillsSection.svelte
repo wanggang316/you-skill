@@ -1,10 +1,9 @@
 <script>
   import {
-    Blend,
     RefreshCw,
     Search,
     Trash2,
-    ChevronsUpDown,
+    Blend,
     Download,
   } from "@lucide/svelte";
   import IconButton from "./IconButton.svelte";
@@ -19,35 +18,15 @@
     filteredLocalSkills,
     managedSkills,
     unmanagedSkills,
-    editingSkillKey,
-    editSelection,
-    allSelected,
     agentMap,
-    linkBusy,
     onRefresh,
-    onOpenLinkDialog,
     onDeleteSkill,
-    onToggleSelectAll,
-    onToggleAgentSelection,
-    onConfirmAgentLinks,
     onBulkUnify,
     onUnifySkill,
     onViewSkill,
     onOpenPendingImport,
+    onOpenSelectAgentModal,
   } = $props();
-
-  let expandedSkills = $state(new Set());
-
-  function toggleSkillExpand(skill) {
-    const key = skill.name;
-    const newSet = new Set(expandedSkills);
-    if (newSet.has(key)) {
-      newSet.delete(key);
-    } else {
-      newSet.add(key);
-    }
-    expandedSkills = newSet;
-  }
 </script>
 
 <section class="space-y-6">
@@ -151,39 +130,11 @@
                   >
                     {skill.name}
                   </button>
-                  {#if editingSkillKey !== skill.key}
-                    <button
-                      class="mt-2 flex items-center gap-1.5 text-xs text-[var(--base-content-subtle)] transition hover:bg-[var(--base-200)] rounded px-2 py-1 cursor-pointer"
-                      onclick={(e) => {
-                        e.stopPropagation();
-                        toggleSkillExpand(skill);
-                      }}
-                      type="button"
-                    >
-                      <span
-                        >{$t("local.section.managedCount", {
-                          count: skill.agents.length,
-                        })}</span
-                      >
-                      <ChevronsUpDown
-                        size={12}
-                        class={expandedSkills.has(skill.name)
-                          ? "rotate-180"
-                          : ""}
-                      />
-                    </button>
-                    {#if expandedSkills.has(skill.name)}
-                      <div class="mt-2 flex flex-wrap gap-2">
-                        {#each skill.agents as agentId}
-                          <div
-                            class="inline-flex items-center rounded-full border border-[var(--base-300)] bg-[var(--base-100)] px-2.5 py-1 text-xs text-[var(--base-content-subtle)]"
-                          >
-                            {agentMap.get(agentId) || agentId}
-                          </div>
-                        {/each}
-                      </div>
-                    {/if}
-                  {/if}
+                  <p class="mt-2 text-xs text-[var(--base-content-subtle)]">
+                    {$t("local.section.managedCount", {
+                      count: skill.agents.length,
+                    })}
+                  </p>
                 </div>
                 <div
                   class="flex items-center gap-3 text-xs text-[var(--base-content-faint)] opacity-0 group-hover:opacity-100 transition-opacity"
@@ -193,10 +144,10 @@
                 >
                   <IconButton
                     variant="outline"
-                    class={`rounded-lg p-2 text-xs ${editingSkillKey === skill.key ? "border-[var(--base-content)] text-[var(--base-content)]" : "border-[var(--base-300)] text-[var(--base-content-muted)]"}`}
+                    class="rounded-lg p-2 text-xs border-[var(--base-300)] text-[var(--base-content-muted)]"
                     onclick={(e) => {
                       e?.stopPropagation();
-                      onOpenLinkDialog(skill);
+                      onOpenSelectAgentModal(skill);
                     }}
                     title={$t("local.action.installToApps")}
                     ariaLabel={$t("local.action.installToApps")}
@@ -217,53 +168,6 @@
                   </IconButton>
                 </div>
               </div>
-              {#if editingSkillKey === skill.key}
-                <div
-                  class="mt-4 rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] p-3"
-                >
-                  <div
-                    class="flex items-center justify-between text-xs text-[var(--base-content-muted)]"
-                  >
-                    <label class="inline-flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={allSelected}
-                        onchange={(event) =>
-                          onToggleSelectAll(event.target.checked)}
-                        disabled={linkBusy}
-                      />
-                      {$t("local.action.selectAll")}
-                    </label>
-                    <button
-                      class="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[var(--primary-content)] transition hover:opacity-90"
-                      onclick={onConfirmAgentLinks}
-                      disabled={linkBusy}
-                      type="button"
-                    >
-                      {$t("local.action.confirm")}
-                    </button>
-                  </div>
-                  <div class="mt-3 flex flex-wrap gap-2">
-                    {#each agents as agent}
-                      <label
-                        class="inline-flex items-center gap-3 rounded-lg bg-[var(--base-100)] px-3 py-2 text-sm text-[var(--base-content)]"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={editSelection.includes(agent.id)}
-                          onchange={(event) =>
-                            onToggleAgentSelection(
-                              agent.id,
-                              event.target.checked,
-                            )}
-                          disabled={linkBusy}
-                        />
-                        <span>{agent.display_name}</span>
-                      </label>
-                    {/each}
-                  </div>
-                </div>
-              {/if}
             </div>
           {/each}
         {/if}

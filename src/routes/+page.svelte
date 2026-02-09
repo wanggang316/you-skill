@@ -4,7 +4,7 @@
   import { open } from '@tauri-apps/plugin-shell'
   import { listen } from '@tauri-apps/api/event'
   import AddSkillModal from '../lib/components/AddSkillModal.svelte'
-  import InstallConfirmModal from '../lib/components/InstallConfirmModal.svelte'
+  import SelectAgentModal from '../lib/components/SelectAgentModal.svelte'
   import PendingImportModal from '../lib/components/PendingImportModal.svelte'
   import LocalSkillsSection from '../lib/components/LocalSkillsSection.svelte'
   import PageHeader from '../lib/components/PageHeader.svelte'
@@ -56,8 +56,6 @@
   let installLog = $state('')
   let installingSkill = $state('')
   let linkBusy = $state(false)
-  let editingSkillKey = $state('')
-  let editSelection = $state([])
 
   // Pending import modal state
   let pendingImportModalOpen = $state(false)
@@ -66,16 +64,17 @@
   let hasUpdate = $state(false)
   let latestVersion = $state('')
 
-  // Install confirm modal state
-  let installConfirmModalOpen = $state(false)
+  // Pending install state for remote skills
   let pendingInstallSkill = $state(null)
   let pendingInstallAgents = $state([])
   let isDownloading = $state(false)
   let downloadError = $state('')
 
-  const allSelected = $derived(
-    agents.length > 0 && editSelection.length === agents.length
-  )
+  // Select agent modal state (shared for remote and local skills)
+  let selectAgentModalOpen = $state(false)
+  let selectAgentModalTitle = $state('')
+  let selectAgentModalInitialSelection = $state([])
+  let selectAgentModalCallback = $state(null)
 
   const agentMap = $derived.by(
     () => new Map(agents.map((agent) => [agent.id, agent.display_name]))
@@ -250,8 +249,45 @@
         downloadError = 'No skills found in repository'
         return
       }
-      // Open confirm modal after successful download
-      installConfirmModalOpen = true
+      // Open select agent modal after successful download
+      selectAgentModalTitle = $t('installConfirm.title', { name: skill.name })
+      selectAgentModalInitialSelection = agents.map((a) => a.id)
+      selectAgentModalCallback = async (selectedAgents) => {
+        if (!pendingInstallSkill) return
+        installLog = ''
+        installingSkill = pendingInstallSkill.id
+        pendingInstallAgents = selectedAgents
+        try {
+          // Use installGithubSkill API for remote skills
+          const skillPath = pendingInstallSkill.detectedPath || pendingInstallSkill.path || pendingInstallSkill.name
+          const result = await installGithubSkill({
+            url: pendingInstallSkill.url,
+            skill_path: skillPath,
+            agents: selectedAgents
+          })
+          if (!result.success) {
+            installLog = `${result.message}\n${result.stderr || result.stdout}`
+          } else {
+            installLog = ''
+            // Record install count on backend
+            if (pendingInstallSkill?.id) {
+              try {
+                await recordInstall(pendingInstallSkill.id)
+              } catch (e) {
+                console.error('Failed to record install:', e)
+              }
+            }
+            await refreshLocal()
+          }
+        } catch (error) {
+          installLog = String(error)
+        } finally {
+          installingSkill = ''
+          pendingInstallSkill = null
+          pendingInstallAgents = []
+        }
+      }
+      selectAgentModalOpen = true
     } catch (error) {
       downloadError = String(error)
       installLog = String(error)
@@ -261,40 +297,31 @@
     }
   }
 
-  const handleConfirmInstall = async (selectedAgents) => {
-    if (!pendingInstallSkill) return
-    installLog = ''
-    installingSkill = pendingInstallSkill.id
-    pendingInstallAgents = selectedAgents
-    try {
-      // Use installGithubSkill API for remote skills
-      const skillPath = pendingInstallSkill.detectedPath || pendingInstallSkill.path || pendingInstallSkill.name
-      const result = await installGithubSkill({
-        url: pendingInstallSkill.url,
-        skill_path: skillPath,
-        agents: selectedAgents
-      })
-      if (!result.success) {
-        installLog = `${result.message}\n${result.stderr || result.stdout}`
-      } else {
-        installLog = ''
-        // Record install count on backend
-        if (pendingInstallSkill?.id) {
-          try {
-            await recordInstall(pendingInstallSkill.id)
-          } catch (e) {
-            console.error('Failed to record install:', e)
+  // Open SelectAgentModal for local skills
+  const openSelectAgentModal = (skill) => {
+    selectAgentModalTitle = skill.name
+    selectAgentModalInitialSelection = skill.agents || []
+    selectAgentModalCallback = async (selectedAgents) => {
+      if (!skill || linkBusy) return
+      linkBusy = true
+      try {
+        const currentSet = new Set(skill.agents || [])
+        const targetSet = new Set(selectedAgents)
+        for (const agent of agents) {
+          const shouldLink = targetSet.has(agent.id)
+          const isLinked = currentSet.has(agent.id)
+          if (shouldLink !== isLinked) {
+            await setAgentLink(skill.name, agent.id, skill.scope, shouldLink)
           }
         }
         await refreshLocal()
+      } catch (error) {
+        localError = String(error)
+      } finally {
+        linkBusy = false
       }
-    } catch (error) {
-      installLog = String(error)
-    } finally {
-      installingSkill = ''
-      pendingInstallSkill = null
-      pendingInstallAgents = []
     }
+    selectAgentModalOpen = true
   }
 
   const handleOpenUrl = async (url) => {
@@ -380,58 +407,6 @@
       await refreshLocal()
     } catch (error) {
       localError = String(error)
-    }
-  }
-
-  const openLinkDialog = (skill) => {
-    if (editingSkillKey === skill.key) {
-      editingSkillKey = ''
-      editSelection = []
-      return
-    }
-    editingSkillKey = skill.key
-    editSelection = [...(skill.agents || [])]
-  }
-
-  const toggleAgentSelection = (agentId, enabled) => {
-    if (enabled) {
-      if (!editSelection.includes(agentId)) {
-        editSelection = [...editSelection, agentId]
-      }
-    } else {
-      editSelection = editSelection.filter((id) => id !== agentId)
-    }
-  }
-
-  const toggleSelectAll = (enabled) => {
-    if (enabled) {
-      editSelection = agents.map((agent) => agent.id)
-    } else {
-      editSelection = []
-    }
-  }
-
-  const confirmAgentLinks = async () => {
-    const skill = managedSkills.find((item) => item.key === editingSkillKey)
-    if (!skill || linkBusy) return
-    linkBusy = true
-    try {
-      const currentSet = new Set(skill.agents || [])
-      const targetSet = new Set(editSelection)
-      for (const agent of agents) {
-        const shouldLink = targetSet.has(agent.id)
-        const isLinked = currentSet.has(agent.id)
-        if (shouldLink !== isLinked) {
-          await setAgentLink(skill.name, agent.id, skill.scope, shouldLink)
-        }
-      }
-      await refreshLocal()
-      editingSkillKey = ''
-      editSelection = []
-    } catch (error) {
-      localError = String(error)
-    } finally {
-      linkBusy = false
     }
   }
 
@@ -529,21 +504,14 @@
         {filteredLocalSkills}
         {managedSkills}
         {unmanagedSkills}
-        {editingSkillKey}
-        {editSelection}
-        {allSelected}
         {agentMap}
-        {linkBusy}
         onRefresh={refreshLocal}
-        onOpenLinkDialog={openLinkDialog}
         onDeleteSkill={handleDeleteSkill}
-        onToggleSelectAll={toggleSelectAll}
-        onToggleAgentSelection={toggleAgentSelection}
-        onConfirmAgentLinks={confirmAgentLinks}
         onBulkUnify={handleBulkUnify}
         onUnifySkill={handleUnify}
         onViewSkill={handleViewSkill}
         onOpenPendingImport={() => (pendingImportModalOpen = true)}
+        onOpenSelectAgentModal={openSelectAgentModal}
       />
     {:else}
       <RemoteSkillsSection
@@ -570,14 +538,18 @@
     </div>
   </main>
 
-  <InstallConfirmModal
-    bind:open={installConfirmModalOpen}
-    skillName={pendingInstallSkill?.name || ''}
+  <SelectAgentModal
+    bind:open={selectAgentModalOpen}
+    title={selectAgentModalTitle}
     {agents}
-    onConfirm={handleConfirmInstall}
+    initialSelection={selectAgentModalInitialSelection}
+    onConfirm={async (selectedAgents) => {
+      if (selectAgentModalCallback) {
+        await selectAgentModalCallback(selectedAgents)
+      }
+    }}
     onCancel={() => {
-      pendingInstallSkill = null
-      pendingInstallAgents = []
+      selectAgentModalCallback = null
     }}
   />
 

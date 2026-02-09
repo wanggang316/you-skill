@@ -1,59 +1,65 @@
 <script>
-  import { X, Check, Loader2 } from '@lucide/svelte'
-  import { t } from '../i18n'
+  import { X, Check, Loader2 } from "@lucide/svelte";
+  import { t } from "../i18n";
 
   let {
     open = $bindable(false),
-    skillName = '',
+    title = "",
     agents = [],
+    initialSelection = [],
     onConfirm = () => {},
-    onCancel = () => {}
-  } = $props()
+    onCancel = () => {},
+  } = $props();
 
-  let selectedAgents = $state([])
-  let isInstalling = $state(false)
+  let selectedAgents = $state([]);
+  let isInstalling = $state(false);
 
   // Reset state when modal opens
   $effect(() => {
     if (open) {
-      selectedAgents = agents.map(a => a.id)
+      // Use initialSelection if provided, otherwise select all
+      selectedAgents = initialSelection.length > 0
+        ? [...initialSelection]
+        : agents.map((a) => a.id);
     }
-  })
+  });
 
   function closeModal() {
-    open = false
-    onCancel()
+    open = false;
+    onCancel();
   }
 
   function toggleAgent(agentId) {
     if (selectedAgents.includes(agentId)) {
-      selectedAgents = selectedAgents.filter(id => id !== agentId)
+      selectedAgents = selectedAgents.filter((id) => id !== agentId);
     } else {
-      selectedAgents = [...selectedAgents, agentId]
+      selectedAgents = [...selectedAgents, agentId];
     }
   }
 
   function toggleSelectAll() {
     if (selectedAgents.length === agents.length) {
-      selectedAgents = []
+      selectedAgents = [];
     } else {
-      selectedAgents = agents.map(a => a.id)
+      selectedAgents = agents.map((a) => a.id);
     }
   }
 
   async function handleConfirm() {
-    if (selectedAgents.length === 0) return
-    isInstalling = true
+    if (selectedAgents.length === 0) return;
+    isInstalling = true;
     try {
-      await onConfirm(selectedAgents)
-      closeModal()
+      await onConfirm(selectedAgents);
+      closeModal();
     } finally {
-      isInstalling = false
+      isInstalling = false;
     }
   }
 
-  const allSelected = $derived(selectedAgents.length === agents.length && agents.length > 0)
-  const hasSelection = $derived(selectedAgents.length > 0)
+  const allSelected = $derived(
+    selectedAgents.length === agents.length && agents.length > 0,
+  );
+  const hasSelection = $derived(selectedAgents.length > 0);
 </script>
 
 {#if open}
@@ -63,11 +69,15 @@
     class="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)]"
     onclick={(e) => e.target === e.currentTarget && closeModal()}
   >
-    <div class="flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] shadow-xl">
+    <div
+      class="flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl border border-[var(--base-300)] bg-[var(--base-100)] shadow-xl"
+    >
       <!-- Header -->
-      <div class="flex items-center justify-between border-b border-[var(--base-300)] px-6 py-4">
+      <div
+        class="flex items-center justify-between border-b border-[var(--base-300)] px-6 py-4"
+      >
         <h2 class="text-lg font-semibold">
-          {$t('installConfirm.title', { name: skillName })}
+          {title || $t("selectAgent.defaultTitle")}
         </h2>
         <button
           class="rounded-lg p-1 text-[var(--base-content-muted)] transition hover:bg-[var(--base-200)] hover:text-[var(--base-content)]"
@@ -81,18 +91,20 @@
       <!-- Content -->
       <div class="flex-1 overflow-y-auto p-6">
         <p class="mb-4 text-sm text-[var(--base-content-muted)]">
-          {$t('installConfirm.selectAgents')}
+          {$t("selectAgent.description")}
         </p>
 
         <!-- Select All -->
-        <div class="mb-3 flex items-center justify-between text-xs text-[var(--base-content-muted)]">
+        <div
+          class="mb-3 flex items-center justify-between text-xs text-[var(--base-content-muted)]"
+        >
           <label class="inline-flex items-center gap-2">
             <input
               type="checkbox"
               checked={allSelected}
               onchange={toggleSelectAll}
             />
-            {$t('installConfirm.selectAll')}
+            {$t("selectAgent.selectAll")}
           </label>
         </div>
 
@@ -114,14 +126,16 @@
       </div>
 
       <!-- Footer -->
-      <div class="flex items-center justify-between border-t border-[var(--base-300)] px-6 py-4">
+      <div
+        class="flex items-center justify-between border-t border-[var(--base-300)] px-6 py-4"
+      >
         <button
           class="text-sm text-[var(--base-content-muted)] transition hover:text-[var(--base-content)]"
           onclick={closeModal}
           disabled={isInstalling}
           type="button"
         >
-          {$t('installConfirm.skip')}
+          {$t("selectAgent.cancel")}
         </button>
         <button
           class="rounded-xl bg-[var(--primary)] px-6 py-2 text-sm text-[var(--primary-content)] transition hover:opacity-90 disabled:opacity-50"
@@ -134,7 +148,7 @@
           {:else}
             <Check size={16} class="inline mr-1" />
           {/if}
-          {$t('installConfirm.confirm')}
+          {$t("selectAgent.confirm")}
         </button>
       </div>
     </div>
