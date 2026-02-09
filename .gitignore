@@ -23,3 +23,6 @@ src-tauri/target
 *.njsproj
 *.sln
 *.sw?
+
+# Tauri generated schemas
+src-tauri/gen/schemas/
