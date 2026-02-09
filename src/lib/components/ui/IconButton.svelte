@@ -14,10 +14,10 @@
 
   const variants = {
     primary:
-      "bg-[var(--primary)] text-[var(--primary-content)] hover:bg-[var(--primary)]/80",
+      "bg-primary text-primary-content hover:bg-primary/80",
     outline:
-      "border border-[var(--base-300)] bg-[var(--base-100)] text-[var(--base-content)] hover:bg-[var(--base-300)]",
-    ghost: "text-[var(--base-content)] hover:bg-[var(--base-200)]",
+      "border border-base-300 bg-base-100 text-base-content hover:bg-base-300",
+    ghost: "text-base-content hover:bg-base-200",
   };
 
   const resolvedClass = $derived(

@@ -290,7 +290,7 @@
       <!-- Tabs -->
       <div class="mb-6 flex gap-2 rounded-full bg-base-200 p-1">
         <button
-          class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "zip" ? "bg-[var(--base-100)] text-[var(--base-content)] shadow-sm" : "text-[var(--base-content-muted)] hover:text-[var(--base-content)]"}`}
+          class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "zip" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
           onclick={() => (activeTab = "zip")}
           type="button"
         >
@@ -298,7 +298,7 @@
           {$t("addSkill.tab.zip")}
         </button>
         <button
-          class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "folder" ? "bg-[var(--base-100)] text-[var(--base-content)] shadow-sm" : "text-[var(--base-content-muted)] hover:text-[var(--base-content)]"}`}
+          class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "folder" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
           onclick={() => (activeTab = "folder")}
           type="button"
         >
@@ -306,7 +306,7 @@
           {$t("addSkill.tab.folder")}
         </button>
         <button
-          class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "github" ? "bg-[var(--base-100)] text-[var(--base-content)] shadow-sm" : "text-[var(--base-content-muted)] hover:text-[var(--base-content)]"}`}
+          class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "github" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
           onclick={() => (activeTab = "github")}
           type="button"
         >
@@ -318,27 +318,27 @@
       <!-- ZIP Mode -->
       {#if activeTab === "zip"}
         <div class="space-y-4">
-          <p class="text-sm text-[var(--base-content-muted)]">
+          <p class="text-sm text-base-content-muted">
             {$t("addSkill.zip.description")}
           </p>
           <button
-            class="w-full rounded-xl border-2 border-dashed border-[var(--base-300)] p-8 transition hover:border-[var(--primary)] hover:bg-[var(--base-200)]"
+            class="w-full rounded-xl border-2 border-dashed border-base-300 p-8 transition hover:border-primary hover:bg-base-200"
             onclick={handleSelectZipFile}
             type="button"
           >
             {#if selectedZipPath}
               <div
-                class="flex items-center justify-center gap-2 text-[var(--base-content)]"
+                class="flex items-center justify-center gap-2 text-base-content"
               >
-                <FileArchive size={20} class="text-[var(--primary)]" />
+                <FileArchive size={20} class="text-primary" />
                 <span class="font-medium">{zipFileName}</span>
               </div>
-              <p class="mt-2 text-xs text-[var(--base-content-muted)]">
+              <p class="mt-2 text-xs text-base-content-muted">
                 {$t("addSkill.zip.clickToChange")}
               </p>
             {:else}
               <div
-                class="flex flex-col items-center gap-2 text-[var(--base-content-muted)]"
+                class="flex flex-col items-center gap-2 text-base-content-muted"
               >
                 <FileArchive size={32} />
                 <span>{$t("addSkill.zip.selectFile")}</span>
@@ -349,7 +349,7 @@
           {#if selectedZipPath}
             <div class="flex gap-2">
               <button
-                class="flex-1 rounded-xl bg-[var(--primary)] px-4 py-2 text-sm text-[var(--primary-content)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
+                class="flex-1 rounded-xl bg-primary px-4 py-2 text-sm text-primary-content transition hover:bg-primary-hover disabled:opacity-50"
                 onclick={handleDetectZip}
                 disabled={isDetectingZip}
                 type="button"
@@ -363,7 +363,7 @@
           {/if}
 
           {#if zipError}
-            <div class="flex items-center gap-2 text-sm text-[var(--error)]">
+            <div class="flex items-center gap-2 text-sm text-error">
               <AlertCircle size={16} />
               <span>{zipError}</span>
             </div>
@@ -371,22 +371,22 @@
 
           {#if detectedZipSkills.length > 0}
             <div class="space-y-2">
-              <p class="text-sm font-medium text-[var(--base-content)]">
+              <p class="text-sm font-medium text-base-content">
                 {$t("addSkill.zip.selectSkill")}
               </p>
               <div
-                class="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] p-2"
+                class="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-base-300 bg-base-200 p-2"
               >
                 {#each detectedZipSkills as skill}
                   <button
-                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedZipSkill?.path === skill.path ? "bg-[var(--primary)] text-[var(--primary-content)]" : "bg-[var(--base-100)] text-[var(--base-content)] hover:bg-[var(--base-300)]"}`}
+                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedZipSkill?.path === skill.path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
                     onclick={() => (selectedZipSkill = skill)}
                     type="button"
                   >
                     <div>
                       <p class="font-medium">{skill.name}</p>
                       <p
-                        class={`text-xs ${selectedZipSkill?.path === skill.path ? "text-[var(--primary-content)] opacity-80" : "text-[var(--base-content-muted)]"}`}
+                        class={`text-xs ${selectedZipSkill?.path === skill.path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
                       >
                         {skill.path}
                       </p>
@@ -403,27 +403,27 @@
       {:else if activeTab === "folder"}
         <!-- Folder Mode -->
         <div class="space-y-4">
-          <p class="text-sm text-[var(--base-content-muted)]">
+          <p class="text-sm text-base-content-muted">
             {$t("addSkill.folder.description")}
           </p>
           <button
-            class="w-full rounded-xl border-2 border-dashed border-[var(--base-300)] p-8 transition hover:border-[var(--primary)] hover:bg-[var(--base-200)]"
+            class="w-full rounded-xl border-2 border-dashed border-base-300 p-8 transition hover:border-primary hover:bg-base-200"
             onclick={handleSelectFolder}
             type="button"
           >
             {#if selectedFolderPath}
               <div
-                class="flex items-center justify-center gap-2 text-[var(--base-content)]"
+                class="flex items-center justify-center gap-2 text-base-content"
               >
-                <Folder size={20} class="text-[var(--primary)]" />
+                <Folder size={20} class="text-primary" />
                 <span class="font-medium">{folderName}</span>
               </div>
-              <p class="mt-2 text-xs text-[var(--base-content-muted)]">
+              <p class="mt-2 text-xs text-base-content-muted">
                 {$t("addSkill.folder.clickToChange")}
               </p>
             {:else}
               <div
-                class="flex flex-col items-center gap-2 text-[var(--base-content-muted)]"
+                class="flex flex-col items-center gap-2 text-base-content-muted"
               >
                 <Folder size={32} />
                 <span>{$t("addSkill.folder.selectFolder")}</span>
@@ -434,7 +434,7 @@
           {#if selectedFolderPath}
             <div class="flex gap-2">
               <button
-                class="flex-1 rounded-xl bg-[var(--primary)] px-4 py-2 text-sm text-[var(--primary-content)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
+                class="flex-1 rounded-xl bg-primary px-4 py-2 text-sm text-primary-content transition hover:bg-primary-hover disabled:opacity-50"
                 onclick={handleDetectFolder}
                 disabled={isDetectingFolder}
                 type="button"
@@ -448,7 +448,7 @@
           {/if}
 
           {#if folderError}
-            <div class="flex items-center gap-2 text-sm text-[var(--error)]">
+            <div class="flex items-center gap-2 text-sm text-error">
               <AlertCircle size={16} />
               <span>{folderError}</span>
             </div>
@@ -456,22 +456,22 @@
 
           {#if detectedFolderSkills.length > 0}
             <div class="space-y-2">
-              <p class="text-sm font-medium text-[var(--base-content)]">
+              <p class="text-sm font-medium text-base-content">
                 {$t("addSkill.folder.selectSkill")}
               </p>
               <div
-                class="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] p-2"
+                class="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-base-300 bg-base-200 p-2"
               >
                 {#each detectedFolderSkills as skill}
                   <button
-                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedFolderSkill?.path === skill.path ? "bg-[var(--primary)] text-[var(--primary-content)]" : "bg-[var(--base-100)] text-[var(--base-content)] hover:bg-[var(--base-300)]"}`}
+                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedFolderSkill?.path === skill.path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
                     onclick={() => (selectedFolderSkill = skill)}
                     type="button"
                   >
                     <div>
                       <p class="font-medium">{skill.name}</p>
                       <p
-                        class={`text-xs ${selectedFolderSkill?.path === skill.path ? "text-[var(--primary-content)] opacity-80" : "text-[var(--base-content-muted)]"}`}
+                        class={`text-xs ${selectedFolderSkill?.path === skill.path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
                       >
                         {skill.path}
                       </p>
@@ -488,19 +488,19 @@
       {:else}
         <!-- GitHub Mode -->
         <div class="space-y-4">
-          <p class="text-sm text-[var(--base-content-muted)]">
+          <p class="text-sm text-base-content-muted">
             {$t("addSkill.github.description")}
           </p>
           <div class="flex gap-2">
             <input
               type="text"
-              class="flex-1 rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] px-4 py-2 text-sm text-[var(--base-content)] placeholder:text-[var(--base-content-subtle)] focus:border-[var(--primary)] focus:outline-none"
+              class="flex-1 rounded-xl border border-base-300 bg-base-200 px-4 py-2 text-sm text-base-content placeholder:text-base-content-subtle focus:border-primary focus:outline-none"
               placeholder={$t("addSkill.github.urlPlaceholder")}
               bind:value={githubUrl}
               onkeydown={(e) => e.key === "Enter" && handleDetectGithub()}
             />
             <button
-              class="rounded-xl bg-[var(--primary)] px-4 py-2 text-sm text-[var(--primary-content)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
+              class="rounded-xl bg-primary px-4 py-2 text-sm text-primary-content transition hover:bg-primary-hover disabled:opacity-50"
               onclick={handleDetectGithub}
               disabled={!githubUrl.trim() || isDetecting}
               type="button"
@@ -514,7 +514,7 @@
           </div>
 
           {#if githubError}
-            <div class="flex items-center gap-2 text-sm text-[var(--error)]">
+            <div class="flex items-center gap-2 text-sm text-error">
               <AlertCircle size={16} />
               <span>{githubError}</span>
             </div>
@@ -522,22 +522,22 @@
 
           {#if detectedSkills.length > 0}
             <div class="space-y-2">
-              <p class="text-sm font-medium text-[var(--base-content)]">
+              <p class="text-sm font-medium text-base-content">
                 {$t("addSkill.github.selectSkill")}
               </p>
               <div
-                class="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-[var(--base-300)] bg-[var(--base-200)] p-2"
+                class="max-h-48 space-y-2 overflow-y-auto rounded-xl border border-base-300 bg-base-200 p-2"
               >
                 {#each detectedSkills as skill}
                   <button
-                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedSkill?.path === skill.path ? "bg-[var(--primary)] text-[var(--primary-content)]" : "bg-[var(--base-100)] text-[var(--base-content)] hover:bg-[var(--base-300)]"}`}
+                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedSkill?.path === skill.path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
                     onclick={() => (selectedSkill = skill)}
                     type="button"
                   >
                     <div>
                       <p class="font-medium">{skill.name}</p>
                       <p
-                        class={`text-xs ${selectedSkill?.path === skill.path ? "text-[var(--primary-content)] opacity-80" : "text-[var(--base-content-muted)]"}`}
+                        class={`text-xs ${selectedSkill?.path === skill.path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
                       >
                         {skill.path}
                       </p>
@@ -556,13 +556,13 @@
       <!-- Agent Selection -->
       <div class="mt-6 space-y-3">
         <div class="flex items-center justify-between">
-          <p class="text-sm font-medium text-[var(--base-content)]">
+          <p class="text-sm font-medium text-base-content">
             {$t("addSkill.selectAgents")}
           </p>
           <div class="flex gap-2">
             {#if allSelected}
               <button
-                class="text-xs text-[var(--base-content-muted)] transition hover:text-[var(--base-content)]"
+                class="text-xs text-base-content-muted transition hover:text-base-content"
                 onclick={deselectAllAgents}
                 type="button"
               >
@@ -570,7 +570,7 @@
               </button>
             {:else}
               <button
-                class="text-xs text-[var(--base-content-muted)] transition hover:text-[var(--base-content)]"
+                class="text-xs text-base-content-muted transition hover:text-base-content"
                 onclick={selectAllAgents}
                 type="button"
               >
@@ -582,7 +582,7 @@
         <div class="flex flex-wrap gap-2">
           {#each agents as agent}
             <label
-              class={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${selectedAgents.includes(agent.id) ? "border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-content)]" : "border-[var(--base-300)] bg-[var(--base-100)] text-[var(--base-content)] hover:bg-[var(--base-200)]"}`}
+              class={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${selectedAgents.includes(agent.id) ? "border-primary bg-primary text-primary-content" : "border-base-300 bg-base-100 text-base-content hover:bg-base-200"}`}
             >
               <input
                 type="checkbox"
@@ -597,7 +597,7 @@
       </div>
 
       {#if installError}
-        <div class="mt-4 flex items-center gap-2 text-sm text-[var(--error)]">
+        <div class="mt-4 flex items-center gap-2 text-sm text-error">
           <AlertCircle size={16} />
           <span>{installError}</span>
         </div>
@@ -606,10 +606,10 @@
 
     <!-- Footer -->
     <div
-      class="flex justify-end gap-3 border-t border-[var(--base-300)] px-6 py-4 bg-[var(--base-100)] rounded-b-2xl"
+      class="flex justify-end gap-3 border-t border-base-300 px-6 py-4 bg-base-100 rounded-b-2xl"
     >
       <button
-        class="rounded-xl border border-[var(--base-300)] px-4 py-2 text-sm text-[var(--base-content)] transition hover:bg-[var(--base-200)]"
+        class="rounded-xl border border-base-300 px-4 py-2 text-sm text-base-content transition hover:bg-base-200"
         onclick={closeModal}
         disabled={isInstalling}
         type="button"
@@ -617,7 +617,7 @@
         {$t("addSkill.cancel")}
       </button>
       <button
-        class="rounded-xl bg-[var(--primary)] px-4 py-2 text-sm text-[var(--primary-content)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
+        class="rounded-xl bg-primary px-4 py-2 text-sm text-primary-content transition hover:bg-primary-hover disabled:opacity-50"
         onclick={handleConfirm}
         disabled={!canConfirm() || isInstalling}
         type="button"

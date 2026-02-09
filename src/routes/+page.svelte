@@ -462,7 +462,7 @@
   }
 </script>
 
-<div class="flex h-screen flex-col overflow-hidden bg-[var(--base-100)] text-[var(--base-content)]">
+<div class="flex h-screen flex-col overflow-hidden bg-base-100 text-base-content">
   <PageHeader
     {currentView}
     {activeTab}

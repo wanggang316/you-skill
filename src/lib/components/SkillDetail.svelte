@@ -248,13 +248,13 @@
 <div class="max-w-4xl mx-auto">
   {#if loading}
     <div class="flex items-center justify-center py-12">
-      <Loader2 size={32} class="animate-spin text-[var(--base-content-muted)]" />
+      <Loader2 size={32} class="animate-spin text-base-content-muted" />
     </div>
   {:else if error}
-    <div class="rounded-2xl border border-[var(--error-border)] bg-[var(--base-100)] p-6 text-center">
-      <p class="text-[var(--error)]">{error}</p>
+    <div class="rounded-2xl border border-error-border bg-base-100 p-6 text-center">
+      <p class="text-error">{error}</p>
       <button
-        class="mt-4 rounded-lg bg-[var(--primary)] px-4 py-2 text-sm text-[var(--primary-content)] transition hover:bg-[var(--primary-hover)]"
+        class="mt-4 rounded-lg bg-primary px-4 py-2 text-sm text-primary-content transition hover:bg-primary-hover"
         onclick={loadContent}
       >
         {$t('detail.retry')}

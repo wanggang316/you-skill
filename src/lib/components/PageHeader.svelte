@@ -27,11 +27,11 @@
 </script>
 
 <header
-  class="sticky top-0 z-50 border-b border-[var(--base-300)] bg-[var(--base-100)]"
+  class="sticky top-0 z-50 border-b border-base-300 bg-base-100"
 >
   <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
     {#if currentView === "list"}
-      <div class="flex items-center gap-2 text-[var(--base-content)]">
+      <div class="flex items-center gap-2 text-base-content">
         <svg
           width="28"
           viewBox="0 0 433 455"
@@ -54,17 +54,17 @@
       {#if currentView === "list"}
         <div class="flex items-center gap-3">
           <div
-            class="flex items-center gap-2 rounded-full bg-[var(--base-200)] p-1"
+            class="flex items-center gap-2 rounded-full bg-base-200 p-1"
           >
             <button
-              class={`rounded-full px-4 py-2 transition hover:text-[var(--base-content)] ${activeTab === "local" ? "bg-[var(--base-100)] text-[var(--base-content)] shadow-sm" : "text-[var(--base-content-muted)]"}`}
+              class={`rounded-full px-4 py-2 transition hover:text-base-content ${activeTab === "local" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted"}`}
               onclick={() => onChangeTab("local")}
               type="button"
             >
               {$t("header.localTab")}
             </button>
             <button
-              class={`rounded-full px-4 py-2 transition hover:text-[var(--base-content)] ${activeTab === "remote" ? "bg-[var(--base-100)] text-[var(--base-content)] shadow-sm" : "text-[var(--base-content-muted)]"}`}
+              class={`rounded-full px-4 py-2 transition hover:text-base-content ${activeTab === "remote" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted"}`}
               onclick={() => onChangeTab("remote")}
               type="button"
             >
@@ -83,7 +83,7 @@
         <div class="flex items-center gap-2">
           {#if unmanagedCount > 0}
             <button
-              class="flex items-center rounded-xl bg-[var(--warning)] px-3 py-2 text-sm font-medium text-[var(--warning-content)] transition hover:bg-[var(--warning-hover)]"
+              class="flex items-center rounded-xl bg-warning px-3 py-2 text-sm font-medium text-warning-content transition hover:bg-warning-hover"
               onclick={onOpenPendingImport}
               title={$t("header.pendingImport")}
               type="button"
@@ -91,14 +91,14 @@
               <Download size={16} class="mr-1.5" />
               {$t("header.pendingImport")}
               <span
-                class="ml-1 rounded-full bg-[var(--warning-content)] px-1.5 py-0.5 text-xs text-[var(--warning)]"
+                class="ml-1 rounded-full bg-warning-content px-1.5 py-0.5 text-xs text-warning"
                 >{unmanagedCount}</span
               >
             </button>
           {/if}
           {#if hasUpdate}
             <button
-              class="flex items-center rounded-xl bg-[var(--success)] px-3 py-2 text-sm font-medium text-[var(--success-content)] transition hover:bg-[var(--success-hover)]"
+              class="flex items-center rounded-xl bg-success px-3 py-2 text-sm font-medium text-success-content transition hover:bg-success-hover"
               onclick={onOpenUpdate}
               title={$t("header.update")}
               type="button"
@@ -120,7 +120,7 @@
         <div class="flex items-center justify-between w-full">
           <div class="flex items-center gap-4">
             <button
-              class="flex items-center rounded-xl border border-[var(--base-300)] px-3 py-2 text-sm text-[var(--base-content)] transition hover:bg-[var(--base-200)]"
+              class="flex items-center rounded-xl border border-base-300 px-3 py-2 text-sm text-base-content transition hover:bg-base-200"
               onclick={onBack}
               title={$t("header.back")}
               type="button"
@@ -128,7 +128,7 @@
               <ChevronLeft size={16} class="mr-2" />
               {$t("header.back")}
             </button>
-            <h1 class="text-lg font-semibold text-[var(--base-content)]">
+            <h1 class="text-lg font-semibold text-base-content">
               {skillName}
             </h1>
           </div>
@@ -146,7 +146,7 @@
       {:else}
         <div class="flex items-center gap-4">
           <button
-            class="flex items-center rounded-xl border border-[var(--base-300)] px-3 py-2 text-sm text-[var(--base-content)] transition hover:bg-[var(--base-200)]"
+            class="flex items-center rounded-xl border border-base-300 px-3 py-2 text-sm text-base-content transition hover:bg-base-200"
             onclick={() => onChangeView("list")}
             title={$t("header.back")}
             type="button"
@@ -154,7 +154,7 @@
             <ChevronLeft size={16} class="mr-2" />
             {$t("header.back")}
           </button>
-          <h1 class="text-lg font-semibold text-[var(--base-content)]">
+          <h1 class="text-lg font-semibold text-base-content">
             {$t("header.settings")}
           </h1>
         </div>

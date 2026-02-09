@@ -63,7 +63,7 @@
     <div class="relative animate-modal" class:animate-modal-close={closing}>
       <!-- Background layer: responsible for visual effects and border clipping -->
       <div
-        class="bg-[var(--base-100)] max-w-[90vw] max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden relative pointer-events-none border-[1px] border-[var(--base-200)]"
+        class="bg-base-100 max-w-[90vw] max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden relative pointer-events-none border-[1px] border-base-200"
         style="border-radius: 20px; z-index: 1;"
       >
         <!-- Reserve content space -->

@@ -165,14 +165,14 @@
 
 <section class="space-y-2">
   <!-- Language & Theme-->
-  <div class="flex flex-col gap-4 rounded-2xl bg-[var(--base-200)] py-2.5 px-4">
+  <div class="flex flex-col gap-4 rounded-2xl bg-base-200 py-2.5 px-4">
     <div class="flex items-center justify-between">
-      <span class="text-[15px] text-[var(--base-content)]"
+      <span class="text-[15px] text-base-content"
         >{$t("settings.language")}</span
       >
       <div class="relative">
         <select
-          class="appearance-none rounded-lg bg-[var(--base-300)] px-3 py-1.5 pr-9 text-[14px] text-[var(--base-content)] text-right focus:outline-none min-w-[120px] hover:bg-[var(--base-100)] transition-colors cursor-pointer"
+          class="appearance-none rounded-lg bg-base-300 px-3 py-1.5 pr-9 text-[14px] text-base-content text-right focus:outline-none min-w-[120px] hover:bg-base-100 transition-colors cursor-pointer"
           value={$settings.language}
           onchange={(event) =>
             updateSettings({ language: event.currentTarget.value })}
@@ -181,21 +181,21 @@
           <option value="zh">中文</option>
         </select>
         <ChevronRight
-          class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-[var(--base-content-muted)]"
+          class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-base-content-muted"
           size={14}
         />
       </div>
     </div>
 
-    <div class="h-px bg-[var(--base-300)]"></div>
+    <div class="h-px bg-base-300"></div>
 
     <div class="flex items-center justify-between">
-      <span class="text-[15px] text-[var(--base-content)]"
+      <span class="text-[15px] text-base-content"
         >{$t("settings.theme")}</span
       >
       <div class="relative">
         <select
-          class="appearance-none rounded-lg bg-[var(--base-300)] px-3 py-1.5 pr-9 text-[14px] text-[var(--base-content)] text-right focus:outline-none min-w-[120px] hover:bg-[var(--base-100)] transition-colors cursor-pointer"
+          class="appearance-none rounded-lg bg-base-300 px-3 py-1.5 pr-9 text-[14px] text-base-content text-right focus:outline-none min-w-[120px] hover:bg-base-100 transition-colors cursor-pointer"
           value={$settings.theme}
           onchange={(event) =>
             updateSettings({ theme: event.currentTarget.value })}
@@ -205,7 +205,7 @@
           <option value="dark">{$t("settings.theme.dark")}</option>
         </select>
         <ChevronRight
-          class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-[var(--base-content-muted)]"
+          class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-base-content-muted"
           size={14}
         />
       </div>
@@ -213,14 +213,14 @@
   </div>
 
   <!-- Skill Sync Mode -->
-  <div class="rounded-2xl bg-[var(--base-200)] py-2.5 px-4">
+  <div class="rounded-2xl bg-base-200 py-2.5 px-4">
     <div class="flex items-center justify-between">
-      <span class="text-[15px] text-[var(--base-content)]"
+      <span class="text-[15px] text-base-content"
         >{$t("settings.syncMode")}</span
       >
       <div class="relative">
         <select
-          class="appearance-none rounded-lg bg-[var(--base-300)] px-3 py-1.5 pr-9 text-[14px] text-[var(--base-content)] text-right focus:outline-none min-w-[120px] hover:bg-[var(--base-100)] transition-colors cursor-pointer"
+          class="appearance-none rounded-lg bg-base-300 px-3 py-1.5 pr-9 text-[14px] text-base-content text-right focus:outline-none min-w-[120px] hover:bg-base-100 transition-colors cursor-pointer"
           value={$settings.syncMode}
           onchange={(event) =>
             updateSettings({ syncMode: event.currentTarget.value })}
@@ -229,7 +229,7 @@
           <option value="copy">{$t("settings.syncMode.copy")}</option>
         </select>
         <ChevronRight
-          class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-[var(--base-content-muted)]"
+          class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-base-content-muted"
           size={14}
         />
       </div>
@@ -237,14 +237,14 @@
   </div>
 
   <!-- Backup -->
-  <div class="rounded-2xl bg-[var(--base-200)] py-2.5 px-4">
+  <div class="rounded-2xl bg-base-200 py-2.5 px-4">
     <div class="flex items-center justify-between">
-      <span class="text-[15px] text-[var(--base-content)]"
+      <span class="text-[15px] text-base-content"
         >{$t("settings.backup")}</span
       >
       <div class="flex items-center gap-3">
         {#if backupFolder}
-          <span class="text-xs text-[var(--base-content-muted)]">
+          <span class="text-xs text-base-content-muted">
             {#if lastBackupTime}
               {$t("settings.backup.lastBackup", { time: lastBackupTime })}
             {:else}
@@ -253,7 +253,7 @@
           </span>
         {/if}
         <button
-          class="flex items-center rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[13px] text-[var(--primary-content)] hover:bg-[var(--primary-hover)] disabled:opacity-50"
+          class="flex items-center rounded-lg bg-primary px-3 py-1.5 text-[13px] text-primary-content hover:bg-primary-hover disabled:opacity-50"
           onclick={handleBackup}
           disabled={isBackingUp}
           type="button"
@@ -269,11 +269,11 @@
     </div>
     {#if backupFolder}
       <div class="mt-1.5 flex items-center gap-2">
-        <span class="text-xs text-[var(--base-content-muted)] break-all"
+        <span class="text-xs text-base-content-muted break-all"
           >{backupFolder}</span
         >
         <button
-          class="rounded p-1 text-[var(--base-content-muted)] hover:bg-[var(--base-300)] hover:text-[var(--base-content)]"
+          class="rounded p-1 text-base-content-muted hover:bg-base-300 hover:text-base-content"
           onclick={handleOpenBackupFolder}
           title={$t("settings.backup.openFolder")}
           type="button"
@@ -290,25 +290,25 @@
   </div>
 
   <!-- Updates -->
-  <div class="rounded-2xl bg-[var(--base-200)] py-2.5 px-4">
+  <div class="rounded-2xl bg-base-200 py-2.5 px-4">
     <div class="flex items-center justify-between">
       <div class="flex flex-col">
-        <span class="text-[15px] text-[var(--base-content)]"
+        <span class="text-[15px] text-base-content"
           >{$t("settings.about")}</span
         >
         {#if currentVersion}
-          <span class="text-xs text-[var(--base-content-muted)]">
+          <span class="text-xs text-base-content-muted">
             {$t("settings.currentVersion", { version: currentVersion })}
           </span>
         {/if}
       </div>
       {#if hasUpdate}
         <div class="flex items-center gap-2">
-          <span class="text-xs text-[var(--success)] font-medium">
+          <span class="text-xs text-success font-medium">
             {$t("settings.newVersionAvailable", { version: latestVersion })}
           </span>
           <button
-            class="flex items-center rounded-lg bg-[var(--success)] px-3 py-1.5 text-[13px] text-[var(--success-content)] hover:bg-[var(--primary-hover)] disabled:opacity-50"
+            class="flex items-center rounded-lg bg-success px-3 py-1.5 text-[13px] text-success-content hover:bg-primary-hover disabled:opacity-50"
             onclick={handleInstallUpdate}
             disabled={isInstalling}
             type="button"
@@ -325,7 +325,7 @@
         </div>
       {:else}
         <button
-          class="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-[13px] text-[var(--primary-content)] hover:bg-[var(--primary-hover)] disabled:opacity-50"
+          class="rounded-lg bg-primary px-3 py-1.5 text-[13px] text-primary-content hover:bg-primary-hover disabled:opacity-50"
           onclick={handleCheckUpdate}
           disabled={checkingUpdate}
           type="button"
@@ -337,7 +337,7 @@
       {/if}
     </div>
     {#if updateMessage}
-      <span class="mt-1.5 block text-xs text-[var(--base-content-muted)]"
+      <span class="mt-1.5 block text-xs text-base-content-muted"
         >{updateMessage}</span
       >
     {/if}
