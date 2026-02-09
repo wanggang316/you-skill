@@ -70,16 +70,16 @@
         <select
           class="border-base-300 bg-base-100 text-base-content focus:border-base-300 h-9 cursor-pointer appearance-none rounded-xl border pr-8 pl-3 text-sm focus:outline-none"
           bind:value={remoteSortBy}
-            onchange={handleSortChange}
-          >
+          onchange={handleSortChange}
+        >
           {#each sortOptions as option}
             <option value={option.value}>{option.label}</option>
           {/each}
         </select>
         <ChevronsUpDown
-            class="text-base-content-subtle pointer-events-none absolute top-1/2 right-3 -translate-y-1/2"
-            size={14}
-          />
+          class="text-base-content-subtle pointer-events-none absolute top-1/2 right-3 -translate-y-1/2"
+          size={14}
+        />
       </div>
       <IconButton
         variant="outline"
@@ -140,6 +140,14 @@
                   {skill.name}
                   <span class="text-base-content-muted font-normal">({skill.source})</span>
                 </p>
+                {#if installed}
+                  <span
+                    class="text-success inline-flex items-center rounded-lg px-2 py-0.5 text-xs"
+                  >
+                    <Check size={10} class="mr-1" />
+                    {$t("remote.installed")}
+                  </span>
+                {/if}
               </div>
               <p class="text-base-content-faint mt-1 text-xs">
                 {$t("remote.stars", { count: skill.star_count })}
@@ -151,33 +159,24 @@
               onkeydown={(e) => e.stopPropagation()}
               role="presentation"
             >
-              {#if installed}
-                <button
-                  class="border-success text-success inline-flex cursor-default items-center rounded-lg border bg-transparent px-2 py-0.5 text-xs"
-                  type="button"
-                  disabled
-                >
-                  <Check size={12} class="mr-1.5" />
-                  {$t("remote.installed")}
-                </button>
-              {:else}
-                <button
-                  class="border-primary text-primary hover:bg-primary hover:text-primary-content inline-flex items-center rounded-lg border bg-transparent px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
-                  onclick={(e) => {
-                    e?.stopPropagation();
-                    onInstall(skill);
-                  }}
-                  disabled={isBusy}
-                  type="button"
-                >
-                  {#if installingSkill === skill.id}
-                    <Loader2 size={12} class="mr-1.5 animate-spin" />
-                    {$t("remote.downloading")}
-                  {:else}
-                    {$t("remote.install")}
-                  {/if}
-                </button>
-              {/if}
+              <button
+                class="border-primary text-primary hover:bg-primary hover:text-primary-content inline-flex items-center rounded-lg border bg-transparent px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
+                onclick={(e) => {
+                  e?.stopPropagation();
+                  onInstall(skill);
+                }}
+                disabled={isBusy}
+                type="button"
+              >
+                {#if installingSkill === skill.id}
+                  <Loader2 size={12} class="mr-1.5 animate-spin" />
+                  {$t("remote.downloading")}
+                {:else if installed}
+                  {$t("remote.reinstall")}
+                {:else}
+                  {$t("remote.install")}
+                {/if}
+              </button>
             </div>
           </div>
         </div>
