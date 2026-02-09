@@ -126,7 +126,7 @@
         {@const installed = isInstalled(skill)}
         {@const isBusy = installingSkill === skill.id || isDownloading}
         <div
-          class="border-base-300 bg-base-100 hover:bg-base-200 cursor-pointer rounded-2xl border p-4 transition hover:shadow-sm"
+          class="border-base-300 bg-base-100 hover:bg-base-200 cursor-pointer rounded-2xl border p-4 transition"
           onclick={() => onViewSkill(skill)}
           onkeydown={(e) => (e.key === "Enter" || e.key === " ") && onViewSkill(skill)}
           role="button"
