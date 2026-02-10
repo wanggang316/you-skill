@@ -36,6 +36,20 @@ fn ping() -> String {
 }
 
 fn main() {
+  // Set default log level: info for dev, warn for production
+  #[cfg(debug_assertions)]
+  let default_level = "info";
+  #[cfg(not(debug_assertions))]
+  let default_level = "warn";
+
+  // Initialize tracing subscriber for logging
+  tracing_subscriber::fmt()
+    .with_env_filter(
+      tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level)),
+    )
+    .init();
+
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_shell::init())
