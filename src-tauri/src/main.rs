@@ -23,6 +23,10 @@ use commands::{
   scan::{add_scan_root, get_scan_roots, remove_scan_root, scan_local_skills},
   settings::{get_settings, update_settings},
   skill::{open_in_file_manager, read_skill_readme},
+  skill_lock::{
+    add_skill_to_lock, get_all_locked_skills, get_skill_from_lock, read_skill_lock,
+    remove_skill_from_lock, write_skill_lock,
+  },
 };
 use tray::{setup_tray, update_tray_skills, TrayState};
 
@@ -94,7 +98,13 @@ fn main() {
       get_last_backup_time,
       update_tray_skills,
       read_skill_readme,
-      open_in_file_manager
+      open_in_file_manager,
+      read_skill_lock,
+      write_skill_lock,
+      add_skill_to_lock,
+      remove_skill_from_lock,
+      get_skill_from_lock,
+      get_all_locked_skills
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

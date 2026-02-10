@@ -30,6 +30,8 @@ export interface RemoteSkill {
   source: string;
   url?: string | null;
   path?: string | null;
+  /** GitHub tree SHA for the skill folder (for update detection) */
+  skill_path_sha?: string | null;
 }
 
 export interface RemoteSkillsResponse {
@@ -268,6 +270,26 @@ export async function installFolderSkill(request: InstallFolderRequest): Promise
  */
 export async function readSkillReadme(skillPath: string): Promise<string> {
   return apiCall<string>("read_skill_readme", { skillPath });
+}
+
+/**
+ * 检查技能是否有可用更新
+ *
+ * @param skillName - 技能名称
+ * @param remoteSha - 远程技能的 SHA
+ * @returns 是否有更新可用
+ */
+export async function checkSkillUpdate(skillName: string, remoteSha: string): Promise<boolean> {
+  try {
+    const { getSkillFromLock } = await import("./skill-lock");
+    const entry = await getSkillFromLock(skillName);
+    if (!entry?.skillFolderHash) {
+      return false; // 没有本地哈希，无法比较
+    }
+    return entry.skillFolderHash !== remoteSha;
+  } catch {
+    return false;
+  }
 }
 
 /**

@@ -24,6 +24,7 @@
     deleteSkillComplete,
     setAgentLink,
     updateTraySkills,
+    checkSkillUpdate,
   } from "../lib/api/skills";
   import { t } from "../lib/i18n";
   import { loadSettings } from "../lib/stores/settings";
@@ -57,6 +58,10 @@
   let installLog = $state("");
   let installingSkill = $state("");
   let linkBusy = $state(false);
+
+  // Update skills state
+  let skillsWithUpdate = $state([]);
+  let updatingSkills = $state([]);
 
   // Pending import modal state
   let pendingImportModalOpen = $state(false);
@@ -203,10 +208,117 @@
       } else {
         remoteSkills = [...remoteSkills, ...response.skills];
       }
+      // Check for updates after loading remote skills
+      await checkForSkillUpdates();
     } catch (error) {
       remoteError = String(error);
     } finally {
       remoteLoading = false;
+    }
+  };
+
+  // Check which local skills have updates available
+  const checkForSkillUpdates = async () => {
+    skillsWithUpdate = [];
+    for (const localSkill of localSkills) {
+      // Find matching remote skill
+      const remoteSkill = remoteSkills.find((rs) => rs.name === localSkill.name);
+      if (remoteSkill && remoteSkill.skill_path_sha) {
+        const hasUpdate = await checkSkillUpdate(localSkill.name, remoteSkill.skill_path_sha);
+        if (hasUpdate) {
+          skillsWithUpdate.push(remoteSkill);
+        }
+      }
+    }
+  };
+
+  // Handle updating a skill
+  const handleUpdateSkill = async (skill) => {
+    if (updatingSkills.includes(skill.name)) return;
+
+    updatingSkills = [...updatingSkills, skill.name];
+    try {
+      // Get the lock entry to find the source URL
+      const { getSkillFromLock } = await import("../lib/api/skill-lock");
+      const lockEntry = await getSkillFromLock(skill.name);
+
+      if (!lockEntry) {
+        localError = `Skill ${skill.name} not found in lock file`;
+        return;
+      }
+
+      // Use the same install flow but with the original source URL
+      isDownloading = true;
+      downloadError = "";
+      installingSkill = skill.id;
+
+      const detectedSkills = await detectGithubSkills(lockEntry.sourceUrl);
+      const matchingSkill = detectedSkills.find(
+        (s) => s.name === skill.name || skill.path?.includes(s.name) || s.path === skill.path
+      );
+
+      if (!matchingSkill && detectedSkills.length > 0) {
+        pendingInstallSkill = { ...skill, detectedPath: detectedSkills[0].path };
+      } else if (matchingSkill) {
+        pendingInstallSkill = { ...skill, detectedPath: matchingSkill.path };
+      } else {
+        downloadError = "No skills found in repository";
+        return;
+      }
+
+      // Get current agents for this skill
+      const localSkill = localSkills.find((ls) => ls.name === skill.name);
+      const currentAgents = localSkill?.agents || agents.map((a) => a.id);
+
+      selectAgentModalTitle = $t("installConfirm.title", { name: skill.name });
+      selectAgentModalInitialSelection = currentAgents;
+      selectAgentModalCallback = async (selectedAgents) => {
+        if (!pendingInstallSkill) return;
+        installLog = "";
+        installingSkill = pendingInstallSkill.id;
+        pendingInstallAgents = selectedAgents;
+        try {
+          const skillPath =
+            pendingInstallSkill.detectedPath ||
+            pendingInstallSkill.path ||
+            pendingInstallSkill.name;
+          const result = await installGithubSkill({
+            url: lockEntry.sourceUrl,
+            skill_path: skillPath,
+            agents: selectedAgents,
+          });
+          if (!result.success) {
+            installLog = `${result.message}\n${result.stderr || result.stdout}`;
+          } else {
+            installLog = "";
+            // Update lock entry with new SHA
+            const { addSkillToLock } = await import("../lib/api/skill-lock");
+            await addSkillToLock(skill.name, {
+              source: lockEntry.source,
+              sourceType: lockEntry.sourceType,
+              sourceUrl: lockEntry.sourceUrl,
+              skillPath: lockEntry.skillPath,
+              skillFolderHash: skill.skill_path_sha,
+            });
+            await refreshLocal();
+            await checkForSkillUpdates();
+          }
+        } catch (error) {
+          installLog = String(error);
+        } finally {
+          installingSkill = "";
+          pendingInstallSkill = null;
+          pendingInstallAgents = [];
+        }
+      };
+      selectAgentModalOpen = true;
+    } catch (error) {
+      downloadError = String(error);
+      installLog = String(error);
+    } finally {
+      isDownloading = false;
+      installingSkill = "";
+      updatingSkills = updatingSkills.filter((name) => name !== skill.name);
     }
   };
 
@@ -502,6 +614,8 @@
           {managedSkills}
           {unmanagedSkills}
           {agentMap}
+          {skillsWithUpdate}
+          {updatingSkills}
           onRefresh={refreshLocal}
           onDeleteSkill={handleDeleteSkill}
           onBulkUnify={handleBulkUnify}
@@ -509,6 +623,7 @@
           onViewSkill={handleViewSkill}
           onOpenPendingImport={() => (pendingImportModalOpen = true)}
           onOpenSelectAgentModal={openSelectAgentModal}
+          onUpdateSkill={handleUpdateSkill}
         />
       {:else}
         <RemoteSkillsSection
@@ -524,9 +639,12 @@
           {isDownloading}
           {remoteHasMore}
           {remoteTotal}
+          {skillsWithUpdate}
+          {updatingSkills}
           onSearch={handleSearchRemote}
           onLoadMore={loadMoreRemote}
           onInstall={handleInstall}
+          onUpdateSkill={handleUpdateSkill}
           onViewSkill={handleViewSkill}
           onSortChange={handleSortChange}
           onRefresh={handleSearchRemote}

@@ -1,5 +1,13 @@
 <script>
-  import { RefreshCw, Search, Trash2, Blend, Download, ChevronsUpDown } from "@lucide/svelte";
+  import {
+    RefreshCw,
+    Search,
+    Trash2,
+    Blend,
+    Download,
+    ChevronsUpDown,
+    DownloadCloud,
+  } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
   import { t } from "../i18n";
 
@@ -13,6 +21,8 @@
     managedSkills,
     unmanagedSkills,
     agentMap,
+    skillsWithUpdate = [],
+    updatingSkills = [],
     onRefresh,
     onDeleteSkill,
     onBulkUnify,
@@ -20,10 +30,21 @@
     onViewSkill,
     onOpenPendingImport,
     onOpenSelectAgentModal,
+    onUpdateSkill,
   } = $props();
 
   // Track which skill has expanded agents view
   let expandedSkillId = $state(null);
+
+  // Check if a skill has an update available
+  function hasUpdate(skill) {
+    return skillsWithUpdate.some((s) => s.name === skill.name);
+  }
+
+  // Check if a skill is currently updating
+  function isUpdating(skill) {
+    return updatingSkills.includes(skill.name);
+  }
 </script>
 
 <section class="space-y-6">
@@ -120,6 +141,22 @@
                   {skill.name}
                 </button>
                 <div class="text-base-content-faint flex items-center gap-3 text-xs opacity-100">
+                  {#if hasUpdate(skill) && onUpdateSkill}
+                    <IconButton
+                      variant="outline"
+                      class="border-info-border text-info rounded-lg p-2 text-xs"
+                      onclick={() => onUpdateSkill(skill)}
+                      title={$t("local.action.update")}
+                      ariaLabel={$t("local.action.update")}
+                      disabled={isUpdating(skill)}
+                    >
+                      {#if isUpdating(skill)}
+                        <RefreshCw size={14} class="animate-spin" />
+                      {:else}
+                        <DownloadCloud size={14} />
+                      {/if}
+                    </IconButton>
+                  {/if}
                   <IconButton
                     variant="outline"
                     class="border-base-300 text-base-content-muted rounded-lg p-2 text-xs"

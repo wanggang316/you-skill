@@ -7,6 +7,7 @@
     Check,
     ChevronsUpDown,
     Star,
+    DownloadCloud,
   } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
   import { t } from "../i18n";
@@ -24,9 +25,12 @@
     remoteTotal = 0,
     remoteSortBy = $bindable("heat_score"),
     remoteSortOrder = $bindable("desc"),
+    skillsWithUpdate = [],
+    updatingSkills = [],
     onSearch,
     onLoadMore,
     onInstall,
+    onUpdateSkill,
     onViewSkill,
     onSortChange,
     onRefresh,
@@ -56,6 +60,25 @@
   // Check if skill is already installed locally
   function isInstalled(skill) {
     return localSkills.some((local) => local.name === skill.name);
+  }
+
+  // Check if skill has an update available
+  function hasUpdate(skill) {
+    return skillsWithUpdate.some((s) => s.name === skill.name);
+  }
+
+  // Check if skill is currently updating
+  function isUpdating(skill) {
+    return updatingSkills.includes(skill.name);
+  }
+
+  // Get the button text based on skill state
+  function getButtonText(skill) {
+    if (isUpdating(skill)) return $t("remote.updating");
+    if (hasUpdate(skill)) return $t("remote.update");
+    if (installingSkill === skill.id) return $t("remote.downloading");
+    if (isInstalled(skill)) return $t("remote.reinstall");
+    return $t("remote.install");
   }
 </script>
 
@@ -167,24 +190,39 @@
               onkeydown={(e) => e.stopPropagation()}
               role="presentation"
             >
-              <button
-                class="border-primary text-primary hover:bg-primary hover:text-primary-content inline-flex items-center rounded-lg border bg-transparent px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
-                onclick={(e) => {
-                  e?.stopPropagation();
-                  onInstall(skill);
-                }}
-                disabled={isBusy}
-                type="button"
-              >
-                {#if installingSkill === skill.id}
-                  <Loader2 size={12} class="mr-1.5 animate-spin" />
-                  {$t("remote.downloading")}
-                {:else if installed}
-                  {$t("remote.reinstall")}
-                {:else}
-                  {$t("remote.install")}
-                {/if}
-              </button>
+              {#if hasUpdate(skill) && onUpdateSkill}
+                <button
+                  class="border-info text-info hover:bg-info hover:text-info-content inline-flex items-center rounded-lg border bg-transparent px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
+                  onclick={(e) => {
+                    e?.stopPropagation();
+                    onUpdateSkill(skill);
+                  }}
+                  disabled={isBusy || isUpdating(skill)}
+                  type="button"
+                >
+                  {#if isUpdating(skill)}
+                    <RefreshCw size={12} class="mr-1.5 animate-spin" />
+                  {:else}
+                    <DownloadCloud size={12} class="mr-1.5" />
+                  {/if}
+                  {getButtonText(skill)}
+                </button>
+              {:else}
+                <button
+                  class="border-primary text-primary hover:bg-primary hover:text-primary-content inline-flex items-center rounded-lg border bg-transparent px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
+                  onclick={(e) => {
+                    e?.stopPropagation();
+                    onInstall(skill);
+                  }}
+                  disabled={isBusy}
+                  type="button"
+                >
+                  {#if installingSkill === skill.id}
+                    <Loader2 size={12} class="mr-1.5 animate-spin" />
+                  {/if}
+                  {getButtonText(skill)}
+                </button>
+              {/if}
             </div>
           </div>
         </div>
