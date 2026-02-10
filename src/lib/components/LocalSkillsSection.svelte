@@ -109,9 +109,7 @@
           </div>
         {:else}
           {#each managedSkills as skill}
-            <div
-              class="border-base-300 bg-base-100  rounded-2xl border p-4 transition"
-            >
+            <div class="border-base-300 bg-base-100 rounded-2xl border p-4 transition">
               <!-- First row: title and action buttons -->
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <button
@@ -121,9 +119,7 @@
                 >
                   {skill.name}
                 </button>
-                <div
-                  class="text-base-content-faint flex items-center gap-3 text-xs opacity-100"
-                >
+                <div class="text-base-content-faint flex items-center gap-3 text-xs opacity-100">
                   <IconButton
                     variant="outline"
                     class="border-base-300 text-base-content-muted rounded-lg p-2 text-xs"
@@ -147,10 +143,9 @@
 
               <!-- Second row: agents toggle button -->
               <button
-                class="text-base-content-subtle hover:border-base-300 hover:bg-base-300 inline-flex items-center gap-1 rounded-md border border-transparent px-1 py-0.5 text-[11px] transition cursor-pointer"
+                class="text-base-content-subtle hover:border-base-300 hover:bg-base-300 inline-flex cursor-pointer items-center gap-1 rounded-md border border-transparent px-1 py-0.5 text-[11px] transition"
                 onclick={() => {
-                  expandedSkillId =
-                    expandedSkillId === skill.key ? null : skill.key;
+                  expandedSkillId = expandedSkillId === skill.key ? null : skill.key;
                 }}
                 type="button"
               >
@@ -167,7 +162,9 @@
                   {#each skill.agents as agentId}
                     {@const displayName = agentMap.get(agentId)}
                     {#if displayName}
-                      <div class="border-base-300 bg-base-300 text-base-content-subtle rounded-lg border px-3 py-1.5 text-xs">
+                      <div
+                        class="border-base-300 bg-base-300 text-base-content-subtle rounded-lg border px-3 py-1.5 text-xs"
+                      >
                         {displayName}
                       </div>
                     {/if}
