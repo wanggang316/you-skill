@@ -164,7 +164,7 @@ const translations: Record<string, Dictionary> = {
     "local.loading": "正在扫描本地 skill...",
     "local.empty": "未找到本地技能",
     "local.section.managed": "我的 Skills",
-    "local.section.managedCount": "共 {count} 个应用安装",
+    "local.section.managedCount": "{count} 个应用",
     "local.section.emptyManaged": "暂无统一管理的 skill",
     "local.section.unmanaged": "独立安装（待导入）",
     "local.action.importAll": "一键导入",

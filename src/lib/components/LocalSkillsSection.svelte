@@ -21,6 +21,9 @@
     onOpenPendingImport,
     onOpenSelectAgentModal,
   } = $props();
+
+  // Track which skill has expanded agents view
+  let expandedSkillId = $state(null);
 </script>
 
 <section class="space-y-6">
@@ -107,44 +110,24 @@
         {:else}
           {#each managedSkills as skill}
             <div
-              class="group border-base-300 bg-base-100 hover:bg-base-200 rounded-2xl border p-4 transition"
-              onclick={() => onViewSkill(skill)}
-              onkeydown={(e) => (e.key === "Enter" || e.key === " ") && onViewSkill(skill)}
-              role="button"
-              tabindex="0"
-              aria-label={`View ${skill.name}`}
+              class="border-base-300 bg-base-100  rounded-2xl border p-4 transition"
             >
+              <!-- First row: title and action buttons -->
               <div class="flex flex-wrap items-center justify-between gap-3">
-                <div class="flex-1">
-                  <button
-                    class="cursor-pointer border-none bg-transparent p-0 text-base font-medium"
-                    onclick={(e) => {
-                      e.stopPropagation();
-                      onViewSkill(skill);
-                    }}
-                    type="button"
-                  >
-                    {skill.name}
-                  </button>
-                  <p class="text-base-content-subtle mt-2 text-xs">
-                    {$t("local.section.managedCount", {
-                      count: skill.agents.length,
-                    })}
-                  </p>
-                </div>
+                <button
+                  class="cursor-pointer border-none bg-transparent p-0 text-base font-medium"
+                  onclick={() => onViewSkill(skill)}
+                  type="button"
+                >
+                  {skill.name}
+                </button>
                 <div
-                  class="text-base-content-faint flex items-center gap-3 text-xs opacity-0 transition-opacity group-hover:opacity-100"
-                  onclick={(e) => e.stopPropagation()}
-                  onkeydown={(e) => e.stopPropagation()}
-                  role="presentation"
+                  class="text-base-content-faint flex items-center gap-3 text-xs opacity-100"
                 >
                   <IconButton
                     variant="outline"
                     class="border-base-300 text-base-content-muted rounded-lg p-2 text-xs"
-                    onclick={(e) => {
-                      e?.stopPropagation();
-                      onOpenSelectAgentModal(skill);
-                    }}
+                    onclick={() => onOpenSelectAgentModal(skill)}
                     title={$t("local.action.installToApps")}
                     ariaLabel={$t("local.action.installToApps")}
                   >
@@ -153,10 +136,7 @@
                   <IconButton
                     variant="outline"
                     class="border-error-border text-error rounded-lg p-2 text-xs"
-                    onclick={(event) => {
-                      event.stopPropagation();
-                      onDeleteSkill(skill);
-                    }}
+                    onclick={() => onDeleteSkill(skill)}
                     title={$t("local.action.delete")}
                     ariaLabel={$t("local.action.delete")}
                   >
@@ -164,6 +144,36 @@
                   </IconButton>
                 </div>
               </div>
+
+              <!-- Second row: agents toggle button -->
+              <button
+                class="text-base-content-subtle hover:border-base-300 hover:bg-base-300 inline-flex items-center gap-1 rounded-md border border-transparent px-1 py-0.5 text-[11px] transition cursor-pointer"
+                onclick={() => {
+                  expandedSkillId =
+                    expandedSkillId === skill.key ? null : skill.key;
+                }}
+                type="button"
+              >
+                <span>{$t("local.section.managedCount", { count: skill.agents.length })}</span>
+                <ChevronsUpDown
+                  class={expandedSkillId === skill.key ? "rotate-180" : ""}
+                  size={12}
+                />
+              </button>
+
+              <!-- Expanded Agents Grid -->
+              {#if expandedSkillId === skill.key}
+                <div class="mt-3 flex flex-wrap gap-2">
+                  {#each skill.agents as agentId}
+                    {@const displayName = agentMap.get(agentId)}
+                    {#if displayName}
+                      <div class="border-base-300 bg-base-300 text-base-content-subtle rounded-lg border px-3 py-1.5 text-xs">
+                        {displayName}
+                      </div>
+                    {/if}
+                  {/each}
+                </div>
+              {/if}
             </div>
           {/each}
         {/if}
