@@ -20,7 +20,7 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
 fn load_tray_icon() -> tauri::image::Image<'static> {
   // Load PNG from bytes and convert to RGBA
-  let png_data = include_bytes!("../icons/icon-tray.png");
+  let png_data = include_bytes!("../icons/logo-tray-32.png");
   let decoder = image::codecs::png::PngDecoder::new(std::io::Cursor::new(png_data)).unwrap();
   let (width, height) = decoder.dimensions();
   let mut rgba_vec = vec![0u8; (width * height * 4) as usize];
@@ -49,6 +49,7 @@ fn build_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
   // Create tray icon (only created once at startup)
   let _tray = TrayIconBuilder::new()
     .icon(tray_icon)
+    .icon_as_template(true)
     .menu(&menu)
     .show_menu_on_left_click(true)
     .on_menu_event(|app, event| match event.id.as_ref() {
