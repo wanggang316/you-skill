@@ -47,7 +47,7 @@
 <Modal bind:open title={title || $t("selectAgent.defaultTitle")} onClose={closeModal}>
   <div class="flex h-full max-h-[90vh] w-full max-w-md flex-col">
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto pb-6 px-6 pt-16">
+    <div class="flex-1 overflow-y-auto px-6 pt-16 pb-6">
       <p class="text-base-content-muted mb-4 text-sm">
         {$t("selectAgent.description")}
       </p>

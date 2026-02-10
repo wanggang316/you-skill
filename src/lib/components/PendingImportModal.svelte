@@ -1,7 +1,7 @@
 <script>
   import { FolderOpen, Trash2, Download } from "@lucide/svelte";
   import { t } from "../i18n";
-  import { open } from "@tauri-apps/plugin-shell";
+  import { openInFileManager } from "../api/skills";
   import Modal from "./ui/Modal.svelte";
 
   let {
@@ -20,7 +20,7 @@
   async function handleOpenFolder(skill) {
     try {
       if (skill.canonical_path) {
-        await open(skill.canonical_path);
+        await openInFileManager(skill.canonical_path);
       }
     } catch (error) {
       console.error("Failed to open folder:", error);
@@ -63,7 +63,7 @@
         <div class="space-y-3">
           {#each unmanagedSkills as skill}
             <div
-              class="border-base-300 bg-base-100 hover:bg-base-200 rounded-2xl border p-4 transition hover:shadow-sm"
+              class="border-base-300 bg-base-100 hover:bg-base-200 rounded-2xl border p-4 transition"
             >
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="min-w-0 flex-1">
