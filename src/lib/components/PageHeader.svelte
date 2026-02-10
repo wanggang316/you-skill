@@ -136,13 +136,12 @@
       {:else}
         <div class="flex items-center gap-4">
           <button
-            class="border-base-300 text-base-content hover:bg-base-200 flex items-center rounded-xl border px-3 py-2 text-sm transition"
+            class="border-base-300 text-base-content hover:bg-base-200 flex items-center rounded-xl border p-2 text-sm transition"
             onclick={() => onChangeView("list")}
             title={$t("header.back")}
             type="button"
           >
-            <ChevronLeft size={16} class="mr-2" />
-            {$t("header.back")}
+            <ChevronLeft size={16} class="mr-0" />
           </button>
           <h1 class="text-base-content text-lg font-medium">
             {$t("header.settings")}
