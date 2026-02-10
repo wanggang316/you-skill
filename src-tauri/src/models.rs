@@ -32,6 +32,12 @@ pub struct RemoteSkill {
   pub source: String,
   pub url: Option<String>,
   pub path: Option<String>,
+  /// GitHub tree SHA for the skill folder (for update detection)
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub skill_path_sha: Option<String>,
+  /// Git branch name (e.g., "main", "master")
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub branch: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

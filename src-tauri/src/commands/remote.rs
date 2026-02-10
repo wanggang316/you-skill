@@ -28,6 +28,12 @@ struct ApiSkill {
   #[serde(default)]
   install_count: i64,
   path: Option<String>,
+  /// GitHub tree SHA for the skill folder (for update detection)
+  #[serde(default)]
+  skill_path_sha: Option<String>,
+  /// Git branch name (e.g., "main", "master")
+  #[serde(default)]
+  branch: Option<String>,
 }
 
 #[tauri::command]
@@ -101,6 +107,8 @@ pub async fn fetch_remote_skills(
       source: skill.source.clone(),
       url: Some(skill.url.clone()).filter(|s| !s.is_empty()),
       path: skill.path.clone().filter(|s| !s.is_empty()),
+      skill_path_sha: skill.skill_path_sha.filter(|s| !s.is_empty()),
+      branch: skill.branch.filter(|s| !s.is_empty()),
     })
     .collect();
 

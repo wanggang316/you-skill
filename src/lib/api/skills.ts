@@ -32,6 +32,8 @@ export interface RemoteSkill {
   path?: string | null;
   /** GitHub tree SHA for the skill folder (for update detection) */
   skill_path_sha?: string | null;
+  /** Git branch name (e.g., "main", "master") */
+  branch?: string | null;
 }
 
 export interface RemoteSkillsResponse {

@@ -198,8 +198,8 @@
         skip: remoteSkip,
         limit: remoteLimit,
         search: remoteQuery,
-        sort_by: remoteSortBy,
-        sort_order: remoteSortOrder,
+        sortBy: remoteSortBy,
+        sortOrder: remoteSortOrder,
       });
       remoteHasMore = response.has_more;
       remoteTotal = response.total;
