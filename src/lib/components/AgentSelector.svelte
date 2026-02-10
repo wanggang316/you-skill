@@ -23,7 +23,7 @@
 </script>
 
 <!-- Select All -->
-<div class="text-base-content-muted mb-3 ml-2 flex items-center justify-between text-[13px] ">
+<div class="text-base-content-muted mb-3 ml-2 flex items-center justify-between text-[13px]">
   <label class="inline-flex items-center gap-2">
     <input type="checkbox" checked={allSelected} onchange={toggleSelectAll} />
     {$t("selectAgent.selectAll")}

@@ -539,16 +539,8 @@
 
     <!-- Footer -->
     <div
-      class="border-base-300 bg-base-100 flex justify-end gap-3 rounded-b-2xl border-t px-6 py-4"
+      class="border-base-300 bg-base-100 flex justify-end gap-3 rounded-b-2xl border-t px-6 py-3"
     >
-      <button
-        class="border-base-300 text-base-content hover:bg-base-200 rounded-xl border px-4 py-2 text-sm transition"
-        onclick={closeModal}
-        disabled={isInstalling}
-        type="button"
-      >
-        {$t("addSkill.cancel")}
-      </button>
       <button
         class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
         onclick={handleConfirm}

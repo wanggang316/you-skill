@@ -1,5 +1,13 @@
 <script>
-  import { ChevronDown, Loader2, RefreshCw, Search, Check, ChevronsUpDown, Star } from "@lucide/svelte";
+  import {
+    ChevronDown,
+    Loader2,
+    RefreshCw,
+    Search,
+    Check,
+    ChevronsUpDown,
+    Star,
+  } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
   import { t } from "../i18n";
 
@@ -126,7 +134,7 @@
         {@const installed = isInstalled(skill)}
         {@const isBusy = installingSkill === skill.id || isDownloading}
         <div
-          class="border-base-300 bg-base-100 hover:bg-base-200  border-b px-4 py-3 transition"
+          class="border-base-300 bg-base-100 hover:bg-base-200 border-b px-4 py-3 transition"
           onclick={() => onViewSkill(skill)}
           onkeydown={(e) => (e.key === "Enter" || e.key === " ") && onViewSkill(skill)}
           role="button"
@@ -138,7 +146,7 @@
               <div class="flex items-center gap-2">
                 <p class="truncate text-base font-medium">
                   {skill.name}
-                  <span class="text-base-content/70 font-normal text-sm">({skill.source})</span>
+                  <span class="text-base-content/70 text-sm font-normal">({skill.source})</span>
                 </p>
                 {#if installed}
                   <span

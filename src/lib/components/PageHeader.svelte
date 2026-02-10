@@ -144,7 +144,7 @@
             <ChevronLeft size={16} class="mr-2" />
             {$t("header.back")}
           </button>
-          <h1 class="text-base-content text-lg font-semibold">
+          <h1 class="text-base-content text-lg font-medium">
             {$t("header.settings")}
           </h1>
         </div>

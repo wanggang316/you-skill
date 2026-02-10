@@ -133,7 +133,7 @@
 
     <!-- Footer -->
     <div
-      class="border-base-300 bg-base-100 flex justify-end gap-3 rounded-b-2xl border-t px-6 py-4"
+      class="border-base-300 bg-base-100 flex justify-end gap-3 rounded-b-2xl border-t px-6 py-3"
     >
       <button
         class="bg-warning text-warning-content hover:bg-warning-hover flex items-center rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"

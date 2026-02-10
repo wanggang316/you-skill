@@ -47,7 +47,7 @@
 <Modal bind:open title={title || $t("selectAgent.defaultTitle")} onClose={closeModal}>
   <div class="flex h-full max-h-[90vh] w-full max-w-md flex-col">
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto p-6 pt-16">
+    <div class="flex-1 overflow-y-auto pb-6 px-6 pt-16">
       <p class="text-base-content-muted mb-4 text-sm">
         {$t("selectAgent.description")}
       </p>
@@ -58,16 +58,8 @@
 
     <!-- Footer -->
     <div
-      class="border-base-300 bg-base-100 flex items-center justify-between rounded-b-2xl border-t px-6 py-4"
+      class="border-base-300 bg-base-100 flex items-center justify-end rounded-b-2xl border-t px-6 py-3"
     >
-      <button
-        class="text-base-content-muted hover:text-base-content text-sm transition"
-        onclick={closeModal}
-        disabled={isInstalling}
-        type="button"
-      >
-        {$t("selectAgent.cancel")}
-      </button>
       <button
         class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-6 py-2 text-sm transition disabled:opacity-50"
         onclick={handleConfirm}
@@ -76,8 +68,6 @@
       >
         {#if isInstalling}
           <Loader2 size={16} class="mr-1 inline animate-spin" />
-        {:else}
-          <Check size={16} class="mr-1 inline" />
         {/if}
         {$t("selectAgent.confirm")}
       </button>
