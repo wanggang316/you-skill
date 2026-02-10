@@ -382,6 +382,18 @@
             installLog = `${result.message}\n${result.stderr || result.stdout}`;
           } else {
             installLog = "";
+            // Add to skill lock file for update tracking
+            const { addSkillToLock } = await import("../lib/api/skill-lock");
+            await addSkillToLock(pendingInstallSkill.name, {
+              source: pendingInstallSkill.source,
+              sourceType: "github",
+              sourceUrl: pendingInstallSkill.url,
+              skillPath:
+                pendingInstallSkill.detectedPath ||
+                pendingInstallSkill.path ||
+                pendingInstallSkill.name,
+              skillFolderHash: pendingInstallSkill.skill_path_sha || "",
+            });
             // Record install count on backend
             if (pendingInstallSkill?.id) {
               try {
