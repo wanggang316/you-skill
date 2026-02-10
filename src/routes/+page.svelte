@@ -14,6 +14,7 @@
   import {
     scanLocalSkills,
     fetchRemoteSkills,
+    fetchSkillsByNames,
     listAgents,
     detectGithubSkills,
     installGithubSkill,
@@ -124,6 +125,8 @@
       await loadSettings();
       await loadAgents();
       await refreshLocal();
+      // Check for skill updates immediately after loading local skills
+      await checkForSkillUpdates();
       await loadRemote(true);
       await checkForUpdate();
 
@@ -208,8 +211,6 @@
       } else {
         remoteSkills = [...remoteSkills, ...response.skills];
       }
-      // Check for updates after loading remote skills
-      await checkForSkillUpdates();
     } catch (error) {
       remoteError = String(error);
     } finally {
@@ -218,17 +219,32 @@
   };
 
   // Check which local skills have updates available
+  // Uses batch API to fetch remote skills by name, independent of pagination
   const checkForSkillUpdates = async () => {
+    if (localSkills.length === 0) {
+      skillsWithUpdate = [];
+      return;
+    }
+
     skillsWithUpdate = [];
-    for (const localSkill of localSkills) {
-      // Find matching remote skill
-      const remoteSkill = remoteSkills.find((rs) => rs.name === localSkill.name);
-      if (remoteSkill && remoteSkill.skill_path_sha) {
-        const hasUpdate = await checkSkillUpdate(localSkill.name, remoteSkill.skill_path_sha);
-        if (hasUpdate) {
-          skillsWithUpdate.push(remoteSkill);
+    try {
+      // Get all local skill names
+      const skillNames = localSkills.map((s) => s.name);
+
+      // Fetch remote skills by names (batch query, no pagination limitation)
+      const remoteSkillsMap = await fetchSkillsByNames(skillNames);
+
+      // Check for updates by comparing SHA
+      for (const remoteSkill of remoteSkillsMap) {
+        if (remoteSkill.skill_path_sha) {
+          const hasUpdate = await checkSkillUpdate(remoteSkill.name, remoteSkill.skill_path_sha);
+          if (hasUpdate) {
+            skillsWithUpdate.push(remoteSkill);
+          }
         }
       }
+    } catch (error) {
+      console.error("Failed to check for skill updates:", error);
     }
   };
 

@@ -173,6 +173,13 @@ export async function fetchRemoteSkills(params?: {
 }
 
 /**
+ * 批量获取指定名称的技能（用于更新检测）
+ */
+export async function fetchSkillsByNames(names: string[]): Promise<RemoteSkill[]> {
+  return apiCall<RemoteSkill[]>("fetch_skills_by_names", { names });
+}
+
+/**
  * 安装技能
  */
 export async function installSkill(request: InstallRequest): Promise<InstallResult> {

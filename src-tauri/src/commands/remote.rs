@@ -123,6 +123,63 @@ pub async fn fetch_remote_skills(
   })
 }
 
+/// Fetch skills by a list of names (for update detection)
+#[tauri::command]
+pub async fn fetch_skills_by_names(names: Vec<String>) -> Result<Vec<RemoteSkill>, String> {
+  if names.is_empty() {
+    return Ok(Vec::new());
+  }
+
+  let client = Client::builder()
+    .timeout(Duration::from_secs(10))
+    .build()
+    .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+  let url = "https://you-skills-console.vercel.app/api/skills/by-names";
+  let names_param = names.join(",");
+
+  let response: Vec<ApiSkill> = match client
+    .get(url)
+    .query(&[("names", names_param)])
+    .header("X-API-Key", API_KEY)
+    .send()
+    .await
+  {
+    Ok(resp) => {
+      if resp.status().is_success() {
+        resp
+          .json::<Vec<ApiSkill>>()
+          .await
+          .map_err(|e| format!("JSON parsing failed: {}", e))?
+      } else {
+        return Err(format!("API returned error: {}", resp.status()));
+      }
+    },
+    Err(e) => {
+      return Err(format!("Network connection failed: {}", e));
+    },
+  };
+
+  let skills: Vec<RemoteSkill> = response
+    .into_iter()
+    .map(|skill| RemoteSkill {
+      id: skill.id.to_string(),
+      skill_id: skill.id.to_string(),
+      name: skill.name,
+      star_count: skill.star_count as u64,
+      heat_score: skill.heat_score as u64,
+      install_count: skill.install_count as u64,
+      source: skill.source.clone(),
+      url: Some(skill.url.clone()).filter(|s| !s.is_empty()),
+      path: skill.path.clone().filter(|s| !s.is_empty()),
+      skill_path_sha: skill.skill_path_sha.filter(|s| !s.is_empty()),
+      branch: skill.branch.filter(|s| !s.is_empty()),
+    })
+    .collect();
+
+  Ok(skills)
+}
+
 #[tauri::command]
 pub async fn record_skill_install(skill_id: String) -> Result<(), String> {
   let client = Client::builder()
