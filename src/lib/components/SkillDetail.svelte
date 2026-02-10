@@ -260,20 +260,9 @@
     <!-- Frontmatter Card -->
     {#if hasFrontmatter}
       <div class="frontmatter-card">
-        <div class="frontmatter-header">
-          <FileText size={18} />
-          <span>Skill Frontmatter</span>
-        </div>
         <div class="frontmatter-content">
-          {#if parsedFrontmatter.name}
-            <div class="frontmatter-item">
-              <span class="frontmatter-key">Name</span>
-              <span class="frontmatter-value">{parsedFrontmatter.name}</span>
-            </div>
-          {/if}
           {#if parsedFrontmatter.description}
             <div class="frontmatter-item">
-              <span class="frontmatter-key">Description</span>
               <span class="frontmatter-value">{parsedFrontmatter.description}</span>
             </div>
           {/if}
@@ -575,10 +564,5 @@
     font-size: 0.875rem;
     color: var(--base-content);
     line-height: 1.5;
-  }
-
-  .frontmatter-item:first-child .frontmatter-value {
-    font-size: 1rem;
-    font-weight: 600;
   }
 </style>

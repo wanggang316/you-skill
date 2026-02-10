@@ -117,7 +117,7 @@
             >
               <ChevronLeft size={16} />
             </button>
-            <h1 class="text-base-content text-lg font-semibold">
+            <h1 class="text-base-content text-lg font-medium">
               {skillName}
             </h1>
           </div>
