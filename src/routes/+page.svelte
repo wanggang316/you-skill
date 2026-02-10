@@ -222,6 +222,8 @@
       } else {
         remoteSkills = [...remoteSkills, ...response.skills];
       }
+      // Check for updates using the loaded remote skills data
+      await checkUpdatesFromRemoteList();
     } catch (error) {
       remoteError = String(error);
     } finally {
@@ -276,6 +278,34 @@
 
     updateCheckPromise = checkPromise;
     await checkPromise;
+  };
+
+  // Check for updates using already loaded remote skills data
+  // Used by Remote List to avoid additional API calls
+  const checkUpdatesFromRemoteList = async () => {
+    if (localSkills.length === 0 || remoteSkills.length === 0) {
+      return;
+    }
+
+    // Create a map of remote skills by name for quick lookup
+    const remoteSkillsMap = new Map(remoteSkills.map((rs) => [rs.name, rs]));
+
+    // Check each local skill against the remote skills
+    for (const localSkill of localSkills) {
+      const remoteSkill = remoteSkillsMap.get(localSkill.name);
+      if (remoteSkill && remoteSkill.skill_path_sha) {
+        const hasUpdate = await checkSkillUpdate(localSkill.name, remoteSkill.skill_path_sha);
+        // Update skillsWithUpdate array
+        if (hasUpdate) {
+          if (!skillsWithUpdate.some((s) => s.name === remoteSkill.name)) {
+            skillsWithUpdate = [...skillsWithUpdate, remoteSkill];
+          }
+        } else {
+          // Remove from skillsWithUpdate if no longer has update
+          skillsWithUpdate = skillsWithUpdate.filter((s) => s.name !== remoteSkill.name);
+        }
+      }
+    }
   };
 
   // Handle updating a skill
