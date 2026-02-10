@@ -2,11 +2,9 @@
   import {
     RefreshCw,
     Search,
-    Trash2,
     Blend,
     Download,
     ChevronsUpDown,
-    DownloadCloud,
   } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
   import { t } from "../i18n";
@@ -32,9 +30,6 @@
     onOpenSelectAgentModal,
     onUpdateSkill,
   } = $props();
-
-  // Track which skill has expanded agents view
-  let expandedSkillId = $state(null);
 
   // Check if a skill has an update available
   function hasUpdate(skill) {
@@ -140,74 +135,42 @@
                 >
                   {skill.name}
                 </button>
-                <div class="text-base-content-faint flex items-center gap-3 text-xs opacity-100">
+                <div class="flex items-center gap-2">
                   {#if hasUpdate(skill) && onUpdateSkill}
-                    <IconButton
-                      variant="outline"
-                      class="border-info-border text-info rounded-lg p-2 text-xs"
-                      onclick={() => onUpdateSkill(skill)}
-                      title={$t("local.action.update")}
-                      ariaLabel={$t("local.action.update")}
+                    <button
+                      class="border-base-300 bg-base-300 text-primary hover:bg-primary hover:text-primary-content inline-flex items-center rounded-lg border px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
+                      onclick={(e) => {
+                        e?.stopPropagation();
+                        onUpdateSkill(skill);
+                      }}
                       disabled={isUpdating(skill)}
+                      type="button"
                     >
-                      {#if isUpdating(skill)}
-                        <RefreshCw size={14} class="animate-spin" />
-                      {:else}
-                        <DownloadCloud size={14} />
-                      {/if}
-                    </IconButton>
+                      {$t("remote.update")}
+                    </button>
                   {/if}
-                  <IconButton
-                    variant="outline"
-                    class="border-base-300 text-base-content-muted rounded-lg p-2 text-xs"
-                    onclick={() => onOpenSelectAgentModal(skill)}
-                    title={$t("local.action.installToApps")}
-                    ariaLabel={$t("local.action.installToApps")}
+                  <button
+                    class="border-base-300 bg-base-300 text-error hover:bg-error hover:text-primary-content inline-flex items-center rounded-lg border px-2 py-0.5 text-xs transition"
+                    onclick={(e) => {
+                      e?.stopPropagation();
+                      onDeleteSkill(skill);
+                    }}
+                    type="button"
                   >
-                    <Blend size={14} />
-                  </IconButton>
-                  <IconButton
-                    variant="outline"
-                    class="border-error-border text-error rounded-lg p-2 text-xs"
-                    onclick={() => onDeleteSkill(skill)}
-                    title={$t("local.action.delete")}
-                    ariaLabel={$t("local.action.delete")}
-                  >
-                    <Trash2 size={14} />
-                  </IconButton>
+                    {$t("local.action.delete")}
+                  </button>
                 </div>
               </div>
 
               <!-- Second row: agents toggle button -->
               <button
-                class="text-base-content-subtle hover:border-base-300 hover:bg-base-300 inline-flex cursor-pointer items-center gap-1 rounded-md border border-transparent px-1 py-0.5 text-[11px] transition"
-                onclick={() => {
-                  expandedSkillId = expandedSkillId === skill.key ? null : skill.key;
-                }}
+                class="text-base-content-subtle hover:border-base-300 hover:bg-base-300 inline-flex cursor-pointer items-center gap-1 rounded-md border border-transparent px-0.5 py-0.5 text-[11px] transition"
+                onclick={() => onOpenSelectAgentModal(skill)}
                 type="button"
               >
                 <span>{$t("local.section.managedCount", { count: skill.agents.length })}</span>
-                <ChevronsUpDown
-                  class={expandedSkillId === skill.key ? "rotate-180" : ""}
-                  size={12}
-                />
+                <Blend size={10} />
               </button>
-
-              <!-- Expanded Agents Grid -->
-              {#if expandedSkillId === skill.key}
-                <div class="mt-3 flex flex-wrap gap-2">
-                  {#each skill.agents as agentId}
-                    {@const displayName = agentMap.get(agentId)}
-                    {#if displayName}
-                      <div
-                        class="border-base-300 bg-base-300 text-base-content-subtle rounded-lg border px-3 py-1.5 text-xs"
-                      >
-                        {displayName}
-                      </div>
-                    {/if}
-                  {/each}
-                </div>
-              {/if}
             </div>
           {/each}
         {/if}

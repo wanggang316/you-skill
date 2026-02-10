@@ -192,7 +192,7 @@
             >
               {#if hasUpdate(skill) && onUpdateSkill}
                 <button
-                  class="border-info text-info hover:bg-info hover:text-info-content inline-flex items-center rounded-lg border bg-transparent px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
+                  class="border-base-300 bg-base-300 text-primary hover:bg-primary hover:text-primary-content inline-flex items-center rounded-lg border px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
                   onclick={(e) => {
                     e?.stopPropagation();
                     onUpdateSkill(skill);
@@ -202,14 +202,12 @@
                 >
                   {#if isUpdating(skill)}
                     <RefreshCw size={12} class="mr-1.5 animate-spin" />
-                  {:else}
-                    <DownloadCloud size={12} class="mr-1.5" />
                   {/if}
                   {getButtonText(skill)}
                 </button>
               {:else}
                 <button
-                  class="border-primary text-primary hover:bg-primary hover:text-primary-content inline-flex items-center rounded-lg border bg-transparent px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
+                  class="border-base-300 bg-base-300 text-primary hover:bg-primary hover:text-primary-content inline-flex items-center rounded-lg border px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
                   onclick={(e) => {
                     e?.stopPropagation();
                     onInstall(skill);
