@@ -126,6 +126,7 @@ pub async fn fetch_remote_skills(
 /// Fetch skills by a list of names (for update detection)
 #[tauri::command]
 pub async fn fetch_skills_by_names(names: Vec<String>) -> Result<Vec<RemoteSkill>, String> {
+  tracing::info!("Fetching skills by names: {:?}", names);
   if names.is_empty() {
     return Ok(Vec::new());
   }

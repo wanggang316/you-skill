@@ -63,6 +63,9 @@
   // Update skills state
   let skillsWithUpdate = $state([]);
   let updatingSkills = $state([]);
+  // Track if update check is in progress (debounce)
+  let isCheckingUpdates = $state(false);
+  let updateCheckPromise = $state<Promise<void> | null>(null);
 
   // Pending import modal state
   let pendingImportModalOpen = $state(false);
@@ -124,9 +127,7 @@
     const init = async () => {
       await loadSettings();
       await loadAgents();
-      await refreshLocal();
-      // Check for skill updates immediately after loading local skills
-      await checkForSkillUpdates();
+      await refreshLocal(); // This now includes update check
       await loadRemote(true);
       await checkForUpdate();
 
@@ -156,6 +157,14 @@
     }
   };
 
+  // Handle tab change and trigger update check when switching to local
+  const handleTabChange = (tab: string) => {
+    activeTab = tab;
+    if (tab === "local" && localSkills.length > 0) {
+      checkForSkillUpdates();
+    }
+  };
+
   const handleOpenUpdate = () => {
     currentView = "settings";
   };
@@ -182,6 +191,8 @@
       } catch (e) {
         console.error("Failed to update tray skills:", e);
       }
+      // Check for updates after refreshing local skills
+      await checkForSkillUpdates();
     } catch (error) {
       localError = String(error);
     } finally {
@@ -220,32 +231,51 @@
 
   // Check which local skills have updates available
   // Uses batch API to fetch remote skills by name, independent of pagination
+  // Includes debounce to prevent multiple concurrent requests
   const checkForSkillUpdates = async () => {
+    // Debounce: if already checking, wait for existing promise
+    if (isCheckingUpdates) {
+      if (updateCheckPromise) {
+        await updateCheckPromise;
+      }
+      return;
+    }
+
     if (localSkills.length === 0) {
       skillsWithUpdate = [];
       return;
     }
 
+    isCheckingUpdates = true;
     skillsWithUpdate = [];
-    try {
-      // Get all local skill names
-      const skillNames = localSkills.map((s) => s.name);
 
-      // Fetch remote skills by names (batch query, no pagination limitation)
-      const remoteSkillsMap = await fetchSkillsByNames(skillNames);
+    const checkPromise = (async () => {
+      try {
+        // Get all local skill names
+        const skillNames = localSkills.map((s) => s.name);
 
-      // Check for updates by comparing SHA
-      for (const remoteSkill of remoteSkillsMap) {
-        if (remoteSkill.skill_path_sha) {
-          const hasUpdate = await checkSkillUpdate(remoteSkill.name, remoteSkill.skill_path_sha);
-          if (hasUpdate) {
-            skillsWithUpdate.push(remoteSkill);
+        // Fetch remote skills by names (batch query, no pagination limitation)
+        const remoteSkillsMap = await fetchSkillsByNames(skillNames);
+
+        // Check for updates by comparing SHA
+        for (const remoteSkill of remoteSkillsMap) {
+          if (remoteSkill.skill_path_sha) {
+            const hasUpdate = await checkSkillUpdate(remoteSkill.name, remoteSkill.skill_path_sha);
+            if (hasUpdate) {
+              skillsWithUpdate.push(remoteSkill);
+            }
           }
         }
+      } catch (error) {
+        console.error("Failed to check for skill updates:", error);
+      } finally {
+        isCheckingUpdates = false;
+        updateCheckPromise = null;
       }
-    } catch (error) {
-      console.error("Failed to check for skill updates:", error);
-    }
+    })();
+
+    updateCheckPromise = checkPromise;
+    await checkPromise;
   };
 
   // Handle updating a skill
@@ -611,7 +641,7 @@
     {unmanagedCount}
     {hasUpdate}
     onChangeView={(view) => (currentView = view)}
-    onChangeTab={(tab) => (activeTab = tab)}
+    onChangeTab={handleTabChange}
     onAddSkill={() => (addSkillModalOpen = true)}
     onOpenPendingImport={() => (pendingImportModalOpen = true)}
     onOpenUpdate={handleOpenUpdate}
