@@ -19,7 +19,18 @@
     exposeRefresh?: (refresh: () => void) => void;
   }
 
-  let { onBack = () => {}, onAppsChange = () => {}, onLoadingChange, exposeRefresh }: Props = $props();
+  let {
+    onBack = () => {},
+    onAppsChange = () => {},
+    onLoadingChange,
+    exposeRefresh,
+  }: Props = $props();
+
+  // Handle apps changed from modal
+  function handleAppsChanged() {
+    loadAgentApps();
+    onAppsChange();
+  }
 
   // Expose refresh function to parent
   $effect(() => {
@@ -115,7 +126,9 @@
               <div class="bg-base-200 hover:bg-base-300 flex flex-col rounded-xl px-3 py-2">
                 <span class="text-base-content text-xs font-medium">{app.display_name}</span>
                 {#if app.global_path}
-                  <span class="text-base-content/50 text-[10px] truncate mt-0.5">{app.global_path}</span>
+                  <span class="text-base-content/50 mt-0.5 truncate text-[10px]"
+                    >{app.global_path}</span
+                  >
                 {/if}
               </div>
             {/each}
@@ -133,7 +146,9 @@
           </div>
           <div class="grid grid-cols-2 gap-2">
             {#each userApps as app}
-              <div class="bg-base-200 hover:bg-base-300 flex flex-col justify-between gap-2 rounded-xl px-3 py-2">
+              <div
+                class="bg-base-200 hover:bg-base-300 flex flex-col justify-between gap-2 rounded-xl px-3 py-2"
+              >
                 <div class="flex items-start justify-between gap-2">
                   <span class="text-base-content text-xs font-medium">{app.display_name}</span>
                   <div class="flex gap-1">
@@ -157,7 +172,7 @@
                 </div>
                 <div class="flex items-center justify-between gap-2">
                   {#if app.global_path}
-                    <span class="text-base-content/50 text-[10px] truncate">{app.global_path}</span>
+                    <span class="text-base-content/50 truncate text-[10px]">{app.global_path}</span>
                   {/if}
                   {#if isInstalled(app.id)}
                     <span
@@ -167,7 +182,9 @@
                       {$t("agentApps.installed")}
                     </span>
                   {:else}
-                    <span class="text-base-content-muted shrink-0 rounded-full px-2 py-0.5 text-[10px]">
+                    <span
+                      class="text-base-content-muted shrink-0 rounded-full px-2 py-0.5 text-[10px]"
+                    >
                       {$t("agentApps.notInstalled")}
                     </span>
                   {/if}
@@ -197,4 +214,8 @@
 </section>
 
 <!-- Add Agent App Modal -->
-<AddAgentAppModal bind:open={showAddModal} appToEdit={editingApp} {onAppsChange} />
+<AddAgentAppModal
+  bind:open={showAddModal}
+  appToEdit={editingApp}
+  onAppsChange={handleAppsChanged}
+/>

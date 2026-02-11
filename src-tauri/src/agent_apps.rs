@@ -210,7 +210,9 @@ pub fn remove_user_agent_app(id: &str) -> Result<(), String> {
 // Update a user agent app by id
 pub fn update_user_agent_app(id: &str, app: UserAgentApp) -> Result<(), String> {
   let mut apps = load_user_agent_apps().unwrap_or_default();
-  let index = apps.iter().position(|a| a.id == id)
+  let index = apps
+    .iter()
+    .position(|a| a.id == id)
     .ok_or(format!("Agent app with id '{}' not found", id))?;
 
   // Ensure the id doesn't change

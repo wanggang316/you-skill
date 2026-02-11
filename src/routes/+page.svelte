@@ -686,7 +686,7 @@
     skillName={selectedSkill?.name}
     {unmanagedCount}
     {hasUpdate}
-    agentAppsLoading={agentAppsLoading}
+    {agentAppsLoading}
     onChangeView={(view) => (currentView = view)}
     onChangeTab={handleTabChange}
     onAddSkill={() => (addSkillModalOpen = true)}

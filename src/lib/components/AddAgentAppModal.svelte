@@ -80,15 +80,29 @@
     validationErrors = [];
     validationWarnings = [];
 
-    // Run validation (skip path duplicate check for edit mode if path unchanged)
+    // Run validation (skip path duplicate check for edit mode)
     let validationResult: { errors: string[]; warnings: string[] } | null = null;
     try {
       validationResult = await validateAgentApp(displayName.trim(), globalPath.trim());
-      // Filter out duplicate path error if editing and path unchanged
-      if (isEditMode && appToEdit && globalPath.trim() === appToEdit.global_path) {
-        validationResult.errors = validationResult.errors.filter(
-          (err) => !err.includes("already exists")
-        );
+      // Filter out errors that are ok in edit mode:
+      // - "already exists" for path/name if editing same app
+      // - "already installed locally" is expected for existing apps
+      if (isEditMode) {
+        validationResult.errors = validationResult.errors.filter((err) => {
+          // Keep error if it's about path/name duplication with different app
+          if (err.includes("already exists")) {
+            // Only filter out if the path is unchanged
+            if (!appToEdit || globalPath.trim() !== appToEdit.global_path) {
+              return true;
+            }
+            return false;
+          }
+          // Filter out "already installed locally" error in edit mode
+          if (err.includes("already installed locally")) {
+            return false;
+          }
+          return true;
+        });
       }
       validationErrors = validationResult.errors;
       validationWarnings = validationResult.warnings;
@@ -104,7 +118,12 @@
       try {
         const projectPathValue = projectPath.trim() || undefined;
         if (isEditMode && appToEdit) {
-          await updateAgentApp(appToEdit.id, displayName.trim(), globalPath.trim(), projectPathValue);
+          await updateAgentApp(
+            appToEdit.id,
+            displayName.trim(),
+            globalPath.trim(),
+            projectPathValue
+          );
         } else {
           await addAgentApp(displayName.trim(), globalPath.trim(), projectPathValue);
         }
@@ -181,7 +200,7 @@
       {#if validationErrors.length > 0}
         <div class="space-y-1">
           {#each validationErrors as msg}
-            <div class="text-error text-sm">{msg}</div>
+            <div class="text-error text-xs">{msg}</div>
           {/each}
         </div>
       {/if}
@@ -189,7 +208,7 @@
       {#if validationWarnings.length > 0}
         <div class="space-y-1">
           {#each validationWarnings as msg}
-            <div class="text-warning text-sm">{msg}</div>
+            <div class="text-warning text-xs">{msg}</div>
           {/each}
         </div>
       {/if}
