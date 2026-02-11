@@ -1,3 +1,4 @@
+pub mod agent_apps;
 pub mod agents;
 pub mod backup;
 pub mod install;

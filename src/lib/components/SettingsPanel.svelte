@@ -13,6 +13,7 @@
   import { check } from "@tauri-apps/plugin-updater";
   import { relaunch } from "@tauri-apps/plugin-process";
   import { getVersion } from "@tauri-apps/api/app";
+  import AgentAppsModal from "./AgentAppsModal.svelte";
 
   let checkingUpdate = $state(false);
   let updateMessage = $state("");
@@ -28,6 +29,29 @@
   let isBackingUp = $state(false);
   let lastBackupTime = $state("");
   let backupMessage = $state("");
+
+  // Agent apps state
+  let agentAppsModalOpen = $state(false);
+  let installedAgentAppsCount = $state(0);
+
+  // Load installed agent apps count on mount
+  $effect(() => {
+    loadAgentAppsCount();
+  });
+
+  const loadAgentAppsCount = async () => {
+    try {
+      const { listLocalAgentApps } = await import("../api");
+      const apps = await listLocalAgentApps();
+      installedAgentAppsCount = apps.length;
+    } catch (error) {
+      console.error("Failed to load agent apps count:", error);
+    }
+  };
+
+  const handleAgentAppsChange = () => {
+    loadAgentAppsCount();
+  };
 
   // Load backup folder, last backup time, and version on mount
   $effect(() => {
@@ -227,6 +251,27 @@
     </div>
   </div>
 
+  <!-- Agent Apps -->
+  <div class="bg-base-200 rounded-2xl px-4 py-2.5">
+    <div class="flex items-center justify-between">
+      <div class="flex flex-col">
+        <span class="text-base-content text-[15px]">{$t("agentApps.title")}</span>
+        <span class="text-base-content-muted text-xs">
+          {installedAgentAppsCount > 0
+            ? $t("local.section.managedCount", { count: installedAgentAppsCount })
+            : $t("local.section.emptyManaged")}
+        </span>
+      </div>
+      <button
+        class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px]"
+        onclick={() => (agentAppsModalOpen = true)}
+        type="button"
+      >
+        {$t("agentApps.viewButton")}
+      </button>
+    </div>
+  </div>
+
   <!-- Backup -->
   <div class="bg-base-200 rounded-2xl px-4 py-2.5">
     <div class="flex items-center justify-between">
@@ -319,4 +364,9 @@
       <span class="text-base-content-muted mt-1.5 block text-xs">{updateMessage}</span>
     {/if}
   </div>
+
+  <AgentAppsModal
+    bind:open={agentAppsModalOpen}
+    onAppsChange={handleAgentAppsChange}
+  />
 </section>

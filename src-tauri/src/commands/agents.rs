@@ -1,7 +1,7 @@
+use crate::agent_apps::local_agent_apps;
 use crate::models::AgentInfo;
-use crate::paths::agent_infos;
 
 #[tauri::command]
 pub fn list_agents() -> Result<Vec<AgentInfo>, String> {
-  Ok(agent_infos())
+  Ok(local_agent_apps())
 }
