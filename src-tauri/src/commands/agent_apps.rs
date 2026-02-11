@@ -55,6 +55,13 @@ pub fn list_local_agent_apps() -> Result<Vec<AgentInfo>, String> {
   Ok(local_agent_apps())
 }
 
+/// Refresh agent apps - clears cache and re-scans filesystem
+#[tauri::command]
+pub fn refresh_agent_apps() -> Result<Vec<AgentInfo>, String> {
+  refresh_local_agent_apps();
+  Ok(local_agent_apps())
+}
+
 /// Add a user agent app
 #[tauri::command]
 pub fn add_agent_app(

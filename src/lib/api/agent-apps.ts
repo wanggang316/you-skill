@@ -5,6 +5,7 @@
  */
 
 import { apiCall } from "./index";
+import type { AgentInfo } from "./skills";
 
 // ============ Types ============
 
@@ -29,6 +30,13 @@ export interface ValidateResult {
  */
 export async function listLocalAgentApps(): Promise<AgentInfo[]> {
   return apiCall<AgentInfo[]>("list_local_agent_apps");
+}
+
+/**
+ * 刷新 Agent 应用 - 清除缓存并重新扫描文件系统
+ */
+export async function refreshAgentApps(): Promise<AgentInfo[]> {
+  return apiCall<AgentInfo[]>("refresh_agent_apps");
 }
 
 /**

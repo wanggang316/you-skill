@@ -9,9 +9,10 @@
     removeAgentApp,
     validateAgentApp,
     listLocalAgentApps,
+    refreshAgentApps,
     type AgentAppDetail,
   } from "../api";
-  import { Plus, Trash2, Check, Loader2 } from "@lucide/svelte";
+  import { Plus, Trash2, Check, Loader2, RefreshCw } from "@lucide/svelte";
 
   interface Props {
     onBack?: () => void;
@@ -49,7 +50,7 @@
       const [internal, user, local] = await Promise.all([
         listInternalAgentApps(),
         listUserAgentApps(),
-        listLocalAgentApps(),
+        refreshAgentApps(), // Clear cache and re-scan filesystem
       ]);
       internalApps = internal;
       userApps = user;
@@ -147,14 +148,34 @@
   function isInstalled(id: string): boolean {
     return localAppsIds.has(id);
   }
+
+  // Manual refresh - same as loadAgentApps since we always want fresh data
+  async function refreshData() {
+    await loadAgentApps();
+  }
 </script>
 
 <section class="mx-auto max-w-4xl">
-  <div class="mb-6">
-    <h2 class="text-base-content text-2xl font-semibold">{$t("agentApps.title")}</h2>
-    <p class="text-base-content-muted mt-1 text-sm">
-      {$t("agentApps.subtitle")}
-    </p>
+  <div class="mb-6 flex items-center justify-between">
+    <div>
+      <h2 class="text-base-content text-2xl font-semibold">{$t("agentApps.title")}</h2>
+      <p class="text-base-content-muted mt-1 text-sm">
+        {$t("agentApps.subtitle")}
+      </p>
+    </div>
+    <button
+      class="text-base-content hover:bg-base-200 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50"
+      onclick={refreshData}
+      disabled={loading}
+      type="button"
+    >
+      {#if loading}
+        <Loader2 size={16} class="animate-spin" />
+      {:else}
+        <RefreshCw size={16} />
+      {/if}
+      {$t("local.refresh")}
+    </button>
   </div>
 
   {#if loading}
