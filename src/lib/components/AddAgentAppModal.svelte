@@ -97,7 +97,7 @@
 </script>
 
 <Modal bind:open title={$t("agentApps.addTitle")}>
-  <div class="flex h-[60vh] flex-col w-[40vw] max-w-lg mx-auto">
+  <div class="mx-auto flex h-[60vh] w-[40vw] max-w-lg flex-col">
     <!-- Form content -->
     <div class="flex-1 space-y-6 overflow-y-auto px-5 pt-14 pb-4">
       <div>
@@ -106,7 +106,7 @@
         </label>
         <input
           type="text"
-          class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 w-full rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:outline-none"
+          class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 w-full rounded-lg border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none"
           placeholder={$t("agentApps.displayNamePlaceholder")}
           bind:value={displayName}
           oninput={() => {
@@ -123,7 +123,7 @@
         <div class="flex gap-2">
           <input
             type="text"
-            class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 flex-1 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:outline-none"
+            class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 flex-1 rounded-lg border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none"
             placeholder={$t("agentApps.globalPathPlaceholder")}
             bind:value={globalPath}
             oninput={() => {
@@ -148,7 +148,7 @@
         </label>
         <input
           type="text"
-          class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 w-full rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:outline-none"
+          class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 w-full rounded-lg border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none"
           placeholder={$t("agentApps.projectPathPlaceholder")}
           bind:value={projectPath}
         />

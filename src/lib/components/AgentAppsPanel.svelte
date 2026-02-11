@@ -209,4 +209,4 @@
 </section>
 
 <!-- Add Agent App Modal -->
-<AddAgentAppModal bind:open={showAddModal} onAppsChange={onAppsChange} />
+<AddAgentAppModal bind:open={showAddModal} {onAppsChange} />
