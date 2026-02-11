@@ -143,10 +143,11 @@
     <!-- Form content -->
     <div class="flex-1 space-y-6 overflow-y-auto px-5 pt-14 pb-4">
       <div>
-        <label class="text-base-content mb-1.5 block text-sm">
+        <label for="display-name-input" class="text-base-content mb-1.5 block text-sm">
           {$t("agentApps.displayName")}
         </label>
         <input
+          id="display-name-input"
           type="text"
           class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 w-full rounded-lg border px-4 py-2 text-sm focus:ring-2 focus:outline-none"
           placeholder={$t("agentApps.displayNamePlaceholder")}
@@ -159,11 +160,12 @@
       </div>
 
       <div>
-        <label class="text-base-content mb-1.5 block text-sm">
+        <label for="global-path-input" class="text-base-content mb-1.5 block text-sm">
           {$t("agentApps.globalPath")}
         </label>
         <div class="flex gap-2">
           <input
+            id="global-path-input"
             type="text"
             class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 flex-1 rounded-lg border px-4 py-2 text-sm focus:ring-2 focus:outline-none"
             placeholder={$t("agentApps.globalPathPlaceholder")}
@@ -185,10 +187,11 @@
       </div>
 
       <div>
-        <label class="text-base-content mb-1.5 block text-sm">
+        <label for="project-path-input" class="text-base-content mb-1.5 block text-sm">
           {$t("agentApps.projectPath")}
         </label>
         <input
+          id="project-path-input"
           type="text"
           class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 w-full rounded-lg border px-4 py-2 text-sm focus:ring-2 focus:outline-none"
           placeholder={$t("agentApps.projectPathPlaceholder")}

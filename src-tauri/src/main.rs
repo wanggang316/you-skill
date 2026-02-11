@@ -2,11 +2,11 @@
 
 use tauri::Manager;
 
-mod agent_apps;
 mod commands;
 mod config;
 mod models;
 mod paths;
+mod services;
 mod tray;
 
 use commands::{
@@ -77,9 +77,9 @@ fn main() {
 
       main_window.on_window_event(move |event| {
         if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-          // Prevent the window from closing
+          // Prevent window from closing
           api.prevent_close();
-          // Just hide the window instead
+          // Just hide window instead
           let _ = window_clone.hide();
         }
       });

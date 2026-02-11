@@ -528,17 +528,6 @@
     overflow: hidden;
   }
 
-  .frontmatter-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    background: var(--base-300);
-    color: var(--base-content-muted);
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
-
   .frontmatter-content {
     padding: 1rem;
     display: flex;
@@ -550,14 +539,6 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-  }
-
-  .frontmatter-key {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--base-content-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
   }
 
   .frontmatter-value {

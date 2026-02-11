@@ -1,4 +1,4 @@
-use crate::agent_apps::local_agent_apps;
+use crate::services::agent_apps_service::local_agent_apps;
 use crate::models::AgentInfo;
 
 #[tauri::command]

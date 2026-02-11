@@ -1,5 +1,3 @@
-use crate::models::AgentInfo;
-
 #[derive(Debug, Clone)]
 pub struct AgentPath {
   pub id: &'static str,
@@ -137,16 +135,4 @@ pub fn agent_paths() -> Vec<AgentPath> {
       global_path: Some("~/.vscode/skills"),
     },
   ]
-}
-
-pub fn agent_infos() -> Vec<AgentInfo> {
-  agent_paths()
-    .into_iter()
-    .map(|agent| AgentInfo {
-      id: agent.id.to_string(),
-      display_name: agent.display_name.to_string(),
-      project_path: agent.project_path.map(|p| p.to_string()),
-      global_path: agent.global_path.map(|p| p.to_string()),
-    })
-    .collect()
 }

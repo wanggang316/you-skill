@@ -1,9 +1,9 @@
-use crate::agent_apps::{
-  add_user_agent_app, all_agent_apps, check_global_path_exists, generate_id_from_display_name,
-  get_agent_app, local_agent_apps, refresh_local_agent_apps, remove_user_agent_app,
-  update_user_agent_app, UserAgentApp,
-};
 use crate::models::AgentInfo;
+use crate::services::agent_apps_service::{
+  add_user_agent_app, all_agent_apps, check_global_path_exists, expand_tilde,
+  generate_id_from_display_name, get_agent_app, local_agent_apps, refresh_local_agent_apps,
+  remove_user_agent_app, update_user_agent_app, AgentApp, UserAgentApp,
+};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct AgentAppDetail {
@@ -15,8 +15,8 @@ pub struct AgentAppDetail {
   pub is_installed: bool,
 }
 
-impl From<crate::agent_apps::AgentApp> for AgentAppDetail {
-  fn from(app: crate::agent_apps::AgentApp) -> Self {
+impl From<AgentApp> for AgentAppDetail {
+  fn from(app: AgentApp) -> Self {
     AgentAppDetail {
       id: app.id,
       display_name: app.display_name,
@@ -149,7 +149,7 @@ pub fn update_agent_app(
     }
   }
 
-  let user_app = crate::agent_apps::UserAgentApp {
+  let user_app = UserAgentApp {
     id: id.clone(),
     display_name,
     global_path,
@@ -192,7 +192,7 @@ pub fn validate_agent_app(
   }
 
   // Check if the folder exists locally
-  let expanded_path = crate::agent_apps::expand_tilde(&global_path);
+  let expanded_path = expand_tilde(&global_path);
   if !expanded_path.exists() {
     errors.push(format!(
       "Global path folder does not exist: {}",
@@ -200,7 +200,7 @@ pub fn validate_agent_app(
     ));
   } else {
     // Check if this app is already installed locally
-    let local_apps = crate::agent_apps::local_agent_apps();
+    let local_apps = local_agent_apps();
     let local_apps_ids: std::collections::HashSet<String> =
       local_apps.into_iter().map(|app| app.id).collect();
     if local_apps_ids.contains(&id) {

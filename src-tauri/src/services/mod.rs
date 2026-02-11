@@ -1,0 +1,10 @@
+// Services module - business logic layer
+// Commands should only handle Tauri API and delegate to services
+
+pub mod agent_apps_service;
+pub mod backup_service;
+pub mod install_service;
+pub mod manage_service;
+pub mod remote_service;
+pub mod scan_service;
+pub mod skill_lock_service;

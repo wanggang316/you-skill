@@ -321,12 +321,6 @@ pub fn refresh_local_agent_apps() {
   local_agent_apps();
 }
 
-// Legacy function for backward compatibility
-// Returns all agent apps as AgentInfo (for skill installation)
-pub fn agent_infos() -> Vec<AgentInfo> {
-  local_agent_apps()
-}
-
 // Check if a global_path already exists in all_agent_apps
 pub fn check_global_path_exists(global_path: &str) -> bool {
   let apps = all_agent_apps();
