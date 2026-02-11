@@ -145,6 +145,26 @@ pub fn validate_agent_app(
     ));
   }
 
+  // Check if the folder exists locally
+  let expanded_path = crate::agent_apps::expand_tilde(&global_path);
+  if !expanded_path.exists() {
+    errors.push(format!(
+      "Global path folder does not exist: {}",
+      global_path
+    ));
+  } else {
+    // Check if this app is already installed locally
+    let local_apps = crate::agent_apps::local_agent_apps();
+    let local_apps_ids: std::collections::HashSet<String> =
+      local_apps.into_iter().map(|app| app.id).collect();
+    if local_apps_ids.contains(&id) {
+      errors.push(format!(
+        "This agent app is already installed locally (id: {})",
+        id
+      ));
+    }
+  }
+
   // Check if path format looks valid
   if !global_path.starts_with('~') && !global_path.starts_with('/') {
     warnings

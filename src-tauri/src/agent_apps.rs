@@ -251,7 +251,7 @@ pub fn all_agent_apps() -> Vec<AgentApp> {
 }
 
 // Expand tilde in path
-fn expand_tilde(path: &str) -> PathBuf {
+pub fn expand_tilde(path: &str) -> PathBuf {
   if path.starts_with("~/") {
     if let Some(home) = dirs_next::home_dir() {
       return home.join(&path[2..]);

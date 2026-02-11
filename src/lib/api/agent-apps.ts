@@ -63,12 +63,16 @@ export async function listUserAgentApps(): Promise<AgentAppDetail[]> {
 /**
  * 添加用户自定义 Agent 应用
  */
-export async function addAgentApp(request: {
-  display_name: string;
-  global_path: string;
-  project_path?: string;
-}): Promise<AgentAppDetail> {
-  return apiCall<AgentAppDetail>("add_agent_app", request);
+export async function addAgentApp(
+  displayName: string,
+  globalPath: string,
+  projectPath?: string
+): Promise<AgentAppDetail> {
+  return apiCall<AgentAppDetail>("add_agent_app", {
+    displayName,
+    globalPath,
+    projectPath,
+  });
 }
 
 /**
@@ -81,9 +85,9 @@ export async function removeAgentApp(id: string): Promise<void> {
 /**
  * 验证 Agent 应用配置
  */
-export async function validateAgentApp(request: {
-  display_name: string;
-  global_path: string;
-}): Promise<ValidateResult> {
-  return apiCall<ValidateResult>("validate_agent_app", request);
+export async function validateAgentApp(
+  displayName: string,
+  globalPath: string
+): Promise<ValidateResult> {
+  return apiCall<ValidateResult>("validate_agent_app", { displayName, globalPath });
 }

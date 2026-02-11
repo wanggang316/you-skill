@@ -75,7 +75,7 @@
       </div>
 
       <!-- Content layer: independent of background layer, not affected by clipping -->
-      <div class="absolute inset-0 max-w-4xl bg-transparent" style="z-index: 2;">
+      <div class="absolute inset-0 max-w-lg bg-transparent" style="z-index: 2;">
         <!-- Header with close button and title -->
         {#if showCloseButton || title}
           <div
