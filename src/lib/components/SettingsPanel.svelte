@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { t } from "../i18n";
   import { settings, updateSettings } from "../stores/settings";
   import {
@@ -13,7 +13,12 @@
   import { check } from "@tauri-apps/plugin-updater";
   import { relaunch } from "@tauri-apps/plugin-process";
   import { getVersion } from "@tauri-apps/api/app";
-  import AgentAppsModal from "./AgentAppsModal.svelte";
+
+  interface Props {
+    onChangeView?: (view: string) => void;
+  }
+
+  let { onChangeView = () => {} }: Props = $props();
 
   let checkingUpdate = $state(false);
   let updateMessage = $state("");
@@ -31,7 +36,6 @@
   let backupMessage = $state("");
 
   // Agent apps state
-  let agentAppsModalOpen = $state(false);
   let installedAgentAppsCount = $state(0);
 
   // Load installed agent apps count on mount
@@ -47,10 +51,6 @@
     } catch (error) {
       console.error("Failed to load agent apps count:", error);
     }
-  };
-
-  const handleAgentAppsChange = () => {
-    loadAgentAppsCount();
   };
 
   // Load backup folder, last backup time, and version on mount
@@ -264,7 +264,7 @@
       </div>
       <button
         class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px]"
-        onclick={() => (agentAppsModalOpen = true)}
+        onclick={() => onChangeView("agentApps")}
         type="button"
       >
         {$t("agentApps.viewButton")}
@@ -364,6 +364,4 @@
       <span class="text-base-content-muted mt-1.5 block text-xs">{updateMessage}</span>
     {/if}
   </div>
-
-  <AgentAppsModal bind:open={agentAppsModalOpen} onAppsChange={handleAgentAppsChange} />
 </section>

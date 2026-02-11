@@ -10,6 +10,7 @@
   import PageHeader from "../lib/components/PageHeader.svelte";
   import RemoteSkillsSection from "../lib/components/RemoteSkillsSection.svelte";
   import SettingsPanel from "../lib/components/SettingsPanel.svelte";
+  import AgentAppsPanel from "../lib/components/AgentAppsPanel.svelte";
   import SkillDetail from "../lib/components/SkillDetail.svelte";
   import {
     scanLocalSkills,
@@ -620,6 +621,11 @@
     selectedSkill = null;
   };
 
+  const handleAgentAppsChange = async () => {
+    // Reload agents when agent apps change
+    await loadAgents();
+  };
+
   // Build GitHub web URL for a specific path
   function buildGitHubUrl(url, path) {
     if (!url) return null;
@@ -690,7 +696,9 @@
           {agents}
         />
       {:else if currentView === "settings"}
-        <SettingsPanel />
+        <SettingsPanel onChangeView={(view) => (currentView = view)} />
+      {:else if currentView === "agentApps"}
+        <AgentAppsPanel onBack={handleBackToList} onAppsChange={handleAgentAppsChange} />
       {:else if activeTab === "local"}
         <LocalSkillsSection
           bind:localSearch
