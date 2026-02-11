@@ -1,12 +1,12 @@
 import { defineConfig } from "vite";
-import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { sveltekit } from "@sveltejs/kit/vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import tailwindcss from "@tailwindcss/vite";
 
-// https://vite.dev/config/
+// https://kit.svelte.dev/docs/config/
 export default defineConfig({
   plugins: [
-    svelte(),
+    sveltekit(),
     nodePolyfills({
       include: ["buffer"],
     }),

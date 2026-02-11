@@ -1,4 +1,5 @@
 <script>
+  import { goto } from "$app/navigation";
   import {
     ChevronLeft,
     Plus,
@@ -103,7 +104,7 @@
           {/if}
           <IconButton
             variant="outline"
-            onclick={() => onChangeView("settings")}
+            onclick={onOpenUpdate}
             title={$t("header.settings")}
             ariaLabel={$t("header.settings")}
           >
@@ -169,11 +170,11 @@
         <div class="flex items-center gap-4">
           <button
             class="border-base-300 text-base-content hover:bg-base-200 flex items-center rounded-xl border p-2 text-sm transition"
-            onclick={() => onChangeView("list")}
+            onclick={onChangeView ? () => onChangeView("list") : onBack}
             title={$t("header.back")}
             type="button"
           >
-            <ChevronLeft size={16} class="mr-0" />
+            <ChevronLeft size={16} />
           </button>
           <h1 class="text-base-content text-lg font-medium">
             {$t("header.settings")}

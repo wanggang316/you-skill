@@ -1,16 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { confirm } from "@tauri-apps/plugin-dialog";
-  import { open } from "@tauri-apps/plugin-shell";
   import { listen } from "@tauri-apps/api/event";
-  import AddSkillModal from "../lib/components/AddSkillModal.svelte";
-  import SelectAgentModal from "../lib/components/SelectAgentModal.svelte";
-  import PendingImportModal from "../lib/components/PendingImportModal.svelte";
-  import LocalSkillsSection from "../lib/components/LocalSkillsSection.svelte";
+  import { goto } from "$app/navigation";
   import PageHeader from "../lib/components/PageHeader.svelte";
+  import { t } from "../lib/i18n";
+  import { loadSettings } from "../lib/stores/settings";
+  import { check } from "@tauri-apps/plugin-updater";
+  import LocalSkillsSection from "../lib/components/LocalSkillsSection.svelte";
   import RemoteSkillsSection from "../lib/components/RemoteSkillsSection.svelte";
-  import SettingsPanel from "../lib/components/SettingsPanel.svelte";
-  import AgentAppsPanel from "../lib/components/AgentAppsPanel.svelte";
   import SkillDetail from "../lib/components/SkillDetail.svelte";
   import {
     scanLocalSkills,
@@ -22,29 +19,32 @@
     recordInstall,
     checkCanonicalSkill,
     unifySkill,
-    deleteSkill,
     deleteSkillComplete,
     setAgentLink,
     updateTraySkills,
     checkSkillUpdate,
   } from "../lib/api/skills";
-  import { t } from "../lib/i18n";
-  import { loadSettings } from "../lib/stores/settings";
-  import { check } from "@tauri-apps/plugin-updater";
+  import { open } from "@tauri-apps/plugin-shell";
 
-  let currentView = $state("list");
-  let agentAppsLoading = $state(false);
-  let refreshAgentApps = $state(() => {});
-  let activeTab = $state("local");
-  let selectedSkill = $state(null);
+  // Shared state for modals
   let addSkillModalOpen = $state(false);
+  let pendingImportModalOpen = $state(false);
+  let hasUpdate = $state(false);
 
+  // Active tab
+  let activeTab = $state("local");
+
+  // Selected skill for detail view
+  let selectedSkill = $state<any>(null);
+
+  // Local skills state
   let localSkills = $state([]);
   let localSearch = $state("");
   let localAgent = $state("all");
   let localLoading = $state(false);
   let localError = $state("");
 
+  // Remote skills state
   let remoteSkills = $state([]);
   let remoteQuery = $state("");
   let remoteSkip = $state(0);
@@ -56,38 +56,35 @@
   let remoteSortBy = $state("heat_score");
   let remoteSortOrder = $state("desc");
 
+  // Agents state
   let agents = $state([]);
   let installAgent = $state("cursor");
-  let installGlobal = $state(true);
-  let installLog = $state("");
-  let installingSkill = $state("");
-  let linkBusy = $state(false);
 
   // Update skills state
   let skillsWithUpdate = $state([]);
   let updatingSkills = $state([]);
-  // Track if update check is in progress (debounce)
   let isCheckingUpdates = $state(false);
   let updateCheckPromise = $state<Promise<void> | null>(null);
 
-  // Pending import modal state
-  let pendingImportModalOpen = $state(false);
-
-  // Update state
-  let hasUpdate = $state(false);
-  let latestVersion = $state("");
-
-  // Pending install state for remote skills
+  // Pending install state
   let pendingInstallSkill = $state(null);
   let pendingInstallAgents = $state([]);
   let isDownloading = $state(false);
   let downloadError = $state("");
 
-  // Select agent modal state (shared for remote and local skills)
+  // Select agent modal state
   let selectAgentModalOpen = $state(false);
   let selectAgentModalTitle = $state("");
   let selectAgentModalInitialSelection = $state([]);
-  let selectAgentModalCallback = $state(null);
+  let selectAgentModalCallback = $state<((selectedAgents: string[]) => Promise<void>) | null>(null);
+
+  // Install state
+  let installLog = $state("");
+  let installingSkill = $state("");
+  let linkBusy = $state(false);
+
+  // Pending import modal state
+  let pendingImportModalOpenState = $state(false);
 
   const agentMap = $derived.by(
     () => new Map(agents.map((agent) => [agent.id, agent.display_name]))
@@ -124,28 +121,24 @@
 
   const unmanagedCount = $derived(unmanagedSkills.length);
 
+  // Initialize and load shared data on mount
   onMount(() => {
-    let unlisten: (() => void) | undefined;
-
     const init = async () => {
       await loadSettings();
-      await loadAgents();
-      await refreshLocal(); // This now includes update check
-      await loadRemote(true);
       await checkForUpdate();
-
-      // Listen for tray menu events
-      unlisten = await listen("open-install-modal", () => {
-        activeTab = "remote";
-        addSkillModalOpen = true;
-      });
+      await loadAgents();
+      await refreshLocal();
+      await loadRemote(true);
     };
 
     init();
 
-    return () => {
-      unlisten?.();
-    };
+    // Listen for tray menu events
+    listen("open-install-modal", () => {
+      addSkillModalOpen = true;
+    });
+
+    return () => {};
   });
 
   const checkForUpdate = async () => {
@@ -153,23 +146,10 @@
       const update = await check();
       if (update) {
         hasUpdate = true;
-        latestVersion = update.version;
       }
     } catch (error) {
       console.error("Failed to check for update:", error);
     }
-  };
-
-  // Handle tab change and trigger update check when switching to local
-  const handleTabChange = (tab: string) => {
-    activeTab = tab;
-    if (tab === "local" && localSkills.length > 0) {
-      checkForSkillUpdates();
-    }
-  };
-
-  const handleOpenUpdate = () => {
-    currentView = "settings";
   };
 
   const loadAgents = async () => {
@@ -188,13 +168,11 @@
     localError = "";
     try {
       localSkills = await scanLocalSkills();
-      // Sync skills to tray menu
       try {
         await updateTraySkills(localSkills);
       } catch (e) {
         console.error("Failed to update tray skills:", e);
       }
-      // Check for updates after refreshing local skills
       await checkForSkillUpdates();
     } catch (error) {
       localError = String(error);
@@ -225,7 +203,6 @@
       } else {
         remoteSkills = [...remoteSkills, ...response.skills];
       }
-      // Check for updates using the loaded remote skills data
       await checkUpdatesFromRemoteList();
     } catch (error) {
       remoteError = String(error);
@@ -234,11 +211,7 @@
     }
   };
 
-  // Check which local skills have updates available
-  // Uses batch API to fetch remote skills by name, independent of pagination
-  // Includes debounce to prevent multiple concurrent requests
   const checkForSkillUpdates = async () => {
-    // Debounce: if already checking, wait for existing promise
     if (isCheckingUpdates) {
       if (updateCheckPromise) {
         await updateCheckPromise;
@@ -256,13 +229,9 @@
 
     const checkPromise = (async () => {
       try {
-        // Get all local skill names
         const skillNames = localSkills.map((s) => s.name);
-
-        // Fetch remote skills by names (batch query, no pagination limitation)
         const remoteSkillsMap = await fetchSkillsByNames(skillNames);
 
-        // Check for updates by comparing SHA
         for (const remoteSkill of remoteSkillsMap) {
           if (remoteSkill.skill_path_sha) {
             const hasUpdate = await checkSkillUpdate(remoteSkill.name, remoteSkill.skill_path_sha);
@@ -283,41 +252,33 @@
     await checkPromise;
   };
 
-  // Check for updates using already loaded remote skills data
-  // Used by Remote List to avoid additional API calls
   const checkUpdatesFromRemoteList = async () => {
     if (localSkills.length === 0 || remoteSkills.length === 0) {
       return;
     }
 
-    // Create a map of remote skills by name for quick lookup
     const remoteSkillsMap = new Map(remoteSkills.map((rs) => [rs.name, rs]));
 
-    // Check each local skill against the remote skills
     for (const localSkill of localSkills) {
       const remoteSkill = remoteSkillsMap.get(localSkill.name);
       if (remoteSkill && remoteSkill.skill_path_sha) {
         const hasUpdate = await checkSkillUpdate(localSkill.name, remoteSkill.skill_path_sha);
-        // Update skillsWithUpdate array
         if (hasUpdate) {
           if (!skillsWithUpdate.some((s) => s.name === remoteSkill.name)) {
             skillsWithUpdate = [...skillsWithUpdate, remoteSkill];
           }
         } else {
-          // Remove from skillsWithUpdate if no longer has update
           skillsWithUpdate = skillsWithUpdate.filter((s) => s.name !== remoteSkill.name);
         }
       }
     }
   };
 
-  // Handle updating a skill
   const handleUpdateSkill = async (skill) => {
     if (updatingSkills.includes(skill.name)) return;
 
     updatingSkills = [...updatingSkills, skill.name];
     try {
-      // Get the lock entry to find the source URL
       const { getSkillFromLock } = await import("../lib/api/skill-lock");
       const lockEntry = await getSkillFromLock(skill.name);
 
@@ -326,7 +287,6 @@
         return;
       }
 
-      // Use the same install flow but with the original source URL
       isDownloading = true;
       downloadError = "";
       installingSkill = skill.id;
@@ -345,7 +305,6 @@
         return;
       }
 
-      // Get current agents for this skill
       const localSkill = localSkills.find((ls) => ls.name === skill.name);
       const currentAgents = localSkill?.agents || agents.map((a) => a.id);
 
@@ -370,7 +329,6 @@
             installLog = `${result.message}\n${result.stderr || result.stdout}`;
           } else {
             installLog = "";
-            // Update lock entry with new SHA
             const { addSkillToLock } = await import("../lib/api/skill-lock");
             await addSkillToLock(skill.name, {
               source: lockEntry.source,
@@ -418,19 +376,15 @@
   };
 
   const handleInstall = async (skill) => {
-    // First download/detect the skill
     isDownloading = true;
     downloadError = "";
     installingSkill = skill.id;
     try {
-      // Detect skills from the GitHub URL
       const detectedSkills = await detectGithubSkills(skill.url);
-      // Find the matching skill by name or path
       const matchingSkill = detectedSkills.find(
         (s) => s.name === skill.name || skill.path?.includes(s.name) || s.path === skill.path
       );
       if (!matchingSkill && detectedSkills.length > 0) {
-        // Use first detected skill if no exact match
         pendingInstallSkill = { ...skill, detectedPath: detectedSkills[0].path };
       } else if (matchingSkill) {
         pendingInstallSkill = { ...skill, detectedPath: matchingSkill.path };
@@ -438,7 +392,7 @@
         downloadError = "No skills found in repository";
         return;
       }
-      // Open select agent modal after successful download
+
       selectAgentModalTitle = $t("installConfirm.title", { name: skill.name });
       selectAgentModalInitialSelection = agents.map((a) => a.id);
       selectAgentModalCallback = async (selectedAgents) => {
@@ -447,7 +401,6 @@
         installingSkill = pendingInstallSkill.id;
         pendingInstallAgents = selectedAgents;
         try {
-          // Use installGithubSkill API for remote skills
           const skillPath =
             pendingInstallSkill.detectedPath ||
             pendingInstallSkill.path ||
@@ -461,7 +414,6 @@
             installLog = `${result.message}\n${result.stderr || result.stdout}`;
           } else {
             installLog = "";
-            // Add to skill lock file for update tracking
             const { addSkillToLock } = await import("../lib/api/skill-lock");
             await addSkillToLock(pendingInstallSkill.name, {
               source: pendingInstallSkill.source,
@@ -473,7 +425,6 @@
                 pendingInstallSkill.name,
               skillFolderHash: pendingInstallSkill.skill_path_sha || "",
             });
-            // Record install count on backend
             if (pendingInstallSkill?.id) {
               try {
                 await recordInstall(pendingInstallSkill.id);
@@ -501,7 +452,6 @@
     }
   };
 
-  // Open SelectAgentModal for local skills
   const openSelectAgentModal = (skill) => {
     selectAgentModalTitle = skill.name;
     selectAgentModalInitialSelection = skill.agents || [];
@@ -537,6 +487,7 @@
   };
 
   const handleUnify = async (skill) => {
+    const { confirm } = await import("@tauri-apps/plugin-dialog");
     if (!skill || !skill.agents || skill.agents.length === 0) {
       localError = $t("error.noSkillAgent");
       return;
@@ -569,6 +520,7 @@
   };
 
   const handleBulkUnify = async () => {
+    const { confirm } = await import("@tauri-apps/plugin-dialog");
     if (!unmanagedSkills.length) return;
     for (const skill of unmanagedSkills) {
       if (!skill || !skill.agents || skill.agents.length === 0) continue;
@@ -600,12 +552,12 @@
   };
 
   const handleDeleteSkill = async (skill) => {
+    const { confirm } = await import("@tauri-apps/plugin-dialog");
     try {
       const confirmed = await confirm($t("confirm.deleteSkill", { name: skill.name }), {
         title: $t("confirm.deleteTitle"),
       });
       if (!confirmed) return;
-      // Use deleteSkillComplete to properly delete symlinks first, then source
       await deleteSkillComplete(skill.canonical_path, skill.scope, skill.agents || []);
       await refreshLocal();
     } catch (error) {
@@ -615,50 +567,30 @@
 
   const handleViewSkill = (skill) => {
     selectedSkill = skill;
-    currentView = "detail";
   };
 
   const handleBackToList = () => {
-    currentView = "list";
     selectedSkill = null;
-  };
-
-  const handleAgentAppsChange = async () => {
-    // Reload agents when agent apps change
-    await loadAgents();
-  };
-
-  const handleAgentAppsLoadingChange = (loading: boolean) => {
-    agentAppsLoading = loading;
-  };
-
-  const handleRefreshAgentApps = async () => {
-    refreshAgentApps();
   };
 
   // Build GitHub web URL for a specific path
   function buildGitHubUrl(url, path) {
     if (!url) return null;
 
-    // Handle github.com URLs
     if (url.includes("github.com")) {
-      // Extract owner and repo from URL like https://github.com/owner/repo
       const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
       if (match) {
         const [, owner, repo] = match;
-        // Remove .git suffix if present
         const cleanRepo = repo.replace(/\.git$/, "");
-        // Construct web URL: https://github.com/owner/repo/tree/main/path
         return `https://github.com/${owner}/${cleanRepo}/tree/main/${path || ""}`;
       }
     }
     return null;
-  }
+  };
 
   const handleDetailAction = async () => {
     if (!selectedSkill) return;
 
-    // For remote skills, open GitHub URL with path
     if (selectedSkill.url) {
       try {
         const fullUrl =
@@ -668,7 +600,6 @@
         console.error("Failed to open URL:", error);
       }
     } else if (selectedSkill.canonical_path) {
-      // For local skills, open in file manager
       const { openInFileManager } = await import("../lib/api/skills");
       try {
         await openInFileManager(selectedSkill.canonical_path);
@@ -677,44 +608,45 @@
       }
     }
   };
+
+  // Handle tab change and trigger update check when switching to local
+  const handleTabChange = (tab: string) => {
+    activeTab = tab;
+    if (tab === "local" && localSkills.length > 0) {
+      checkForSkillUpdates();
+    }
+  };
+
+  // Navigation handlers
+  const navigateToSettings = () => {
+    goto("/settings");
+  };
 </script>
 
 <div class="bg-base-100 text-base-content flex h-screen flex-col overflow-hidden">
   <PageHeader
-    {currentView}
-    {activeTab}
-    skillName={selectedSkill?.name}
+    currentView={selectedSkill ? "detail" : "list"}
+    activeTab={activeTab}
+    skillName={selectedSkill?.name || ""}
     {unmanagedCount}
     {hasUpdate}
-    {agentAppsLoading}
-    onChangeView={(view) => (currentView = view)}
+    agentAppsLoading={false}
     onChangeTab={handleTabChange}
-    onAddSkill={() => (addSkillModalOpen = true)}
-    onOpenPendingImport={() => (pendingImportModalOpen = true)}
-    onOpenUpdate={handleOpenUpdate}
-    onBack={handleBackToList}
-    onDetailAction={selectedSkill ? handleDetailAction : null}
-    onRefreshAgentApps={handleRefreshAgentApps}
+    onAddSkill={() => addSkillModalOpen = true}
+    onOpenPendingImport={() => pendingImportModalOpenState = true}
+    onOpenUpdate={navigateToSettings}
+    onBack={selectedSkill ? handleBackToList : () => {}}
+    onDetailAction={handleDetailAction}
+    onRefreshAgentApps={() => {}}
   />
-
-  <AddSkillModal bind:open={addSkillModalOpen} {agents} onSuccess={refreshLocal} />
 
   <main class="flex-1 overflow-y-auto">
     <div class="mx-auto max-w-6xl px-6 py-6">
-      {#if currentView === "detail" && selectedSkill}
+      {#if selectedSkill}
         <SkillDetail
           skill={selectedSkill}
           type={selectedSkill.canonical_path ? "local" : "remote"}
           {agents}
-        />
-      {:else if currentView === "settings"}
-        <SettingsPanel onChangeView={(view) => (currentView = view)} />
-      {:else if currentView === "agentApps"}
-        <AgentAppsPanel
-          onBack={handleBackToList}
-          onAppsChange={handleAgentAppsChange}
-          onLoadingChange={handleAgentAppsLoadingChange}
-          exposeRefresh={(fn) => (refreshAgentApps = fn)}
         />
       {:else if activeTab === "local"}
         <LocalSkillsSection
@@ -734,7 +666,7 @@
           onBulkUnify={handleBulkUnify}
           onUnifySkill={handleUnify}
           onViewSkill={handleViewSkill}
-          onOpenPendingImport={() => (pendingImportModalOpen = true)}
+          onOpenPendingImport={() => (pendingImportModalOpenState = true)}
           onOpenSelectAgentModal={openSelectAgentModal}
           onUpdateSkill={handleUpdateSkill}
         />
@@ -765,7 +697,10 @@
       {/if}
     </div>
   </main>
+</div>
 
+<!-- Select Agent Modal -->
+{#await import("../lib/components/SelectAgentModal.svelte") then { default: SelectAgentModal }}
   <SelectAgentModal
     bind:open={selectAgentModalOpen}
     title={selectAgentModalTitle}
@@ -780,13 +715,16 @@
       selectAgentModalCallback = null;
     }}
   />
+{/await}
 
+<!-- Pending Import Modal -->
+{#await import("../lib/components/PendingImportModal.svelte") then { default: PendingImportModal }}
   <PendingImportModal
-    bind:open={pendingImportModalOpen}
+    bind:open={pendingImportModalOpenState}
     {unmanagedSkills}
     {agentMap}
     onImport={handleUnify}
     onImportAll={handleBulkUnify}
     onDelete={handleDeleteSkill}
   />
-</div>
+{/await}

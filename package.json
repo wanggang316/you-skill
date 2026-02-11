@@ -4,43 +4,43 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "format": "npm run format:frontend && npm run format:backend",
-    "format:frontend": "prettier --write \"**/*.{svelte,js,ts,css,scss,json}\"",
-    "format:backend": "cd src-tauri && cargo fmt",
-    "format:check": "npm run format:check:frontend && npm run format:check:backend",
-    "format:check:frontend": "prettier --check \"**/*.{svelte,js,ts,css,scss,json}\"",
-    "format:check:backend": "cd src-tauri && cargo fmt --check",
-    "prepare": "husky"
-  },
-  "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^6.2.4",
-    "@tailwindcss/vite": "^4.1.11",
-    "@tauri-apps/cli": "^2.10.0",
-    "husky": "^9.1.7",
-    "prettier": "^3.8.1",
-    "prettier-plugin-svelte": "^3.4.1",
-    "prettier-plugin-tailwindcss": "^0.7.2",
-    "svelte": "^5.43.8",
-    "tailwindcss": "^4.1.11",
-    "vite": "^7.2.4",
-    "vite-plugin-node-polyfills": "^0.25.0"
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "tauri": "tauri",
+    "format": "prettier --write \"**/*.{svelte,js,ts,css,scss,json}\"",
+    "format:check": "prettier --check \"**/*.{svelte,js,ts,css,scss,json}\""
   },
   "dependencies": {
     "@lucide/svelte": "^0.563.1",
+    "@sveltejs/kit": "^2.50.2",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
+    "@tauri-apps/plugin-opener": "^2.5.3",
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-shell": "^2.2.0",
     "@tauri-apps/plugin-updater": "^2.10.0",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
     "marked": "^17.0.1",
-    "marked-highlight": "^2.2.3"
+    "marked-highlight": "^2.2.3",
+    "vite-plugin-node-polyfills": "^0.25.0"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "@tauri-apps/cli": "^2.1.0",
+    "husky": "^9.0.0",
+    "prettier": "^3.4.1",
+    "prettier-plugin-svelte": "^3.2.0",
+    "prettier-plugin-tailwindcss": "^0.6.0",
+    "svelte": "^5.0.0",
+    "svelte-check": "^4.0.0",
+    "tailwindcss": "^4.0.0",
+    "vite": "^6.0.3"
   }
 }
