@@ -1,7 +1,9 @@
 use std::path::Path;
 
 use crate::config::{load_config, save_config};
-use crate::services::backup_service::{backup_skills as backup_skills_service, BackupResult as ServiceBackupResult};
+use crate::services::backup_service::{
+  backup_skills as backup_skills_service, BackupResult as ServiceBackupResult,
+};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct BackupResult {
@@ -79,11 +81,9 @@ pub fn open_backup_folder(path: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn backup_skills(backup_folder: String) -> Result<BackupResult, String> {
   // Use spawn_blocking to run CPU-intensive operation on separate thread
-  let result = tokio::task::spawn_blocking(move || {
-    backup_skills_service(backup_folder)
-  })
-  .await
-  .map_err(|e| format!("备份任务执行失败: {}", e))??;
+  let result = tokio::task::spawn_blocking(move || backup_skills_service(backup_folder))
+    .await
+    .map_err(|e| format!("备份任务执行失败: {}", e))??;
 
   // If backup succeeded, save backup time to config
   if result.success {

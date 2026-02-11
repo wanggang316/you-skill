@@ -37,8 +37,7 @@ pub fn backup_skills(backup_folder: String) -> Result<BackupResult, String> {
   let backup_file_path = backup_path.join(&filename);
 
   // Create ZIP file
-  let file =
-    fs::File::create(&backup_file_path).map_err(|e| format!("创建备份文件失败: {}", e))?;
+  let file = fs::File::create(&backup_file_path).map_err(|e| format!("创建备份文件失败: {}", e))?;
   let mut zip = zip::ZipWriter::new(file);
   let options: zip::write::FileOptions<()> =
     zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);

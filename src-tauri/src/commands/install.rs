@@ -1,4 +1,6 @@
-use crate::models::{DetectedSkill, InstallGithubRequest, InstallRequest, InstallResult, InstallZipRequest};
+use crate::models::{
+  DetectedSkill, InstallGithubRequest, InstallRequest, InstallResult, InstallZipRequest,
+};
 use crate::services::install_service;
 
 #[tauri::command]

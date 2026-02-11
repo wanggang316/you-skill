@@ -52,6 +52,7 @@ pub fn get_skill_from_lock(skill_name: String) -> Result<Option<SkillLockEntry>,
 }
 
 #[tauri::command]
-pub fn get_all_locked_skills() -> Result<std::collections::HashMap<String, SkillLockEntry>, String> {
+pub fn get_all_locked_skills() -> Result<std::collections::HashMap<String, SkillLockEntry>, String>
+{
   crate::services::skill_lock_service::get_all_locked_skills()
 }

@@ -172,8 +172,7 @@ fn find_skill_md_files(
 /// Detect skills in a ZIP file by extracting to temp and finding SKILL.md files
 pub fn detect_zip_skills(zip_path: String) -> Result<Vec<DetectedSkill>, String> {
   // Create temp directory for extraction
-  let temp_dir =
-    std::env::temp_dir().join(format!("you-skills-zip-detect-{}", std::process::id()));
+  let temp_dir = std::env::temp_dir().join(format!("you-skills-zip-detect-{}", std::process::id()));
 
   // Clean up temp directory if it exists
   let _ = fs::remove_dir_all(&temp_dir);
@@ -293,8 +292,7 @@ pub fn install_zip_skill(
     extract_zip(&zip_path, &skill_dir)?;
   } else {
     // Multi-skill ZIP - extract to temp first
-    let temp_dir =
-      std::env::temp_dir().join(format!("you-skills-install-{}", std::process::id()));
+    let temp_dir = std::env::temp_dir().join(format!("you-skills-install-{}", std::process::id()));
     let _ = fs::remove_dir_all(&temp_dir);
     fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
 

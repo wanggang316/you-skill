@@ -40,24 +40,24 @@ pub fn read_skill_lock_internal() -> Result<SkillLockFile, String> {
   if !lock_path.exists() {
     return Ok(SkillLockFile::default());
   }
-  let content = fs::read_to_string(&lock_path).map_err(|e| format!("Failed to read lock file: {}", e))?;
+  let content =
+    fs::read_to_string(&lock_path).map_err(|e| format!("Failed to read lock file: {}", e))?;
   serde_json::from_str(&content).map_err(|e| format!("Failed to parse lock file: {}", e))
 }
 
 pub fn write_skill_lock_internal(lock: &SkillLockFile) -> Result<(), String> {
   let lock_path = skill_lock_path()?;
   if let Some(parent) = lock_path.parent() {
-    fs::create_dir_all(parent).map_err(|e| format!("Failed to create lock file directory: {}", e))?;
+    fs::create_dir_all(parent)
+      .map_err(|e| format!("Failed to create lock file directory: {}", e))?;
   }
-  let content = serde_json::to_string_pretty(lock).map_err(|e| format!("Failed to serialize lock file: {}", e))?;
+  let content = serde_json::to_string_pretty(lock)
+    .map_err(|e| format!("Failed to serialize lock file: {}", e))?;
   fs::write(&lock_path, content).map_err(|e| format!("Failed to write lock file: {}", e))?;
   Ok(())
 }
 
-pub fn add_skill_to_lock(
-  skill_name: String,
-  entry: SkillLockEntry,
-) -> Result<(), String> {
+pub fn add_skill_to_lock(skill_name: String, entry: SkillLockEntry) -> Result<(), String> {
   let mut lock = read_skill_lock_internal()?;
   let now = chrono::Utc::now().to_rfc3339();
   let existing_entry = lock.skills.get(&skill_name);
