@@ -207,6 +207,22 @@ pub fn remove_user_agent_app(id: &str) -> Result<(), String> {
   save_user_agent_apps(&apps)
 }
 
+// Update a user agent app by id
+pub fn update_user_agent_app(id: &str, app: UserAgentApp) -> Result<(), String> {
+  let mut apps = load_user_agent_apps().unwrap_or_default();
+  let index = apps.iter().position(|a| a.id == id)
+    .ok_or(format!("Agent app with id '{}' not found", id))?;
+
+  // Ensure the id doesn't change
+  let updated_app = UserAgentApp {
+    id: id.to_string(),
+    ..app
+  };
+
+  apps[index] = updated_app;
+  save_user_agent_apps(&apps)
+}
+
 // Get all agent apps (internal + user, user apps override internal if same id or global_path)
 pub fn all_agent_apps() -> Vec<AgentApp> {
   let internal = internal_agent_apps();

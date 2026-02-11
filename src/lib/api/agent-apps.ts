@@ -83,6 +83,23 @@ export async function removeAgentApp(id: string): Promise<void> {
 }
 
 /**
+ * 更新用户自定义 Agent 应用
+ */
+export async function updateAgentApp(
+  id: string,
+  displayName: string,
+  globalPath: string,
+  projectPath?: string
+): Promise<AgentAppDetail> {
+  return apiCall<AgentAppDetail>("update_agent_app", {
+    id,
+    displayName,
+    globalPath,
+    projectPath,
+  });
+}
+
+/**
  * 验证 Agent 应用配置
  */
 export async function validateAgentApp(

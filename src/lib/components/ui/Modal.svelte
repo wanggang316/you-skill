@@ -28,6 +28,7 @@
     closing = true;
     setTimeout(() => {
       closing = false;
+      open = false;
       onClose();
     }, 250);
   }

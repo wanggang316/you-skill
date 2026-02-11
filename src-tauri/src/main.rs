@@ -12,7 +12,8 @@ mod tray;
 use commands::{
   agent_apps::{
     add_agent_app, list_all_agent_apps, list_internal_agent_apps, list_local_agent_apps,
-    list_user_agent_apps, refresh_agent_apps, remove_agent_app, validate_agent_app,
+    list_user_agent_apps, refresh_agent_apps, remove_agent_app, update_agent_app,
+    validate_agent_app,
   },
   agents::list_agents,
   backup::{
@@ -112,6 +113,7 @@ fn main() {
       refresh_agent_apps,
       add_agent_app,
       remove_agent_app,
+      update_agent_app,
       validate_agent_app,
       detect_github_skills,
       detect_zip_skills,

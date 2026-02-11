@@ -6,6 +6,8 @@
     Download,
     ArrowUpCircle,
     ExternalLink,
+    RefreshCw,
+    Loader2,
   } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
   import { t } from "../i18n";
@@ -16,6 +18,7 @@
     skillName,
     unmanagedCount,
     hasUpdate,
+    agentAppsLoading = false,
     onChangeView,
     onChangeTab,
     onAddSkill,
@@ -23,6 +26,7 @@
     onOpenUpdate,
     onBack,
     onDetailAction,
+    onRefreshAgentApps,
   } = $props();
 </script>
 
@@ -105,6 +109,35 @@
           >
             <Settings size={16} />
           </IconButton>
+        </div>
+      {:else if currentView === "agentApps"}
+        <div class="flex w-full items-center justify-between">
+          <div class="flex items-center gap-4">
+            <button
+              class="border-base-300 text-base-content hover:bg-base-200 flex items-center rounded-xl border p-2 text-sm transition"
+              onclick={onBack}
+              title={$t("header.back")}
+              type="button"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <h1 class="text-base-content text-lg font-medium">
+              {$t("agentApps.title")}
+            </h1>
+          </div>
+          <button
+            class="border-base-300 text-base-content hover:bg-base-200 flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition disabled:opacity-50"
+            onclick={onRefreshAgentApps}
+            disabled={agentAppsLoading}
+            type="button"
+          >
+            {#if agentAppsLoading}
+              <Loader2 size={16} class="animate-spin" />
+            {:else}
+              <RefreshCw size={16} />
+            {/if}
+            {$t("local.refresh")}
+          </button>
         </div>
       {:else if currentView === "detail"}
         <div class="flex w-full items-center justify-between">

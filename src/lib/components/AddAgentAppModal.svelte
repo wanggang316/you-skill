@@ -1,15 +1,16 @@
 <script lang="ts">
   import { t } from "../i18n";
-  import { addAgentApp, validateAgentApp, type AgentAppDetail } from "../api";
+  import { addAgentApp, updateAgentApp, validateAgentApp, type AgentAppDetail } from "../api";
   import Modal from "./ui/Modal.svelte";
   import { Folder, Loader2 } from "@lucide/svelte";
 
   interface Props {
     open?: boolean;
     onAppsChange?: () => void;
+    appToEdit?: AgentAppDetail | null;
   }
 
-  let { open = $bindable(false), onAppsChange = () => {} }: Props = $props();
+  let { open = $bindable(false), onAppsChange = () => {}, appToEdit = null }: Props = $props();
 
   // Form state
   let displayName = $state("");
@@ -20,12 +21,24 @@
   let validationErrors = $state<string[]>([]);
   let validationWarnings = $state<string[]>([]);
 
-  // Reset form when modal opens
+  // Reset form when modal opens or populate for editing
   $effect(() => {
     if (open) {
-      resetForm();
+      if (appToEdit) {
+        displayName = appToEdit.display_name;
+        globalPath = appToEdit.global_path || "";
+        projectPath = appToEdit.project_path || "";
+      } else {
+        resetForm();
+      }
+      validationErrors = [];
+      validationWarnings = [];
     }
   });
+
+  const isEditMode = $derived(appToEdit !== null);
+  const modalTitle = $derived(isEditMode ? $t("agentApps.editTitle") : $t("agentApps.addTitle"));
+  const buttonText = $derived(isEditMode ? $t("agentApps.save") : $t("agentApps.add"));
 
   function closeModal() {
     open = false;
@@ -67,10 +80,16 @@
     validationErrors = [];
     validationWarnings = [];
 
-    // Run validation
+    // Run validation (skip path duplicate check for edit mode if path unchanged)
     let validationResult: { errors: string[]; warnings: string[] } | null = null;
     try {
       validationResult = await validateAgentApp(displayName.trim(), globalPath.trim());
+      // Filter out duplicate path error if editing and path unchanged
+      if (isEditMode && appToEdit && globalPath.trim() === appToEdit.global_path) {
+        validationResult.errors = validationResult.errors.filter(
+          (err) => !err.includes("already exists")
+        );
+      }
       validationErrors = validationResult.errors;
       validationWarnings = validationResult.warnings;
     } catch (err) {
@@ -79,12 +98,16 @@
       validating = false;
     }
 
-    // If validation passed, proceed to add
+    // If validation passed, proceed to add or update
     if (validationErrors.length === 0) {
       adding = true;
       try {
         const projectPathValue = projectPath.trim() || undefined;
-        await addAgentApp(displayName.trim(), globalPath.trim(), projectPathValue);
+        if (isEditMode && appToEdit) {
+          await updateAgentApp(appToEdit.id, displayName.trim(), globalPath.trim(), projectPathValue);
+        } else {
+          await addAgentApp(displayName.trim(), globalPath.trim(), projectPathValue);
+        }
         closeModal();
         onAppsChange();
       } catch (err) {
@@ -96,17 +119,17 @@
   }
 </script>
 
-<Modal bind:open title={$t("agentApps.addTitle")}>
-  <div class="mx-auto flex h-[60vh] w-[40vw] max-w-lg flex-col">
+<Modal bind:open title={modalTitle}>
+  <div class="mx-auto flex h-[60vh] w-[50vw] max-w-lg flex-col">
     <!-- Form content -->
     <div class="flex-1 space-y-6 overflow-y-auto px-5 pt-14 pb-4">
       <div>
-        <label class="text-base-content mb-1.5 block text-sm font-medium">
+        <label class="text-base-content mb-1.5 block text-sm">
           {$t("agentApps.displayName")}
         </label>
         <input
           type="text"
-          class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 w-full rounded-lg border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none"
+          class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 w-full rounded-lg border px-4 py-2 text-sm focus:ring-2 focus:outline-none"
           placeholder={$t("agentApps.displayNamePlaceholder")}
           bind:value={displayName}
           oninput={() => {
@@ -117,13 +140,13 @@
       </div>
 
       <div>
-        <label class="text-base-content mb-1.5 block text-sm font-medium">
+        <label class="text-base-content mb-1.5 block text-sm">
           {$t("agentApps.globalPath")}
         </label>
         <div class="flex gap-2">
           <input
             type="text"
-            class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 flex-1 rounded-lg border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none"
+            class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 flex-1 rounded-lg border px-4 py-2 text-sm focus:ring-2 focus:outline-none"
             placeholder={$t("agentApps.globalPathPlaceholder")}
             bind:value={globalPath}
             oninput={() => {
@@ -143,12 +166,12 @@
       </div>
 
       <div>
-        <label class="text-base-content mb-1.5 block text-sm font-medium">
+        <label class="text-base-content mb-1.5 block text-sm">
           {$t("agentApps.projectPath")}
         </label>
         <input
           type="text"
-          class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 w-full rounded-lg border px-4 py-2.5 text-sm focus:ring-2 focus:outline-none"
+          class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 w-full rounded-lg border px-4 py-2 text-sm focus:ring-2 focus:outline-none"
           placeholder={$t("agentApps.projectPathPlaceholder")}
           bind:value={projectPath}
         />
@@ -173,7 +196,7 @@
     </div>
 
     <!-- Actions -->
-    <div class="border-base-200 flex justify-end gap-3 border-t px-5 py-4">
+    <div class="border-base-200 flex justify-end gap-3 border-t px-5 py-3">
       <button
         class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-6 py-2 text-sm transition disabled:opacity-50"
         onclick={handleAdd}
@@ -185,7 +208,7 @@
         {:else if adding}
           <Loader2 size={16} class="mr-1 inline animate-spin" />
         {:else}
-          {$t("agentApps.add")}
+          {buttonText}
         {/if}
       </button>
     </div>

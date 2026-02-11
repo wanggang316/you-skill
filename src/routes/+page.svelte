@@ -33,6 +33,8 @@
   import { check } from "@tauri-apps/plugin-updater";
 
   let currentView = $state("list");
+  let agentAppsLoading = $state(false);
+  let refreshAgentApps = $state(() => {});
   let activeTab = $state("local");
   let selectedSkill = $state(null);
   let addSkillModalOpen = $state(false);
@@ -626,6 +628,14 @@
     await loadAgents();
   };
 
+  const handleAgentAppsLoadingChange = (loading: boolean) => {
+    agentAppsLoading = loading;
+  };
+
+  const handleRefreshAgentApps = async () => {
+    refreshAgentApps();
+  };
+
   // Build GitHub web URL for a specific path
   function buildGitHubUrl(url, path) {
     if (!url) return null;
@@ -676,6 +686,7 @@
     skillName={selectedSkill?.name}
     {unmanagedCount}
     {hasUpdate}
+    agentAppsLoading={agentAppsLoading}
     onChangeView={(view) => (currentView = view)}
     onChangeTab={handleTabChange}
     onAddSkill={() => (addSkillModalOpen = true)}
@@ -683,6 +694,7 @@
     onOpenUpdate={handleOpenUpdate}
     onBack={handleBackToList}
     onDetailAction={selectedSkill ? handleDetailAction : null}
+    onRefreshAgentApps={handleRefreshAgentApps}
   />
 
   <AddSkillModal bind:open={addSkillModalOpen} {agents} onSuccess={refreshLocal} />
@@ -698,7 +710,12 @@
       {:else if currentView === "settings"}
         <SettingsPanel onChangeView={(view) => (currentView = view)} />
       {:else if currentView === "agentApps"}
-        <AgentAppsPanel onBack={handleBackToList} onAppsChange={handleAgentAppsChange} />
+        <AgentAppsPanel
+          onBack={handleBackToList}
+          onAppsChange={handleAgentAppsChange}
+          onLoadingChange={handleAgentAppsLoadingChange}
+          exposeRefresh={(fn) => (refreshAgentApps = fn)}
+        />
       {:else if activeTab === "local"}
         <LocalSkillsSection
           bind:localSearch

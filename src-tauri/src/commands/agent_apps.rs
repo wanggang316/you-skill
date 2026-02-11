@@ -1,6 +1,7 @@
 use crate::agent_apps::{
   add_user_agent_app, all_agent_apps, check_global_path_exists, generate_id_from_display_name,
-  get_agent_app, local_agent_apps, refresh_local_agent_apps, remove_user_agent_app, UserAgentApp,
+  get_agent_app, local_agent_apps, refresh_local_agent_apps, remove_user_agent_app,
+  update_user_agent_app, UserAgentApp,
 };
 use crate::models::AgentInfo;
 
@@ -120,6 +121,51 @@ pub fn remove_agent_app(id: String) -> Result<(), String> {
   refresh_local_agent_apps();
 
   Ok(())
+}
+
+/// Update a user agent app
+#[tauri::command]
+pub fn update_agent_app(
+  id: String,
+  display_name: String,
+  global_path: String,
+  project_path: Option<String>,
+) -> Result<AgentAppDetail, String> {
+  // Only allow updating user apps (not internal)
+  let app = get_agent_app(&id).ok_or(format!("Agent app '{}' not found", id))?;
+
+  if app.is_internal {
+    return Err("Cannot update internal agent apps".to_string());
+  }
+
+  // Check if the new global_path is already used by another app
+  if check_global_path_exists(&global_path) {
+    let existing_app = get_agent_app(&id).unwrap();
+    if existing_app.global_path.as_ref() != Some(&global_path) {
+      return Err(format!(
+        "Global path '{}' is already used by another app",
+        global_path
+      ));
+    }
+  }
+
+  let user_app = crate::agent_apps::UserAgentApp {
+    id: id.clone(),
+    display_name,
+    global_path,
+    project_path,
+  };
+
+  update_user_agent_app(&id, user_app)?;
+
+  // Refresh local agent apps cache
+  refresh_local_agent_apps();
+
+  // Return updated app
+  let updated_app = get_agent_app(&id).ok_or("Failed to retrieve updated app")?;
+  let mut detail: AgentAppDetail = updated_app.into();
+  detail.is_installed = false;
+  Ok(detail)
 }
 
 /// Validate a new agent app (check for duplicates)
