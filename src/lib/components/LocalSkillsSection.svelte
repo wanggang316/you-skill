@@ -1,11 +1,5 @@
 <script>
-  import {
-    RefreshCw,
-    Search,
-    Blend,
-    Download,
-    ChevronsUpDown,
-  } from "@lucide/svelte";
+  import { RefreshCw, Search, Blend, Download, ChevronsUpDown } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
   import { t } from "../i18n";
 
