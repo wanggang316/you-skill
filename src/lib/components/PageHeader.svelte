@@ -20,7 +20,7 @@
     unmanagedCount,
     hasUpdate,
     agentAppsLoading = false,
-    onChangeView,
+    onChangeView = undefined,
     onChangeTab,
     onAddSkill,
     onOpenPendingImport,

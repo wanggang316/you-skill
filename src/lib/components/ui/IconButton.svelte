@@ -1,4 +1,5 @@
 <script>
+  /** @type {{ onclick?: () => void; title?: string; ariaLabel?: string; variant?: 'primary' | 'outline' | 'ghost'; disabled?: boolean; class?: string; children: import('svelte').Snippet }} */
   let {
     onclick,
     title,
@@ -18,7 +19,7 @@
   };
 
   const resolvedClass = $derived(
-    `${baseClass} ${variants[variant] ?? variants.ghost} ${className}`
+    `${baseClass} ${variants[variant]} ${className}`
   );
 </script>
 

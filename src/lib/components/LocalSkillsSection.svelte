@@ -26,11 +26,13 @@
   } = $props();
 
   // Check if a skill has an update available
+  /** @param {import('../api/skills').LocalSkill} skill */
   function hasUpdate(skill) {
     return skillsWithUpdate.some((s) => s.name === skill.name);
   }
 
   // Check if a skill is currently updating
+  /** @param {import('../api/skills').LocalSkill} skill */
   function isUpdating(skill) {
     return updatingSkills.includes(skill.name);
   }

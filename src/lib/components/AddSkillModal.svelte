@@ -12,6 +12,7 @@
   import Modal from "./ui/Modal.svelte";
   import AgentSelector from "./AgentSelector.svelte";
 
+  /** @type {{ open?: boolean; agents?: import('../api/skills').AgentInfo[]; onSuccess?: () => void }} */
   let { open = $bindable(false), agents = [], onSuccess = () => {} } = $props();
 
   // Tab state: 'zip' | 'folder' | 'github'
@@ -21,7 +22,9 @@
   let selectedZipPath = $state("");
   let zipFileName = $state("");
   let isDetectingZip = $state(false);
+  /** @type {import('../api/skills').DetectedSkill[]} */
   let detectedZipSkills = $state([]);
+  /** @type {import('../api/skills').DetectedSkill | null} */
   let selectedZipSkill = $state(null);
   let zipError = $state("");
 
@@ -29,18 +32,23 @@
   let selectedFolderPath = $state("");
   let folderName = $state("");
   let isDetectingFolder = $state(false);
+  /** @type {import('../api/skills').DetectedSkill[]} */
   let detectedFolderSkills = $state([]);
+  /** @type {import('../api/skills').DetectedSkill | null} */
   let selectedFolderSkill = $state(null);
   let folderError = $state("");
 
   // Github state
   let githubUrl = $state("");
   let isDetecting = $state(false);
+  /** @type {import('../api/skills').DetectedSkill[]} */
   let detectedSkills = $state([]);
+  /** @type {import('../api/skills').DetectedSkill | null} */
   let selectedSkill = $state(null);
   let githubError = $state("");
 
   // Agent selection state
+  /** @type {string[]} */
   let selectedAgents = $state([]);
 
   // Global loading state

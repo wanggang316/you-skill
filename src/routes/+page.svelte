@@ -24,6 +24,7 @@
     updateTraySkills,
     checkSkillUpdate,
   } from "../lib/api/skills";
+  import type { LocalSkill, RemoteSkill, AgentInfo } from "../lib/api/skills";
   import { open } from "@tauri-apps/plugin-shell";
 
   // Shared state for modals
@@ -35,17 +36,17 @@
   let activeTab = $state("local");
 
   // Selected skill for detail view
-  let selectedSkill = $state<any>(null);
+  let selectedSkill = $state<LocalSkill | RemoteSkill | null>(null);
 
   // Local skills state
-  let localSkills = $state([]);
+  let localSkills = $state<LocalSkill[]>([]);
   let localSearch = $state("");
   let localAgent = $state("all");
   let localLoading = $state(false);
   let localError = $state("");
 
   // Remote skills state
-  let remoteSkills = $state([]);
+  let remoteSkills = $state<RemoteSkill[]>([]);
   let remoteQuery = $state("");
   let remoteSkip = $state(0);
   let remoteLimit = $state(20);
@@ -57,25 +58,25 @@
   let remoteSortOrder = $state("desc");
 
   // Agents state
-  let agents = $state([]);
+  let agents = $state<AgentInfo[]>([]);
   let installAgent = $state("cursor");
 
   // Update skills state
-  let skillsWithUpdate = $state([]);
-  let updatingSkills = $state([]);
+  let skillsWithUpdate = $state<RemoteSkill[]>([]);
+  let updatingSkills = $state<string[]>([]);
   let isCheckingUpdates = $state(false);
   let updateCheckPromise = $state<Promise<void> | null>(null);
 
   // Pending install state
-  let pendingInstallSkill = $state(null);
-  let pendingInstallAgents = $state([]);
+  let pendingInstallSkill = $state<RemoteSkill & { detectedPath?: string } | null>(null);
+  let pendingInstallAgents = $state<string[]>([]);
   let isDownloading = $state(false);
   let downloadError = $state("");
 
   // Select agent modal state
   let selectAgentModalOpen = $state(false);
   let selectAgentModalTitle = $state("");
-  let selectAgentModalInitialSelection = $state([]);
+  let selectAgentModalInitialSelection = $state<string[]>([]);
   let selectAgentModalCallback = $state<((selectedAgents: string[]) => Promise<void>) | null>(null);
 
   // Install state
@@ -274,7 +275,7 @@
     }
   };
 
-  const handleUpdateSkill = async (skill) => {
+  const handleUpdateSkill = async (skill: RemoteSkill) => {
     if (updatingSkills.includes(skill.name)) return;
 
     updatingSkills = [...updatingSkills, skill.name];
@@ -335,7 +336,7 @@
               sourceType: lockEntry.sourceType,
               sourceUrl: lockEntry.sourceUrl,
               skillPath: lockEntry.skillPath,
-              skillFolderHash: skill.skill_path_sha,
+              skillFolderHash: skill.skill_path_sha || "",
             });
             await refreshLocal();
             await checkForSkillUpdates();
@@ -375,11 +376,12 @@
     await loadRemote(true);
   };
 
-  const handleInstall = async (skill) => {
+  const handleInstall = async (skill: RemoteSkill) => {
     isDownloading = true;
     downloadError = "";
     installingSkill = skill.id;
     try {
+      if (!skill.url) return;
       const detectedSkills = await detectGithubSkills(skill.url);
       const matchingSkill = detectedSkills.find(
         (s) => s.name === skill.name || skill.path?.includes(s.name) || s.path === skill.path
@@ -405,6 +407,7 @@
             pendingInstallSkill.detectedPath ||
             pendingInstallSkill.path ||
             pendingInstallSkill.name;
+          if (!pendingInstallSkill.url) return;
           const result = await installGithubSkill({
             url: pendingInstallSkill.url,
             skill_path: skillPath,
@@ -452,7 +455,7 @@
     }
   };
 
-  const openSelectAgentModal = (skill) => {
+  const openSelectAgentModal = (skill: LocalSkill) => {
     selectAgentModalTitle = skill.name;
     selectAgentModalInitialSelection = skill.agents || [];
     selectAgentModalCallback = async (selectedAgents) => {
@@ -478,7 +481,7 @@
     selectAgentModalOpen = true;
   };
 
-  const handleOpenUrl = async (url) => {
+  const handleOpenUrl = async (url: string) => {
     try {
       await open(url);
     } catch (error) {
@@ -486,7 +489,7 @@
     }
   };
 
-  const handleUnify = async (skill) => {
+  const handleUnify = async (skill: LocalSkill) => {
     const { confirm } = await import("@tauri-apps/plugin-dialog");
     if (!skill || !skill.agents || skill.agents.length === 0) {
       localError = $t("error.noSkillAgent");
@@ -507,7 +510,7 @@
         agent,
         scope: skill.scope,
         current_path: skill.canonical_path,
-        prefer,
+        prefer: prefer as "canonical" | "current",
       });
       if (!result.success) {
         localError = result.message;
@@ -539,7 +542,7 @@
           agent: skill.agents[0],
           scope: skill.scope,
           current_path: skill.canonical_path,
-          prefer,
+          prefer: prefer as "canonical" | "current",
         });
         if (!result.success) {
           localError = result.message;
@@ -551,7 +554,7 @@
     await refreshLocal();
   };
 
-  const handleDeleteSkill = async (skill) => {
+  const handleDeleteSkill = async (skill: LocalSkill) => {
     const { confirm } = await import("@tauri-apps/plugin-dialog");
     try {
       const confirmed = await confirm($t("confirm.deleteSkill", { name: skill.name }), {
@@ -565,7 +568,7 @@
     }
   };
 
-  const handleViewSkill = (skill) => {
+  const handleViewSkill = (skill: LocalSkill | RemoteSkill) => {
     selectedSkill = skill;
   };
 
@@ -574,7 +577,7 @@
   };
 
   // Build GitHub web URL for a specific path
-  function buildGitHubUrl(url, path) {
+  function buildGitHubUrl(url: string, path: string | undefined) {
     if (!url) return null;
 
     if (url.includes("github.com")) {
@@ -591,7 +594,7 @@
   const handleDetailAction = async () => {
     if (!selectedSkill) return;
 
-    if (selectedSkill.url) {
+    if ("url" in selectedSkill && selectedSkill.url) {
       try {
         const fullUrl =
           buildGitHubUrl(selectedSkill.url, selectedSkill.path || "") || selectedSkill.url;
@@ -599,7 +602,7 @@
       } catch (error) {
         console.error("Failed to open URL:", error);
       }
-    } else if (selectedSkill.canonical_path) {
+    } else if ("canonical_path" in selectedSkill && selectedSkill.canonical_path) {
       const { openInFileManager } = await import("../lib/api/skills");
       try {
         await openInFileManager(selectedSkill.canonical_path);
@@ -645,7 +648,7 @@
       {#if selectedSkill}
         <SkillDetail
           skill={selectedSkill}
-          type={selectedSkill.canonical_path ? "local" : "remote"}
+          type={"canonical_path" in selectedSkill ? "local" : "remote"}
           {agents}
         />
       {:else if activeTab === "local"}
@@ -706,7 +709,7 @@
     title={selectAgentModalTitle}
     {agents}
     initialSelection={selectAgentModalInitialSelection}
-    onConfirm={async (selectedAgents) => {
+    onConfirm={async (selectedAgents: string[]) => {
       if (selectAgentModalCallback) {
         await selectAgentModalCallback(selectedAgents);
       }

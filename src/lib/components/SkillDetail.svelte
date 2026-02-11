@@ -9,12 +9,14 @@
   let { skill, type, agents } = $props();
 
   let content = $state("");
+  /** @type {import('../utils/markdown').ParsedFrontmatter} */
   let parsedFrontmatter = $state({});
   let hasFrontmatter = $state(false);
   let loading = $state(true);
   let error = $state("");
 
   // Convert GitHub URL to raw content URL
+  /** @param {string} url @param {string} path */
   function convertToRawUrl(url, path) {
     if (!url || !path) return null;
 
@@ -34,6 +36,7 @@
   }
 
   // Build GitHub web URL for a specific path
+  /** @param {string} url @param {string} path @param {string} [relativePath] */
   function buildGitHubUrl(url, path, relativePath = "") {
     if (!url) return null;
 
@@ -71,6 +74,7 @@
   }
 
   // Resolve local file path for relative links
+  /** @param {string} relativePath */
   function resolveLocalPath(relativePath) {
     if (!skill.canonical_path) return null;
 
@@ -148,9 +152,12 @@
     }
   }
 
+  /** @param {HTMLElement} node */
   function markdownInteractions(node) {
+    /** @param {MouseEvent} event */
     const handleClick = async (event) => {
-      const button = event.target.closest(".markdown-code-block__copy");
+      const target = /** @type {HTMLElement} */ (event.target);
+      const button = /** @type {HTMLElement | null} */ (target.closest(".markdown-code-block__copy"));
       if (button) {
         event.preventDefault();
         event.stopPropagation();
@@ -191,7 +198,7 @@
         return;
       }
 
-      const link = event.target.closest("a[href]");
+      const link = target.closest("a[href]");
       if (link) {
         const href = link.getAttribute("href");
         if (href?.startsWith("http://") || href?.startsWith("https://")) {

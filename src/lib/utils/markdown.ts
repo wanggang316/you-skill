@@ -176,7 +176,7 @@ export function parseMarkdown(content: string | undefined | null): ParsedMarkdow
   return {
     frontmatter: parsed.data as ParsedFrontmatter,
     content: parsed.content.trim(),
-    hasFrontmatter: parsed.isEmpty === false && Object.keys(parsed.data).length > 0,
+    hasFrontmatter: Object.keys(parsed.data).length > 0,
   };
 }
 

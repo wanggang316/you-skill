@@ -14,6 +14,7 @@
   import AddAgentAppModal from "../../lib/components/AddAgentAppModal.svelte";
   import {
     listAgents,
+    type AgentInfo,
   } from "../../lib/api/skills";
 
   // State
@@ -25,7 +26,7 @@
   let showAddModal = $state(false);
   let editingApp = $state<AgentAppDetail | null>(null);
 
-  let agents = $state([]);
+  let agents = $state<AgentInfo[]>([]);
 
   onMount(() => {
     loadAgentApps();

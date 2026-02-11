@@ -17,6 +17,7 @@
     isOpen = false;
   }
 
+  /** @param {import('../api/skills').LocalSkill} skill */
   async function handleOpenFolder(skill) {
     try {
       if (skill.canonical_path) {
@@ -27,6 +28,7 @@
     }
   }
 
+  /** @param {import('../api/skills').LocalSkill} skill */
   function handleImport(skill) {
     onImport(skill);
   }
@@ -36,6 +38,7 @@
     closeModal();
   }
 
+  /** @param {import('../api/skills').LocalSkill} skill */
   function handleDelete(skill) {
     onDelete(skill);
   }

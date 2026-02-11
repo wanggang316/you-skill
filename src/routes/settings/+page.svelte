@@ -11,16 +11,17 @@
   } from "../../lib/api";
   import { open } from "@tauri-apps/plugin-dialog";
   import { FolderOpen, Loader2, ChevronRight, Download, ChevronLeft } from "@lucide/svelte";
-  import { check } from "@tauri-apps/plugin-updater";
+  import { check, type Update } from "@tauri-apps/plugin-updater";
   import { relaunch } from "@tauri-apps/plugin-process";
   import { getVersion } from "@tauri-apps/api/app";
+  import type { DownloadEvent } from "@tauri-apps/plugin-updater";
 
   let checkingUpdate = $state(false);
   let updateMessage = $state("");
   let currentVersion = $state("");
   let hasUpdate = $state(false);
   let latestVersion = $state("");
-  let updateInstance = $state(null);
+  let updateInstance = $state<Update | null>(null);
   let isInstalling = $state(false);
   let downloadProgress = $state(0);
 
@@ -112,7 +113,7 @@
     isInstalling = true;
     downloadProgress = 0;
     try {
-      await updateInstance.downloadAndInstall((event) => {
+      await updateInstance.downloadAndInstall((event: DownloadEvent) => {
         switch (event.event) {
           case "Started":
             downloadProgress = 0;
@@ -222,7 +223,7 @@
               <select
                 class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
                 value={$settings.language}
-                onchange={(event) => updateSettings({ language: event.currentTarget.value })}
+                onchange={(event) => updateSettings({ language: event.currentTarget.value as import('../../lib/stores/settings').LanguageMode })}
               >
                 <option value="en">English</option>
                 <option value="zh">中文</option>
@@ -242,7 +243,7 @@
               <select
                 class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
                 value={$settings.theme}
-                onchange={(event) => updateSettings({ theme: event.currentTarget.value })}
+                onchange={(event) => updateSettings({ theme: event.currentTarget.value as import('../../lib/stores/settings').ThemeMode })}
               >
                 <option value="system">{$t("settings.theme.system")}</option>
                 <option value="light">{$t("settings.theme.light")}</option>
@@ -264,7 +265,7 @@
               <select
                 class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
                 value={$settings.syncMode}
-                onchange={(event) => updateSettings({ syncMode: event.currentTarget.value })}
+                onchange={(event) => updateSettings({ syncMode: event.currentTarget.value as import('../../lib/stores/settings').SyncMode })}
               >
                 <option value="symlink">{$t("settings.syncMode.symlink")}</option>
                 <option value="copy">{$t("settings.syncMode.copy")}</option>

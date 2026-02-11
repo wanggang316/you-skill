@@ -36,6 +36,7 @@
     onRefresh,
   } = $props();
 
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let searchTimeout = $state(null);
 
   const sortOptions = [
@@ -58,21 +59,25 @@
   }
 
   // Check if skill is already installed locally
+  /** @param {import('../api/skills').RemoteSkill} skill */
   function isInstalled(skill) {
     return localSkills.some((local) => local.name === skill.name);
   }
 
   // Check if skill has an update available
+  /** @param {import('../api/skills').RemoteSkill} skill */
   function hasUpdate(skill) {
     return skillsWithUpdate.some((s) => s.name === skill.name);
   }
 
   // Check if skill is currently updating
+  /** @param {import('../api/skills').RemoteSkill} skill */
   function isUpdating(skill) {
     return updatingSkills.includes(skill.name);
   }
 
   // Get the button text based on skill state
+  /** @param {import('../api/skills').RemoteSkill} skill */
   function getButtonText(skill) {
     if (isUpdating(skill)) return $t("remote.updating");
     if (hasUpdate(skill)) return $t("remote.update");

@@ -13,6 +13,7 @@
     onCancel = () => {},
   } = $props();
 
+  /** @type {string[]} */
   let selectedAgents = $state([]);
   let isInstalling = $state(false);
 

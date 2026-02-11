@@ -3,6 +3,7 @@
 
   let { agents = [], selectedIds = $bindable([]) } = $props();
 
+  /** @param {string} agentId */
   function toggleAgent(agentId) {
     if (selectedIds.includes(agentId)) {
       selectedIds = selectedIds.filter((id) => id !== agentId);
