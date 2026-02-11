@@ -365,8 +365,5 @@
     {/if}
   </div>
 
-  <AgentAppsModal
-    bind:open={agentAppsModalOpen}
-    onAppsChange={handleAgentAppsChange}
-  />
+  <AgentAppsModal bind:open={agentAppsModalOpen} onAppsChange={handleAgentAppsChange} />
 </section>

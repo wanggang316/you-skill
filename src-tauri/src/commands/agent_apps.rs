@@ -1,7 +1,6 @@
 use crate::agent_apps::{
-  add_user_agent_app, all_agent_apps, check_global_path_exists,
-  generate_id_from_display_name, get_agent_app, local_agent_apps,
-  refresh_local_agent_apps, remove_user_agent_app, UserAgentApp,
+  add_user_agent_app, all_agent_apps, check_global_path_exists, generate_id_from_display_name,
+  get_agent_app, local_agent_apps, refresh_local_agent_apps, remove_user_agent_app, UserAgentApp,
 };
 use crate::models::AgentInfo;
 
@@ -35,17 +34,19 @@ pub fn list_all_agent_apps() -> Result<Vec<AgentAppDetail>, String> {
   let local_apps_ids: std::collections::HashSet<String> =
     local_agent_apps().into_iter().map(|app| app.id).collect();
 
-  Ok(all_apps
-    .into_iter()
-    .map(|app| {
-      let is_installed = local_apps_ids.contains(&app.id);
-      let detail: AgentAppDetail = app.into();
-      AgentAppDetail {
-        is_installed,
-        ..detail
-      }
-    })
-    .collect())
+  Ok(
+    all_apps
+      .into_iter()
+      .map(|app| {
+        let is_installed = local_apps_ids.contains(&app.id);
+        let detail: AgentAppDetail = app.into();
+        AgentAppDetail {
+          is_installed,
+          ..detail
+        }
+      })
+      .collect(),
+  )
 }
 
 /// List local agent apps (installed on system)
@@ -131,7 +132,10 @@ pub fn validate_agent_app(
   // Check if display_name would generate a duplicate id
   let id = generate_id_from_display_name(&display_name);
   if get_agent_app(&id).is_some() {
-    errors.push(format!("An agent app with similar name already exists (id: {})", id));
+    errors.push(format!(
+      "An agent app with similar name already exists (id: {})",
+      id
+    ));
   }
 
   // Check if path format looks valid
@@ -156,18 +160,20 @@ pub fn list_internal_agent_apps() -> Result<Vec<AgentAppDetail>, String> {
   let local_apps_ids: std::collections::HashSet<String> =
     local_agent_apps().into_iter().map(|app| app.id).collect();
 
-  Ok(all_apps
-    .into_iter()
-    .filter(|app| app.is_internal)
-    .map(|app| {
-      let is_installed = local_apps_ids.contains(&app.id);
-      let detail: AgentAppDetail = app.into();
-      AgentAppDetail {
-        is_installed,
-        ..detail
-      }
-    })
-    .collect())
+  Ok(
+    all_apps
+      .into_iter()
+      .filter(|app| app.is_internal)
+      .map(|app| {
+        let is_installed = local_apps_ids.contains(&app.id);
+        let detail: AgentAppDetail = app.into();
+        AgentAppDetail {
+          is_installed,
+          ..detail
+        }
+      })
+      .collect(),
+  )
 }
 
 /// Get user agent apps
@@ -177,16 +183,18 @@ pub fn list_user_agent_apps() -> Result<Vec<AgentAppDetail>, String> {
   let local_apps_ids: std::collections::HashSet<String> =
     local_agent_apps().into_iter().map(|app| app.id).collect();
 
-  Ok(all_apps
-    .into_iter()
-    .filter(|app| !app.is_internal)
-    .map(|app| {
-      let is_installed = local_apps_ids.contains(&app.id);
-      let detail: AgentAppDetail = app.into();
-      AgentAppDetail {
-        is_installed,
-        ..detail
-      }
-    })
-    .collect())
+  Ok(
+    all_apps
+      .into_iter()
+      .filter(|app| !app.is_internal)
+      .map(|app| {
+        let is_installed = local_apps_ids.contains(&app.id);
+        let detail: AgentAppDetail = app.into();
+        AgentAppDetail {
+          is_installed,
+          ..detail
+        }
+      })
+      .collect(),
+  )
 }

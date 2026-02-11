@@ -20,11 +20,7 @@
     onAppsChange?: () => void;
   }
 
-  let {
-    open = $bindable(false),
-    onClose = () => {},
-    onAppsChange = () => {},
-  }: Props = $props();
+  let { open = $bindable(false), onClose = () => {}, onAppsChange = () => {} }: Props = $props();
 
   // State
   let internalApps = $state<AgentAppDetail[]>([]);
@@ -164,7 +160,7 @@
 </script>
 
 <Modal bind:open title={$t("agentApps.modalTitle")} onClose={handleClose}>
-  <div class="px-6 py-6 max-w-2xl">
+  <div class="max-w-2xl px-6 py-6">
     {#if loading}
       <div class="text-base-content-muted flex items-center justify-center py-12">
         <span class="loading loading-spinner loading-md"></span>
@@ -180,22 +176,18 @@
           </h4>
           <div class="bg-base-200 max-h-60 space-y-1 overflow-y-auto rounded-xl p-2">
             {#each internalApps as app}
-              <div
-                class="bg-base-100 flex items-center justify-between rounded-lg px-3 py-2.5"
-              >
+              <div class="bg-base-100 flex items-center justify-between rounded-lg px-3 py-2.5">
                 <div class="flex items-center gap-3">
                   <span class="text-base-content text-sm">{app.display_name}</span>
                   {#if isInstalled(app.id)}
                     <span
-                      class="text-success bg-success/10 text-xs rounded-full px-2 py-0.5 flex items-center gap-1"
+                      class="text-success bg-success/10 flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
                     >
                       <Check size={12} />
                       {$t("agentApps.installed")}
                     </span>
                   {:else}
-                    <span
-                      class="text-base-content-muted text-xs rounded-full px-2 py-0.5"
-                    >
+                    <span class="text-base-content-muted rounded-full px-2 py-0.5 text-xs">
                       {$t("agentApps.notInstalled")}
                     </span>
                   {/if}
@@ -222,22 +214,18 @@
               </div>
             {:else}
               {#each userApps as app}
-                <div
-                  class="bg-base-100 flex items-center justify-between rounded-lg px-3 py-2.5"
-                >
+                <div class="bg-base-100 flex items-center justify-between rounded-lg px-3 py-2.5">
                   <div class="flex items-center gap-3">
                     <span class="text-base-content text-sm">{app.display_name}</span>
                     {#if isInstalled(app.id)}
                       <span
-                        class="text-success bg-success/10 text-xs rounded-full px-2 py-0.5 flex items-center gap-1"
+                        class="text-success bg-success/10 flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
                       >
                         <Check size={12} />
                         {$t("agentApps.installed")}
                       </span>
                     {:else}
-                      <span
-                        class="text-base-content-muted text-xs rounded-full px-2 py-0.5"
-                      >
+                      <span class="text-base-content-muted rounded-full px-2 py-0.5 text-xs">
                         {$t("agentApps.notInstalled")}
                       </span>
                     {/if}
@@ -292,7 +280,7 @@
             </label>
             <input
               type="text"
-              class="bg-base-200 text-base-content w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              class="bg-base-200 text-base-content focus:ring-primary w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:outline-none"
               placeholder={$t("agentApps.displayNamePlaceholder")}
               bind:value={displayName}
               oninput={() => {
@@ -308,7 +296,7 @@
             </label>
             <input
               type="text"
-              class="bg-base-200 text-base-content w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              class="bg-base-200 text-base-content focus:ring-primary w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:outline-none"
               placeholder={$t("agentApps.globalPathPlaceholder")}
               bind:value={globalPath}
               oninput={() => {
@@ -324,7 +312,7 @@
             </label>
             <input
               type="text"
-              class="bg-base-200 text-base-content w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              class="bg-base-200 text-base-content focus:ring-primary w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:outline-none"
               placeholder={$t("agentApps.projectPathPlaceholder")}
               bind:value={projectPath}
             />
