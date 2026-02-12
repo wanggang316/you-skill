@@ -281,20 +281,13 @@
         <!-- Agent Apps -->
         <div class="bg-base-200 rounded-2xl px-4 py-2.5">
           <div class="flex items-center justify-between">
-            <div class="flex flex-col">
-              <span class="text-base-content text-[15px]">{$t("agentApps.title")}</span>
-              <span class="text-base-content-muted text-xs">
-                {installedAgentAppsCount > 0
-                  ? $t("local.section.managedCount", { count: installedAgentAppsCount })
-                  : $t("local.section.emptyManaged")}
-              </span>
-            </div>
+            <span class="text-base-content text-[15px]">{$t("agentApps.title")}</span>
             <button
               class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px]"
               onclick={navigateToAgentApps}
               type="button"
             >
-              {$t("agentApps.viewButton")}
+              {$t("agentApps.configButton")}
             </button>
           </div>
         </div>

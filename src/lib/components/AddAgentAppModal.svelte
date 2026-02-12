@@ -71,7 +71,7 @@
   }
 
   async function handleAdd() {
-    if (!displayName.trim() || !globalPath.trim()) {
+    if (!displayName.trim() || !globalPath.trim() || !projectPath.trim()) {
       return;
     }
 
@@ -116,7 +116,7 @@
     if (validationErrors.length === 0) {
       adding = true;
       try {
-        const projectPathValue = projectPath.trim() || undefined;
+        const projectPathValue = projectPath.trim();
         if (isEditMode && appToEdit) {
           await updateAgentApp(
             appToEdit.id,
@@ -222,7 +222,7 @@
       <button
         class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-6 py-2 text-sm transition disabled:opacity-50"
         onclick={handleAdd}
-        disabled={adding || validating || !displayName.trim() || !globalPath.trim()}
+        disabled={adding || validating || !displayName.trim() || !globalPath.trim() || !projectPath.trim()}
         type="button"
       >
         {#if validating}
