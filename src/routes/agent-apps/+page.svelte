@@ -11,6 +11,7 @@
   } from "../../lib/api";
   import { t } from "../../lib/i18n";
   import { Plus, Trash2, Check, Loader2, Pencil, ChevronLeft, RefreshCw } from "@lucide/svelte";
+  import IconButton from "../../lib/components/ui/IconButton.svelte";
   import AddAgentAppModal from "../../lib/components/AddAgentAppModal.svelte";
   import {
     listAgents,
@@ -93,7 +94,7 @@
   }
 
   function goBack() {
-    goto("/");
+    goto("/settings");
   }
 </script>
 
@@ -115,19 +116,18 @@
             {$t("agentApps.title")}
           </h1>
         </div>
-        <button
-          class="border-base-300 text-base-content hover:bg-base-200 flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition disabled:opacity-50"
+        <IconButton
+          variant="outline"
           onclick={loadAgentApps}
           disabled={loading}
-          type="button"
+          title={$t("local.refresh")}
         >
           {#if loading}
             <Loader2 size={16} class="animate-spin" />
           {:else}
             <RefreshCw size={16} />
           {/if}
-          {$t("local.refresh")}
-        </button>
+        </IconButton>
       </div>
     </div>
   </header>
@@ -171,47 +171,31 @@
               <div class="grid grid-cols-2 gap-2">
                 {#each userApps as app}
                   <div
-                    class="bg-base-200 hover:bg-base-300 flex flex-col justify-between gap-2 rounded-xl px-3 py-2"
+                    class="bg-base-200 hover:bg-base-300 flex items-center justify-between rounded-xl px-3 py-2"
                   >
-                    <div class="flex items-start justify-between gap-2">
+                    <div class="flex min-w-0 flex-col">
                       <span class="text-base-content text-xs font-medium">{app.display_name}</span>
-                      <div class="flex gap-1">
-                        <button
-                          class="text-base-content hover:bg-base-200 shrink-0 rounded p-0.5"
-                          onclick={() => openEditModal(app)}
-                          type="button"
-                          title={$t("agentApps.edit")}
-                        >
-                          <Pencil size={10} />
-                        </button>
-                        <button
-                          class="text-error hover:bg-error/10 shrink-0 rounded p-0.5"
-                          onclick={() => handleRemove(app.id, app.display_name)}
-                          type="button"
-                          title={$t("agentApps.remove")}
-                        >
-                          <Trash2 size={10} />
-                        </button>
-                      </div>
-                    </div>
-                    <div class="flex items-center justify-between gap-2">
                       {#if app.global_path}
-                        <span class="text-base-content/50 truncate text-[10px]">{app.global_path}</span>
+                        <span class="text-base-content/50 mt-0.5 truncate text-[10px]">{app.global_path}</span>
                       {/if}
-                      {#if isInstalled(app.id)}
-                        <span
-                          class="text-success bg-success/10 flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
-                        >
-                          <Check size={10} />
-                          {$t("agentApps.installed")}
-                        </span>
-                      {:else}
-                        <span
-                          class="text-base-content-muted shrink-0 rounded-full px-2 py-0.5 text-[10px]"
-                        >
-                          {$t("agentApps.notInstalled")}
-                        </span>
-                      {/if}
+                    </div>
+                    <div class="flex shrink-0 gap-1">
+                      <button
+                        class="text-base-content hover:bg-base-200 rounded p-1.5"
+                        onclick={() => openEditModal(app)}
+                        type="button"
+                        title={$t("agentApps.edit")}
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        class="text-error hover:bg-error/10 rounded p-1.5"
+                        onclick={() => handleRemove(app.id, app.display_name)}
+                        type="button"
+                        title={$t("agentApps.remove")}
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   </div>
                 {/each}
