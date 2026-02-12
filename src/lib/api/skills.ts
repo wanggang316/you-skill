@@ -62,6 +62,7 @@ export interface AgentInfo {
   display_name: string;
   project_path?: string | null;
   global_path?: string | null;
+  is_user_custom: boolean;
 }
 
 export interface CanonicalCheckResult {

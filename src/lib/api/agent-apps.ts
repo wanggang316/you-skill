@@ -9,43 +9,36 @@ import type { AgentInfo } from "./skills";
 
 // ============ Types ============
 
-export interface AgentAppDetail {
-  id: string;
-  display_name: string;
-  project_path: string | null;
-  global_path: string | null;
-  is_internal: boolean;
-  is_installed: boolean;
-}
+export type AgentApp = AgentInfo;
 
 // ============ Agent Apps ============
 
 /**
  * 获取本地已安装的 Agent 应用列表
  */
-export async function listLocalAgentApps(): Promise<AgentInfo[]> {
-  return apiCall<AgentInfo[]>("list_local_agent_apps");
+export async function listLocalAgentApps(): Promise<AgentApp[]> {
+  return apiCall<AgentApp[]>("list_local_agent_apps");
 }
 
 /**
  * 刷新 Agent 应用 - 清除缓存并重新扫描文件系统
  */
-export async function refreshAgentApps(): Promise<AgentInfo[]> {
-  return apiCall<AgentInfo[]>("refresh_agent_apps");
+export async function refreshAgentApps(): Promise<AgentApp[]> {
+  return apiCall<AgentApp[]>("refresh_agent_apps");
 }
 
 /**
  * 获取内置 Agent 应用列表
  */
-export async function listInternalAgentApps(): Promise<AgentAppDetail[]> {
-  return apiCall<AgentAppDetail[]>("list_internal_agent_apps");
+export async function listInternalAgentApps(): Promise<AgentApp[]> {
+  return apiCall<AgentApp[]>("list_internal_agent_apps");
 }
 
 /**
  * 获取用户自定义 Agent 应用列表
  */
-export async function listUserAgentApps(): Promise<AgentAppDetail[]> {
-  return apiCall<AgentAppDetail[]>("list_user_agent_apps");
+export async function listUserAgentApps(): Promise<AgentApp[]> {
+  return apiCall<AgentApp[]>("list_user_agent_apps");
 }
 
 /**
@@ -55,8 +48,8 @@ export async function addAgentApp(
   displayName: string,
   globalPath: string,
   projectPath?: string
-): Promise<AgentAppDetail> {
-  return apiCall<AgentAppDetail>("add_user_agent_app", {
+): Promise<AgentApp> {
+  return apiCall<AgentApp>("add_user_agent_app", {
     displayName,
     globalPath,
     projectPath,
@@ -78,8 +71,8 @@ export async function updateAgentApp(
   displayName: string,
   globalPath: string,
   projectPath?: string
-): Promise<AgentAppDetail> {
-  return apiCall<AgentAppDetail>("update_user_agent_app", {
+): Promise<AgentApp> {
+  return apiCall<AgentApp>("update_user_agent_app", {
     id,
     displayName,
     globalPath,

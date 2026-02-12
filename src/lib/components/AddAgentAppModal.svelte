@@ -1,13 +1,13 @@
 <script lang="ts">
   import { t } from "../i18n";
-  import { addAgentApp, updateAgentApp, type AgentAppDetail } from "../api";
+  import { addAgentApp, updateAgentApp, type AgentApp } from "../api";
   import Modal from "./ui/Modal.svelte";
   import { Folder, Loader2 } from "@lucide/svelte";
 
   interface Props {
     open?: boolean;
     onAppsChange?: () => void;
-    appToEdit?: AgentAppDetail | null;
+    appToEdit?: AgentApp | null;
   }
 
   let { open = $bindable(false), onAppsChange = () => {}, appToEdit = null }: Props = $props();

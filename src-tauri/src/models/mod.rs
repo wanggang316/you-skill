@@ -1,3 +1,7 @@
+pub mod agent_app;
+
+pub use agent_app::AgentApp;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -11,14 +15,6 @@ pub struct LocalSkill {
   pub name_conflict: bool,
   pub created_at: Option<i64>,
   pub conflict_with_managed: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AgentInfo {
-  pub id: String,
-  pub display_name: String,
-  pub project_path: Option<String>,
-  pub global_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

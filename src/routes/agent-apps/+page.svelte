@@ -7,7 +7,7 @@
     listUserAgentApps,
     removeAgentApp,
     refreshAgentApps,
-    type AgentAppDetail,
+    type AgentApp,
   } from "../../lib/api";
   import { t } from "../../lib/i18n";
   import { Plus, Trash2, Check, Loader2, Pencil, ChevronLeft, RefreshCw } from "@lucide/svelte";
@@ -19,13 +19,13 @@
   } from "../../lib/api/skills";
 
   // State
-  let internalApps = $state<AgentAppDetail[]>([]);
-  let userApps = $state<AgentAppDetail[]>([]);
+  let internalApps = $state<AgentApp[]>([]);
+  let userApps = $state<AgentApp[]>([]);
   let localAppsIds = $state<Set<string>>(new Set());
   let loading = $state(false);
   let error = $state("");
   let showAddModal = $state(false);
-  let editingApp = $state<AgentAppDetail | null>(null);
+  let editingApp = $state<AgentApp | null>(null);
 
   let agents = $state<AgentInfo[]>([]);
 
@@ -70,7 +70,7 @@
     showAddModal = true;
   }
 
-  function openEditModal(app: AgentAppDetail) {
+  function openEditModal(app: AgentApp) {
     editingApp = app;
     showAddModal = true;
   }
