@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
-  import { goto } from "$app/navigation";
+    import { goto } from "$app/navigation";
   import PageHeader from "../lib/components/PageHeader.svelte";
   import { t } from "../lib/i18n";
   import { loadSettings } from "../lib/stores/settings";
@@ -122,17 +122,14 @@
 
   const unmanagedCount = $derived(unmanagedSkills.length);
 
-  // Initialize and load shared data on mount
-  onMount(() => {
-    const init = async () => {
-      await loadSettings();
-      await checkForUpdate();
-      await loadAgents();
-      await refreshLocal();
-      await loadRemote(true);
-    };
+  // Track if remote skills have been loaded
+  let remoteLoaded = $state(false);
 
-    init();
+  // Initialize and load shared data on mount - 只加载本地数据
+  onMount(() => {
+    // 只加载首屏必需的本地数据
+    loadAgents().catch(console.error);
+    refreshLocal().catch(console.error);
 
     // Listen for tray menu events
     listen("open-install-modal", () => {
@@ -169,12 +166,15 @@
     localError = "";
     try {
       localSkills = await scanLocalSkills();
+
       try {
         await updateTraySkills(localSkills);
       } catch (e) {
         console.error("Failed to update tray skills:", e);
       }
-      await checkForSkillUpdates();
+
+      // 延迟检查更新，不阻塞首屏
+      setTimeout(() => checkForSkillUpdates().catch(console.error), 100);
     } catch (error) {
       localError = String(error);
     } finally {
@@ -612,11 +612,19 @@
     }
   };
 
-  // Handle tab change and trigger update check when switching to local
+  // Handle tab change - 延迟加载非关键数据
   const handleTabChange = (tab: string) => {
     activeTab = tab;
+
+    // 切换到远程标签时，首次加载远程数据
+    if (tab === "remote" && !remoteLoaded) {
+      remoteLoaded = true;
+      loadRemote(true).catch(console.error);
+    }
+
+    // 切换到本地标签时，延迟检查更新（非阻塞）
     if (tab === "local" && localSkills.length > 0) {
-      checkForSkillUpdates();
+      setTimeout(() => checkForSkillUpdates().catch(console.error), 50);
     }
   };
 
@@ -628,78 +636,78 @@
 
 <div class="bg-base-100 text-base-content flex h-screen flex-col overflow-hidden">
   <PageHeader
-    currentView={selectedSkill ? "detail" : "list"}
-    activeTab={activeTab}
-    skillName={selectedSkill?.name || ""}
-    {unmanagedCount}
-    {hasUpdate}
-    agentAppsLoading={false}
-    onChangeTab={handleTabChange}
-    onAddSkill={() => addSkillModalOpen = true}
-    onOpenPendingImport={() => pendingImportModalOpenState = true}
-    onOpenUpdate={navigateToSettings}
-    onBack={selectedSkill ? handleBackToList : () => {}}
-    onDetailAction={handleDetailAction}
-    onRefreshAgentApps={() => {}}
-  />
+      currentView={selectedSkill ? "detail" : "list"}
+      activeTab={activeTab}
+      skillName={selectedSkill?.name || ""}
+      {unmanagedCount}
+      {hasUpdate}
+      agentAppsLoading={false}
+      onChangeTab={handleTabChange}
+      onAddSkill={() => addSkillModalOpen = true}
+      onOpenPendingImport={() => pendingImportModalOpenState = true}
+      onOpenUpdate={navigateToSettings}
+      onBack={selectedSkill ? handleBackToList : () => {}}
+      onDetailAction={handleDetailAction}
+      onRefreshAgentApps={() => {}}
+    />
 
-  <main class="flex-1 overflow-y-auto">
-    <div class="mx-auto max-w-6xl px-6 py-6">
-      {#if selectedSkill}
-        <SkillDetail
-          skill={selectedSkill}
-          type={"canonical_path" in selectedSkill ? "local" : "remote"}
-          {agents}
-        />
-      {:else if activeTab === "local"}
-        <LocalSkillsSection
-          bind:localSearch
-          bind:localAgent
-          {agents}
-          {localLoading}
-          {localError}
-          {filteredLocalSkills}
-          {managedSkills}
-          {unmanagedSkills}
-          {agentMap}
-          {skillsWithUpdate}
-          {updatingSkills}
-          onRefresh={refreshLocal}
-          onDeleteSkill={handleDeleteSkill}
-          onBulkUnify={handleBulkUnify}
-          onUnifySkill={handleUnify}
-          onViewSkill={handleViewSkill}
-          onOpenPendingImport={() => (pendingImportModalOpenState = true)}
-          onOpenSelectAgentModal={openSelectAgentModal}
-          onUpdateSkill={handleUpdateSkill}
-        />
-      {:else}
-        <RemoteSkillsSection
-          bind:remoteQuery
-          bind:remoteSortBy
-          bind:remoteSortOrder
-          {localSkills}
-          {remoteLoading}
-          {remoteSkills}
-          {remoteError}
-          {installLog}
-          {installingSkill}
-          {isDownloading}
-          {remoteHasMore}
-          {remoteTotal}
-          {skillsWithUpdate}
-          {updatingSkills}
-          onSearch={handleSearchRemote}
-          onLoadMore={loadMoreRemote}
-          onInstall={handleInstall}
-          onUpdateSkill={handleUpdateSkill}
-          onViewSkill={handleViewSkill}
-          onSortChange={handleSortChange}
-          onRefresh={handleSearchRemote}
-        />
-      {/if}
-    </div>
-  </main>
+    <main class="flex-1 overflow-y-auto">
+      <div class="mx-auto max-w-6xl px-6 py-6">
+        {#if selectedSkill}
+          <SkillDetail
+            skill={selectedSkill}
+            type={"canonical_path" in selectedSkill ? "local" : "remote"}
+            {agents}
+          />
+        {:else if activeTab === "local"}
+          <LocalSkillsSection
+            bind:localSearch
+            bind:localAgent
+            {agents}
+            {localLoading}
+            {localError}
+            {filteredLocalSkills}
+            {managedSkills}
+            {unmanagedSkills}
+            {agentMap}
+            {skillsWithUpdate}
+            {updatingSkills}
+            onRefresh={refreshLocal}
+            onDeleteSkill={handleDeleteSkill}
+            onBulkUnify={handleBulkUnify}
+            onUnifySkill={handleUnify}
+            onViewSkill={handleViewSkill}
+            onOpenPendingImport={() => (pendingImportModalOpenState = true)}
+            onOpenSelectAgentModal={openSelectAgentModal}
+            onUpdateSkill={handleUpdateSkill}
+          />
+        {:else}
+          <RemoteSkillsSection
+            bind:remoteQuery
+            bind:remoteSortBy
+            bind:remoteSortOrder
+            {localSkills}
+            {remoteLoading}
+            {remoteSkills}
+            {remoteError}
+            {installLog}
+            {installingSkill}
+            {isDownloading}
+            {remoteHasMore}
+            {remoteTotal}
+            {skillsWithUpdate}
+            {updatingSkills}
+            onSearch={handleSearchRemote}
+            onLoadMore={loadMoreRemote}
+            onInstall={handleInstall}
+            onUpdateSkill={handleUpdateSkill}
+            onViewSkill={handleViewSkill}
+            onSortChange={handleSortChange}
+            onRefresh={handleSearchRemote}
+          />
+        {/if}
+      </div>
+    </main>
 </div>
 
 <!-- Select Agent Modal -->

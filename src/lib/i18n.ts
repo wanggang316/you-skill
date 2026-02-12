@@ -179,6 +179,7 @@ const translations: Record<string, Dictionary> = {
     "agentApps.removeSuccess": "Agent app removed successfully",
     "agentApps.addError": "Failed to add agent app",
     "agentApps.edit": "Edit",
+    "app.loading": "Initializing...",
   },
   zh: {
     "header.subtitle": "本地管理与一键安装",
@@ -355,6 +356,7 @@ const translations: Record<string, Dictionary> = {
     "agentApps.removeSuccess": "Agent 应用移除成功",
     "agentApps.addError": "添加 Agent 应用失败",
     "agentApps.edit": "编辑",
+    "app.loading": "正在初始化...",
   },
 };
 

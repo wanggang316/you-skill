@@ -21,13 +21,9 @@
       localStorage.setItem("theme", "system");
     }
 
-    // Load settings and check for updates
-    const init = async () => {
-      await loadSettings();
-      await checkForUpdate();
-    };
-
-    init();
+    // Load settings and check for updates - 不阻塞渲染
+    loadSettings().catch(console.error);
+    checkForUpdate().catch(console.error);
 
     return () => {};
   });

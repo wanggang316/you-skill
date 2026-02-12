@@ -12,12 +12,13 @@
   "app": {
     "windows": [
       {
-        "title": "",
+        "title": "YouSkill",
         "width": 720,
         "height": 800,
         "minWidth": 600,
         "minHeight": 600,
-        "resizable": true
+        "resizable": true,
+        "center": true
       }
     ],
     "security": {
