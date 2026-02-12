@@ -462,14 +462,13 @@
       if (!skill || linkBusy) return;
       linkBusy = true;
       try {
-        const currentSet = new Set(skill.agents || []);
-        const targetSet = new Set(selectedAgents);
-        for (const agent of agents) {
-          const shouldLink = targetSet.has(agent.id);
-          const isLinked = currentSet.has(agent.id);
-          if (shouldLink !== isLinked) {
-            await setAgentLink(skill.name, agent.id, skill.scope, shouldLink);
-          }
+        // First: unlink all currently linked agents
+        for (const agentId of skill.agents || []) {
+          await setAgentLink(skill.name, agentId, skill.scope, false);
+        }
+        // Then: re-link selected agents
+        for (const agentId of selectedAgents) {
+          await setAgentLink(skill.name, agentId, skill.scope, true);
         }
         await refreshLocal();
       } catch (error) {
@@ -561,7 +560,7 @@
         title: $t("confirm.deleteTitle"),
       });
       if (!confirmed) return;
-      await deleteSkillComplete(skill.canonical_path, skill.scope, skill.agents || []);
+      await deleteSkillComplete(skill.name, skill.canonical_path, skill.scope, skill.agents || []);
       await refreshLocal();
     } catch (error) {
       localError = String(error);

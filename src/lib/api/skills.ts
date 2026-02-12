@@ -146,11 +146,13 @@ export async function deleteSkill(path: string): Promise<void> {
  * 完整删除技能（先删除软链接，再删除源文件）
  */
 export async function deleteSkillComplete(
+  name: string,
   canonicalPath: string,
   scope: string,
   agents: string[]
 ): Promise<void> {
   return apiCall<void>("delete_skill_complete", {
+    name,
     canonicalPath,
     scope,
     agents,
@@ -312,7 +314,7 @@ export async function openInFileManager(filePath: string): Promise<void> {
  * 记录技能安装
  */
 export async function recordInstall(skillId: string): Promise<void> {
-  return apiCall<void>("record_skill_install", { skill_id: skillId });
+  return apiCall<void>("record_skill_install", { skillId: skillId });
 }
 
 /**

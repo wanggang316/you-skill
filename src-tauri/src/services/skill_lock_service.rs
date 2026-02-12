@@ -6,6 +6,7 @@ const AGENTS_DIR: &str = ".agents";
 const LOCK_FILE: &str = ".skill-lock.json";
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SkillLockEntry {
   pub source: String,
   pub source_type: String,

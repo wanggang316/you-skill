@@ -1,6 +1,7 @@
 use crate::services::skill_lock_service::{SkillLockEntry, SkillLockFile};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct SkillLockEntryWithoutTimestamps {
   pub source: String,
   pub source_type: String,

@@ -1,6 +1,7 @@
 use crate::config::load_config;
 use crate::models::{CanonicalCheckResult, UnifyRequest, UnifyResult};
-use crate::paths::agent_paths;
+use crate::services::agent_apps_service::{expand_tilde, local_agent_apps};
+use crate::services::skill_lock_service;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -18,12 +19,14 @@ pub fn delete_skill(path: String) -> Result<(), String> {
 }
 
 /// Delete a skill completely:
-/// 1. First remove symlinks/copies from all agent directories
-/// 2. Then delete the canonical source file in .agents/skills/
+/// 1. First remove symlinks/copies from ALL agent directories (built-in + custom)
+/// 2. Then delete the canonical source folder in .agents/skills/
+/// 3. Then remove the entry from .skill-lock.json
 pub fn delete_skill_complete(
+  name: String,
   canonical_path: String,
-  scope: String,
-  agents: Vec<String>,
+  _scope: String,
+  _agents: Vec<String>,
 ) -> Result<(), String> {
   let skill_path = PathBuf::from(&canonical_path);
 
@@ -33,22 +36,40 @@ pub fn delete_skill_complete(
     .map(|s| s.to_string_lossy().to_string())
     .ok_or("无法获取技能文件夹名")?;
 
-  // Step 1: Remove symlinks/copies from all agent directories
-  for agent_id in &agents {
-    if let Ok(agent_dir) = agent_skills_dir(agent_id, &scope) {
-      let link_path = agent_dir.join(&folder_name);
-      if link_path.exists() || link_path.is_symlink() {
-        remove_path(&link_path)?;
+  let cwd = env::current_dir().map_err(|e| e.to_string())?;
+
+  // Step 1: Remove symlinks/copies from ALL locally installed agent directories
+  for app in local_agent_apps() {
+    let mut dirs_to_check: Vec<PathBuf> = Vec::new();
+    if let Some(ref project_path) = app.project_path {
+      dirs_to_check.push(cwd.join(project_path));
+    }
+    if let Some(ref global_path) = app.global_path {
+      dirs_to_check.push(expand_tilde(global_path));
+    }
+    for dir in dirs_to_check {
+      let link_path = dir.join(&folder_name);
+      if link_path.exists() || is_symlink(&link_path) {
+        let _ = remove_path(&link_path);
       }
     }
   }
 
-  // Step 2: Delete the canonical source file
+  // Step 2: Delete the canonical source folder
   if skill_path.exists() {
     remove_path(&skill_path)?;
   }
 
+  // Step 3: Remove from .skill-lock.json
+  let _ = skill_lock_service::remove_skill_from_lock(name);
+
   Ok(())
+}
+
+fn is_symlink(path: &Path) -> bool {
+  fs::symlink_metadata(path)
+    .map(|m| m.file_type().is_symlink())
+    .unwrap_or(false)
 }
 
 pub fn move_skill(from: String, to: String) -> Result<(), String> {
@@ -283,7 +304,7 @@ fn ensure_symlink_dir(target: &Path, link_path: &Path) -> Result<(), String> {
 }
 
 fn remove_symlink_if_points_to(link_path: &Path, target: &Path) -> Result<(), String> {
-  if !link_path.exists() {
+  if !link_path.exists() && !is_symlink(link_path) {
     return Ok(());
   }
   let meta = fs::symlink_metadata(link_path).map_err(|e| e.to_string())?;
@@ -299,25 +320,31 @@ fn remove_symlink_if_points_to(link_path: &Path, target: &Path) -> Result<(), St
       .unwrap_or_else(|| Path::new("/"))
       .join(current_target)
   };
-  if resolved != target {
-    return Err("软链接指向不同路径，已取消操作".to_string());
+  // Canonicalize both paths to handle symlink differences (e.g. /Users vs /private/Users on macOS)
+  let resolved_canonical = fs::canonicalize(&resolved).unwrap_or(resolved);
+  let target_canonical = fs::canonicalize(target).unwrap_or_else(|_| target.to_path_buf());
+  if resolved_canonical != target_canonical {
+    return Err(format!(
+      "软链接指向不同路径，已取消操作 (link -> {}, expected {})",
+      resolved_canonical.display(),
+      target_canonical.display()
+    ));
   }
   fs::remove_file(link_path).map_err(|e| e.to_string())
 }
 
 fn agent_skills_dir(agent_id: &str, scope: &str) -> Result<PathBuf, String> {
-  let agent = agent_paths()
+  let app = local_agent_apps()
     .into_iter()
-    .find(|item| item.id == agent_id)
+    .find(|a| a.id == agent_id)
     .ok_or("未知的应用类型")?;
 
+  let (global_path, project_path) = (app.global_path, app.project_path);
+
   let path = if scope == "global" {
-    agent.global_path.ok_or("该应用不支持全局安装")?.to_string()
+    global_path.ok_or("该应用不支持全局安装")?
   } else {
-    agent
-      .project_path
-      .ok_or("该应用不支持项目安装")?
-      .to_string()
+    project_path.ok_or("该应用不支持项目安装")?
   };
 
   let resolved = if path.starts_with("~/") {

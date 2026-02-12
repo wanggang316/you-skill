@@ -8,11 +8,12 @@ pub fn delete_skill(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn delete_skill_complete(
+  name: String,
   canonical_path: String,
   scope: String,
   agents: Vec<String>,
 ) -> Result<(), String> {
-  manage_service::delete_skill_complete(canonical_path, scope, agents)
+  manage_service::delete_skill_complete(name, canonical_path, scope, agents)
 }
 
 #[tauri::command]

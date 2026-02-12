@@ -1,6 +1,6 @@
 use crate::config::{load_config, normalize_path};
 use crate::models::LocalSkill;
-use crate::paths::agent_paths;
+use crate::services::agent_apps_service::{expand_tilde, local_agent_apps};
 use serde_yaml::Value;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -57,13 +57,14 @@ pub fn scan_local_skills() -> Result<Vec<LocalSkill>, String> {
     &mut managed_names,
   );
 
-  for agent in agent_paths() {
-    if let Some(project) = agent.project_path {
-      let dir = cwd.join(project);
+  // Scan all locally installed agent apps (built-in + custom)
+  for app in local_agent_apps() {
+    if let Some(ref project_path) = app.project_path {
+      let dir = cwd.join(project_path);
       collect_agent_skills(
         &dir,
         "project",
-        agent.id,
+        &app.id,
         &project_canonical,
         &global_canonical,
         &mut managed_map,
@@ -71,19 +72,18 @@ pub fn scan_local_skills() -> Result<Vec<LocalSkill>, String> {
         &mut unmanaged_list,
       );
     }
-    if let Some(global) = agent.global_path {
-      if let Some(dir) = expand_home(global) {
-        collect_agent_skills(
-          &dir,
-          "global",
-          agent.id,
-          &project_canonical,
-          &global_canonical,
-          &mut managed_map,
-          &mut managed_names,
-          &mut unmanaged_list,
-        );
-      }
+    if let Some(ref global_path) = app.global_path {
+      let dir = expand_tilde(global_path);
+      collect_agent_skills(
+        &dir,
+        "global",
+        &app.id,
+        &project_canonical,
+        &global_canonical,
+        &mut managed_map,
+        &mut managed_names,
+        &mut unmanaged_list,
+      );
     }
   }
 

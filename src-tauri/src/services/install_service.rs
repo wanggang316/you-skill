@@ -1,5 +1,5 @@
 use crate::models::{DetectedSkill, InstallResult};
-use crate::paths::agent_paths;
+use crate::services::agent_apps_service::local_agent_apps;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -312,56 +312,7 @@ pub fn install_zip_skill(
   }
 
   // Create symlinks for selected agents
-  let agent_paths = agent_paths();
-  let mut errors = Vec::new();
-
-  for agent_id in &agents {
-    if let Some(agent) = agent_paths.iter().find(|a| a.id == *agent_id) {
-      if let Some(global_path) = agent.global_path {
-        let expanded_path = expand_tilde(global_path)?;
-        let agent_skill_dir = Path::new(&expanded_path);
-
-        // Ensure parent directory exists
-        if let Some(parent) = agent_skill_dir.parent() {
-          fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-
-        // Create symlink
-        let symlink_path = agent_skill_dir.join(&skill_name);
-
-        // Remove existing symlink or directory
-        if symlink_path.exists() || symlink_path.is_symlink() {
-          if symlink_path.is_dir() && !symlink_path.is_symlink() {
-            fs::remove_dir_all(&symlink_path).map_err(|e| e.to_string())?;
-          } else {
-            fs::remove_file(&symlink_path).map_err(|e| e.to_string())?;
-          }
-        }
-
-        #[cfg(unix)]
-        {
-          use std::os::unix::fs::symlink;
-          if let Err(e) = symlink(&skill_dir, &symlink_path) {
-            errors.push(format!("{}: {}", agent.display_name, e));
-          }
-        }
-
-        #[cfg(windows)]
-        {
-          use std::os::windows::fs::symlink_dir;
-          if let Err(e) = symlink_dir(&skill_dir, &symlink_path) {
-            // On Windows, if symlink fails, copy directory instead
-            if let Err(copy_err) = copy_dir_all(&skill_dir, &symlink_path) {
-              errors.push(format!(
-                "{}: symlink failed ({}), copy failed ({})",
-                agent.display_name, e, copy_err
-              ));
-            }
-          }
-        }
-      }
-    }
-  }
+  let errors = create_agent_symlinks(&agents, &skill_name, &skill_dir);
 
   if errors.is_empty() {
     Ok(InstallResult {
@@ -455,56 +406,7 @@ pub fn install_github_skill(
   copy_dir_all_sync(&source_dir, &target_dir)?;
 
   // Create symlinks for selected agents
-  let agent_paths = agent_paths();
-  let mut errors = Vec::new();
-
-  for agent_id in &agents {
-    if let Some(agent) = agent_paths.iter().find(|a| a.id == *agent_id) {
-      if let Some(global_path) = agent.global_path {
-        let expanded_path = expand_tilde(global_path)?;
-        let agent_skill_dir = Path::new(&expanded_path);
-
-        // Ensure parent directory exists
-        if let Some(parent) = agent_skill_dir.parent() {
-          fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-
-        // Create symlink
-        let symlink_path = agent_skill_dir.join(&skill_name);
-
-        // Remove existing symlink or directory
-        if symlink_path.exists() || symlink_path.is_symlink() {
-          if symlink_path.is_dir() && !symlink_path.is_symlink() {
-            fs::remove_dir_all(&symlink_path).map_err(|e| e.to_string())?;
-          } else {
-            fs::remove_file(&symlink_path).map_err(|e| e.to_string())?;
-          }
-        }
-
-        #[cfg(unix)]
-        {
-          use std::os::unix::fs::symlink;
-          if let Err(e) = symlink(&target_dir, &symlink_path) {
-            errors.push(format!("{}: {}", agent.display_name, e));
-          }
-        }
-
-        #[cfg(windows)]
-        {
-          use std::os::windows::fs::symlink_dir;
-          if let Err(e) = symlink_dir(&target_dir, &symlink_path) {
-            // On Windows, if symlink fails, copy directory instead
-            if let Err(copy_err) = copy_dir_all_sync(&target_dir, &symlink_path) {
-              errors.push(format!(
-                "{}: symlink failed ({}), copy failed ({})",
-                agent.display_name, e, copy_err
-              ));
-            }
-          }
-        }
-      }
-    }
-  }
+  let errors = create_agent_symlinks(&agents, &skill_name, &target_dir);
 
   // Clean up temp directory
   let _ = fs::remove_dir_all(&temp_dir);
@@ -573,56 +475,7 @@ pub fn install_folder_skill(
   copy_dir_all_sync(&source_dir, &target_dir)?;
 
   // Create symlinks for selected agents
-  let agent_paths = agent_paths();
-  let mut errors = Vec::new();
-
-  for agent_id in &agents {
-    if let Some(agent) = agent_paths.iter().find(|a| a.id == *agent_id) {
-      if let Some(global_path) = agent.global_path {
-        let expanded_path = expand_tilde(global_path)?;
-        let agent_skill_dir = Path::new(&expanded_path);
-
-        // Ensure parent directory exists
-        if let Some(parent) = agent_skill_dir.parent() {
-          fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-
-        // Create symlink
-        let symlink_path = agent_skill_dir.join(&skill_name);
-
-        // Remove existing symlink or directory
-        if symlink_path.exists() || symlink_path.is_symlink() {
-          if symlink_path.is_dir() && !symlink_path.is_symlink() {
-            fs::remove_dir_all(&symlink_path).map_err(|e| e.to_string())?;
-          } else {
-            fs::remove_file(&symlink_path).map_err(|e| e.to_string())?;
-          }
-        }
-
-        #[cfg(unix)]
-        {
-          use std::os::unix::fs::symlink;
-          if let Err(e) = symlink(&target_dir, &symlink_path) {
-            errors.push(format!("{}: {}", agent.display_name, e));
-          }
-        }
-
-        #[cfg(windows)]
-        {
-          use std::os::windows::fs::symlink_dir;
-          if let Err(e) = symlink_dir(&target_dir, &symlink_path) {
-            // On Windows, if symlink fails, copy directory instead
-            if let Err(copy_err) = copy_dir_all_sync(&target_dir, &symlink_path) {
-              errors.push(format!(
-                "{}: symlink failed ({}), copy failed ({})",
-                agent.display_name, e, copy_err
-              ));
-            }
-          }
-        }
-      }
-    }
-  }
+  let errors = create_agent_symlinks(&agents, &skill_name, &target_dir);
 
   if errors.is_empty() {
     Ok(InstallResult {
@@ -665,13 +518,59 @@ fn extract_zip(zip_path: &str, dest_dir: &Path) -> Result<(), String> {
   Ok(())
 }
 
-fn expand_tilde(path: &str) -> Result<String, String> {
-  if path.starts_with("~/") {
-    let home = dirs::home_dir().ok_or("Could not find home directory")?;
-    Ok(path.replace("~", home.to_string_lossy().as_ref()))
-  } else {
-    Ok(path.to_string())
+/// Create symlinks from canonical skill dir to selected agent app directories
+fn create_agent_symlinks(agents: &[String], skill_name: &str, skill_dir: &Path) -> Vec<String> {
+  use crate::services::agent_apps_service::expand_tilde;
+
+  let local_apps = local_agent_apps();
+  let mut errors = Vec::new();
+
+  for agent_id in agents {
+    if let Some(app) = local_apps.iter().find(|a| a.id == *agent_id) {
+      if let Some(ref global_path) = app.global_path {
+        let expanded_path = expand_tilde(global_path);
+        let agent_skill_dir = &expanded_path;
+
+        // Ensure directory exists
+        fs::create_dir_all(agent_skill_dir).ok();
+
+        // Create symlink
+        let symlink_path = agent_skill_dir.join(skill_name);
+
+        // Remove existing symlink or directory
+        if symlink_path.exists() || symlink_path.is_symlink() {
+          if symlink_path.is_dir() && !symlink_path.is_symlink() {
+            let _ = fs::remove_dir_all(&symlink_path);
+          } else {
+            let _ = fs::remove_file(&symlink_path);
+          }
+        }
+
+        #[cfg(unix)]
+        {
+          use std::os::unix::fs::symlink;
+          if let Err(e) = symlink(skill_dir, &symlink_path) {
+            errors.push(format!("{}: {}", app.display_name, e));
+          }
+        }
+
+        #[cfg(windows)]
+        {
+          use std::os::windows::fs::symlink_dir;
+          if let Err(e) = symlink_dir(skill_dir, &symlink_path) {
+            if let Err(copy_err) = copy_dir_all_sync(skill_dir, &symlink_path) {
+              errors.push(format!(
+                "{}: symlink failed ({}), copy failed ({})",
+                app.display_name, e, copy_err
+              ));
+            }
+          }
+        }
+      }
+    }
   }
+
+  errors
 }
 
 #[cfg(windows)]

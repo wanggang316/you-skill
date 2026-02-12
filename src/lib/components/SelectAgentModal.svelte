@@ -54,7 +54,7 @@
       </p>
 
       <!-- Agent List -->
-      <AgentSelector {agents} selectedIds={selectedAgents} />
+      <AgentSelector {agents} bind:selectedIds={selectedAgents} />
     </div>
 
     <!-- Footer -->
