@@ -194,7 +194,7 @@ export async function installSkill(request: InstallRequest): Promise<InstallResu
  * 列出所有代理
  */
 export async function listAgents(): Promise<AgentInfo[]> {
-  return apiCall<AgentInfo[]>("list_agents");
+  return apiCall<AgentInfo[]>("list_local_agent_apps");
 }
 
 // ============ Skill Management ============

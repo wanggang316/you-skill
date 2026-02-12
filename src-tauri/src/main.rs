@@ -11,11 +11,9 @@ mod tray;
 
 use commands::{
   agent_apps::{
-    add_agent_app, list_all_agent_apps, list_internal_agent_apps, list_local_agent_apps,
-    list_user_agent_apps, refresh_agent_apps, remove_agent_app, update_agent_app,
-    validate_agent_app,
+    add_user_agent_app, list_internal_agent_apps, list_local_agent_apps, list_user_agent_apps,
+    refresh_agent_apps, remove_user_agent_app, update_user_agent_app,
   },
-  agents::list_agents,
   backup::{
     backup_skills, get_backup_folder, get_last_backup_time, open_backup_folder, set_backup_folder,
   },
@@ -105,16 +103,13 @@ fn main() {
       fetch_skills_by_names,
       record_skill_install,
       install_skill,
-      list_agents,
       list_local_agent_apps,
-      list_all_agent_apps,
       list_internal_agent_apps,
       list_user_agent_apps,
       refresh_agent_apps,
-      add_agent_app,
-      remove_agent_app,
-      update_agent_app,
-      validate_agent_app,
+      add_user_agent_app,
+      remove_user_agent_app,
+      update_user_agent_app,
       detect_github_skills,
       detect_zip_skills,
       install_zip_skill,

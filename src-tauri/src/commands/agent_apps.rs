@@ -1,54 +1,9 @@
 use crate::models::AgentInfo;
 use crate::services::agent_apps_service::{
-  add_user_agent_app, all_agent_apps, check_global_path_exists, expand_tilde,
-  generate_id_from_display_name, get_agent_app, local_agent_apps, refresh_local_agent_apps,
-  remove_user_agent_app, update_user_agent_app, AgentApp, UserAgentApp,
+  create_user_agent_app, delete_user_agent_app_by_id, list_internal_agent_app_details,
+  list_user_agent_app_details, local_agent_apps, refresh_local_agent_apps,
+  update_user_agent_app_detail, AgentAppDetail,
 };
-
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
-pub struct AgentAppDetail {
-  pub id: String,
-  pub display_name: String,
-  pub project_path: Option<String>,
-  pub global_path: Option<String>,
-  pub is_internal: bool,
-  pub is_installed: bool,
-}
-
-impl From<AgentApp> for AgentAppDetail {
-  fn from(app: AgentApp) -> Self {
-    AgentAppDetail {
-      id: app.id,
-      display_name: app.display_name,
-      project_path: app.project_path,
-      global_path: app.global_path,
-      is_internal: app.is_internal,
-      is_installed: false,
-    }
-  }
-}
-
-/// List all agent apps (internal + user)
-#[tauri::command]
-pub fn list_all_agent_apps() -> Result<Vec<AgentAppDetail>, String> {
-  let all_apps = all_agent_apps();
-  let local_apps_ids: std::collections::HashSet<String> =
-    local_agent_apps().into_iter().map(|app| app.id).collect();
-
-  Ok(
-    all_apps
-      .into_iter()
-      .map(|app| {
-        let is_installed = local_apps_ids.contains(&app.id);
-        let detail: AgentAppDetail = app.into();
-        AgentAppDetail {
-          is_installed,
-          ..detail
-        }
-      })
-      .collect(),
-  )
-}
 
 /// List local agent apps (installed on system)
 #[tauri::command]
@@ -65,209 +20,39 @@ pub fn refresh_agent_apps() -> Result<Vec<AgentInfo>, String> {
 
 /// Add a user agent app
 #[tauri::command]
-pub fn add_agent_app(
+pub fn add_user_agent_app(
   display_name: String,
   global_path: String,
   project_path: Option<String>,
 ) -> Result<AgentAppDetail, String> {
-  // Check if global_path already exists
-  if check_global_path_exists(&global_path) {
-    return Err(format!(
-      "Global path '{}' already exists in agent apps",
-      global_path
-    ));
-  }
-
-  // Generate id from display_name
-  let id = generate_id_from_display_name(&display_name);
-
-  // Check if id already exists (very unlikely but possible)
-  if get_agent_app(&id).is_some() {
-    return Err(format!("Agent app with id '{}' already exists", id));
-  }
-
-  let user_app = UserAgentApp {
-    id: id.clone(),
-    display_name,
-    global_path,
-    project_path,
-  };
-
-  add_user_agent_app(user_app)?;
-
-  // Refresh local agent apps cache
-  refresh_local_agent_apps();
-
-  // Return the created app
-  let app = get_agent_app(&id).ok_or("Failed to retrieve created app")?;
-  let mut detail: AgentAppDetail = app.into();
-  detail.is_installed = false;
-  Ok(detail)
+  create_user_agent_app(display_name, global_path, project_path)
 }
 
 /// Remove a user agent app
 #[tauri::command]
-pub fn remove_agent_app(id: String) -> Result<(), String> {
-  // Only allow removing user apps (not internal)
-  let app = get_agent_app(&id).ok_or(format!("Agent app '{}' not found", id))?;
-
-  if app.is_internal {
-    return Err("Cannot remove internal agent apps".to_string());
-  }
-
-  remove_user_agent_app(&id)?;
-
-  // Refresh local agent apps cache
-  refresh_local_agent_apps();
-
-  Ok(())
+pub fn remove_user_agent_app(id: String) -> Result<(), String> {
+  delete_user_agent_app_by_id(&id)
 }
 
 /// Update a user agent app
 #[tauri::command]
-pub fn update_agent_app(
+pub fn update_user_agent_app(
   id: String,
   display_name: String,
   global_path: String,
   project_path: Option<String>,
 ) -> Result<AgentAppDetail, String> {
-  // Only allow updating user apps (not internal)
-  let app = get_agent_app(&id).ok_or(format!("Agent app '{}' not found", id))?;
-
-  if app.is_internal {
-    return Err("Cannot update internal agent apps".to_string());
-  }
-
-  // Check if the new global_path is already used by another app
-  if check_global_path_exists(&global_path) {
-    let existing_app = get_agent_app(&id).unwrap();
-    if existing_app.global_path.as_ref() != Some(&global_path) {
-      return Err(format!(
-        "Global path '{}' is already used by another app",
-        global_path
-      ));
-    }
-  }
-
-  let user_app = UserAgentApp {
-    id: id.clone(),
-    display_name,
-    global_path,
-    project_path,
-  };
-
-  update_user_agent_app(&id, user_app)?;
-
-  // Refresh local agent apps cache
-  refresh_local_agent_apps();
-
-  // Return updated app
-  let updated_app = get_agent_app(&id).ok_or("Failed to retrieve updated app")?;
-  let mut detail: AgentAppDetail = updated_app.into();
-  detail.is_installed = false;
-  Ok(detail)
-}
-
-/// Validate a new agent app (check for duplicates)
-#[tauri::command]
-pub fn validate_agent_app(
-  display_name: String,
-  global_path: String,
-) -> Result<ValidateResult, String> {
-  let mut errors = Vec::new();
-  let mut warnings = Vec::new();
-
-  // Check if global_path already exists
-  if check_global_path_exists(&global_path) {
-    errors.push(format!("Global path '{}' already exists", global_path));
-  }
-
-  // Check if display_name would generate a duplicate id
-  let id = generate_id_from_display_name(&display_name);
-  if get_agent_app(&id).is_some() {
-    errors.push(format!(
-      "An agent app with similar name already exists (id: {})",
-      id
-    ));
-  }
-
-  // Check if the folder exists locally
-  let expanded_path = expand_tilde(&global_path);
-  if !expanded_path.exists() {
-    errors.push(format!(
-      "Global path folder does not exist: {}",
-      global_path
-    ));
-  } else {
-    // Check if this app is already installed locally
-    let local_apps = local_agent_apps();
-    let local_apps_ids: std::collections::HashSet<String> =
-      local_apps.into_iter().map(|app| app.id).collect();
-    if local_apps_ids.contains(&id) {
-      errors.push(format!(
-        "This agent app is already installed locally (id: {})",
-        id
-      ));
-    }
-  }
-
-  // Check if path format looks valid
-  if !global_path.starts_with('~') && !global_path.starts_with('/') {
-    warnings
-      .push("Global path should start with ~ (home directory) or / (absolute path)".to_string());
-  }
-
-  Ok(ValidateResult { errors, warnings })
-}
-
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct ValidateResult {
-  pub errors: Vec<String>,
-  pub warnings: Vec<String>,
+  update_user_agent_app_detail(id, display_name, global_path, project_path)
 }
 
 /// Get internal agent apps
 #[tauri::command]
 pub fn list_internal_agent_apps() -> Result<Vec<AgentAppDetail>, String> {
-  let all_apps = all_agent_apps();
-  let local_apps_ids: std::collections::HashSet<String> =
-    local_agent_apps().into_iter().map(|app| app.id).collect();
-
-  Ok(
-    all_apps
-      .into_iter()
-      .filter(|app| app.is_internal)
-      .map(|app| {
-        let is_installed = local_apps_ids.contains(&app.id);
-        let detail: AgentAppDetail = app.into();
-        AgentAppDetail {
-          is_installed,
-          ..detail
-        }
-      })
-      .collect(),
-  )
+  Ok(list_internal_agent_app_details())
 }
 
 /// Get user agent apps
 #[tauri::command]
 pub fn list_user_agent_apps() -> Result<Vec<AgentAppDetail>, String> {
-  let all_apps = all_agent_apps();
-  let local_apps_ids: std::collections::HashSet<String> =
-    local_agent_apps().into_iter().map(|app| app.id).collect();
-
-  Ok(
-    all_apps
-      .into_iter()
-      .filter(|app| !app.is_internal)
-      .map(|app| {
-        let is_installed = local_apps_ids.contains(&app.id);
-        let detail: AgentAppDetail = app.into();
-        AgentAppDetail {
-          is_installed,
-          ..detail
-        }
-      })
-      .collect(),
-  )
+  Ok(list_user_agent_app_details())
 }

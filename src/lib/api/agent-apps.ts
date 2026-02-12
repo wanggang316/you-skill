@@ -18,11 +18,6 @@ export interface AgentAppDetail {
   is_installed: boolean;
 }
 
-export interface ValidateResult {
-  errors: string[];
-  warnings: string[];
-}
-
 // ============ Agent Apps ============
 
 /**
@@ -37,13 +32,6 @@ export async function listLocalAgentApps(): Promise<AgentInfo[]> {
  */
 export async function refreshAgentApps(): Promise<AgentInfo[]> {
   return apiCall<AgentInfo[]>("refresh_agent_apps");
-}
-
-/**
- * 获取所有 Agent 应用（内置 + 用户自定义）
- */
-export async function listAllAgentApps(): Promise<AgentAppDetail[]> {
-  return apiCall<AgentAppDetail[]>("list_all_agent_apps");
 }
 
 /**
@@ -68,7 +56,7 @@ export async function addAgentApp(
   globalPath: string,
   projectPath?: string
 ): Promise<AgentAppDetail> {
-  return apiCall<AgentAppDetail>("add_agent_app", {
+  return apiCall<AgentAppDetail>("add_user_agent_app", {
     displayName,
     globalPath,
     projectPath,
@@ -79,7 +67,7 @@ export async function addAgentApp(
  * 移除用户自定义 Agent 应用
  */
 export async function removeAgentApp(id: string): Promise<void> {
-  return apiCall<void>("remove_agent_app", { id });
+  return apiCall<void>("remove_user_agent_app", { id });
 }
 
 /**
@@ -91,20 +79,10 @@ export async function updateAgentApp(
   globalPath: string,
   projectPath?: string
 ): Promise<AgentAppDetail> {
-  return apiCall<AgentAppDetail>("update_agent_app", {
+  return apiCall<AgentAppDetail>("update_user_agent_app", {
     id,
     displayName,
     globalPath,
     projectPath,
   });
-}
-
-/**
- * 验证 Agent 应用配置
- */
-export async function validateAgentApp(
-  displayName: string,
-  globalPath: string
-): Promise<ValidateResult> {
-  return apiCall<ValidateResult>("validate_agent_app", { displayName, globalPath });
 }

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::RwLock;
+use uuid::Uuid;
 
 // User-defined agent app stored in user_agent_apps.json
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -15,7 +16,7 @@ pub struct UserAgentApp {
 
 // Internal agent apps (built-in)
 #[derive(Debug, Clone)]
-pub struct InternalAgentApp {
+struct InternalAgentApp {
   pub id: &'static str,
   pub display_name: &'static str,
   pub project_path: Option<&'static str>,
@@ -24,7 +25,7 @@ pub struct InternalAgentApp {
 
 // Combined agent app with ownership
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AgentApp {
+struct AgentApp {
   pub id: String,
   pub display_name: String,
   pub project_path: Option<String>,
@@ -32,11 +33,188 @@ pub struct AgentApp {
   pub is_internal: bool,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AgentAppDetail {
+  pub id: String,
+  pub display_name: String,
+  pub project_path: Option<String>,
+  pub global_path: Option<String>,
+  pub is_internal: bool,
+  pub is_installed: bool,
+}
+
 // Global cache for local agent apps
 static LOCAL_AGENT_APPS: RwLock<Option<Vec<AgentInfo>>> = RwLock::new(None);
 
-// Get internal agent apps (built-in)
-pub fn internal_agent_apps() -> Vec<InternalAgentApp> {
+impl From<AgentApp> for AgentAppDetail {
+  fn from(app: AgentApp) -> Self {
+    AgentAppDetail {
+      id: app.id,
+      display_name: app.display_name,
+      project_path: app.project_path,
+      global_path: app.global_path,
+      is_internal: app.is_internal,
+      is_installed: false,
+    }
+  }
+}
+
+// Expand tilde in path
+pub fn expand_tilde(path: &str) -> PathBuf {
+  if path.starts_with("~/") {
+    if let Some(home) = dirs_next::home_dir() {
+      return home.join(&path[2..]);
+    }
+  }
+  PathBuf::from(path)
+}
+
+// Get local agent apps (actually installed on the system)
+pub fn local_agent_apps() -> Vec<AgentInfo> {
+  // Check cache first
+  if let Ok(cache) = LOCAL_AGENT_APPS.read() {
+    if let Some(ref cached) = *cache {
+      return cached.clone();
+    }
+  }
+
+  let all_apps = all_agent_apps();
+  let mut local_apps = Vec::new();
+
+  for app in all_apps {
+    if let Some(global_path) = app.global_path {
+      let expanded_path = expand_tilde(&global_path);
+      if expanded_path.exists() {
+        local_apps.push(AgentInfo {
+          id: app.id.clone(),
+          display_name: app.display_name.clone(),
+          project_path: app.project_path.clone(),
+          global_path: Some(global_path),
+        });
+      }
+    }
+  }
+
+  // Update cache
+  if let Ok(mut cache) = LOCAL_AGENT_APPS.write() {
+    *cache = Some(local_apps.clone());
+  }
+
+  local_apps
+}
+
+// Refresh the local agent apps cache (call when user apps change)
+pub fn refresh_local_agent_apps() {
+  if let Ok(mut cache) = LOCAL_AGENT_APPS.write() {
+    *cache = None;
+  }
+  // Trigger recomputation by calling local_agent_apps
+  local_agent_apps();
+}
+
+pub fn create_user_agent_app(
+  display_name: String,
+  global_path: String,
+  project_path: Option<String>,
+) -> Result<AgentAppDetail, String> {
+  let display_name = display_name.trim().to_string();
+  let global_path = global_path.trim().to_string();
+  let project_path = project_path.map(|p| p.trim().to_string());
+
+  validate_user_agent_app(&display_name, &global_path, project_path.as_deref())?;
+
+  let id = generate_id_from_display_name(&display_name);
+  let user_app = UserAgentApp {
+    id: id.clone(),
+    display_name,
+    global_path,
+    project_path,
+  };
+
+  let mut apps = load_user_agent_apps().unwrap_or_default();
+  apps.push(user_app);
+  save_user_agent_apps(&apps)?;
+  refresh_local_agent_apps();
+
+  let app = get_agent_app(&id).ok_or("Failed to retrieve created app")?;
+  Ok(app.into())
+}
+
+pub fn delete_user_agent_app_by_id(id: &str) -> Result<(), String> {
+  let app = get_agent_app(id).ok_or(format!("Agent app '{}' not found", id))?;
+  if app.is_internal {
+    return Err("Cannot remove internal agent apps".to_string());
+  }
+
+  remove_user_agent_app(id)?;
+  refresh_local_agent_apps();
+  Ok(())
+}
+
+pub fn update_user_agent_app_detail(
+  id: String,
+  display_name: String,
+  global_path: String,
+  project_path: Option<String>,
+) -> Result<AgentAppDetail, String> {
+  let display_name = display_name.trim().to_string();
+  let global_path = global_path.trim().to_string();
+  let project_path = project_path.map(|p| p.trim().to_string());
+
+  let app = get_agent_app(&id).ok_or(format!("Agent app '{}' not found", id))?;
+  if app.is_internal {
+    return Err("Cannot update internal agent apps".to_string());
+  }
+
+  validate_user_agent_app(&display_name, &global_path, project_path.as_deref())?;
+
+  let user_app = UserAgentApp {
+    id: id.clone(),
+    display_name,
+    global_path,
+    project_path,
+  };
+
+  update_user_agent_app(&id, user_app)?;
+  refresh_local_agent_apps();
+
+  let updated_app = get_agent_app(&id).ok_or("Failed to retrieve updated app")?;
+  Ok(updated_app.into())
+}
+
+pub fn list_internal_agent_app_details() -> Vec<AgentAppDetail> {
+  let local_ids = local_agent_app_ids();
+  all_agent_apps()
+    .into_iter()
+    .filter(|app| app.is_internal)
+    .map(|app| {
+      let is_installed = local_ids.contains(&app.id);
+      let detail: AgentAppDetail = app.into();
+      AgentAppDetail {
+        is_installed,
+        ..detail
+      }
+    })
+    .collect()
+}
+
+pub fn list_user_agent_app_details() -> Vec<AgentAppDetail> {
+  let local_ids = local_agent_app_ids();
+  all_agent_apps()
+    .into_iter()
+    .filter(|app| !app.is_internal)
+    .map(|app| {
+      let is_installed = local_ids.contains(&app.id);
+      let detail: AgentAppDetail = app.into();
+      AgentAppDetail {
+        is_installed,
+        ..detail
+      }
+    })
+    .collect()
+}
+
+fn internal_agent_apps() -> Vec<InternalAgentApp> {
   vec![
     InternalAgentApp {
       id: "claude-code",
@@ -167,14 +345,12 @@ pub fn internal_agent_apps() -> Vec<InternalAgentApp> {
   ]
 }
 
-// Get path to user_agent_apps.json
-pub fn user_agent_apps_path() -> Result<PathBuf, String> {
+fn user_agent_apps_path() -> Result<PathBuf, String> {
   let config_dir = dirs_next::config_dir().ok_or("无法获取配置目录")?;
   Ok(config_dir.join("youskill").join("user_agent_apps.json"))
 }
 
-// Load user agent apps from JSON file
-pub fn load_user_agent_apps() -> Result<Vec<UserAgentApp>, String> {
+fn load_user_agent_apps() -> Result<Vec<UserAgentApp>, String> {
   let path = user_agent_apps_path()?;
   if !path.exists() {
     return Ok(Vec::new());
@@ -183,8 +359,7 @@ pub fn load_user_agent_apps() -> Result<Vec<UserAgentApp>, String> {
   serde_json::from_str(&content).map_err(|e| e.to_string())
 }
 
-// Save user agent apps to JSON file
-pub fn save_user_agent_apps(apps: &[UserAgentApp]) -> Result<(), String> {
+fn save_user_agent_apps(apps: &[UserAgentApp]) -> Result<(), String> {
   let path = user_agent_apps_path()?;
   if let Some(parent) = path.parent() {
     fs::create_dir_all(parent).map_err(|e| e.to_string())?;
@@ -193,29 +368,19 @@ pub fn save_user_agent_apps(apps: &[UserAgentApp]) -> Result<(), String> {
   fs::write(&path, content).map_err(|e| e.to_string())
 }
 
-// Add a user agent app
-pub fn add_user_agent_app(app: UserAgentApp) -> Result<(), String> {
-  let mut apps = load_user_agent_apps().unwrap_or_default();
-  apps.push(app);
-  save_user_agent_apps(&apps)
-}
-
-// Remove a user agent app by id
-pub fn remove_user_agent_app(id: &str) -> Result<(), String> {
+fn remove_user_agent_app(id: &str) -> Result<(), String> {
   let mut apps = load_user_agent_apps().unwrap_or_default();
   apps.retain(|app| app.id != id);
   save_user_agent_apps(&apps)
 }
 
-// Update a user agent app by id
-pub fn update_user_agent_app(id: &str, app: UserAgentApp) -> Result<(), String> {
+fn update_user_agent_app(id: &str, app: UserAgentApp) -> Result<(), String> {
   let mut apps = load_user_agent_apps().unwrap_or_default();
   let index = apps
     .iter()
     .position(|a| a.id == id)
     .ok_or(format!("Agent app with id '{}' not found", id))?;
 
-  // Ensure the id doesn't change
   let updated_app = UserAgentApp {
     id: id.to_string(),
     ..app
@@ -225,8 +390,7 @@ pub fn update_user_agent_app(id: &str, app: UserAgentApp) -> Result<(), String> 
   save_user_agent_apps(&apps)
 }
 
-// Get all agent apps (internal + user, user apps override internal if same id or global_path)
-pub fn all_agent_apps() -> Vec<AgentApp> {
+fn all_agent_apps() -> Vec<AgentApp> {
   let internal = internal_agent_apps();
   let user_apps = load_user_agent_apps().unwrap_or_default();
 
@@ -241,15 +405,12 @@ pub fn all_agent_apps() -> Vec<AgentApp> {
     })
     .collect();
 
-  // Track global paths from internal apps to detect duplicates
   let internal_global_paths: std::collections::HashSet<String> = internal
     .iter()
     .filter_map(|app| app.global_path.map(|p| p.to_string()))
     .collect();
 
-  // Add user apps, overriding internal apps with same id or global_path
   for user_app in user_apps {
-    // Remove any internal app with the same id or global_path
     result.retain(|app| {
       app.id != user_app.id
         && (!internal_global_paths.contains(&user_app.global_path)
@@ -268,79 +429,69 @@ pub fn all_agent_apps() -> Vec<AgentApp> {
   result
 }
 
-// Expand tilde in path
-pub fn expand_tilde(path: &str) -> PathBuf {
-  if path.starts_with("~/") {
-    if let Some(home) = dirs_next::home_dir() {
-      return home.join(&path[2..]);
-    }
-  }
-  PathBuf::from(path)
+fn check_global_path_exists(global_path: &str) -> bool {
+  let expanded_path = expand_tilde(global_path);
+  expanded_path.exists()
 }
 
-// Get local agent apps (actually installed on the system)
-pub fn local_agent_apps() -> Vec<AgentInfo> {
-  // Check cache first
-  if let Ok(cache) = LOCAL_AGENT_APPS.read() {
-    if let Some(ref cached) = *cache {
-      return cached.clone();
-    }
-  }
-
-  let all_apps = all_agent_apps();
-  let mut local_apps = Vec::new();
-
-  for app in all_apps {
-    if let Some(global_path) = app.global_path {
-      let expanded_path = expand_tilde(&global_path);
-      if expanded_path.exists() {
-        local_apps.push(AgentInfo {
-          id: app.id.clone(),
-          display_name: app.display_name.clone(),
-          project_path: app.project_path.clone(),
-          global_path: Some(global_path),
-        });
-      }
-    }
-  }
-
-  // Update cache
-  if let Ok(mut cache) = LOCAL_AGENT_APPS.write() {
-    *cache = Some(local_apps.clone());
-  }
-
-  local_apps
-}
-
-// Refresh the local agent apps cache (call when user apps change)
-pub fn refresh_local_agent_apps() {
-  if let Ok(mut cache) = LOCAL_AGENT_APPS.write() {
-    *cache = None;
-  }
-  // Trigger recomputation by calling local_agent_apps
-  local_agent_apps();
-}
-
-// Check if a global_path already exists in all_agent_apps
-pub fn check_global_path_exists(global_path: &str) -> bool {
-  let apps = all_agent_apps();
-  apps
-    .iter()
-    .any(|app| app.global_path.as_ref() == Some(&global_path.to_string()))
-}
-
-// Get agent app by id
-pub fn get_agent_app(id: &str) -> Option<AgentApp> {
+fn get_agent_app(id: &str) -> Option<AgentApp> {
   let apps = all_agent_apps();
   apps.into_iter().find(|app| app.id == id)
 }
 
-// Generate id from display_name (lowercase, replace spaces with hyphens)
-pub fn generate_id_from_display_name(display_name: &str) -> String {
-  display_name
-    .to_lowercase()
-    .replace(' ', "-")
-    .chars()
-    .filter(|c| c.is_alphanumeric() || *c == '-')
-    .collect()
+fn generate_id_from_display_name(_display_name: &str) -> String {
+  Uuid::new_v4().to_string()
+}
+
+fn local_agent_app_ids() -> std::collections::HashSet<String> {
+  local_agent_apps().into_iter().map(|app| app.id).collect()
+}
+
+fn validate_user_agent_app(
+  display_name: &str,
+  global_path: &str,
+  project_path: Option<&str>,
+) -> Result<(), String> {
+  let project_path = project_path.unwrap_or_default();
+
+  if display_name.is_empty() {
+    return Err("Display name is required".to_string());
+  }
+
+  if global_path.is_empty() {
+    return Err("Global path is required".to_string());
+  }
+
+  if project_path.is_empty() {
+    return Err("Project path is required".to_string());
+  }
+
+  let local_apps = local_agent_apps();
+
+  if local_apps
+    .iter()
+    .any(|app| app.display_name.eq_ignore_ascii_case(display_name))
+  {
+    return Err(format!("Display name '{}' already exists", display_name));
+  }
+
+  if local_apps
+    .iter()
+    .any(|app| app.global_path.as_deref() == Some(global_path))
+  {
+    return Err(format!("Global path '{}' already exists", global_path));
+  }
+
+  if local_apps
+    .iter()
+    .any(|app| app.project_path.as_deref() == Some(project_path))
+  {
+    return Err(format!("Project path '{}' already exists", project_path));
+  }
+
+  if !check_global_path_exists(global_path) {
+    return Err(format!("Global path folder does not exist: {}", global_path));
+  }
+
+  Ok(())
 }

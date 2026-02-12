@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from "../i18n";
-  import { addAgentApp, updateAgentApp, validateAgentApp, type AgentAppDetail } from "../api";
+  import { addAgentApp, updateAgentApp, type AgentAppDetail } from "../api";
   import Modal from "./ui/Modal.svelte";
   import { Folder, Loader2 } from "@lucide/svelte";
 
@@ -17,9 +17,7 @@
   let globalPath = $state("");
   let projectPath = $state("");
   let adding = $state(false);
-  let validating = $state(false);
   let validationErrors = $state<string[]>([]);
-  let validationWarnings = $state<string[]>([]);
 
   // Reset form when modal opens or populate for editing
   $effect(() => {
@@ -32,7 +30,6 @@
         resetForm();
       }
       validationErrors = [];
-      validationWarnings = [];
     }
   });
 
@@ -49,7 +46,6 @@
     globalPath = "";
     projectPath = "";
     validationErrors = [];
-    validationWarnings = [];
   }
 
   async function handleSelectFolder() {
@@ -63,7 +59,6 @@
         globalPath = result;
         // Clear validation when path changes
         validationErrors = [];
-        validationWarnings = [];
       }
     } catch (error) {
       console.error("Failed to select folder:", error);
@@ -75,65 +70,22 @@
       return;
     }
 
-    // Show validating state
-    validating = true;
     validationErrors = [];
-    validationWarnings = [];
 
-    // Run validation (skip path duplicate check for edit mode)
-    let validationResult: { errors: string[]; warnings: string[] } | null = null;
+    adding = true;
     try {
-      validationResult = await validateAgentApp(displayName.trim(), globalPath.trim());
-      // Filter out errors that are ok in edit mode:
-      // - "already exists" for path/name if editing same app
-      // - "already installed locally" is expected for existing apps
-      if (isEditMode) {
-        validationResult.errors = validationResult.errors.filter((err) => {
-          // Keep error if it's about path/name duplication with different app
-          if (err.includes("already exists")) {
-            // Only filter out if the path is unchanged
-            if (!appToEdit || globalPath.trim() !== appToEdit.global_path) {
-              return true;
-            }
-            return false;
-          }
-          // Filter out "already installed locally" error in edit mode
-          if (err.includes("already installed locally")) {
-            return false;
-          }
-          return true;
-        });
+      const projectPathValue = projectPath.trim();
+      if (isEditMode && appToEdit) {
+        await updateAgentApp(appToEdit.id, displayName.trim(), globalPath.trim(), projectPathValue);
+      } else {
+        await addAgentApp(displayName.trim(), globalPath.trim(), projectPathValue);
       }
-      validationErrors = validationResult.errors;
-      validationWarnings = validationResult.warnings;
+      closeModal();
+      onAppsChange();
     } catch (err) {
       validationErrors = [String(err)];
     } finally {
-      validating = false;
-    }
-
-    // If validation passed, proceed to add or update
-    if (validationErrors.length === 0) {
-      adding = true;
-      try {
-        const projectPathValue = projectPath.trim();
-        if (isEditMode && appToEdit) {
-          await updateAgentApp(
-            appToEdit.id,
-            displayName.trim(),
-            globalPath.trim(),
-            projectPathValue
-          );
-        } else {
-          await addAgentApp(displayName.trim(), globalPath.trim(), projectPathValue);
-        }
-        closeModal();
-        onAppsChange();
-      } catch (err) {
-        validationErrors = [String(err)];
-      } finally {
-        adding = false;
-      }
+      adding = false;
     }
   }
 </script>
@@ -154,7 +106,6 @@
           bind:value={displayName}
           oninput={() => {
             validationErrors = [];
-            validationWarnings = [];
           }}
         />
       </div>
@@ -172,7 +123,6 @@
             bind:value={globalPath}
             oninput={() => {
               validationErrors = [];
-              validationWarnings = [];
             }}
           />
           <button
@@ -208,13 +158,6 @@
         </div>
       {/if}
 
-      {#if validationWarnings.length > 0}
-        <div class="space-y-1">
-          {#each validationWarnings as msg}
-            <div class="text-warning text-xs">{msg}</div>
-          {/each}
-        </div>
-      {/if}
     </div>
 
     <!-- Actions -->
@@ -222,12 +165,10 @@
       <button
         class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-6 py-2 text-sm transition disabled:opacity-50"
         onclick={handleAdd}
-        disabled={adding || validating || !displayName.trim() || !globalPath.trim() || !projectPath.trim()}
+        disabled={adding || !displayName.trim() || !globalPath.trim() || !projectPath.trim()}
         type="button"
       >
-        {#if validating}
-          <Loader2 size={16} class="mr-1 inline animate-spin" />
-        {:else if adding}
+        {#if adding}
           <Loader2 size={16} class="mr-1 inline animate-spin" />
         {:else}
           {buttonText}
