@@ -10,14 +10,15 @@ import { apiCall } from "./index";
 
 export interface LocalSkill {
   name: string;
-  description?: string | null;
-  scope: string;
-  canonical_path: string;
-  agents: string[];
-  managed_status: "managed" | "unmanaged" | "mixed" | "unknown";
-  name_conflict: boolean;
-  created_at?: number | null;
-  conflict_with_managed: boolean;
+  global_folder?: string | null;
+  installed_agent_apps: InstalledAgentApp[];
+  source_type: "github" | "native" | "known";
+}
+
+export interface InstalledAgentApp {
+  id: string;
+  skill_folder: string;
+  method: "symlink" | "copy";
 }
 
 export interface RemoteSkill {
@@ -104,10 +105,10 @@ export interface InstallGithubRequest {
 // ============ Local Skills ============
 
 /**
- * 扫描本地技能
+ * 查询本地技能
  */
-export async function scanLocalSkills(): Promise<LocalSkill[]> {
-  return apiCall<LocalSkill[]>("scan_local_skills");
+export async function listSkills(): Promise<LocalSkill[]> {
+  return apiCall<LocalSkill[]>("list_skills");
 }
 
 /**

@@ -1,11 +1,12 @@
 use crate::models::{
   DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallResult,
+  InstalledAgentApp, LocalSkill,
 };
 use crate::services::agent_apps_service::local_agent_apps;
 use crate::services::native_skill_lock_service::{
-  add_skill_to_native_lock, remove_skill_from_native_lock,
+  add_skill_to_native_lock, read_native_skill_lock_internal, remove_skill_from_native_lock,
 };
-use crate::services::skill_lock_service::{add_skill_to_lock, SkillLockEntry};
+use crate::services::skill_lock_service::{add_skill_to_lock, read_skill_lock_internal, SkillLockFile, SkillLockEntry};
 use crate::utils::file::FileHelper;
 use crate::utils::folder::FolderHelper;
 use crate::utils::github::GithubHelper;
@@ -13,6 +14,7 @@ use crate::utils::path::expand_home;
 use crate::utils::zip::ZipHelper;
 use std::env;
 use std::fs;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -119,6 +121,98 @@ pub fn detect_github_auto(github_path: String, skill_name: String) -> Result<Det
   }
 
   Err(format!("No skill matched '{}'", skill_name))
+}
+
+pub fn list_skills() -> Result<Vec<LocalSkill>, String> {
+  let github_lock = read_skill_lock_internal().unwrap_or_default();
+  let native_lock = read_native_skill_lock_internal().unwrap_or_default();
+
+  let mut skills: Vec<LocalSkill> = Vec::new();
+  let mut skill_index: HashMap<String, usize> = HashMap::new();
+
+  let global_root = expand_home("~/.agents/skills");
+  if global_root.exists() && global_root.is_dir() {
+    for entry in fs::read_dir(&global_root).map_err(|e| e.to_string())? {
+      let entry = entry.map_err(|e| e.to_string())?;
+      let skill_dir = entry.path();
+      if !is_skill_folder(&skill_dir) {
+        continue;
+      }
+      let Some(skill_name) = read_valid_skill_name(&skill_dir) else {
+        continue;
+      };
+      if skill_index.contains_key(&skill_name) {
+        continue;
+      }
+
+      let source_type = detect_source_type(&skill_name, &github_lock, &native_lock);
+      let index = skills.len();
+      skills.push(LocalSkill {
+        name: skill_name.clone(),
+        global_folder: Some(skill_dir.to_string_lossy().to_string()),
+        installed_agent_apps: Vec::new(),
+        source_type,
+      });
+      skill_index.insert(skill_name, index);
+    }
+  }
+
+  for app in local_agent_apps() {
+    let Some(global_path) = &app.global_path else {
+      continue;
+    };
+    let app_root = expand_home(global_path);
+    if !app_root.exists() || !app_root.is_dir() {
+      continue;
+    }
+
+    let entries = match fs::read_dir(&app_root) {
+      Ok(entries) => entries,
+      Err(_) => continue,
+    };
+    for entry in entries {
+      let Ok(entry) = entry else {
+        continue;
+      };
+      let skill_dir = entry.path();
+      if !is_skill_folder(&skill_dir) {
+        continue;
+      }
+      let Some(skill_name) = read_valid_skill_name(&skill_dir) else {
+        continue;
+      };
+
+      let method = detect_install_method(&skill_dir);
+      let installed_app = InstalledAgentApp {
+        id: app.id.clone(),
+        skill_folder: skill_dir.to_string_lossy().to_string(),
+        method,
+      };
+
+      if let Some(index) = skill_index.get(&skill_name).copied() {
+        if !skills[index]
+          .installed_agent_apps
+          .iter()
+          .any(|item| item.id == installed_app.id && item.skill_folder == installed_app.skill_folder)
+        {
+          skills[index].installed_agent_apps.push(installed_app);
+        }
+        continue;
+      }
+
+      let source_type = detect_source_type(&skill_name, &github_lock, &native_lock);
+      let index = skills.len();
+      skills.push(LocalSkill {
+        name: skill_name.clone(),
+        global_folder: None,
+        installed_agent_apps: vec![installed_app],
+        source_type,
+      });
+      skill_index.insert(skill_name, index);
+    }
+  }
+
+  Ok(skills)
 }
 
 pub fn install_from_native(request: InstallNativeRequest) -> Result<InstallResult, String> {
@@ -531,4 +625,42 @@ fn copy_dir_all_sync(src: &Path, dst: &Path) -> Result<(), String> {
     }
   }
   Ok(())
+}
+
+fn is_skill_folder(path: &Path) -> bool {
+  (path.is_dir() || path.is_symlink()) && path.join("SKILL.md").exists()
+}
+
+fn read_valid_skill_name(skill_dir: &Path) -> Option<String> {
+  let skill_md = skill_dir.join("SKILL.md");
+  if !skill_md.exists() {
+    return None;
+  }
+  let frontmatter = FileHelper::read_skill_frontmatter(&skill_md).ok()?;
+  frontmatter.name
+}
+
+fn detect_install_method(skill_dir: &Path) -> String {
+  if fs::symlink_metadata(skill_dir)
+    .map(|m| m.file_type().is_symlink())
+    .unwrap_or(false)
+  {
+    "symlink".to_string()
+  } else {
+    "copy".to_string()
+  }
+}
+
+fn detect_source_type(
+  skill_name: &str,
+  github_lock: &SkillLockFile,
+  native_lock: &crate::services::native_skill_lock_service::NativeSkillLockFile,
+) -> String {
+  if github_lock.skills.contains_key(skill_name) {
+    "github".to_string()
+  } else if native_lock.skills.contains_key(skill_name) {
+    "native".to_string()
+  } else {
+    "known".to_string()
+  }
 }

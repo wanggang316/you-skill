@@ -8,7 +8,7 @@
   import LocalSkillsSection from "../lib/components/LocalSkillsSection.svelte";
   import RemoteSkillsSection from "../lib/components/RemoteSkillsSection.svelte";
   import {
-    scanLocalSkills,
+    listSkills,
     fetchRemoteSkills,
     fetchSkillsByNames,
     detectGithubAuto,
@@ -22,6 +22,16 @@
   } from "../lib/api/skills";
   import { listLocalAgentApps } from "../lib/api/agent-apps";
   import type { DetectedSkill, LocalSkill, RemoteSkill, AgentInfo } from "../lib/api/skills";
+
+  type ViewLocalSkill = {
+    name: string;
+    canonical_path: string;
+    agents: string[];
+    scope: "global";
+    managed_status: "managed" | "unmanaged";
+    name_conflict: boolean;
+    conflict_with_managed: boolean;
+  };
 
   // Shared state for modals
   let addSkillModalOpen = $state(false);
@@ -87,28 +97,37 @@
     const needle = localSearch.trim().toLowerCase();
     return source.filter((skill) => {
       const matchesSearch =
-        !needle ||
-        skill.name.toLowerCase().includes(needle) ||
-        (skill.description || "").toLowerCase().includes(needle);
-      const matchesAgent = localAgent === "all" || (skill.agents || []).includes(localAgent);
+        !needle || skill.name.toLowerCase().includes(needle);
+      const agentIds = skill.installed_agent_apps.map((app) => app.id);
+      const matchesAgent = localAgent === "all" || agentIds.includes(localAgent);
       return matchesSearch && matchesAgent;
     });
   });
 
+  const toViewLocalSkill = (skill: LocalSkill, managedStatus: "managed" | "unmanaged"): ViewLocalSkill => {
+    const agents = Array.from(new Set(skill.installed_agent_apps.map((app) => app.id)));
+    const canonicalPath = skill.global_folder || skill.installed_agent_apps[0]?.skill_folder || "";
+    return {
+      name: skill.name,
+      canonical_path: canonicalPath,
+      agents,
+      scope: "global",
+      managed_status: managedStatus,
+      name_conflict: false,
+      conflict_with_managed: false,
+    };
+  };
+
   const managedSkills = $derived.by(() =>
     filteredLocalSkills
-      .filter((skill) => skill.managed_status === "managed")
-      .map((skill) => ({
-        ...skill,
-        key: `${skill.name}::${skill.scope}::${skill.canonical_path}`,
-      }))
-      .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+      .filter((skill) => skill.source_type === "github" || skill.source_type === "native")
+      .map((skill) => toViewLocalSkill(skill, "managed"))
   );
 
   const unmanagedSkills = $derived.by(() =>
     filteredLocalSkills
-      .filter((skill) => ["unmanaged", "mixed", "unknown"].includes(skill.managed_status))
-      .sort((a, b) => (b.created_at || 0) - (a.created_at || 0))
+      .filter((skill) => skill.source_type === "known")
+      .map((skill) => toViewLocalSkill(skill, "unmanaged"))
   );
 
   const unmanagedCount = $derived(unmanagedSkills.length);
@@ -153,7 +172,7 @@
     localLoading = true;
     localError = "";
     try {
-      localSkills = await scanLocalSkills();
+      localSkills = await listSkills();
 
       // 延迟检查更新，不阻塞首屏
       setTimeout(() => checkForSkillUpdates().catch(console.error), 100);
@@ -277,7 +296,9 @@
       pendingInstallSkill = { ...skill, detectedSkill };
 
       const localSkill = localSkills.find((ls) => ls.name === skill.name);
-      const currentAgents = localSkill?.agents || agents.map((a) => a.id);
+      const currentAgents = localSkill
+        ? Array.from(new Set(localSkill.installed_agent_apps.map((app) => app.id)))
+        : agents.map((a) => a.id);
 
       selectAgentModalTitle = $t("installConfirm.title", { name: skill.name });
       selectAgentModalInitialSelection = currentAgents;
@@ -397,7 +418,7 @@
     }
   };
 
-  const openSelectAgentModal = (skill: LocalSkill) => {
+  const openSelectAgentModal = (skill: ViewLocalSkill) => {
     selectAgentModalTitle = skill.name;
     selectAgentModalInitialSelection = skill.agents || [];
     selectAgentModalCallback = async (selectedAgents) => {
@@ -422,7 +443,7 @@
     selectAgentModalOpen = true;
   };
 
-  const handleUnify = async (skill: LocalSkill) => {
+  const handleUnify = async (skill: ViewLocalSkill) => {
     const { confirm } = await import("@tauri-apps/plugin-dialog");
     if (!skill || !skill.agents || skill.agents.length === 0) {
       localError = $t("error.noSkillAgent");
@@ -487,7 +508,7 @@
     await refreshLocal();
   };
 
-  const handleDeleteSkill = async (skill: LocalSkill) => {
+  const handleDeleteSkill = async (skill: ViewLocalSkill) => {
     const { confirm } = await import("@tauri-apps/plugin-dialog");
     try {
       const confirmed = await confirm($t("confirm.deleteSkill", { name: skill.name }), {
@@ -501,7 +522,7 @@
     }
   };
 
-  const handleViewSkill = (skill: LocalSkill | RemoteSkill) => {
+  const handleViewSkill = (skill: ViewLocalSkill | RemoteSkill) => {
     const type = "canonical_path" in skill ? "local" : "remote";
     goto(`/skills/${type}/${encodeURIComponent(skill.name)}`);
   };

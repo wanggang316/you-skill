@@ -37,7 +37,7 @@ fn native_skill_lock_path() -> Result<PathBuf, String> {
   Ok(home_dir.join(LOCK_FILE))
 }
 
-fn read_native_skill_lock_internal() -> Result<NativeSkillLockFile, String> {
+pub fn read_native_skill_lock_internal() -> Result<NativeSkillLockFile, String> {
   let lock_path = native_skill_lock_path()?;
   if !lock_path.exists() {
     return Ok(NativeSkillLockFile::default());

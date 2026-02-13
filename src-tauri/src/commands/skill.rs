@@ -1,5 +1,10 @@
-use crate::models::{DetectedSkill, InstallGithubRequest, InstallNativeRequest, InstallResult};
+use crate::models::{DetectedSkill, InstallGithubRequest, InstallNativeRequest, InstallResult, LocalSkill};
 use crate::services::skill_service;
+
+#[tauri::command]
+pub fn list_skills() -> Result<Vec<LocalSkill>, String> {
+  skill_service::list_skills()
+}
 
 #[tauri::command]
 pub fn delete_skill(

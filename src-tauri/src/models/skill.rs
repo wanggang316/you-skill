@@ -3,14 +3,16 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LocalSkill {
   pub name: String,
-  pub description: Option<String>,
-  pub scope: String,
-  pub canonical_path: String,
-  pub agents: Vec<String>,
-  pub managed_status: String,
-  pub name_conflict: bool,
-  pub created_at: Option<i64>,
-  pub conflict_with_managed: bool,
+  pub global_folder: Option<String>,
+  pub installed_agent_apps: Vec<InstalledAgentApp>,
+  pub source_type: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct InstalledAgentApp {
+  pub id: String,
+  pub skill_folder: String,
+  pub method: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

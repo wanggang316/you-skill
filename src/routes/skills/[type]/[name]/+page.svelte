@@ -8,9 +8,9 @@
   import { t } from "../../../../lib/i18n";
   import {
     fetchSkillsByNames,
+    listSkills,
     openInFileManager,
     readSkillReadme,
-    scanLocalSkills,
     type LocalSkill,
     type RemoteSkill,
   } from "../../../../lib/api/skills";
@@ -73,7 +73,7 @@
 
     try {
       if (type === "local") {
-        const localSkills = await scanLocalSkills();
+        const localSkills = await listSkills();
         skill = localSkills.find((item) => item.name === name) ?? null;
       } else {
         const remoteSkills = await fetchSkillsByNames([name]);
@@ -105,8 +105,9 @@
   };
 
   const resolveLocalPath = (relativePath: string) => {
-    if (!skill || !("canonical_path" in skill) || !skill.canonical_path) return null;
-    const dirPath = skill.canonical_path;
+    if (!skill || !("installed_agent_apps" in skill)) return null;
+    const dirPath = skill.global_folder || skill.installed_agent_apps[0]?.skill_folder;
+    if (!dirPath) return null;
     if (relativePath.startsWith("/")) {
       return dirPath + relativePath;
     }
@@ -129,10 +130,14 @@
     try {
       let rawContent = "";
       if (currentType === "local") {
-        if (!("canonical_path" in skill) || !skill.canonical_path) {
+        if (!("installed_agent_apps" in skill)) {
           throw new Error("Skill path is missing");
         }
-        rawContent = await readSkillReadme(skill.canonical_path);
+        const localPath = skill.global_folder || skill.installed_agent_apps[0]?.skill_folder;
+        if (!localPath) {
+          throw new Error("Skill path is missing");
+        }
+        rawContent = await readSkillReadme(localPath);
       } else {
         if (!("url" in skill)) {
           throw new Error("Skill source URL is missing");
@@ -174,8 +179,11 @@
       return;
     }
 
-    if (currentType === "local" && "canonical_path" in skill && skill.canonical_path) {
-      await openInFileManager(skill.canonical_path);
+    if (currentType === "local" && "installed_agent_apps" in skill) {
+      const localPath = skill.global_folder || skill.installed_agent_apps[0]?.skill_folder;
+      if (localPath) {
+        await openInFileManager(localPath);
+      }
     }
   };
 
