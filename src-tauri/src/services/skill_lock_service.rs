@@ -19,16 +19,29 @@ pub struct SkillLockEntry {
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SkillLockFile {
+  #[serde(default = "default_version")]
+  pub version: i64,
   #[serde(default)]
   pub skills: HashMap<String, SkillLockEntry>,
+  #[serde(default)]
+  pub dismissed: HashMap<String, serde_json::Value>,
+  #[serde(default, rename = "lastSelectedAgents")]
+  pub last_selected_agents: Vec<String>,
 }
 
 impl Default for SkillLockFile {
   fn default() -> Self {
     Self {
+      version: 3,
       skills: HashMap::new(),
+      dismissed: HashMap::new(),
+      last_selected_agents: Vec::new(),
     }
   }
+}
+
+fn default_version() -> i64 {
+  3
 }
 
 fn skill_lock_path() -> Result<PathBuf, String> {
@@ -60,6 +73,7 @@ pub fn write_skill_lock_internal(lock: &SkillLockFile) -> Result<(), String> {
 
 pub fn add_skill_to_lock(skill_name: String, entry: SkillLockEntry) -> Result<(), String> {
   let mut lock = read_skill_lock_internal()?;
+  lock.version = 3;
   let now = chrono::Utc::now().to_rfc3339();
   let existing_entry = lock.skills.get(&skill_name);
 

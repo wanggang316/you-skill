@@ -4,6 +4,7 @@
 pub mod agent_apps_service;
 pub mod backup_service;
 pub mod manage_service;
+pub mod native_skill_lock_service;
 pub mod remote_service;
 pub mod scan_service;
 pub mod skill_service;
