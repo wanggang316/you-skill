@@ -10,6 +10,8 @@ pub struct SettingsPayload {
   pub language: String,
   pub theme: String,
   pub sync_mode: String,
+  pub backup_folder: Option<String>,
+  pub last_backup_time: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -38,6 +40,8 @@ pub fn get_settings() -> Result<SettingsPayload, String> {
     language: config.language,
     theme: config.theme,
     sync_mode: config.sync_mode,
+    backup_folder: config.backup_folder,
+    last_backup_time: config.last_backup_time,
   })
 }
 
@@ -48,19 +52,13 @@ pub fn update_settings(settings: SettingsPayload) -> Result<SettingsPayload, Str
   config.theme = settings.theme.clone();
   config.sync_mode = settings.sync_mode.clone();
   save_config(&config)?;
-  Ok(settings)
-}
-
-#[tauri::command]
-pub fn get_backup_folder() -> Result<Option<String>, String> {
-  let config = load_config()?;
-  Ok(config.backup_folder)
-}
-
-#[tauri::command]
-pub fn get_last_backup_time() -> Result<Option<String>, String> {
-  let config = load_config()?;
-  Ok(config.last_backup_time)
+  Ok(SettingsPayload {
+    language: config.language,
+    theme: config.theme,
+    sync_mode: config.sync_mode,
+    backup_folder: config.backup_folder,
+    last_backup_time: config.last_backup_time,
+  })
 }
 
 #[tauri::command]

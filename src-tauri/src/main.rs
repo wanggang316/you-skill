@@ -23,8 +23,7 @@ use commands::{
   remote::{fetch_remote_skills, fetch_skills_by_names, record_skill_install},
   scan::{add_scan_root, get_scan_roots, remove_scan_root, scan_local_skills},
   settings::{
-    backup_skills, get_backup_folder, get_last_backup_time, get_settings, open_backup_folder,
-    set_backup_folder, update_settings,
+    backup_skills, get_settings, open_backup_folder, set_backup_folder, update_settings,
   },
   skill::{check_skill_update, open_in_file_manager, read_skill_readme},
 };
@@ -107,11 +106,9 @@ fn main() {
       install_github_skill,
       detect_folder_skills,
       install_folder_skill,
-      get_backup_folder,
       set_backup_folder,
       open_backup_folder,
       backup_skills,
-      get_last_backup_time,
       read_skill_readme,
       open_in_file_manager,
       check_skill_update

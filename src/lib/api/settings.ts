@@ -10,6 +10,8 @@ export interface AppSettings {
   language: "en" | "zh";
   theme: "system" | "light" | "dark";
   sync_mode: "symlink" | "copy";
+  backup_folder?: string | null;
+  last_backup_time?: string | null;
 }
 
 /**
@@ -22,15 +24,10 @@ export async function getSettings(): Promise<AppSettings> {
 /**
  * 更新应用设置
  */
-export async function updateSettings(settings: AppSettings): Promise<AppSettings> {
+export async function updateSettings(
+  settings: Pick<AppSettings, "language" | "theme" | "sync_mode">
+): Promise<AppSettings> {
   return apiCall<AppSettings>("update_settings", { settings });
-}
-
-/**
- * 获取备份文件夹路径
- */
-export async function getBackupFolder(): Promise<string | null> {
-  return apiCall<string | null>("get_backup_folder");
 }
 
 /**
@@ -54,12 +51,6 @@ export async function backupSkills(backupFolder: string): Promise<BackupResult> 
   return apiCall<BackupResult>("backup_skills", { backupFolder });
 }
 
-/**
- * 获取上次备份时间
- */
-export async function getLastBackupTime(): Promise<string | null> {
-  return apiCall<string | null>("get_last_backup_time");
-}
 
 export interface BackupResult {
   success: boolean;

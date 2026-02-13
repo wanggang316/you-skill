@@ -3,11 +3,10 @@
   import { t } from "../../lib/i18n";
   import { settings, updateSettings } from "../../lib/stores/settings";
   import {
-    getBackupFolder,
+    getSettings,
     setBackupFolder,
     openBackupFolder,
     backupSkills,
-    getLastBackupTime,
   } from "../../lib/api";
   import { open } from "@tauri-apps/plugin-dialog";
   import { FolderOpen, Loader2, ChevronRight, Download, ChevronLeft } from "@lucide/svelte";
@@ -49,10 +48,9 @@
     }
   };
 
-  // Load backup folder, last backup time, and version on mount
+  // Load settings-derived backup state and version on mount
   $effect(() => {
-    loadBackupFolder();
-    loadLastBackupTime();
+    loadBackupState();
     loadVersion();
   });
 
@@ -64,25 +62,19 @@
     }
   };
 
-  const loadBackupFolder = async () => {
+  const loadBackupState = async () => {
     try {
-      const folder = await getBackupFolder();
+      const data = await getSettings();
+      const folder = data.backup_folder;
       if (folder) {
         backupFolder = folder;
       }
-    } catch (error) {
-      console.error("Failed to load backup folder:", error);
-    }
-  };
-
-  const loadLastBackupTime = async () => {
-    try {
-      const time = await getLastBackupTime();
+      const time = data.last_backup_time;
       if (time) {
         lastBackupTime = time;
       }
     } catch (error) {
-      console.error("Failed to load last backup time:", error);
+      console.error("Failed to load backup state from settings:", error);
     }
   };
 
