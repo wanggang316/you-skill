@@ -5,25 +5,21 @@ use std::path::PathBuf;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct AppConfig {
-  pub scan_roots: Vec<String>,
   pub language: String,
   pub theme: String,
   pub sync_mode: String,
   pub backup_folder: Option<String>,
   pub last_backup_time: Option<String>,
-  pub api_key: Option<String>,
 }
 
 impl Default for AppConfig {
   fn default() -> Self {
     Self {
-      scan_roots: Vec::new(),
       language: "en".to_string(),
       theme: "system".to_string(),
       sync_mode: "symlink".to_string(),
       backup_folder: None,
       last_backup_time: None,
-      api_key: None,
     }
   }
 }

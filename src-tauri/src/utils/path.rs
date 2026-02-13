@@ -6,10 +6,11 @@ pub fn is_under_canonical(path: &Path, global_canonical: &Path) -> bool {
   path_str.starts_with(global_str.as_ref())
 }
 
-pub fn expand_home(path: &str) -> Option<PathBuf> {
+pub fn expand_home(path: &str) -> PathBuf {
   if path.starts_with("~/") {
-    let home = dirs_next::home_dir()?;
-    return Some(home.join(path.trim_start_matches("~/")));
+    if let Some(home) = dirs_next::home_dir() {
+      return home.join(path.trim_start_matches("~/"));
+    }
   }
-  Some(PathBuf::from(path))
+  PathBuf::from(path)
 }

@@ -1,7 +1,7 @@
 use crate::models::{
   DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallResult,
 };
-use crate::services::agent_apps_service::{expand_tilde, local_agent_apps};
+use crate::services::agent_apps_service::local_agent_apps;
 use crate::services::native_skill_lock_service::{
   add_skill_to_native_lock, remove_skill_from_native_lock,
 };
@@ -9,6 +9,7 @@ use crate::services::skill_lock_service::{add_skill_to_lock, SkillLockEntry};
 use crate::utils::file::FileHelper;
 use crate::utils::folder::FolderHelper;
 use crate::utils::github::GithubHelper;
+use crate::utils::path::expand_home;
 use crate::utils::zip::ZipHelper;
 use std::env;
 use std::fs;
@@ -285,7 +286,7 @@ pub fn delete_skill(
       dirs_to_check.push(cwd.join(project_path));
     }
     if let Some(ref global_path) = app.global_path {
-      dirs_to_check.push(expand_tilde(global_path));
+      dirs_to_check.push(expand_home(global_path));
     }
     for dir in dirs_to_check {
       let link_path = dir.join(&folder_name);
@@ -376,7 +377,7 @@ fn resolve_selected_apps_global_paths(agent_apps: &[String]) -> Result<Vec<Selec
     };
     selected.push(SelectedAgentPath {
       display_name: app.display_name.clone(),
-      global_path: expand_tilde(global_path),
+      global_path: expand_home(global_path),
     });
   }
 

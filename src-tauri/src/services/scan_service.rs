@@ -1,30 +1,26 @@
-use crate::config::load_config;
 use crate::models::LocalSkill;
-use crate::services::agent_apps_service::{expand_tilde, local_agent_apps};
+use crate::services::agent_apps_service::local_agent_apps;
 use crate::utils::file::FileHelper;
 use crate::utils::folder::FolderHelper;
 use crate::utils::path::{expand_home, is_under_canonical};
 use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
+use std::path::Path;
 
 pub fn scan_local_skills() -> Result<Vec<LocalSkill>, String> {
   let mut managed_map: HashMap<String, LocalSkill> = HashMap::new();
   let mut unmanaged_list: Vec<LocalSkill> = Vec::new();
   let mut managed_names: HashSet<String> = HashSet::new();
-  let config = load_config().unwrap_or_default();
 
-  let global_canonical = expand_home("~/.agents/skills").ok_or("无法获取用户目录")?;
+  let global_canonical = expand_home("~/.agents/skills");
 
-  collect_canonical_skills(&global_canonical, "global", &mut managed_map, &mut managed_names);
+  collect_canonical_skills(&global_canonical, &mut managed_map, &mut managed_names);
 
   // Scan all locally installed agent apps (built-in + custom)
   for app in local_agent_apps() {
     if let Some(ref global_path) = app.global_path {
-      let dir = expand_tilde(global_path);
+      let dir = expand_home(global_path);
       collect_agent_skills(
         &dir,
-        "global",
         &app.id,
         &global_canonical,
         &mut managed_map,
@@ -32,11 +28,6 @@ pub fn scan_local_skills() -> Result<Vec<LocalSkill>, String> {
         &mut unmanaged_list,
       );
     }
-  }
-
-  for root in config.scan_roots.iter() {
-    let path = PathBuf::from(root);
-    collect_custom_skills(&path, &global_canonical, &mut managed_names, &mut unmanaged_list);
   }
 
   let mut all_skills: Vec<LocalSkill> = managed_map.into_values().collect();
@@ -47,7 +38,6 @@ pub fn scan_local_skills() -> Result<Vec<LocalSkill>, String> {
 
 fn collect_canonical_skills(
   base_dir: &Path,
-  scope: &str,
   map: &mut HashMap<String, LocalSkill>,
   names: &mut HashSet<String>,
 ) {
@@ -60,10 +50,10 @@ fn collect_canonical_skills(
       if !is_skill_dir(&path) {
         continue;
       }
-      if let Some(mut skill) = parse_canonical_skill_dir(&path, scope) {
+      if let Some(mut skill) = parse_canonical_skill_dir(&path) {
         skill.managed_status = "managed".to_string();
         let name = skill.name.clone();
-        let key = format!("{}::{}", scope, name);
+        let key = name.clone();
         map.entry(key).or_insert(skill);
         names.insert(name);
       }
@@ -71,7 +61,7 @@ fn collect_canonical_skills(
   }
 }
 
-fn parse_canonical_skill_dir(skill_dir: &Path, scope: &str) -> Option<LocalSkill> {
+fn parse_canonical_skill_dir(skill_dir: &Path) -> Option<LocalSkill> {
   let skill_file = skill_dir.join("SKILL.md");
   let frontmatter = FileHelper::read_skill_frontmatter(&skill_file).ok();
 
@@ -91,7 +81,7 @@ fn parse_canonical_skill_dir(skill_dir: &Path, scope: &str) -> Option<LocalSkill
       .and_then(|fm| fm.name.clone())
       .unwrap_or(folder_name),
     description: frontmatter.and_then(|fm| fm.description),
-    scope: scope.to_string(),
+    scope: "global".to_string(),
     canonical_path,
     agents: Vec::new(),
     managed_status: "managed".to_string(),
@@ -103,7 +93,6 @@ fn parse_canonical_skill_dir(skill_dir: &Path, scope: &str) -> Option<LocalSkill
 
 fn collect_agent_skills(
   base_dir: &Path,
-  scope: &str,
   agent_id: &str,
   global_canonical: &Path,
   managed_map: &mut HashMap<String, LocalSkill>,
@@ -120,13 +109,13 @@ fn collect_agent_skills(
         continue;
       }
 
-      let (mut skill, is_managed_link) = match parse_skill_dir(&path, scope, global_canonical) {
+      let (mut skill, is_managed_link) = match parse_skill_dir(&path, global_canonical) {
         Some(skill) => skill,
         None => continue,
       };
 
       if is_managed_link {
-        let key = format!("{}::{}", scope, skill.name);
+        let key = skill.name.clone();
         let entry = managed_map.entry(key).or_insert_with(|| {
           skill.managed_status = "managed".to_string();
           skill
@@ -150,62 +139,7 @@ fn collect_agent_skills(
   }
 }
 
-fn collect_custom_skills(
-  base_dir: &Path,
-  global_canonical: &Path,
-  managed_names: &mut HashSet<String>,
-  unmanaged_list: &mut Vec<LocalSkill>,
-) {
-  if !FolderHelper::exists(base_dir) {
-    return;
-  }
-
-  let walker = WalkDir::new(base_dir)
-    .follow_links(false)
-    .max_depth(5)
-    .into_iter()
-    .filter_entry(|entry| !is_ignored(entry.path()));
-
-  for entry in walker.filter_map(Result::ok) {
-    if entry.file_type().is_dir() && is_symlink_dir(entry.path()) {
-      let candidate = entry.path().join("SKILL.md");
-      if candidate.exists() {
-        if let Some((mut skill, _)) = parse_skill_dir(entry.path(), "custom", global_canonical) {
-          let has_managed = managed_names.contains(&skill.name);
-          skill.managed_status = if has_managed {
-            "mixed".to_string()
-          } else {
-            "unmanaged".to_string()
-          };
-          skill.conflict_with_managed = has_managed;
-          unmanaged_list.push(skill);
-        }
-      }
-      continue;
-    }
-
-    if entry.file_type().is_file() && entry.file_name() == "SKILL.md" {
-      if let Some(dir) = entry.path().parent() {
-        if let Some((mut skill, _)) = parse_skill_dir(dir, "custom", global_canonical) {
-          let has_managed = managed_names.contains(&skill.name);
-          skill.managed_status = if has_managed {
-            "mixed".to_string()
-          } else {
-            "unmanaged".to_string()
-          };
-          skill.conflict_with_managed = has_managed;
-          unmanaged_list.push(skill);
-        }
-      }
-    }
-  }
-}
-
-fn parse_skill_dir(
-  skill_dir: &Path,
-  scope: &str,
-  global_canonical: &Path,
-) -> Option<(LocalSkill, bool)> {
+fn parse_skill_dir(skill_dir: &Path, global_canonical: &Path) -> Option<(LocalSkill, bool)> {
   let skill_file = skill_dir.join("SKILL.md");
   let frontmatter = FileHelper::read_skill_frontmatter(&skill_file).ok();
 
@@ -234,7 +168,7 @@ fn parse_skill_dir(
         .and_then(|fm| fm.name.clone())
         .unwrap_or(folder_name),
       description: frontmatter.and_then(|fm| fm.description),
-      scope: scope.to_string(),
+      scope: "global".to_string(),
       canonical_path,
       agents: Vec::new(),
       managed_status: "unknown".to_string(),
@@ -244,14 +178,6 @@ fn parse_skill_dir(
     },
     is_managed_link,
   ))
-}
-
-fn is_ignored(path: &Path) -> bool {
-  let path_str = path.to_string_lossy();
-  path_str.contains("/node_modules/")
-    || path_str.contains("/.git/")
-    || path_str.contains("/target/")
-    || path_str.contains("/dist/")
 }
 
 fn is_skill_dir(path: &Path) -> bool {

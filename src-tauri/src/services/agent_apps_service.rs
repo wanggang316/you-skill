@@ -1,4 +1,5 @@
 use crate::models::AgentApp;
+use crate::utils::path::expand_home;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::RwLock;
@@ -6,16 +7,6 @@ use uuid::Uuid;
 
 // Global cache for local agent apps
 static LOCAL_AGENT_APPS: RwLock<Option<Vec<AgentApp>>> = RwLock::new(None);
-
-// Expand tilde in path
-pub fn expand_tilde(path: &str) -> PathBuf {
-  if path.starts_with("~/") {
-    if let Some(home) = dirs_next::home_dir() {
-      return home.join(&path[2..]);
-    }
-  }
-  PathBuf::from(path)
-}
 
 // Get local agent apps (actually installed on the system)
 pub fn local_agent_apps() -> Vec<AgentApp> {
@@ -31,7 +22,7 @@ pub fn local_agent_apps() -> Vec<AgentApp> {
 
   for app in all_apps {
     if let Some(global_path) = &app.global_path {
-      let expanded_path = expand_tilde(global_path);
+      let expanded_path = expand_home(global_path);
       if expanded_path.exists() {
         local_apps.push(app);
       }
@@ -359,7 +350,7 @@ fn all_agent_apps() -> Vec<AgentApp> {
 }
 
 fn check_global_path_exists(global_path: &str) -> bool {
-  let expanded_path = expand_tilde(global_path);
+  let expanded_path = expand_home(global_path);
   expanded_path.exists()
 }
 
