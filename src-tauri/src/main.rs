@@ -28,7 +28,7 @@ use commands::{
   settings::{get_settings, update_settings},
   skill::{check_skill_update, open_in_file_manager, read_skill_readme},
 };
-use tray::{setup_tray, update_tray_skills, TrayState};
+use tray::setup_tray;
 
 #[tauri::command]
 fn ping() -> String {
@@ -56,9 +56,6 @@ fn main() {
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
     .plugin(tauri_plugin_process::init())
-    .manage(TrayState {
-      skills: std::sync::Mutex::new(Vec::new()),
-    })
     .setup(|app| {
       // Setup tray icon and menu
       if let Err(e) = setup_tray(app.handle()) {
@@ -115,7 +112,6 @@ fn main() {
       open_backup_folder,
       backup_skills,
       get_last_backup_time,
-      update_tray_skills,
       read_skill_readme,
       open_in_file_manager,
       check_skill_update

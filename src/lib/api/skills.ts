@@ -304,10 +304,3 @@ export async function openInFileManager(filePath: string): Promise<void> {
 export async function recordInstall(skillId: string): Promise<void> {
   return apiCall<void>("record_skill_install", { skillId: skillId });
 }
-
-/**
- * 更新托盘技能列表
- */
-export async function updateTraySkills(skills: LocalSkill[]): Promise<void> {
-  return apiCall<void>("update_tray_skills", { skills });
-}

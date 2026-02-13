@@ -1,16 +1,9 @@
-use crate::models::LocalSkill;
 use image::ImageDecoder;
-use std::sync::Mutex;
 use tauri::{
   menu::{Menu, MenuItem, PredefinedMenuItem},
   tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
   AppHandle, Emitter, Manager,
 };
-
-// Store skills in app state for tray menu
-pub struct TrayState {
-  pub skills: Mutex<Vec<LocalSkill>>,
-}
 
 pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
   // Build tray menu
@@ -97,15 +90,4 @@ fn show_main_window_with_install(app: &AppHandle) {
     // Emit event to frontend to open install modal
     let _ = window.emit("open-install-modal", ());
   }
-}
-
-#[tauri::command]
-pub async fn update_tray_skills(app: AppHandle, skills: Vec<LocalSkill>) -> Result<(), String> {
-  // Update state only - don't recreate tray to prevent duplicates
-  if let Some(state) = app.try_state::<TrayState>() {
-    if let Ok(mut guard) = state.skills.lock() {
-      *guard = skills;
-    }
-  }
-  Ok(())
 }

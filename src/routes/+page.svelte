@@ -18,7 +18,6 @@
     unifySkill,
     deleteSkillComplete,
     setAgentLink,
-    updateTraySkills,
     checkSkillUpdate,
   } from "../lib/api/skills";
   import { listLocalAgentApps } from "../lib/api/agent-apps";
@@ -155,12 +154,6 @@
     localError = "";
     try {
       localSkills = await scanLocalSkills();
-
-      try {
-        await updateTraySkills(localSkills);
-      } catch (e) {
-        console.error("Failed to update tray skills:", e);
-      }
 
       // 延迟检查更新，不阻塞首屏
       setTimeout(() => checkForSkillUpdates().catch(console.error), 100);
