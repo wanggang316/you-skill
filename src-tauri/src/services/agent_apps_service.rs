@@ -43,6 +43,7 @@ pub fn local_agent_apps() -> Vec<AgentApp> {
     *cache = Some(local_apps.clone());
   }
 
+  tracing::info!("local_apps: {:?}", local_apps);
   local_apps
 }
 
@@ -64,7 +65,7 @@ pub fn create_user_agent_app(
   let global_path = global_path.trim().to_string();
   let project_path = project_path.map(|p| p.trim().to_string());
 
-  validate_user_agent_app(&display_name, &global_path, project_path.as_deref())?;
+  validate_user_agent_app(&display_name, &global_path, project_path.as_deref(), None)?;
 
   let id = generate_id_from_display_name(&display_name);
   let user_app = AgentApp {
@@ -110,7 +111,12 @@ pub fn update_user_agent_app_detail(
     return Err("Cannot update internal agent apps".to_string());
   }
 
-  validate_user_agent_app(&display_name, &global_path, project_path.as_deref())?;
+  validate_user_agent_app(
+    &display_name,
+    &global_path,
+    project_path.as_deref(),
+    Some(id.as_str()),
+  )?;
 
   let user_app = AgentApp {
     id: id.clone(),
@@ -370,6 +376,7 @@ fn validate_user_agent_app(
   display_name: &str,
   global_path: &str,
   project_path: Option<&str>,
+  current_id: Option<&str>,
 ) -> Result<(), String> {
   let project_path = project_path.unwrap_or_default();
 
@@ -389,6 +396,7 @@ fn validate_user_agent_app(
 
   if local_apps
     .iter()
+    .filter(|app| Some(app.id.as_str()) != current_id)
     .any(|app| app.display_name.eq_ignore_ascii_case(display_name))
   {
     return Err(format!("Display name '{}' already exists", display_name));
@@ -396,6 +404,7 @@ fn validate_user_agent_app(
 
   if local_apps
     .iter()
+    .filter(|app| Some(app.id.as_str()) != current_id)
     .any(|app| app.global_path.as_deref() == Some(global_path))
   {
     return Err(format!("Global path '{}' already exists", global_path));
@@ -403,13 +412,17 @@ fn validate_user_agent_app(
 
   if local_apps
     .iter()
+    .filter(|app| Some(app.id.as_str()) != current_id)
     .any(|app| app.project_path.as_deref() == Some(project_path))
   {
     return Err(format!("Project path '{}' already exists", project_path));
   }
 
   if !check_global_path_exists(global_path) {
-    return Err(format!("Global path folder does not exist: {}", global_path));
+    return Err(format!(
+      "Global path folder does not exist: {}",
+      global_path
+    ));
   }
 
   Ok(())

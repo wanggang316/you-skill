@@ -6,5 +6,6 @@ pub struct AgentApp {
   pub display_name: String,
   pub project_path: Option<String>,
   pub global_path: Option<String>,
+  #[serde(default)]
   pub is_user_custom: bool,
 }

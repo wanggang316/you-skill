@@ -48,6 +48,7 @@
     try {
       const { listLocalAgentApps } = await import("../api");
       const apps = await listLocalAgentApps();
+      console.log("apps", apps);
       installedAgentAppsCount = apps.length;
     } catch (error) {
       console.error("Failed to load agent apps count:", error);
