@@ -8,6 +8,7 @@ mod models;
 mod paths;
 mod services;
 mod tray;
+mod utils;
 
 use commands::{
   agent_apps::{
