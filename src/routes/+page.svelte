@@ -11,8 +11,8 @@
     scanLocalSkills,
     fetchRemoteSkills,
     fetchSkillsByNames,
-    detectGithubSkills,
-    installGithubAuto,
+    detectGithubAuto,
+    install,
     recordInstall,
     checkCanonicalSkill,
     unifySkill,
@@ -21,7 +21,7 @@
     checkSkillUpdate,
   } from "../lib/api/skills";
   import { listLocalAgentApps } from "../lib/api/agent-apps";
-  import type { LocalSkill, RemoteSkill, AgentInfo } from "../lib/api/skills";
+  import type { DetectedSkill, LocalSkill, RemoteSkill, AgentInfo } from "../lib/api/skills";
 
   // Shared state for modals
   let addSkillModalOpen = $state(false);
@@ -59,7 +59,7 @@
   let updateCheckPromise = $state<Promise<void> | null>(null);
 
   // Pending install state
-  let pendingInstallSkill = $state<RemoteSkill & { detectedPath?: string } | null>(null);
+  let pendingInstallSkill = $state<RemoteSkill & { detectedSkill?: DetectedSkill } | null>(null);
   let pendingInstallAgents = $state<string[]>([]);
   let isDownloading = $state(false);
   let downloadError = $state("");
@@ -271,19 +271,8 @@
       downloadError = "";
       installingSkill = skill.id;
 
-      const detectedSkills = await detectGithubSkills(skill.url);
-      const matchingSkill = detectedSkills.find(
-        (s) => s.name === skill.name || skill.path?.includes(s.name) || s.path === skill.path
-      );
-
-      if (!matchingSkill && detectedSkills.length > 0) {
-        pendingInstallSkill = { ...skill, detectedPath: detectedSkills[0].path };
-      } else if (matchingSkill) {
-        pendingInstallSkill = { ...skill, detectedPath: matchingSkill.path };
-      } else {
-        downloadError = "No skills found in repository";
-        return;
-      }
+      const detectedSkill = await detectGithubAuto(skill.url);
+      pendingInstallSkill = { ...skill, detectedSkill };
 
       const localSkill = localSkills.find((ls) => ls.name === skill.name);
       const currentAgents = localSkill?.agents || agents.map((a) => a.id);
@@ -296,15 +285,11 @@
         installingSkill = pendingInstallSkill.id;
         pendingInstallAgents = selectedAgents;
         try {
-          const skillPath =
-            pendingInstallSkill.detectedPath ||
-            pendingInstallSkill.path ||
-            pendingInstallSkill.name;
-          const result = await installGithubAuto({
-            url: skill.url!,
-            skill_path: skillPath,
-            agents: selectedAgents,
-            skill_folder_hash: skill.skill_path_sha,
+          if (!pendingInstallSkill.detectedSkill) return;
+          const result = await install({
+            detected_skill: pendingInstallSkill.detectedSkill,
+            agent_apps: selectedAgents,
+            method: "symlink",
           });
           if (!result.success) {
             installLog = `${result.message}\n${result.stderr || result.stdout}`;
@@ -354,18 +339,8 @@
     installingSkill = skill.id;
     try {
       if (!skill.url) return;
-      const detectedSkills = await detectGithubSkills(skill.url);
-      const matchingSkill = detectedSkills.find(
-        (s) => s.name === skill.name || skill.path?.includes(s.name) || s.path === skill.path
-      );
-      if (!matchingSkill && detectedSkills.length > 0) {
-        pendingInstallSkill = { ...skill, detectedPath: detectedSkills[0].path };
-      } else if (matchingSkill) {
-        pendingInstallSkill = { ...skill, detectedPath: matchingSkill.path };
-      } else {
-        downloadError = "No skills found in repository";
-        return;
-      }
+      const detectedSkill = await detectGithubAuto(skill.url);
+      pendingInstallSkill = { ...skill, detectedSkill };
 
       selectAgentModalTitle = $t("installConfirm.title", { name: skill.name });
       selectAgentModalInitialSelection = agents.map((a) => a.id);
@@ -375,16 +350,11 @@
         installingSkill = pendingInstallSkill.id;
         pendingInstallAgents = selectedAgents;
         try {
-          const skillPath =
-            pendingInstallSkill.detectedPath ||
-            pendingInstallSkill.path ||
-            pendingInstallSkill.name;
-          if (!pendingInstallSkill.url) return;
-          const result = await installGithubAuto({
-            url: pendingInstallSkill.url,
-            skill_path: skillPath,
-            agents: selectedAgents,
-            skill_folder_hash: pendingInstallSkill.skill_path_sha,
+          if (!pendingInstallSkill.detectedSkill) return;
+          const result = await install({
+            detected_skill: pendingInstallSkill.detectedSkill,
+            agent_apps: selectedAgents,
+            method: "symlink",
           });
           if (!result.success) {
             installLog = `${result.message}\n${result.stderr || result.stdout}`;

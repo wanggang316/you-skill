@@ -3,7 +3,6 @@
 
 pub mod agent_apps_service;
 pub mod backup_service;
-pub mod install_service;
 pub mod manage_service;
 pub mod remote_service;
 pub mod scan_service;

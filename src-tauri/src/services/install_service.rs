@@ -106,6 +106,7 @@ fn find_skill_md_files(
         skills.push(DetectedSkill {
           name: skill_name,
           path: relative_path,
+          temp_skill_path: String::new(),
         });
       }
 
@@ -155,6 +156,7 @@ pub fn detect_zip_skills(zip_path: String) -> Result<Vec<DetectedSkill>, String>
     skills.push(DetectedSkill {
       name: zip_filename,
       path: String::new(), // Empty path means root
+      temp_skill_path: String::new(),
     });
   }
 
@@ -191,6 +193,7 @@ pub fn detect_folder_skills(folder_path: String) -> Result<Vec<DetectedSkill>, S
     skills.push(DetectedSkill {
       name: folder_name,
       path: String::new(), // Empty path means root
+      temp_skill_path: String::new(),
     });
   }
 

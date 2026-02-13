@@ -2,12 +2,10 @@
   import { FileArchive, Github, Check, AlertCircle, Loader2, Folder } from "@lucide/svelte";
   import { t } from "../i18n";
   import {
-    detectZipSkills,
-    detectGithubSkills,
-    installPackage,
-    installGithubManual,
-    detectFolderSkills,
-    installFolder,
+    detectZip,
+    detectGithubManual,
+    detectFolder,
+    install,
   } from "../api/skills";
   import Modal from "./ui/Modal.svelte";
   import AgentSelector from "./AgentSelector.svelte";
@@ -116,13 +114,9 @@
     selectedZipSkill = null;
 
     try {
-      const skills = await detectZipSkills(selectedZipPath);
-      detectedZipSkills = skills;
-      if (skills.length === 0) {
-        zipError = $t("addSkill.noSkillsFound");
-      } else if (skills.length === 1) {
-        selectedZipSkill = skills[0];
-      }
+      const skill = await detectZip(selectedZipPath);
+      detectedZipSkills = [skill];
+      selectedZipSkill = skill;
     } catch (error) {
       zipError = String(error);
     } finally {
@@ -155,13 +149,9 @@
     selectedFolderSkill = null;
 
     try {
-      const skills = await detectFolderSkills(selectedFolderPath);
-      detectedFolderSkills = skills;
-      if (skills.length === 0) {
-        folderError = $t("addSkill.noSkillsFound");
-      } else if (skills.length === 1) {
-        selectedFolderSkill = skills[0];
-      }
+      const skill = await detectFolder(selectedFolderPath);
+      detectedFolderSkills = [skill];
+      selectedFolderSkill = skill;
     } catch (error) {
       folderError = String(error);
     } finally {
@@ -178,7 +168,7 @@
     selectedSkill = null;
 
     try {
-      const skills = await detectGithubSkills(githubUrl.trim());
+      const skills = await detectGithubManual(githubUrl.trim());
       detectedSkills = skills;
       if (skills.length === 0) {
         githubError = $t("addSkill.noSkillsFound");
@@ -213,10 +203,10 @@
           isInstalling = false;
           return;
         }
-        await installPackage({
-          zip_path: selectedZipPath,
-          skill_path: selectedZipSkill.path,
-          agents: selectedAgents,
+        await install({
+          detected_skill: selectedZipSkill,
+          agent_apps: selectedAgents,
+          method: "symlink",
         });
       } else if (activeTab === "folder") {
         if (!selectedFolderPath) {
@@ -229,20 +219,20 @@
           isInstalling = false;
           return;
         }
-        await installFolder({
-          folder_path: selectedFolderPath,
-          skill_path: selectedFolderSkill.path,
-          agents: selectedAgents,
+        await install({
+          detected_skill: selectedFolderSkill,
+          agent_apps: selectedAgents,
+          method: "symlink",
         });
       } else {
         if (!selectedSkill) {
           installError = $t("addSkill.noSkillSelected");
           return;
         }
-        await installGithubManual({
-          url: githubUrl,
-          skill_path: selectedSkill.path,
-          agents: selectedAgents,
+        await install({
+          detected_skill: selectedSkill,
+          agent_apps: selectedAgents,
+          method: "symlink",
         });
       }
 

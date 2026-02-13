@@ -78,25 +78,15 @@ export interface UnifyResult {
 export interface DetectedSkill {
   name: string;
   path: string;
+  temp_skill_path: string;
 }
 
-export interface InstallZipRequest {
-  zip_path: string;
-  skill_path: string;
-  agents: string[];
-}
+export type InstallMethod = "symlink" | "copy";
 
-export interface InstallGithubRequest {
-  url: string;
-  skill_path: string;
-  agents: string[];
-  skill_folder_hash?: string | null;
-}
-
-export interface InstallFolderRequest {
-  folder_path: string;
-  skill_path: string;
-  agents: string[];
+export interface InstallRequest {
+  detected_skill: DetectedSkill;
+  agent_apps: string[];
+  method: InstallMethod;
 }
 
 // ============ Local Skills ============
@@ -183,15 +173,15 @@ export async function setAgentLink(
 /**
  * 从 GitHub URL 检测技能
  */
-export async function detectGithubSkills(url: string): Promise<DetectedSkill[]> {
-  return apiCall<DetectedSkill[]>("detect_github_skills", { url });
+export async function detectGithubManual(githubPath: string): Promise<DetectedSkill[]> {
+  return apiCall<DetectedSkill[]>("detect_github_manual", { githubPath });
 }
 
 /**
  * 从 ZIP 文件检测技能
  */
-export async function detectZipSkills(zipPath: string): Promise<DetectedSkill[]> {
-  return apiCall<DetectedSkill[]>("detect_zip_skills", { zipPath });
+export async function detectZip(zipPath: string): Promise<DetectedSkill> {
+  return apiCall<DetectedSkill>("detect_zip", { zipPath });
 }
 
 // ============ Installation ============
@@ -199,36 +189,19 @@ export async function detectZipSkills(zipPath: string): Promise<DetectedSkill[]>
 /**
  * 从 ZIP 文件安装技能
  */
-export async function installPackage(request: InstallZipRequest): Promise<InstallResult> {
-  return apiCall<InstallResult>("install_package", { request });
+export async function detectFolder(folderPath: string): Promise<DetectedSkill> {
+  return apiCall<DetectedSkill>("detect_folder", { folderPath });
 }
 
 /**
  * 从 GitHub 安装技能
  */
-export async function installGithubManual(request: InstallGithubRequest): Promise<InstallResult> {
-  return apiCall<InstallResult>("install_github_manual", { request });
+export async function detectGithubAuto(githubPath: string): Promise<DetectedSkill> {
+  return apiCall<DetectedSkill>("detect_github_auto", { githubPath });
 }
 
-/**
- * 从 GitHub 自动安装技能（用于远程市场）
- */
-export async function installGithubAuto(request: InstallGithubRequest): Promise<InstallResult> {
-  return apiCall<InstallResult>("install_github_auto", { request });
-}
-
-/**
- * 从文件夹检测技能
- */
-export async function detectFolderSkills(folderPath: string): Promise<DetectedSkill[]> {
-  return apiCall<DetectedSkill[]>("detect_folder_skills", { folderPath });
-}
-
-/**
- * 从文件夹安装技能
- */
-export async function installFolder(request: InstallFolderRequest): Promise<InstallResult> {
-  return apiCall<InstallResult>("install_folder", { request });
+export async function install(request: InstallRequest): Promise<InstallResult> {
+  return apiCall<InstallResult>("install", { request });
 }
 
 // ============ Other ============
