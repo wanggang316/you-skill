@@ -2,16 +2,6 @@ use crate::models::{CanonicalCheckResult, UnifyRequest, UnifyResult};
 use crate::services::manage_service;
 
 #[tauri::command]
-pub fn delete_skill_complete(
-  name: String,
-  canonical_path: String,
-  scope: String,
-  agents: Vec<String>,
-) -> Result<(), String> {
-  manage_service::delete_skill_complete(name, canonical_path, scope, agents)
-}
-
-#[tauri::command]
 pub fn move_skill(from: String, to: String) -> Result<(), String> {
   manage_service::move_skill(from, to)
 }

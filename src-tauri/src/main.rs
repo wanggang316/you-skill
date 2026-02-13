@@ -16,14 +16,14 @@ use commands::{
     update_user_agent_app,
   },
   manage::{check_canonical_skill, set_agent_link, unify_skill},
-  manage::{copy_skill, delete_skill_complete, move_skill},
+  manage::{copy_skill, move_skill},
   remote::{fetch_remote_skills, fetch_skills_by_names, record_skill_install},
   scan::scan_local_skills,
   settings::{
     backup_skills, get_settings, open_backup_folder, set_backup_folder, update_settings,
   },
   skill::{
-    check_skill_update, detect_folder, detect_github_auto, detect_github_manual, detect_zip,
+    check_skill_update, delete_skill, detect_folder, detect_github_auto, detect_github_manual, detect_zip,
     install_from_github, install_from_native, open_in_file_manager, read_skill_readme,
   },
 };
@@ -79,7 +79,7 @@ fn main() {
     .invoke_handler(tauri::generate_handler![
       ping,
       scan_local_skills,
-      delete_skill_complete,
+      delete_skill,
       move_skill,
       copy_skill,
       check_canonical_skill,

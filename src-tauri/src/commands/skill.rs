@@ -2,6 +2,16 @@ use crate::models::{DetectedSkill, InstallGithubRequest, InstallNativeRequest, I
 use crate::services::skill_service;
 
 #[tauri::command]
+pub fn delete_skill(
+  name: String,
+  canonical_path: String,
+  scope: String,
+  agents: Vec<String>,
+) -> Result<(), String> {
+  skill_service::delete_skill(name, canonical_path, scope, agents)
+}
+
+#[tauri::command]
 pub fn detect_zip(zip_path: String) -> Result<DetectedSkill, String> {
   skill_service::detect_zip(zip_path)
 }

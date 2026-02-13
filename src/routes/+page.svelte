@@ -16,7 +16,7 @@
     recordInstall,
     checkCanonicalSkill,
     unifySkill,
-    deleteSkillComplete,
+    deleteSkill,
     setAgentLink,
     checkSkillUpdate,
   } from "../lib/api/skills";
@@ -494,7 +494,7 @@
         title: $t("confirm.deleteTitle"),
       });
       if (!confirmed) return;
-      await deleteSkillComplete(skill.name, skill.canonical_path, skill.scope, skill.agents || []);
+      await deleteSkill(skill.name, skill.canonical_path, skill.scope, skill.agents || []);
       await refreshLocal();
     } catch (error) {
       localError = String(error);

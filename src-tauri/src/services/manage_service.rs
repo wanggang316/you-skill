@@ -1,7 +1,6 @@
 use crate::config::load_config;
 use crate::models::{CanonicalCheckResult, UnifyRequest, UnifyResult};
-use crate::services::agent_apps_service::{expand_tilde, local_agent_apps};
-use crate::services::skill_lock_service;
+use crate::services::agent_apps_service::local_agent_apps;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -15,54 +14,6 @@ pub fn delete_skill(path: String) -> Result<(), String> {
   } else if target.is_file() {
     fs::remove_file(&target).map_err(|e| e.to_string())?;
   }
-  Ok(())
-}
-
-/// Delete a skill completely:
-/// 1. First remove symlinks/copies from ALL agent directories (built-in + custom)
-/// 2. Then delete the canonical source folder in .agents/skills/
-/// 3. Then remove the entry from .skill-lock.json
-pub fn delete_skill_complete(
-  name: String,
-  canonical_path: String,
-  _scope: String,
-  _agents: Vec<String>,
-) -> Result<(), String> {
-  let skill_path = PathBuf::from(&canonical_path);
-
-  // Get the actual folder name from the canonical path
-  let folder_name = skill_path
-    .file_name()
-    .map(|s| s.to_string_lossy().to_string())
-    .ok_or("无法获取技能文件夹名")?;
-
-  let cwd = env::current_dir().map_err(|e| e.to_string())?;
-
-  // Step 1: Remove symlinks/copies from ALL locally installed agent directories
-  for app in local_agent_apps() {
-    let mut dirs_to_check: Vec<PathBuf> = Vec::new();
-    if let Some(ref project_path) = app.project_path {
-      dirs_to_check.push(cwd.join(project_path));
-    }
-    if let Some(ref global_path) = app.global_path {
-      dirs_to_check.push(expand_tilde(global_path));
-    }
-    for dir in dirs_to_check {
-      let link_path = dir.join(&folder_name);
-      if link_path.exists() || is_symlink(&link_path) {
-        let _ = remove_path(&link_path);
-      }
-    }
-  }
-
-  // Step 2: Delete the canonical source folder
-  if skill_path.exists() {
-    remove_path(&skill_path)?;
-  }
-
-  // Step 3: Remove from .skill-lock.json
-  let _ = skill_lock_service::remove_skill_from_lock(name);
-
   Ok(())
 }
 

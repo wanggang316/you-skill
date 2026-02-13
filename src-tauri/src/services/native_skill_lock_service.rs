@@ -76,3 +76,13 @@ pub fn add_skill_to_native_lock(skill_name: String) -> Result<(), String> {
 
   write_native_skill_lock_internal(&lock)
 }
+
+pub fn remove_skill_from_native_lock(skill_name: String) -> Result<bool, String> {
+  let mut lock = read_native_skill_lock_internal()?;
+  if !lock.skills.contains_key(&skill_name) {
+    return Ok(false);
+  }
+  lock.skills.remove(&skill_name);
+  write_native_skill_lock_internal(&lock)?;
+  Ok(true)
+}

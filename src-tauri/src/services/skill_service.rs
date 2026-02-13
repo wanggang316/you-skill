@@ -2,12 +2,15 @@ use crate::models::{
   DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallResult,
 };
 use crate::services::agent_apps_service::{expand_tilde, local_agent_apps};
-use crate::services::native_skill_lock_service::add_skill_to_native_lock;
+use crate::services::native_skill_lock_service::{
+  add_skill_to_native_lock, remove_skill_from_native_lock,
+};
 use crate::services::skill_lock_service::{add_skill_to_lock, SkillLockEntry};
 use crate::utils::file::FileHelper;
 use crate::utils::folder::FolderHelper;
 use crate::utils::github::GithubHelper;
 use crate::utils::zip::ZipHelper;
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -256,6 +259,45 @@ pub fn check_skill_update(skill_name: String, remote_sha: String) -> Result<bool
     return Ok(false);
   };
   Ok(local_sha != remote_sha)
+}
+
+pub fn delete_skill(
+  name: String,
+  canonical_path: String,
+  _scope: String,
+  _agents: Vec<String>,
+) -> Result<(), String> {
+  let skill_path = PathBuf::from(&canonical_path);
+  let folder_name = skill_path
+    .file_name()
+    .map(|s| s.to_string_lossy().to_string())
+    .ok_or("无法获取技能文件夹名")?;
+  let cwd = env::current_dir().map_err(|e| e.to_string())?;
+
+  for app in local_agent_apps() {
+    let mut dirs_to_check: Vec<PathBuf> = Vec::new();
+    if let Some(ref project_path) = app.project_path {
+      dirs_to_check.push(cwd.join(project_path));
+    }
+    if let Some(ref global_path) = app.global_path {
+      dirs_to_check.push(expand_tilde(global_path));
+    }
+    for dir in dirs_to_check {
+      let link_path = dir.join(&folder_name);
+      if link_path.exists() || link_path.is_symlink() {
+        let _ = remove_path_any(&link_path);
+      }
+    }
+  }
+
+  if skill_path.exists() || skill_path.is_symlink() {
+    remove_path_any(&skill_path)?;
+  }
+
+  let _ = crate::services::skill_lock_service::remove_skill_from_lock(name.clone());
+  let _ = remove_skill_from_native_lock(name);
+
+  Ok(())
 }
 
 fn validate_native_install_request(request: &InstallNativeRequest) -> Result<(), String> {

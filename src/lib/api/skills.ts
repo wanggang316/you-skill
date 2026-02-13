@@ -113,13 +113,13 @@ export async function scanLocalSkills(): Promise<LocalSkill[]> {
 /**
  * 完整删除技能（先删除软链接，再删除源文件）
  */
-export async function deleteSkillComplete(
+export async function deleteSkill(
   name: string,
   canonicalPath: string,
   scope: string,
   agents: string[]
 ): Promise<void> {
-  return apiCall<void>("delete_skill_complete", {
+  return apiCall<void>("delete_skill", {
     name,
     canonicalPath,
     scope,
