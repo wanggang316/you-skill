@@ -26,7 +26,9 @@ pub fn detect_folder(folder_path: String) -> Result<DetectedSkill, String> {
     return Err(format!("SKILL.md not found in folder: {}", folder_path));
   }
 
-  let name = FileHelper::read_skill_name_from_frontmatter(&skill_md)?;
+  let name = FileHelper::read_skill_frontmatter(&skill_md)?
+    .name
+    .ok_or("SKILL.md frontmatter missing valid 'name'".to_string())?;
   let tmp_dir = create_temp_dir("detect-folder")?;
   let tmp_path = tmp_dir.join(&name);
   copy_dir_all_sync(folder, &tmp_path)?;
@@ -92,7 +94,10 @@ pub fn detect_github_auto(github_path: String, skill_name: String) -> Result<Det
 
   for dir in skill_dirs {
     let skill_md = dir.join("SKILL.md");
-    let Ok(name) = FileHelper::read_skill_name_from_frontmatter(&skill_md) else {
+    let Ok(frontmatter) = FileHelper::read_skill_frontmatter(&skill_md) else {
+      continue;
+    };
+    let Some(name) = frontmatter.name else {
       continue;
     };
     if name != skill_name {

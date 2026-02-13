@@ -3,10 +3,9 @@ use crate::models::LocalSkill;
 use crate::services::agent_apps_service::{expand_tilde, local_agent_apps};
 use crate::utils::file::FileHelper;
 use crate::utils::folder::FolderHelper;
-use serde_yaml::Value;
+use crate::utils::path::{expand_home, is_under_canonical};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
 
 pub fn scan_local_skills() -> Result<Vec<LocalSkill>, String> {
@@ -74,8 +73,7 @@ fn collect_canonical_skills(
 
 fn parse_canonical_skill_dir(skill_dir: &Path, scope: &str) -> Option<LocalSkill> {
   let skill_file = skill_dir.join("SKILL.md");
-  let content = FileHelper::read_to_string(&skill_file).ok()?;
-  let (name, description) = parse_frontmatter(&content);
+  let frontmatter = FileHelper::read_skill_frontmatter(&skill_file).ok();
 
   let folder_name = skill_dir
     .file_name()
@@ -88,14 +86,17 @@ fn parse_canonical_skill_dir(skill_dir: &Path, scope: &str) -> Option<LocalSkill
     .unwrap_or_else(|| skill_dir.to_string_lossy().to_string());
 
   Some(LocalSkill {
-    name: name.unwrap_or(folder_name),
-    description,
+    name: frontmatter
+      .as_ref()
+      .and_then(|fm| fm.name.clone())
+      .unwrap_or(folder_name),
+    description: frontmatter.and_then(|fm| fm.description),
     scope: scope.to_string(),
     canonical_path,
     agents: Vec::new(),
     managed_status: "managed".to_string(),
     name_conflict: false,
-    created_at: get_created_at(skill_dir),
+    created_at: FileHelper::get_created_at(skill_dir),
     conflict_with_managed: false,
   })
 }
@@ -206,8 +207,7 @@ fn parse_skill_dir(
   global_canonical: &Path,
 ) -> Option<(LocalSkill, bool)> {
   let skill_file = skill_dir.join("SKILL.md");
-  let content = FileHelper::read_to_string(&skill_file).ok()?;
-  let (name, description) = parse_frontmatter(&content);
+  let frontmatter = FileHelper::read_skill_frontmatter(&skill_file).ok();
 
   let folder_name = skill_dir
     .file_name()
@@ -229,50 +229,21 @@ fn parse_skill_dir(
 
   Some((
     LocalSkill {
-      name: name.unwrap_or(folder_name),
-      description,
+      name: frontmatter
+        .as_ref()
+        .and_then(|fm| fm.name.clone())
+        .unwrap_or(folder_name),
+      description: frontmatter.and_then(|fm| fm.description),
       scope: scope.to_string(),
       canonical_path,
       agents: Vec::new(),
       managed_status: "unknown".to_string(),
       name_conflict: false,
-      created_at: get_created_at(skill_dir),
+      created_at: FileHelper::get_created_at(skill_dir),
       conflict_with_managed: false,
     },
     is_managed_link,
   ))
-}
-
-fn parse_frontmatter(content: &str) -> (Option<String>, Option<String>) {
-  let mut lines = content.lines();
-  if lines.next().map(|s| s.trim()) != Some("---") {
-    return (None, None);
-  }
-
-  let mut frontmatter = String::new();
-  for line in lines.by_ref() {
-    if line.trim() == "---" {
-      break;
-    }
-    frontmatter.push_str(line);
-    frontmatter.push('\n');
-  }
-
-  let yaml: Value = match serde_yaml::from_str(&frontmatter) {
-    Ok(val) => val,
-    Err(_) => return (None, None),
-  };
-
-  let name = yaml
-    .get("name")
-    .and_then(|v| v.as_str())
-    .map(|v| v.to_string());
-  let description = yaml
-    .get("description")
-    .and_then(|v| v.as_str())
-    .map(|v| v.to_string());
-
-  (name, description)
 }
 
 fn is_ignored(path: &Path) -> bool {
@@ -297,12 +268,6 @@ fn is_symlink_dir(path: &Path) -> bool {
   }
 }
 
-fn is_under_canonical(path: &Path, global_canonical: &Path) -> bool {
-  let path_str = path.to_string_lossy();
-  let global_str = global_canonical.to_string_lossy();
-  path_str.starts_with(global_str.as_ref())
-}
-
 fn apply_name_conflicts(list: &mut Vec<LocalSkill>) {
   let mut counts: HashMap<String, usize> = HashMap::new();
   for skill in list.iter() {
@@ -315,25 +280,4 @@ fn apply_name_conflicts(list: &mut Vec<LocalSkill>) {
       }
     }
   }
-}
-
-fn get_created_at(path: &Path) -> Option<i64> {
-  let metadata = FileHelper::metadata(path).ok()?;
-  let time = metadata.created().or_else(|_| metadata.modified()).ok()?;
-  to_millis(time)
-}
-
-fn to_millis(time: SystemTime) -> Option<i64> {
-  time
-    .duration_since(UNIX_EPOCH)
-    .ok()
-    .map(|duration| duration.as_millis() as i64)
-}
-
-fn expand_home(path: &str) -> Option<PathBuf> {
-  if path.starts_with("~/") {
-    let home = dirs_next::home_dir()?;
-    return Some(home.join(path.trim_start_matches("~/")));
-  }
-  Some(PathBuf::from(path))
 }

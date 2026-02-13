@@ -1,6 +1,14 @@
+use crate::utils::time::to_millis;
 use serde_yaml::Value;
 use std::fs;
 use std::path::Path;
+use std::time::SystemTime;
+
+#[derive(Debug, Clone, Default)]
+pub struct SkillFrontmatter {
+  pub name: Option<String>,
+  pub description: Option<String>,
+}
 
 pub struct FileHelper;
 
@@ -13,7 +21,13 @@ impl FileHelper {
     fs::metadata(path).map_err(|e| e.to_string())
   }
 
-  pub fn read_skill_name_from_frontmatter(skill_md_path: &Path) -> Result<String, String> {
+  pub fn get_created_at(path: &Path) -> Option<i64> {
+    let metadata = Self::metadata(path).ok()?;
+    let time: SystemTime = metadata.created().or_else(|_| metadata.modified()).ok()?;
+    to_millis(time)
+  }
+
+  pub fn read_skill_frontmatter(skill_md_path: &Path) -> Result<SkillFrontmatter, String> {
     let content = Self::read_to_string(skill_md_path)?;
     let mut lines = content.lines();
 
@@ -42,9 +56,13 @@ impl FileHelper {
       .get("name")
       .and_then(|v| v.as_str())
       .map(|s| s.trim().to_string())
-      .filter(|s| !s.is_empty())
-      .ok_or("SKILL.md frontmatter missing valid 'name'".to_string())?;
+      .filter(|s| !s.is_empty());
+    let description = yaml
+      .get("description")
+      .and_then(|v| v.as_str())
+      .map(|s| s.trim().to_string())
+      .filter(|s| !s.is_empty());
 
-    Ok(name)
+    Ok(SkillFrontmatter { name, description })
   }
 }
