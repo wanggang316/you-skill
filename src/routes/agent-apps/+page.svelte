@@ -7,10 +7,6 @@
   import { Plus, Trash2, Check, Loader2, Pencil, ChevronLeft, RefreshCw } from "@lucide/svelte";
   import IconButton from "../../lib/components/ui/IconButton.svelte";
   import AddAgentAppModal from "../../lib/components/AddAgentAppModal.svelte";
-  import {
-    listAgents,
-    type AgentInfo,
-  } from "../../lib/api/skills";
 
   // State
   let internalApps = $state<AgentApp[]>([]);
@@ -21,24 +17,9 @@
   let showAddModal = $state(false);
   let editingApp = $state<AgentApp | null>(null);
 
-  let agents = $state<AgentInfo[]>([]);
-
   onMount(() => {
     loadAgentApps();
-    loadAgents().then((agentList) => {
-      agents = agentList;
-    });
   });
-
-  async function loadAgents() {
-    try {
-      const agentList = await listAgents();
-      return agentList;
-    } catch (err) {
-      console.error("Failed to load agents:", err);
-      return [];
-    }
-  }
 
   async function loadAgentApps() {
     loading = true;

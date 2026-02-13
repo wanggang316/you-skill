@@ -11,7 +11,6 @@
     scanLocalSkills,
     fetchRemoteSkills,
     fetchSkillsByNames,
-    listAgents,
     detectGithubSkills,
     installGithubSkill,
     recordInstall,
@@ -22,6 +21,7 @@
     updateTraySkills,
     checkSkillUpdate,
   } from "../lib/api/skills";
+  import { listLocalAgentApps } from "../lib/api/agent-apps";
   import type { LocalSkill, RemoteSkill, AgentInfo } from "../lib/api/skills";
 
   // Shared state for modals
@@ -144,7 +144,7 @@
 
   const loadAgents = async () => {
     try {
-      agents = await listAgents();
+      agents = await listLocalAgentApps();
     } catch (error) {
       console.error(error);
     }

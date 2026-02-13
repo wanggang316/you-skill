@@ -5,7 +5,6 @@
  */
 
 import { apiCall } from "./index";
-import { listLocalAgentApps } from "./agent-apps";
 
 // ============ Types ============
 
@@ -189,15 +188,6 @@ export async function fetchSkillsByNames(names: string[]): Promise<RemoteSkill[]
  */
 export async function installSkill(request: InstallRequest): Promise<InstallResult> {
   return apiCall<InstallResult>("install_skill", { request });
-}
-
-// ============ Agents ============
-
-/**
- * 列出所有代理
- */
-export async function listAgents(): Promise<AgentInfo[]> {
-  return listLocalAgentApps();
 }
 
 // ============ Skill Management ============
