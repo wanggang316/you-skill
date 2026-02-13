@@ -1,14 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
-    import { goto } from "$app/navigation";
+  import { goto } from "$app/navigation";
   import PageHeader from "../lib/components/PageHeader.svelte";
   import { t } from "../lib/i18n";
-  import { loadSettings } from "../lib/stores/settings";
   import { check } from "@tauri-apps/plugin-updater";
   import LocalSkillsSection from "../lib/components/LocalSkillsSection.svelte";
   import RemoteSkillsSection from "../lib/components/RemoteSkillsSection.svelte";
-  import SkillDetail from "../lib/components/SkillDetail.svelte";
   import {
     scanLocalSkills,
     fetchRemoteSkills,
@@ -25,18 +23,13 @@
     checkSkillUpdate,
   } from "../lib/api/skills";
   import type { LocalSkill, RemoteSkill, AgentInfo } from "../lib/api/skills";
-  import { open } from "@tauri-apps/plugin-shell";
 
   // Shared state for modals
   let addSkillModalOpen = $state(false);
-  let pendingImportModalOpen = $state(false);
   let hasUpdate = $state(false);
 
   // Active tab
   let activeTab = $state("local");
-
-  // Selected skill for detail view
-  let selectedSkill = $state<LocalSkill | RemoteSkill | null>(null);
 
   // Local skills state
   let localSkills = $state<LocalSkill[]>([]);
@@ -59,7 +52,6 @@
 
   // Agents state
   let agents = $state<AgentInfo[]>([]);
-  let installAgent = $state("cursor");
 
   // Update skills state
   let skillsWithUpdate = $state<RemoteSkill[]>([]);
@@ -153,9 +145,6 @@
   const loadAgents = async () => {
     try {
       agents = await listAgents();
-      if (agents.length > 0) {
-        installAgent = agents[0].id;
-      }
     } catch (error) {
       console.error(error);
     }
@@ -460,14 +449,6 @@
     selectAgentModalOpen = true;
   };
 
-  const handleOpenUrl = async (url: string) => {
-    try {
-      await open(url);
-    } catch (error) {
-      console.error("Failed to open URL:", error);
-    }
-  };
-
   const handleUnify = async (skill: LocalSkill) => {
     const { confirm } = await import("@tauri-apps/plugin-dialog");
     if (!skill || !skill.agents || skill.agents.length === 0) {
@@ -548,47 +529,8 @@
   };
 
   const handleViewSkill = (skill: LocalSkill | RemoteSkill) => {
-    selectedSkill = skill;
-  };
-
-  const handleBackToList = () => {
-    selectedSkill = null;
-  };
-
-  // Build GitHub web URL for a specific path
-  function buildGitHubUrl(url: string, path: string | undefined) {
-    if (!url) return null;
-
-    if (url.includes("github.com")) {
-      const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
-      if (match) {
-        const [, owner, repo] = match;
-        const cleanRepo = repo.replace(/\.git$/, "");
-        return `https://github.com/${owner}/${cleanRepo}/tree/main/${path || ""}`;
-      }
-    }
-    return null;
-  };
-
-  const handleDetailAction = async () => {
-    if (!selectedSkill) return;
-
-    if ("url" in selectedSkill && selectedSkill.url) {
-      try {
-        const fullUrl =
-          buildGitHubUrl(selectedSkill.url, selectedSkill.path || "") || selectedSkill.url;
-        await open(fullUrl);
-      } catch (error) {
-        console.error("Failed to open URL:", error);
-      }
-    } else if ("canonical_path" in selectedSkill && selectedSkill.canonical_path) {
-      const { openInFileManager } = await import("../lib/api/skills");
-      try {
-        await openInFileManager(selectedSkill.canonical_path);
-      } catch (error) {
-        console.error("Failed to open in file manager:", error);
-      }
-    }
+    const type = "canonical_path" in skill ? "local" : "remote";
+    goto(`/skills/${type}/${encodeURIComponent(skill.name)}`);
   };
 
   // Handle tab change - 延迟加载非关键数据
@@ -615,9 +557,9 @@
 
 <div class="bg-base-100 text-base-content flex h-screen flex-col overflow-hidden">
   <PageHeader
-      currentView={selectedSkill ? "detail" : "list"}
+      currentView="list"
       activeTab={activeTab}
-      skillName={selectedSkill?.name || ""}
+      skillName=""
       {unmanagedCount}
       {hasUpdate}
       agentAppsLoading={false}
@@ -625,20 +567,14 @@
       onAddSkill={() => addSkillModalOpen = true}
       onOpenPendingImport={() => pendingImportModalOpenState = true}
       onOpenUpdate={navigateToSettings}
-      onBack={selectedSkill ? handleBackToList : () => {}}
-      onDetailAction={handleDetailAction}
+      onBack={() => {}}
+      onDetailAction={undefined}
       onRefreshAgentApps={() => {}}
     />
 
     <main class="flex-1 overflow-y-auto">
       <div class="mx-auto max-w-6xl px-6 py-6">
-        {#if selectedSkill}
-          <SkillDetail
-            skill={selectedSkill}
-            type={"canonical_path" in selectedSkill ? "local" : "remote"}
-            {agents}
-          />
-        {:else if activeTab === "local"}
+        {#if activeTab === "local"}
           <LocalSkillsSection
             bind:localSearch
             bind:localAgent
