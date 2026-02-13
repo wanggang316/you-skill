@@ -1,27 +1,8 @@
 use crate::models::AgentApp;
-use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::RwLock;
 use uuid::Uuid;
-
-// User-defined agent app stored in user_agent_apps.json
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct UserAgentApp {
-  pub id: String,
-  pub display_name: String,
-  pub global_path: String,
-  pub project_path: Option<String>,
-}
-
-// Internal agent apps (built-in)
-#[derive(Debug, Clone)]
-struct InternalAgentApp {
-  pub id: &'static str,
-  pub display_name: &'static str,
-  pub project_path: Option<&'static str>,
-  pub global_path: Option<&'static str>,
-}
 
 // Global cache for local agent apps
 static LOCAL_AGENT_APPS: RwLock<Option<Vec<AgentApp>>> = RwLock::new(None);
@@ -86,11 +67,12 @@ pub fn create_user_agent_app(
   validate_user_agent_app(&display_name, &global_path, project_path.as_deref())?;
 
   let id = generate_id_from_display_name(&display_name);
-  let user_app = UserAgentApp {
+  let user_app = AgentApp {
     id: id.clone(),
     display_name,
-    global_path,
+    global_path: Some(global_path),
     project_path,
+    is_user_custom: true,
   };
 
   let mut apps = load_user_agent_apps().unwrap_or_default();
@@ -130,11 +112,12 @@ pub fn update_user_agent_app_detail(
 
   validate_user_agent_app(&display_name, &global_path, project_path.as_deref())?;
 
-  let user_app = UserAgentApp {
+  let user_app = AgentApp {
     id: id.clone(),
     display_name,
-    global_path,
+    global_path: Some(global_path),
     project_path,
+    is_user_custom: true,
   };
 
   update_user_agent_app(&id, user_app)?;
@@ -158,133 +141,154 @@ pub fn list_user_agent_app_details() -> Vec<AgentApp> {
     .collect()
 }
 
-fn internal_agent_apps() -> Vec<InternalAgentApp> {
+fn internal_agent_apps() -> Vec<AgentApp> {
   vec![
-    InternalAgentApp {
-      id: "claude-code",
-      display_name: "Claude Code",
-      project_path: Some(".claude/skills"),
-      global_path: Some("~/.claude/skills"),
+    AgentApp {
+      id: "claude-code".to_string(),
+      display_name: "Claude Code".to_string(),
+      project_path: Some(".claude/skills".to_string()),
+      global_path: Some("~/.claude/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "codex",
-      display_name: "Codex",
-      project_path: Some(".codex/skills"),
-      global_path: Some("~/.codex/skills"),
+    AgentApp {
+      id: "codex".to_string(),
+      display_name: "Codex".to_string(),
+      project_path: Some(".codex/skills".to_string()),
+      global_path: Some("~/.codex/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "cursor",
-      display_name: "Cursor",
-      project_path: Some(".cursor/skills"),
-      global_path: Some("~/.cursor/skills"),
+    AgentApp {
+      id: "cursor".to_string(),
+      display_name: "Cursor".to_string(),
+      project_path: Some(".cursor/skills".to_string()),
+      global_path: Some("~/.cursor/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "cline",
-      display_name: "Cline",
-      project_path: Some(".cline/skills"),
-      global_path: Some("~/.cline/skills"),
+    AgentApp {
+      id: "cline".to_string(),
+      display_name: "Cline".to_string(),
+      project_path: Some(".cline/skills".to_string()),
+      global_path: Some("~/.cline/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "opencode",
-      display_name: "OpenCode",
-      project_path: Some(".opencode/skills"),
-      global_path: Some("~/.config/opencode/skills"),
+    AgentApp {
+      id: "opencode".to_string(),
+      display_name: "OpenCode".to_string(),
+      project_path: Some(".opencode/skills".to_string()),
+      global_path: Some("~/.config/opencode/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "openhands",
-      display_name: "OpenHands",
-      project_path: Some(".openhands/skills"),
-      global_path: Some("~/.openhands/skills"),
+    AgentApp {
+      id: "openhands".to_string(),
+      display_name: "OpenHands".to_string(),
+      project_path: Some(".openhands/skills".to_string()),
+      global_path: Some("~/.openhands/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "github-copilot",
-      display_name: "GitHub Copilot",
-      project_path: Some(".github/skills"),
-      global_path: Some("~/.copilot/skills"),
+    AgentApp {
+      id: "github-copilot".to_string(),
+      display_name: "GitHub Copilot".to_string(),
+      project_path: Some(".github/skills".to_string()),
+      global_path: Some("~/.copilot/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "continue",
-      display_name: "Continue",
-      project_path: Some(".continue/skills"),
-      global_path: Some("~/.continue/skills"),
+    AgentApp {
+      id: "continue".to_string(),
+      display_name: "Continue".to_string(),
+      project_path: Some(".continue/skills".to_string()),
+      global_path: Some("~/.continue/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "gemini-cli",
-      display_name: "Gemini CLI",
-      project_path: Some(".gemini/skills"),
-      global_path: Some("~/.gemini/skills"),
+    AgentApp {
+      id: "gemini-cli".to_string(),
+      display_name: "Gemini CLI".to_string(),
+      project_path: Some(".gemini/skills".to_string()),
+      global_path: Some("~/.gemini/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "goose",
-      display_name: "Goose",
-      project_path: Some(".goose/skills"),
-      global_path: Some("~/.config/goose/skills"),
+    AgentApp {
+      id: "goose".to_string(),
+      display_name: "Goose".to_string(),
+      project_path: Some(".goose/skills".to_string()),
+      global_path: Some("~/.config/goose/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "windsurf",
-      display_name: "Windsurf",
-      project_path: Some(".windsurf/skills"),
-      global_path: Some("~/.codeium/windsurf/skills"),
+    AgentApp {
+      id: "windsurf".to_string(),
+      display_name: "Windsurf".to_string(),
+      project_path: Some(".windsurf/skills".to_string()),
+      global_path: Some("~/.codeium/windsurf/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "roo",
-      display_name: "Roo Code",
-      project_path: Some(".roo/skills"),
-      global_path: Some("~/.roo/skills"),
+    AgentApp {
+      id: "roo".to_string(),
+      display_name: "Roo Code".to_string(),
+      project_path: Some(".roo/skills".to_string()),
+      global_path: Some("~/.roo/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "kiro-cli",
-      display_name: "Kiro CLI",
-      project_path: Some(".kiro/skills"),
-      global_path: Some("~/.kiro/skills"),
+    AgentApp {
+      id: "kiro-cli".to_string(),
+      display_name: "Kiro CLI".to_string(),
+      project_path: Some(".kiro/skills".to_string()),
+      global_path: Some("~/.kiro/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "qwen-code",
-      display_name: "Qwen Code",
-      project_path: Some(".qwen/skills"),
-      global_path: Some("~/.qwen/skills"),
+    AgentApp {
+      id: "qwen-code".to_string(),
+      display_name: "Qwen Code".to_string(),
+      project_path: Some(".qwen/skills".to_string()),
+      global_path: Some("~/.qwen/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "amp",
-      display_name: "AMP",
-      project_path: Some(".agents/skills"),
-      global_path: Some("~/.config/agents/skills"),
+    AgentApp {
+      id: "amp".to_string(),
+      display_name: "AMP".to_string(),
+      project_path: Some(".agents/skills".to_string()),
+      global_path: Some("~/.config/agents/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "antigravity",
-      display_name: "Antigravity",
-      project_path: Some(".agent/skills"),
-      global_path: Some("~/.gemini/antigravity/skills"),
+    AgentApp {
+      id: "antigravity".to_string(),
+      display_name: "Antigravity".to_string(),
+      project_path: Some(".agent/skills".to_string()),
+      global_path: Some("~/.gemini/antigravity/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "command-code",
-      display_name: "Command Code",
-      project_path: Some(".commandcode/skills"),
-      global_path: Some("~/.commandcode/skills"),
+    AgentApp {
+      id: "command-code".to_string(),
+      display_name: "Command Code".to_string(),
+      project_path: Some(".commandcode/skills".to_string()),
+      global_path: Some("~/.commandcode/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "crush",
-      display_name: "Crush",
-      project_path: Some(".crush/skills"),
-      global_path: Some("~/.config/crush/skills"),
+    AgentApp {
+      id: "crush".to_string(),
+      display_name: "Crush".to_string(),
+      project_path: Some(".crush/skills".to_string()),
+      global_path: Some("~/.config/crush/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "trae",
-      display_name: "Trae",
-      project_path: Some(".trae/skills"),
-      global_path: Some("~/.trae/skills"),
+    AgentApp {
+      id: "trae".to_string(),
+      display_name: "Trae".to_string(),
+      project_path: Some(".trae/skills".to_string()),
+      global_path: Some("~/.trae/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "trae-cn",
-      display_name: "Trae CN",
-      project_path: Some(".trae-cn/skills"),
-      global_path: Some("~/.trae-cn/skills"),
+    AgentApp {
+      id: "trae-cn".to_string(),
+      display_name: "Trae CN".to_string(),
+      project_path: Some(".trae-cn/skills".to_string()),
+      global_path: Some("~/.trae-cn/skills".to_string()),
+      is_user_custom: false,
     },
-    InternalAgentApp {
-      id: "vscode",
-      display_name: "VSCode",
-      project_path: Some(".github/skills"),
-      global_path: Some("~/.vscode/skills"),
+    AgentApp {
+      id: "vscode".to_string(),
+      display_name: "VSCode".to_string(),
+      project_path: Some(".github/skills".to_string()),
+      global_path: Some("~/.vscode/skills".to_string()),
+      is_user_custom: false,
     },
   ]
 }
@@ -294,7 +298,7 @@ fn user_agent_apps_path() -> Result<PathBuf, String> {
   Ok(config_dir.join("youskill").join("user_agent_apps.json"))
 }
 
-fn load_user_agent_apps() -> Result<Vec<UserAgentApp>, String> {
+fn load_user_agent_apps() -> Result<Vec<AgentApp>, String> {
   let path = user_agent_apps_path()?;
   if !path.exists() {
     return Ok(Vec::new());
@@ -303,7 +307,7 @@ fn load_user_agent_apps() -> Result<Vec<UserAgentApp>, String> {
   serde_json::from_str(&content).map_err(|e| e.to_string())
 }
 
-fn save_user_agent_apps(apps: &[UserAgentApp]) -> Result<(), String> {
+fn save_user_agent_apps(apps: &[AgentApp]) -> Result<(), String> {
   let path = user_agent_apps_path()?;
   if let Some(parent) = path.parent() {
     fs::create_dir_all(parent).map_err(|e| e.to_string())?;
@@ -318,14 +322,14 @@ fn remove_user_agent_app(id: &str) -> Result<(), String> {
   save_user_agent_apps(&apps)
 }
 
-fn update_user_agent_app(id: &str, app: UserAgentApp) -> Result<(), String> {
+fn update_user_agent_app(id: &str, app: AgentApp) -> Result<(), String> {
   let mut apps = load_user_agent_apps().unwrap_or_default();
   let index = apps
     .iter()
     .position(|a| a.id == id)
     .ok_or(format!("Agent app with id '{}' not found", id))?;
 
-  let updated_app = UserAgentApp {
+  let updated_app = AgentApp {
     id: id.to_string(),
     ..app
   };
@@ -338,36 +342,25 @@ fn all_agent_apps() -> Vec<AgentApp> {
   let internal = internal_agent_apps();
   let user_apps = load_user_agent_apps().unwrap_or_default();
 
-  let mut result: Vec<AgentApp> = internal
-    .iter()
-    .map(|app| AgentApp {
-      id: app.id.to_string(),
-      display_name: app.display_name.to_string(),
-      project_path: app.project_path.map(|p| p.to_string()),
-      global_path: app.global_path.map(|p| p.to_string()),
-      is_user_custom: false,
-    })
-    .collect();
-
   let internal_global_paths: std::collections::HashSet<String> = internal
     .iter()
-    .filter_map(|app| app.global_path.map(|p| p.to_string()))
+    .filter_map(|app| app.global_path.clone())
     .collect();
+  let mut result: Vec<AgentApp> = internal;
 
-  for user_app in user_apps {
+  for mut user_app in user_apps {
+    let user_global_path = user_app.global_path.clone();
     result.retain(|app| {
       app.id != user_app.id
-        && (!internal_global_paths.contains(&user_app.global_path)
-          || app.global_path.as_ref() != Some(&user_app.global_path))
+        && match &user_global_path {
+          Some(path) => {
+            !internal_global_paths.contains(path) || app.global_path.as_ref() != Some(path)
+          },
+          None => true,
+        }
     });
-
-    result.push(AgentApp {
-      id: user_app.id.clone(),
-      display_name: user_app.display_name.clone(),
-      project_path: user_app.project_path.clone(),
-      global_path: Some(user_app.global_path.clone()),
-      is_user_custom: true,
-    });
+    user_app.is_user_custom = true;
+    result.push(user_app);
   }
 
   result
