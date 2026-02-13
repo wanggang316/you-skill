@@ -15,10 +15,6 @@ use commands::{
     add_user_agent_app, list_local_agent_apps, refresh_agent_apps, remove_user_agent_app,
     update_user_agent_app,
   },
-  install::{
-    detect_folder_skills, detect_github_skills, detect_zip_skills, install_folder_skill,
-    install_github_skill, install_zip_skill,
-  },
   manage::{check_canonical_skill, set_agent_link, unify_skill},
   manage::{copy_skill, delete_skill_complete, move_skill},
   remote::{fetch_remote_skills, fetch_skills_by_names, record_skill_install},
@@ -26,7 +22,11 @@ use commands::{
   settings::{
     backup_skills, get_settings, open_backup_folder, set_backup_folder, update_settings,
   },
-  skill::{check_skill_update, open_in_file_manager, read_skill_readme},
+  skill::{
+    check_skill_update, detect_folder_skills, detect_github_skills, detect_zip_skills,
+    install_folder, install_github_auto, install_github_manual, install_package,
+    open_in_file_manager, read_skill_readme,
+  },
 };
 use tray::setup_tray;
 
@@ -98,10 +98,11 @@ fn main() {
       update_user_agent_app,
       detect_github_skills,
       detect_zip_skills,
-      install_zip_skill,
-      install_github_skill,
+      install_package,
+      install_github_manual,
+      install_github_auto,
       detect_folder_skills,
-      install_folder_skill,
+      install_folder,
       set_backup_folder,
       open_backup_folder,
       backup_skills,

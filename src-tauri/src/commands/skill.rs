@@ -1,108 +1,59 @@
-use std::path::Path;
-use std::process::Command;
+use crate::models::{
+  DetectedSkill, InstallFolderRequest, InstallGithubRequest, InstallResult, InstallZipRequest,
+};
+use crate::services::{install_service, skill_service};
 
-/// Open a file in the system's file manager (selecting the file)
 #[tauri::command]
-pub fn open_in_file_manager(file_path: String) -> Result<(), String> {
-  let path = Path::new(&file_path);
-
-  if !path.exists() {
-    return Err(format!("Path does not exist: {}", file_path));
-  }
-
-  #[cfg(target_os = "macos")]
-  {
-    // Use `open -R` to reveal the file in Finder
-    Command::new("open")
-      .arg("-R")
-      .arg(&file_path)
-      .spawn()
-      .map_err(|e| format!("Failed to open file manager: {}", e))?;
-    Ok(())
-  }
-
-  #[cfg(target_os = "linux")]
-  {
-    // Try common file managers for Linux
-    let managers = ["nautilus", "dolphin", "thunar", "pcmanfm"];
-    let mut opened = false;
-
-    for manager in managers {
-      if Command::new(manager)
-        .arg("--select")
-        .arg(&file_path)
-        .spawn()
-        .is_ok()
-      {
-        opened = true;
-        break;
-      }
-    }
-
-    // Fallback to xdg-open if no file manager worked
-    if !opened {
-      Command::new("xdg-open")
-        .arg(path.parent().unwrap_or(path))
-        .spawn()
-        .map_err(|e| format!("Failed to open file manager: {}", e))?;
-    }
-
-    Ok(())
-  }
-
-  #[cfg(target_os = "windows")]
-  {
-    // Use explorer /select to open in Explorer
-    Command::new("explorer")
-      .arg("/select,")
-      .arg(&file_path)
-      .spawn()
-      .map_err(|e| format!("Failed to open file manager: {}", e))?;
-    Ok(())
-  }
+pub async fn detect_github_skills(url: String) -> Result<Vec<DetectedSkill>, String> {
+  install_service::detect_github_skills(url)
 }
 
-/// Read SKILL.md or README.md from a skill directory
+#[tauri::command]
+pub fn install_package(request: InstallZipRequest) -> Result<InstallResult, String> {
+  skill_service::install_package(request.zip_path, request.skill_path, request.agents)
+}
+
+#[tauri::command]
+pub async fn install_github_manual(request: InstallGithubRequest) -> Result<InstallResult, String> {
+  skill_service::install_github_manual(request.url, request.skill_path, request.agents)
+}
+
+#[tauri::command]
+pub async fn install_github_auto(request: InstallGithubRequest) -> Result<InstallResult, String> {
+  skill_service::install_github_auto(
+    request.url,
+    request.skill_path,
+    request.agents,
+    request.skill_folder_hash,
+  )
+}
+
+#[tauri::command]
+pub fn detect_zip_skills(zip_path: String) -> Result<Vec<DetectedSkill>, String> {
+  install_service::detect_zip_skills(zip_path)
+}
+
+#[tauri::command]
+pub fn detect_folder_skills(folder_path: String) -> Result<Vec<DetectedSkill>, String> {
+  install_service::detect_folder_skills(folder_path)
+}
+
+#[tauri::command]
+pub fn install_folder(request: InstallFolderRequest) -> Result<InstallResult, String> {
+  skill_service::install_folder(request.folder_path, request.skill_path, request.agents)
+}
+
+#[tauri::command]
+pub fn open_in_file_manager(file_path: String) -> Result<(), String> {
+  skill_service::open_in_file_manager(file_path)
+}
+
 #[tauri::command]
 pub async fn read_skill_readme(skill_path: String) -> Result<String, String> {
-  let path = Path::new(&skill_path);
-
-  if !path.exists() {
-    return Err(format!("Skill directory does not exist: {}", skill_path));
-  }
-
-  // Try SKILL.md first
-  let skill_md = path.join("SKILL.md");
-  if skill_md.exists() {
-    match tokio::fs::read_to_string(&skill_md).await {
-      Ok(content) => return Ok(content),
-      Err(e) => return Err(format!("Failed to read SKILL.md: {}", e)),
-    }
-  }
-
-  // Try README.md as fallback
-  let readme_md = path.join("README.md");
-  if readme_md.exists() {
-    match tokio::fs::read_to_string(&readme_md).await {
-      Ok(content) => return Ok(content),
-      Err(e) => return Err(format!("Failed to read README.md: {}", e)),
-    }
-  }
-
-  Err(format!("No SKILL.md or README.md found in: {}", skill_path))
+  skill_service::read_skill_readme(skill_path).await
 }
 
 #[tauri::command]
 pub fn check_skill_update(skill_name: String, remote_sha: String) -> Result<bool, String> {
-  let entry = crate::services::skill_lock_service::get_skill_from_lock(skill_name)?;
-
-  let Some(entry) = entry else {
-    return Ok(false);
-  };
-
-  let Some(local_sha) = entry.skill_folder_hash else {
-    return Ok(false);
-  };
-
-  Ok(local_sha != remote_sha)
+  skill_service::check_skill_update(skill_name, remote_sha)
 }

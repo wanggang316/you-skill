@@ -12,7 +12,7 @@
     fetchRemoteSkills,
     fetchSkillsByNames,
     detectGithubSkills,
-    installGithubSkill,
+    installGithubAuto,
     recordInstall,
     checkCanonicalSkill,
     unifySkill,
@@ -300,7 +300,7 @@
             pendingInstallSkill.detectedPath ||
             pendingInstallSkill.path ||
             pendingInstallSkill.name;
-          const result = await installGithubSkill({
+          const result = await installGithubAuto({
             url: skill.url!,
             skill_path: skillPath,
             agents: selectedAgents,
@@ -380,7 +380,7 @@
             pendingInstallSkill.path ||
             pendingInstallSkill.name;
           if (!pendingInstallSkill.url) return;
-          const result = await installGithubSkill({
+          const result = await installGithubAuto({
             url: pendingInstallSkill.url,
             skill_path: skillPath,
             agents: selectedAgents,

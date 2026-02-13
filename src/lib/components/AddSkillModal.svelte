@@ -4,10 +4,10 @@
   import {
     detectZipSkills,
     detectGithubSkills,
-    installZipSkill,
-    installGithubSkill,
+    installPackage,
+    installGithubManual,
     detectFolderSkills,
-    installFolderSkill,
+    installFolder,
   } from "../api/skills";
   import Modal from "./ui/Modal.svelte";
   import AgentSelector from "./AgentSelector.svelte";
@@ -213,7 +213,7 @@
           isInstalling = false;
           return;
         }
-        await installZipSkill({
+        await installPackage({
           zip_path: selectedZipPath,
           skill_path: selectedZipSkill.path,
           agents: selectedAgents,
@@ -229,7 +229,7 @@
           isInstalling = false;
           return;
         }
-        await installFolderSkill({
+        await installFolder({
           folder_path: selectedFolderPath,
           skill_path: selectedFolderSkill.path,
           agents: selectedAgents,
@@ -239,7 +239,7 @@
           installError = $t("addSkill.noSkillSelected");
           return;
         }
-        await installGithubSkill({
+        await installGithubManual({
           url: githubUrl,
           skill_path: selectedSkill.path,
           agents: selectedAgents,

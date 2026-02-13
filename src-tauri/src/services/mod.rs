@@ -7,4 +7,5 @@ pub mod install_service;
 pub mod manage_service;
 pub mod remote_service;
 pub mod scan_service;
+pub mod skill_service;
 pub mod skill_lock_service;
