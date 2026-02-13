@@ -1,140 +1,160 @@
-use crate::models::{DetectedSkill, InstallMethod, InstallRequest, InstallResult};
+use crate::models::{
+  DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallResult,
+};
 use crate::services::agent_apps_service::{expand_tilde, local_agent_apps};
+use crate::services::skill_lock_service::{add_skill_to_lock, SkillLockEntry};
+use crate::utils::file::FileHelper;
+use crate::utils::folder::FolderHelper;
+use crate::utils::github::GithubHelper;
+use crate::utils::zip::ZipHelper;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub fn detect_zip(zip_path: String) -> Result<DetectedSkill, String> {
-  let temp_root = create_temp_dir("zip-detect")?;
-  extract_zip(&zip_path, &temp_root)?;
-
-  let mut skills = Vec::new();
-  find_skill_md_dirs(&temp_root, &temp_root, &mut skills)?;
-  let mut selected = select_single_skill(skills, "ZIP")?;
-  selected.temp_skill_path = temp_root.join(&selected.path).to_string_lossy().to_string();
-  Ok(selected)
-}
-
 pub fn detect_folder(folder_path: String) -> Result<DetectedSkill, String> {
-  let base = Path::new(&folder_path);
-  if !base.exists() || !base.is_dir() {
-    return Err("Folder does not exist or is not a directory".to_string());
+  let folder = Path::new(&folder_path);
+  if !folder.exists() || !folder.is_dir() {
+    return Err(format!("Folder does not exist: {}", folder_path));
   }
 
-  let temp_root = create_temp_dir("folder-detect")?;
-  let source = if base.join("SKILL.md").exists() {
-    base.to_path_buf()
-  } else {
-    let mut skills = Vec::new();
-    find_skill_md_dirs(base, base, &mut skills)?;
-    let selected = select_single_skill(skills, "folder")?;
-    base.join(selected.path)
-  };
+  let skill_md = folder.join("SKILL.md");
+  if !skill_md.exists() {
+    return Err(format!("SKILL.md not found in folder: {}", folder_path));
+  }
 
-  let skill_name = source
-    .file_name()
-    .map(|n| n.to_string_lossy().to_string())
-    .unwrap_or_else(|| "skill".to_string());
-  let target = temp_root.join(&skill_name);
-  copy_dir_all_sync(&source, &target)?;
+  let name = FileHelper::read_skill_name_from_frontmatter(&skill_md)?;
+  let tmp_dir = create_temp_dir("detect-folder")?;
+  let tmp_path = tmp_dir.join(&name);
+  copy_dir_all_sync(folder, &tmp_path)?;
 
   Ok(DetectedSkill {
-    name: skill_name,
-    path: String::new(),
-    temp_skill_path: target.to_string_lossy().to_string(),
+    name,
+    tmp_path: tmp_path.to_string_lossy().to_string(),
+    skill_path: "SKILL.md".to_string(),
   })
 }
 
+pub fn detect_zip(zip_path: String) -> Result<DetectedSkill, String> {
+  let temp_extract_dir = create_temp_dir("detect-zip")?;
+  ZipHelper::extract_to_dir(&zip_path, &temp_extract_dir)?;
+  detect_folder(temp_extract_dir.to_string_lossy().to_string())
+}
+
 pub fn detect_github_manual(github_path: String) -> Result<Vec<DetectedSkill>, String> {
-  let (owner, repo) = parse_github_url(&github_path)?;
-  let temp_root = create_temp_dir(&format!("github-{}-{}", owner, repo))?;
-  clone_repo(&owner, &repo, &temp_root)?;
+  let (owner, repo) = GithubHelper::parse_github_url(&github_path)?;
+  let clone_dir = create_temp_dir(&format!("detect-github-manual-{}-{}", owner, repo))?;
+  GithubHelper::clone_repo_to(&owner, &repo, &clone_dir)?;
 
-  let mut skills = Vec::new();
-  find_skill_md_dirs(&temp_root, &temp_root, &mut skills)?;
-  if skills.is_empty() {
-    return Err("No skills found in GitHub repository".to_string());
+  let skill_dirs = FolderHelper::find_dirs_containing_file(&clone_dir, "SKILL.md")?;
+  if skill_dirs.is_empty() {
+    return Err("No SKILL.md found in repository".to_string());
   }
 
-  let detected = skills
-    .into_iter()
-    .map(|skill| DetectedSkill {
-      temp_skill_path: temp_root.join(&skill.path).to_string_lossy().to_string(),
-      ..skill
-    })
-    .collect();
-  Ok(detected)
+  let mut result = Vec::new();
+  for dir in skill_dirs {
+    match detect_folder(dir.to_string_lossy().to_string()) {
+      Ok(mut detected) => {
+        let relative_dir = dir
+          .strip_prefix(&clone_dir)
+          .map(|p| p.to_string_lossy().to_string())
+          .unwrap_or_default();
+        detected.skill_path = if relative_dir.is_empty() {
+          "SKILL.md".to_string()
+        } else {
+          format!("{}/SKILL.md", relative_dir)
+        };
+        result.push(detected);
+      },
+      Err(_) => continue,
+    }
+  }
+
+  if result.is_empty() {
+    return Err("No valid skills found after parsing SKILL.md".to_string());
+  }
+
+  Ok(result)
 }
 
-pub fn detect_github_auto(github_path: String) -> Result<DetectedSkill, String> {
-  let skills = detect_github_manual(github_path)?;
-  select_single_skill(skills, "GitHub repository")
+pub fn detect_github_auto(github_path: String, skill_name: String) -> Result<DetectedSkill, String> {
+  let (owner, repo) = GithubHelper::parse_github_url(&github_path)?;
+  let clone_dir = create_temp_dir(&format!("detect-github-auto-{}-{}", owner, repo))?;
+  GithubHelper::clone_repo_to(&owner, &repo, &clone_dir)?;
+
+  let skill_dirs = FolderHelper::find_dirs_containing_file(&clone_dir, "SKILL.md")?;
+  if skill_dirs.is_empty() {
+    return Err("No SKILL.md found in repository".to_string());
+  }
+
+  for dir in skill_dirs {
+    let skill_md = dir.join("SKILL.md");
+    let Ok(name) = FileHelper::read_skill_name_from_frontmatter(&skill_md) else {
+      continue;
+    };
+    if name != skill_name {
+      continue;
+    }
+
+    let mut detected = detect_folder(dir.to_string_lossy().to_string())?;
+    let relative_dir = dir
+      .strip_prefix(&clone_dir)
+      .map(|p| p.to_string_lossy().to_string())
+      .unwrap_or_default();
+    detected.skill_path = if relative_dir.is_empty() {
+      "SKILL.md".to_string()
+    } else {
+      format!("{}/SKILL.md", relative_dir)
+    };
+    return Ok(detected);
+  }
+
+  Err(format!("No skill matched '{}'", skill_name))
 }
 
-pub fn install(request: InstallRequest) -> Result<InstallResult, String> {
-  let source = Path::new(&request.detected_skill.temp_skill_path);
-  if !source.exists() || !source.is_dir() {
-    return Err(format!(
-      "Detected skill path does not exist: {}",
-      request.detected_skill.temp_skill_path
-    ));
-  }
+pub fn install_from_native(request: InstallNativeRequest) -> Result<InstallResult, String> {
+  let source = Path::new(&request.tmp_path);
+  install_from_tmp(
+    source,
+    request.name,
+    request.agent_apps,
+    request.method,
+    "native".to_string(),
+  )
+}
 
-  let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
-  let canonical_root = home_dir.join(".agents/skills");
-  fs::create_dir_all(&canonical_root).map_err(|e| e.to_string())?;
+pub fn install_from_github(request: InstallGithubRequest) -> Result<InstallResult, String> {
+  let source = Path::new(&request.tmp_path);
+  let result = install_from_tmp(
+    source,
+    request.name.clone(),
+    request.agent_apps.clone(),
+    request.method,
+    "github".to_string(),
+  )?;
 
-  let skill_name = request.detected_skill.name.clone();
-  let canonical_skill_dir = canonical_root.join(&skill_name);
-  if canonical_skill_dir.exists() {
-    fs::remove_dir_all(&canonical_skill_dir).map_err(|e| e.to_string())?;
-  }
-  copy_dir_all_sync(source, &canonical_skill_dir)?;
+  let skill_folder_hash = match request.skill_folder_hash {
+    Some(hash) => hash,
+    None => GithubHelper::get_skill_folder_hash(&request.source_url, &request.skill_path)?,
+  };
 
-  let mut errors = Vec::new();
-  let apps = local_agent_apps();
-  for app_id in &request.agent_apps {
-    let Some(app) = apps.iter().find(|a| a.id == *app_id) else {
-      errors.push(format!("Unknown app id: {}", app_id));
-      continue;
-    };
-    let Some(global_path) = &app.global_path else {
-      errors.push(format!("{} has no global path", app.display_name));
-      continue;
-    };
+  let source = GithubHelper::parse_github_url(&request.source_url)
+    .map(|(owner, repo)| format!("{}/{}", owner, repo))
+    .unwrap_or_else(|_| request.source_url.clone());
 
-    let app_dir = expand_tilde(global_path);
-    if let Err(e) = fs::create_dir_all(&app_dir) {
-      errors.push(format!("{}: {}", app.display_name, e));
-      continue;
-    }
+  let _ = add_skill_to_lock(
+    request.name,
+    SkillLockEntry {
+      source,
+      source_type: "github".to_string(),
+      source_url: request.source_url,
+      skill_path: Some(request.skill_path),
+      skill_folder_hash: Some(skill_folder_hash),
+      installed_at: String::new(),
+      updated_at: String::new(),
+    },
+  );
 
-    let target = app_dir.join(&skill_name);
-    if (target.exists() || target.is_symlink()) && remove_path_any(&target).is_err() {
-      errors.push(format!("{}: failed to clean existing target", app.display_name));
-      continue;
-    }
-
-    if let Err(e) = install_to_app(&canonical_skill_dir, &target, &request.method) {
-      errors.push(format!("{}: {}", app.display_name, e));
-    }
-  }
-
-  if errors.is_empty() {
-    Ok(InstallResult {
-      success: true,
-      stdout: format!("Skill '{}' installed successfully", skill_name),
-      stderr: String::new(),
-      message: "安装成功".to_string(),
-    })
-  } else {
-    Ok(InstallResult {
-      success: true,
-      stdout: format!("Skill '{}' installed with warnings", skill_name),
-      stderr: errors.join("\n"),
-      message: "安装完成，但部分 Agent 安装失败".to_string(),
-    })
-  }
+  Ok(result)
 }
 
 pub fn open_in_file_manager(file_path: String) -> Result<(), String> {
@@ -222,102 +242,89 @@ pub fn check_skill_update(skill_name: String, remote_sha: String) -> Result<bool
   Ok(local_sha != remote_sha)
 }
 
+fn install_from_tmp(
+  source: &Path,
+  name: String,
+  agent_apps: Vec<String>,
+  method: InstallMethod,
+  source_type: String,
+) -> Result<InstallResult, String> {
+  if !source.exists() || !source.is_dir() {
+    return Err(format!(
+      "Detected skill tmp path does not exist: {}",
+      source.to_string_lossy()
+    ));
+  }
+
+  let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
+  let canonical_root = home_dir.join(".agents/skills");
+  fs::create_dir_all(&canonical_root).map_err(|e| e.to_string())?;
+
+  let canonical_skill_dir = canonical_root.join(&name);
+  if canonical_skill_dir.exists() {
+    fs::remove_dir_all(&canonical_skill_dir).map_err(|e| e.to_string())?;
+  }
+  copy_dir_all_sync(source, &canonical_skill_dir)?;
+
+  let mut errors = Vec::new();
+  let apps = local_agent_apps();
+  for app_id in &agent_apps {
+    let Some(app) = apps.iter().find(|a| a.id == *app_id) else {
+      errors.push(format!("Unknown app id: {}", app_id));
+      continue;
+    };
+    let Some(global_path) = &app.global_path else {
+      errors.push(format!("{} has no global path", app.display_name));
+      continue;
+    };
+
+    let app_dir = expand_tilde(global_path);
+    if let Err(e) = fs::create_dir_all(&app_dir) {
+      errors.push(format!("{}: {}", app.display_name, e));
+      continue;
+    }
+
+    let target = app_dir.join(&name);
+    if (target.exists() || target.is_symlink()) && remove_path_any(&target).is_err() {
+      errors.push(format!("{}: failed to clean existing target", app.display_name));
+      continue;
+    }
+
+    if let Err(e) = install_to_app(&canonical_skill_dir, &target, &method) {
+      errors.push(format!("{}: {}", app.display_name, e));
+    }
+  }
+
+  let message = if errors.is_empty() {
+    "安装成功".to_string()
+  } else {
+    "安装完成，但部分 Agent 安装失败".to_string()
+  };
+
+  Ok(InstallResult {
+    success: true,
+    stdout: format!("Skill '{}' installed from {}", name, source_type),
+    stderr: errors.join("\n"),
+    message,
+  })
+}
+
 fn create_temp_dir(prefix: &str) -> Result<PathBuf, String> {
   let dir = std::env::temp_dir().join(format!(
     "skill-kit-{}-{}-{}",
     prefix,
     std::process::id(),
-    chrono_like_now_millis()
+    now_millis()
   ));
   fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
   Ok(dir)
 }
 
-fn chrono_like_now_millis() -> u128 {
+fn now_millis() -> u128 {
   std::time::SystemTime::now()
     .duration_since(std::time::UNIX_EPOCH)
     .map(|d| d.as_millis())
     .unwrap_or(0)
-}
-
-fn parse_github_url(url: &str) -> Result<(String, String), String> {
-  let url = url.trim();
-  if url.contains("github.com") {
-    let parts: Vec<&str> = url.split("github.com/").collect();
-    if parts.len() < 2 {
-      return Err("Invalid GitHub URL".to_string());
-    }
-    let path = parts[1].trim_end_matches(".git");
-    let segments: Vec<&str> = path.split('/').collect();
-    if segments.len() < 2 {
-      return Err("Invalid GitHub URL format".to_string());
-    }
-    return Ok((segments[0].to_string(), segments[1].to_string()));
-  }
-  let parts: Vec<&str> = url.split('/').collect();
-  if parts.len() == 2 {
-    return Ok((parts[0].to_string(), parts[1].to_string()));
-  }
-  Err("Unsupported URL format. Use https://github.com/owner/repo or owner/repo".to_string())
-}
-
-fn clone_repo(owner: &str, repo: &str, dest: &Path) -> Result<(), String> {
-  let git_url = format!("https://github.com/{}/{}.git", owner, repo);
-  let out = Command::new("git")
-    .args(["clone", "--depth", "1", &git_url, dest.to_str().unwrap_or_default()])
-    .output()
-    .map_err(|e| format!("Failed to execute git clone: {}", e))?;
-  if !out.status.success() {
-    return Err(format!(
-      "Failed to clone repository: {}",
-      String::from_utf8_lossy(&out.stderr)
-    ));
-  }
-  Ok(())
-}
-
-fn find_skill_md_dirs(
-  dir: &Path,
-  base_dir: &Path,
-  skills: &mut Vec<DetectedSkill>,
-) -> Result<(), String> {
-  for entry in fs::read_dir(dir).map_err(|e| e.to_string())? {
-    let entry = entry.map_err(|e| e.to_string())?;
-    let path = entry.path();
-    if path.is_dir() {
-      if path.join("SKILL.md").exists() {
-        let rel = path
-          .strip_prefix(base_dir)
-          .map_err(|e| e.to_string())?
-          .to_string_lossy()
-          .to_string();
-        let name = path
-          .file_name()
-          .map(|n| n.to_string_lossy().to_string())
-          .unwrap_or_else(|| "Unknown".to_string());
-        skills.push(DetectedSkill {
-          name,
-          path: rel.clone(),
-          temp_skill_path: base_dir.join(rel).to_string_lossy().to_string(),
-        });
-      }
-      let dir_name = path.file_name().map(|n| n.to_string_lossy().to_string());
-      if let Some(name) = dir_name {
-        if name != "node_modules" && name != ".git" && name != "target" {
-          find_skill_md_dirs(&path, base_dir, skills)?;
-        }
-      }
-    }
-  }
-  Ok(())
-}
-
-fn select_single_skill(mut skills: Vec<DetectedSkill>, source: &str) -> Result<DetectedSkill, String> {
-  if skills.is_empty() {
-    return Err(format!("No skills found in {}", source));
-  }
-  skills.sort_by(|a, b| a.path.cmp(&b.path));
-  Ok(skills.remove(0))
 }
 
 fn install_to_app(source: &Path, target: &Path, method: &InstallMethod) -> Result<(), String> {
@@ -345,27 +352,6 @@ fn remove_path_any(path: &Path) -> Result<(), String> {
   } else {
     fs::remove_file(path).map_err(|e| e.to_string())
   }
-}
-
-fn extract_zip(zip_path: &str, dest_dir: &Path) -> Result<(), String> {
-  let file = fs::File::open(zip_path).map_err(|e| format!("Failed to open ZIP: {}", e))?;
-  let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Failed to read ZIP: {}", e))?;
-  for i in 0..archive.len() {
-    let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
-    let outpath = dest_dir.join(file.name());
-    if file.name().ends_with('/') {
-      fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
-    } else {
-      if let Some(p) = outpath.parent() {
-        if !p.exists() {
-          fs::create_dir_all(p).map_err(|e| e.to_string())?;
-        }
-      }
-      let mut outfile = fs::File::create(&outpath).map_err(|e| e.to_string())?;
-      std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
-    }
-  }
-  Ok(())
 }
 
 fn copy_dir_all_sync(src: &Path, dst: &Path) -> Result<(), String> {

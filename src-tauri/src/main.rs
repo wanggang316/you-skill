@@ -24,7 +24,7 @@ use commands::{
   },
   skill::{
     check_skill_update, detect_folder, detect_github_auto, detect_github_manual, detect_zip,
-    install, open_in_file_manager, read_skill_readme,
+    install_from_github, install_from_native, open_in_file_manager, read_skill_readme,
   },
 };
 use tray::setup_tray;
@@ -99,7 +99,8 @@ fn main() {
       detect_folder,
       detect_github_manual,
       detect_github_auto,
-      install,
+      install_from_native,
+      install_from_github,
       set_backup_folder,
       open_backup_folder,
       backup_skills,

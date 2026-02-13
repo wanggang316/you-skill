@@ -12,7 +12,7 @@
     fetchRemoteSkills,
     fetchSkillsByNames,
     detectGithubAuto,
-    install,
+    installFromGithub,
     recordInstall,
     checkCanonicalSkill,
     unifySkill,
@@ -257,6 +257,8 @@
     }
   };
 
+  const toGitRepoUrl = (url: string) => (url.endsWith(".git") ? url : `${url}.git`);
+
   const handleUpdateSkill = async (skill: RemoteSkill) => {
     if (updatingSkills.includes(skill.name)) return;
 
@@ -271,7 +273,7 @@
       downloadError = "";
       installingSkill = skill.id;
 
-      const detectedSkill = await detectGithubAuto(skill.url);
+      const detectedSkill = await detectGithubAuto(skill.url, skill.name);
       pendingInstallSkill = { ...skill, detectedSkill };
 
       const localSkill = localSkills.find((ls) => ls.name === skill.name);
@@ -286,8 +288,12 @@
         pendingInstallAgents = selectedAgents;
         try {
           if (!pendingInstallSkill.detectedSkill) return;
-          const result = await install({
-            detected_skill: pendingInstallSkill.detectedSkill,
+          const result = await installFromGithub({
+            name: pendingInstallSkill.detectedSkill.name,
+            tmp_path: pendingInstallSkill.detectedSkill.tmp_path,
+            skill_path: pendingInstallSkill.detectedSkill.skill_path,
+            source_url: toGitRepoUrl(skill.url!),
+            skill_folder_hash: skill.skill_path_sha ?? null,
             agent_apps: selectedAgents,
             method: "symlink",
           });
@@ -339,7 +345,7 @@
     installingSkill = skill.id;
     try {
       if (!skill.url) return;
-      const detectedSkill = await detectGithubAuto(skill.url);
+      const detectedSkill = await detectGithubAuto(skill.url, skill.name);
       pendingInstallSkill = { ...skill, detectedSkill };
 
       selectAgentModalTitle = $t("installConfirm.title", { name: skill.name });
@@ -351,8 +357,12 @@
         pendingInstallAgents = selectedAgents;
         try {
           if (!pendingInstallSkill.detectedSkill) return;
-          const result = await install({
-            detected_skill: pendingInstallSkill.detectedSkill,
+          const result = await installFromGithub({
+            name: pendingInstallSkill.detectedSkill.name,
+            tmp_path: pendingInstallSkill.detectedSkill.tmp_path,
+            skill_path: pendingInstallSkill.detectedSkill.skill_path,
+            source_url: toGitRepoUrl(pendingInstallSkill.url!),
+            skill_folder_hash: pendingInstallSkill.skill_path_sha ?? null,
             agent_apps: selectedAgents,
             method: "symlink",
           });

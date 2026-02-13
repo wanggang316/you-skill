@@ -77,14 +77,26 @@ export interface UnifyResult {
 
 export interface DetectedSkill {
   name: string;
-  path: string;
-  temp_skill_path: string;
+  tmp_path: string;
+  skill_path: string;
 }
 
 export type InstallMethod = "symlink" | "copy";
 
-export interface InstallRequest {
-  detected_skill: DetectedSkill;
+export interface InstallNativeRequest {
+  name: string;
+  tmp_path: string;
+  skill_path: string;
+  agent_apps: string[];
+  method: InstallMethod;
+}
+
+export interface InstallGithubRequest {
+  name: string;
+  tmp_path: string;
+  skill_path: string;
+  source_url: string;
+  skill_folder_hash?: string | null;
   agent_apps: string[];
   method: InstallMethod;
 }
@@ -196,12 +208,19 @@ export async function detectFolder(folderPath: string): Promise<DetectedSkill> {
 /**
  * 从 GitHub 安装技能
  */
-export async function detectGithubAuto(githubPath: string): Promise<DetectedSkill> {
-  return apiCall<DetectedSkill>("detect_github_auto", { githubPath });
+export async function detectGithubAuto(
+  githubPath: string,
+  skillName: string
+): Promise<DetectedSkill> {
+  return apiCall<DetectedSkill>("detect_github_auto", { githubPath, skillName });
 }
 
-export async function install(request: InstallRequest): Promise<InstallResult> {
-  return apiCall<InstallResult>("install", { request });
+export async function installFromNative(request: InstallNativeRequest): Promise<InstallResult> {
+  return apiCall<InstallResult>("install_from_native", { request });
+}
+
+export async function installFromGithub(request: InstallGithubRequest): Promise<InstallResult> {
+  return apiCall<InstallResult>("install_from_github", { request });
 }
 
 // ============ Other ============

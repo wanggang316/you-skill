@@ -5,7 +5,8 @@
     detectZip,
     detectGithubManual,
     detectFolder,
-    install,
+    installFromNative,
+    installFromGithub,
   } from "../api/skills";
   import Modal from "./ui/Modal.svelte";
   import AgentSelector from "./AgentSelector.svelte";
@@ -86,6 +87,11 @@
 
   function closeModal() {
     open = false;
+  }
+
+  function toGitRepoUrl(url) {
+    const trimmed = url.trim();
+    return trimmed.endsWith(".git") ? trimmed : `${trimmed}.git`;
   }
 
   async function handleSelectZipFile() {
@@ -203,8 +209,10 @@
           isInstalling = false;
           return;
         }
-        await install({
-          detected_skill: selectedZipSkill,
+        await installFromNative({
+          name: selectedZipSkill.name,
+          tmp_path: selectedZipSkill.tmp_path,
+          skill_path: selectedZipSkill.skill_path,
           agent_apps: selectedAgents,
           method: "symlink",
         });
@@ -219,8 +227,10 @@
           isInstalling = false;
           return;
         }
-        await install({
-          detected_skill: selectedFolderSkill,
+        await installFromNative({
+          name: selectedFolderSkill.name,
+          tmp_path: selectedFolderSkill.tmp_path,
+          skill_path: selectedFolderSkill.skill_path,
           agent_apps: selectedAgents,
           method: "symlink",
         });
@@ -229,8 +239,12 @@
           installError = $t("addSkill.noSkillSelected");
           return;
         }
-        await install({
-          detected_skill: selectedSkill,
+        await installFromGithub({
+          name: selectedSkill.name,
+          tmp_path: selectedSkill.tmp_path,
+          skill_path: selectedSkill.skill_path,
+          source_url: toGitRepoUrl(githubUrl),
+          skill_folder_hash: null,
           agent_apps: selectedAgents,
           method: "symlink",
         });
@@ -349,19 +363,19 @@
               >
                 {#each detectedZipSkills as skill}
                   <button
-                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedZipSkill?.path === skill.path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
+                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedZipSkill?.skill_path === skill.skill_path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
                     onclick={() => (selectedZipSkill = skill)}
                     type="button"
                   >
                     <div>
                       <p class="font-medium">{skill.name}</p>
                       <p
-                        class={`text-xs ${selectedZipSkill?.path === skill.path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
+                        class={`text-xs ${selectedZipSkill?.skill_path === skill.skill_path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
                       >
-                        {skill.path}
+                        {skill.skill_path}
                       </p>
                     </div>
-                    {#if selectedZipSkill?.path === skill.path}
+                    {#if selectedZipSkill?.skill_path === skill.skill_path}
                       <Check size={16} />
                     {/if}
                   </button>
@@ -430,19 +444,19 @@
               >
                 {#each detectedFolderSkills as skill}
                   <button
-                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedFolderSkill?.path === skill.path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
+                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedFolderSkill?.skill_path === skill.skill_path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
                     onclick={() => (selectedFolderSkill = skill)}
                     type="button"
                   >
                     <div>
                       <p class="font-medium">{skill.name}</p>
                       <p
-                        class={`text-xs ${selectedFolderSkill?.path === skill.path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
+                        class={`text-xs ${selectedFolderSkill?.skill_path === skill.skill_path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
                       >
-                        {skill.path}
+                        {skill.skill_path}
                       </p>
                     </div>
-                    {#if selectedFolderSkill?.path === skill.path}
+                    {#if selectedFolderSkill?.skill_path === skill.skill_path}
                       <Check size={16} />
                     {/if}
                   </button>
@@ -496,19 +510,19 @@
               >
                 {#each detectedSkills as skill}
                   <button
-                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedSkill?.path === skill.path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
+                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedSkill?.skill_path === skill.skill_path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
                     onclick={() => (selectedSkill = skill)}
                     type="button"
                   >
                     <div>
                       <p class="font-medium">{skill.name}</p>
                       <p
-                        class={`text-xs ${selectedSkill?.path === skill.path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
+                        class={`text-xs ${selectedSkill?.skill_path === skill.skill_path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
                       >
-                        {skill.path}
+                        {skill.skill_path}
                       </p>
                     </div>
-                    {#if selectedSkill?.path === skill.path}
+                    {#if selectedSkill?.skill_path === skill.skill_path}
                       <Check size={16} />
                     {/if}
                   </button>

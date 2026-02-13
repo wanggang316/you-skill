@@ -71,8 +71,8 @@ pub struct UnifyResult {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DetectedSkill {
   pub name: String,
-  pub path: String,
-  pub temp_skill_path: String,
+  pub tmp_path: String,
+  pub skill_path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -83,30 +83,21 @@ pub enum InstallMethod {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct InstallRequest {
-  pub detected_skill: DetectedSkill,
+pub struct InstallNativeRequest {
+  pub name: String,
+  pub tmp_path: String,
+  pub skill_path: String,
   pub agent_apps: Vec<String>,
   pub method: InstallMethod,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct InstallZipRequest {
-  pub zip_path: String,
-  pub skill_path: String,
-  pub agents: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InstallGithubRequest {
-  pub url: String,
+  pub name: String,
+  pub tmp_path: String,
   pub skill_path: String,
-  pub agents: Vec<String>,
+  pub source_url: String,
   pub skill_folder_hash: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct InstallFolderRequest {
-  pub folder_path: String,
-  pub skill_path: String,
-  pub agents: Vec<String>,
+  pub agent_apps: Vec<String>,
+  pub method: InstallMethod,
 }
