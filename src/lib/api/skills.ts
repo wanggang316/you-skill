@@ -98,6 +98,7 @@ export interface InstallGithubRequest {
   url: string;
   skill_path: string;
   agents: string[];
+  skill_folder_hash?: string | null;
 }
 
 export interface InstallFolderRequest {
@@ -293,12 +294,7 @@ export async function readSkillReadme(skillPath: string): Promise<string> {
  */
 export async function checkSkillUpdate(skillName: string, remoteSha: string): Promise<boolean> {
   try {
-    const { getSkillFromLock } = await import("./skill-lock");
-    const entry = await getSkillFromLock(skillName);
-    if (!entry?.skillFolderHash) {
-      return false; // 没有本地哈希，无法比较
-    }
-    return entry.skillFolderHash !== remoteSha;
+    return apiCall<boolean>("check_skill_update", { skillName, remoteSha });
   } catch {
     return false;
   }

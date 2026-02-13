@@ -91,3 +91,18 @@ pub async fn read_skill_readme(skill_path: String) -> Result<String, String> {
 
   Err(format!("No SKILL.md or README.md found in: {}", skill_path))
 }
+
+#[tauri::command]
+pub fn check_skill_update(skill_name: String, remote_sha: String) -> Result<bool, String> {
+  let entry = crate::services::skill_lock_service::get_skill_from_lock(skill_name)?;
+
+  let Some(entry) = entry else {
+    return Ok(false);
+  };
+
+  let Some(local_sha) = entry.skill_folder_hash else {
+    return Ok(false);
+  };
+
+  Ok(local_sha != remote_sha)
+}

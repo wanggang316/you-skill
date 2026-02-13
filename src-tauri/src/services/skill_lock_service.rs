@@ -94,8 +94,3 @@ pub fn get_skill_from_lock(skill_name: String) -> Result<Option<SkillLockEntry>,
   let lock = read_skill_lock_internal()?;
   Ok(lock.skills.get(&skill_name).cloned())
 }
-
-pub fn get_all_locked_skills() -> Result<HashMap<String, SkillLockEntry>, String> {
-  let lock = read_skill_lock_internal()?;
-  Ok(lock.skills.clone())
-}

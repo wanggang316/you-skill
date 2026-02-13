@@ -1,5 +1,6 @@
 use crate::models::{DetectedSkill, InstallResult};
 use crate::services::agent_apps_service::local_agent_apps;
+use crate::services::skill_lock_service::{add_skill_to_lock, SkillLockEntry};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -336,6 +337,7 @@ pub fn install_github_skill(
   url: String,
   skill_path: String,
   agents: Vec<String>,
+  skill_folder_hash: Option<String>,
 ) -> Result<InstallResult, String> {
   // Parse owner/repo from URL
   let (owner, repo) = parse_github_url(&url)?;
@@ -410,6 +412,19 @@ pub fn install_github_skill(
 
   // Clean up temp directory
   let _ = fs::remove_dir_all(&temp_dir);
+
+  let _ = add_skill_to_lock(
+    skill_name.clone(),
+    SkillLockEntry {
+      source: format!("{}/{}", owner, repo),
+      source_type: "github".to_string(),
+      source_url: url.clone(),
+      skill_path: Some(skill_path),
+      skill_folder_hash,
+      installed_at: String::new(),
+      updated_at: String::new(),
+    },
+  );
 
   if errors.is_empty() {
     Ok(InstallResult {

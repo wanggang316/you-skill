@@ -99,6 +99,7 @@ pub struct InstallGithubRequest {
   pub url: String,
   pub skill_path: String,
   pub agents: Vec<String>,
+  pub skill_folder_hash: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
