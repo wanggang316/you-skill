@@ -6,25 +6,21 @@ use std::path::{Path, PathBuf};
 #[serde(default)]
 pub struct AppConfig {
   pub scan_roots: Vec<String>,
-  pub settings: AppSettings,
-  pub backup_folder: Option<String>,
-  pub last_backup_time: Option<String>,
-  pub api_key: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(default)]
-pub struct AppSettings {
   pub language: String,
   pub theme: String,
   pub sync_mode: String,
+  pub backup_folder: Option<String>,
+  pub last_backup_time: Option<String>,
+  pub api_key: Option<String>,
 }
 
 impl Default for AppConfig {
   fn default() -> Self {
     Self {
       scan_roots: Vec::new(),
-      settings: AppSettings::default(),
+      language: "en".to_string(),
+      theme: "system".to_string(),
+      sync_mode: "symlink".to_string(),
       backup_folder: None,
       last_backup_time: None,
       api_key: None,
@@ -32,15 +28,6 @@ impl Default for AppConfig {
   }
 }
 
-impl Default for AppSettings {
-  fn default() -> Self {
-    Self {
-      language: "en".to_string(),
-      theme: "system".to_string(),
-      sync_mode: "symlink".to_string(),
-    }
-  }
-}
 
 pub fn config_path() -> Result<PathBuf, String> {
   let config_dir = dirs_next::config_dir().ok_or("无法获取配置目录")?;

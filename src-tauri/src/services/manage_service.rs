@@ -247,7 +247,7 @@ fn remove_path(path: &Path) -> Result<(), String> {
 
 fn current_sync_mode() -> String {
   load_config()
-    .map(|config| config.settings.sync_mode)
+    .map(|config| config.sync_mode)
     .unwrap_or_else(|_| "symlink".to_string())
 }
 

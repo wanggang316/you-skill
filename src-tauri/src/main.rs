@@ -14,9 +14,6 @@ use commands::{
     add_user_agent_app, list_local_agent_apps, refresh_agent_apps, remove_user_agent_app,
     update_user_agent_app,
   },
-  backup::{
-    backup_skills, get_backup_folder, get_last_backup_time, open_backup_folder, set_backup_folder,
-  },
   install::{
     detect_folder_skills, detect_github_skills, detect_zip_skills, install_folder_skill,
     install_github_skill, install_skill, install_zip_skill,
@@ -25,7 +22,10 @@ use commands::{
   manage::{copy_skill, delete_skill, delete_skill_complete, move_skill},
   remote::{fetch_remote_skills, fetch_skills_by_names, record_skill_install},
   scan::{add_scan_root, get_scan_roots, remove_scan_root, scan_local_skills},
-  settings::{get_settings, update_settings},
+  settings::{
+    backup_skills, get_backup_folder, get_last_backup_time, get_settings, open_backup_folder,
+    set_backup_folder, update_settings,
+  },
   skill::{check_skill_update, open_in_file_manager, read_skill_readme},
 };
 use tray::setup_tray;
