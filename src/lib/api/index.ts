@@ -59,4 +59,3 @@ export async function apiCall<T>(command: string, payload?: unknown): Promise<T>
 export * from "./agent-apps";
 export * from "./skills";
 export * from "./settings";
-export * from "./skill-lock";

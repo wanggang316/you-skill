@@ -280,11 +280,8 @@
 
     updatingSkills = [...updatingSkills, skill.name];
     try {
-      const { getSkillFromLock } = await import("../lib/api/skill-lock");
-      const lockEntry = await getSkillFromLock(skill.name);
-
-      if (!lockEntry) {
-        localError = `Skill ${skill.name} not found in lock file`;
+      if (!skill.url) {
+        localError = `Skill ${skill.name} has no source URL`;
         return;
       }
 
@@ -292,7 +289,7 @@
       downloadError = "";
       installingSkill = skill.id;
 
-      const detectedSkills = await detectGithubSkills(lockEntry.sourceUrl);
+      const detectedSkills = await detectGithubSkills(skill.url);
       const matchingSkill = detectedSkills.find(
         (s) => s.name === skill.name || skill.path?.includes(s.name) || s.path === skill.path
       );
@@ -322,22 +319,15 @@
             pendingInstallSkill.path ||
             pendingInstallSkill.name;
           const result = await installGithubSkill({
-            url: lockEntry.sourceUrl,
+            url: skill.url!,
             skill_path: skillPath,
             agents: selectedAgents,
+            skill_folder_hash: skill.skill_path_sha,
           });
           if (!result.success) {
             installLog = `${result.message}\n${result.stderr || result.stdout}`;
           } else {
             installLog = "";
-            const { addSkillToLock } = await import("../lib/api/skill-lock");
-            await addSkillToLock(skill.name, {
-              source: lockEntry.source,
-              sourceType: lockEntry.sourceType,
-              sourceUrl: lockEntry.sourceUrl,
-              skillPath: lockEntry.skillPath,
-              skillFolderHash: skill.skill_path_sha || "",
-            });
             await refreshLocal();
             await checkForSkillUpdates();
           }
@@ -412,22 +402,12 @@
             url: pendingInstallSkill.url,
             skill_path: skillPath,
             agents: selectedAgents,
+            skill_folder_hash: pendingInstallSkill.skill_path_sha,
           });
           if (!result.success) {
             installLog = `${result.message}\n${result.stderr || result.stdout}`;
           } else {
             installLog = "";
-            const { addSkillToLock } = await import("../lib/api/skill-lock");
-            await addSkillToLock(pendingInstallSkill.name, {
-              source: pendingInstallSkill.source,
-              sourceType: "github",
-              sourceUrl: pendingInstallSkill.url,
-              skillPath:
-                pendingInstallSkill.detectedPath ||
-                pendingInstallSkill.path ||
-                pendingInstallSkill.name,
-              skillFolderHash: pendingInstallSkill.skill_path_sha || "",
-            });
             if (pendingInstallSkill?.id) {
               try {
                 await recordInstall(pendingInstallSkill.id);

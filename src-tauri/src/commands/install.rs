@@ -26,7 +26,12 @@ pub fn install_zip_skill(request: InstallZipRequest) -> Result<InstallResult, St
 
 #[tauri::command]
 pub async fn install_github_skill(request: InstallGithubRequest) -> Result<InstallResult, String> {
-  install_service::install_github_skill(request.url, request.skill_path, request.agents)
+  install_service::install_github_skill(
+    request.url,
+    request.skill_path,
+    request.agents,
+    request.skill_folder_hash,
+  )
 }
 
 #[tauri::command]
