@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
@@ -50,9 +50,4 @@ pub fn save_config(config: &AppConfig) -> Result<(), String> {
   }
   let content = serde_json::to_string_pretty(config).map_err(|e| e.to_string())?;
   fs::write(&path, content).map_err(|e| e.to_string())
-}
-
-pub fn normalize_path(path: &str) -> String {
-  let normalized = Path::new(path).to_path_buf();
-  normalized.to_string_lossy().to_string()
 }

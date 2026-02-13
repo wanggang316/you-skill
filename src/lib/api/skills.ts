@@ -109,34 +109,6 @@ export async function scanLocalSkills(): Promise<LocalSkill[]> {
 }
 
 /**
- * 获取扫描根目录列表
- */
-export async function getScanRoots(): Promise<string[]> {
-  return apiCall<string[]>("get_scan_roots");
-}
-
-/**
- * 添加扫描根目录
- */
-export async function addScanRoot(path: string): Promise<string[]> {
-  return apiCall<string[]>("add_scan_root", { path });
-}
-
-/**
- * 移除扫描根目录
- */
-export async function removeScanRoot(path: string): Promise<string[]> {
-  return apiCall<string[]>("remove_scan_root", { path });
-}
-
-/**
- * 删除技能
- */
-export async function deleteSkill(path: string): Promise<void> {
-  return apiCall<void>("delete_skill", { path });
-}
-
-/**
  * 完整删除技能（先删除软链接，再删除源文件）
  */
 export async function deleteSkillComplete(

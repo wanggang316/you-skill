@@ -2,11 +2,6 @@ use crate::models::{CanonicalCheckResult, UnifyRequest, UnifyResult};
 use crate::services::manage_service;
 
 #[tauri::command]
-pub fn delete_skill(path: String) -> Result<(), String> {
-  manage_service::delete_skill(path)
-}
-
-#[tauri::command]
 pub fn delete_skill_complete(
   name: String,
   canonical_path: String,

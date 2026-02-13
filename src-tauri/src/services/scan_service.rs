@@ -1,4 +1,4 @@
-use crate::config::{load_config, normalize_path};
+use crate::config::load_config;
 use crate::models::LocalSkill;
 use crate::services::agent_apps_service::{expand_tilde, local_agent_apps};
 use serde_yaml::Value;
@@ -10,29 +10,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
 
 const COPY_MARKER_FILE: &str = ".you-skills-link";
-
-pub fn get_scan_roots() -> Result<Vec<String>, String> {
-  let config = load_config()?;
-  Ok(config.scan_roots)
-}
-
-pub fn add_scan_root(path: String) -> Result<Vec<String>, String> {
-  let mut config = load_config()?;
-  let normalized = normalize_path(&path);
-  if !config.scan_roots.contains(&normalized) {
-    config.scan_roots.push(normalized);
-  }
-  crate::config::save_config(&config)?;
-  Ok(config.scan_roots)
-}
-
-pub fn remove_scan_root(path: String) -> Result<Vec<String>, String> {
-  let mut config = load_config()?;
-  let normalized = normalize_path(&path);
-  config.scan_roots.retain(|root| root != &normalized);
-  crate::config::save_config(&config)?;
-  Ok(config.scan_roots)
-}
 
 pub fn scan_local_skills() -> Result<Vec<LocalSkill>, String> {
   let mut managed_map: HashMap<String, LocalSkill> = HashMap::new();

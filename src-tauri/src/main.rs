@@ -19,9 +19,9 @@ use commands::{
     install_github_skill, install_zip_skill,
   },
   manage::{check_canonical_skill, set_agent_link, unify_skill},
-  manage::{copy_skill, delete_skill, delete_skill_complete, move_skill},
+  manage::{copy_skill, delete_skill_complete, move_skill},
   remote::{fetch_remote_skills, fetch_skills_by_names, record_skill_install},
-  scan::{add_scan_root, get_scan_roots, remove_scan_root, scan_local_skills},
+  scan::scan_local_skills,
   settings::{
     backup_skills, get_settings, open_backup_folder, set_backup_folder, update_settings,
   },
@@ -79,10 +79,6 @@ fn main() {
     .invoke_handler(tauri::generate_handler![
       ping,
       scan_local_skills,
-      get_scan_roots,
-      add_scan_root,
-      remove_scan_root,
-      delete_skill,
       delete_skill_complete,
       move_skill,
       copy_skill,
