@@ -44,15 +44,6 @@ pub struct RemoteSkillsResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct InstallRequest {
-  pub source: String,
-  pub skill_id: String,
-  pub agent: String,
-  pub global: bool,
-  pub project_dir: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InstallResult {
   pub success: bool,
   pub stdout: String,

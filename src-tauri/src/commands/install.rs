@@ -1,18 +1,7 @@
 use crate::models::{
-  DetectedSkill, InstallGithubRequest, InstallRequest, InstallResult, InstallZipRequest,
+  DetectedSkill, InstallGithubRequest, InstallResult, InstallZipRequest,
 };
 use crate::services::install_service;
-
-#[tauri::command]
-pub fn install_skill(request: InstallRequest) -> Result<InstallResult, String> {
-  install_service::install_skill(
-    request.source,
-    request.skill_id,
-    request.agent,
-    request.global,
-    request.project_dir,
-  )
-}
 
 #[tauri::command]
 pub async fn detect_github_skills(url: String) -> Result<Vec<DetectedSkill>, String> {

@@ -16,7 +16,7 @@ use commands::{
   },
   install::{
     detect_folder_skills, detect_github_skills, detect_zip_skills, install_folder_skill,
-    install_github_skill, install_skill, install_zip_skill,
+    install_github_skill, install_zip_skill,
   },
   manage::{check_canonical_skill, set_agent_link, unify_skill},
   manage::{copy_skill, delete_skill, delete_skill_complete, move_skill},
@@ -94,7 +94,6 @@ fn main() {
       fetch_remote_skills,
       fetch_skills_by_names,
       record_skill_install,
-      install_skill,
       list_local_agent_apps,
       refresh_agent_apps,
       add_user_agent_app,

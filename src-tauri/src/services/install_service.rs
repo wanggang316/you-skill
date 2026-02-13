@@ -5,54 +5,6 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-/// Install a skill using npx skills command
-pub fn install_skill(
-  source: String,
-  skill_id: String,
-  agent: String,
-  global: bool,
-  project_dir: Option<String>,
-) -> Result<InstallResult, String> {
-  let npx_cmd = if cfg!(target_os = "windows") {
-    "npx.cmd"
-  } else {
-    "npx"
-  };
-
-  let mut command = Command::new(npx_cmd);
-  command.arg("skills").arg("add").arg(&source);
-  command.arg("--skill").arg(&skill_id);
-  command.arg("--agent").arg(&agent);
-  command.arg("--yes");
-
-  if global {
-    command.arg("--global");
-  }
-
-  if let Some(project_dir) = project_dir {
-    if !project_dir.trim().is_empty() {
-      command.current_dir(project_dir);
-    }
-  }
-
-  let output = command.output().map_err(|e| e.to_string())?;
-
-  let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-  let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-  let success = output.status.success();
-
-  Ok(InstallResult {
-    success,
-    stdout,
-    stderr,
-    message: if success {
-      "安装成功".to_string()
-    } else {
-      "安装失败".to_string()
-    },
-  })
-}
-
 /// Detect skills in a GitHub repository by cloning it to a temp directory
 /// and finding all directories containing SKILL.md files
 pub fn detect_github_skills(url: String) -> Result<Vec<DetectedSkill>, String> {

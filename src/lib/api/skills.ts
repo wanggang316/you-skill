@@ -42,14 +42,6 @@ export interface RemoteSkillsResponse {
   has_more: boolean;
 }
 
-export interface InstallRequest {
-  source: string;
-  skill_id: string;
-  agent: string;
-  global: boolean;
-  project_dir?: string | null;
-}
-
 export interface InstallResult {
   success: boolean;
   stdout: string;
@@ -181,13 +173,6 @@ export async function fetchRemoteSkills(params?: {
  */
 export async function fetchSkillsByNames(names: string[]): Promise<RemoteSkill[]> {
   return apiCall<RemoteSkill[]>("fetch_skills_by_names", { names });
-}
-
-/**
- * 安装技能
- */
-export async function installSkill(request: InstallRequest): Promise<InstallResult> {
-  return apiCall<InstallResult>("install_skill", { request });
 }
 
 // ============ Skill Management ============
