@@ -5,7 +5,6 @@ use tauri::Manager;
 mod commands;
 mod config;
 mod models;
-mod paths;
 mod services;
 mod tray;
 mod utils;
