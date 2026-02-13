@@ -127,20 +127,6 @@ pub fn update_user_agent_app_detail(
   Ok(updated_app)
 }
 
-pub fn list_internal_agent_app_details() -> Vec<AgentApp> {
-  all_agent_apps()
-    .into_iter()
-    .filter(|app| !app.is_user_custom)
-    .collect()
-}
-
-pub fn list_user_agent_app_details() -> Vec<AgentApp> {
-  all_agent_apps()
-    .into_iter()
-    .filter(|app| app.is_user_custom)
-    .collect()
-}
-
 fn internal_agent_apps() -> Vec<AgentApp> {
   vec![
     AgentApp {

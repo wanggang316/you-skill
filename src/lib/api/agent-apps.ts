@@ -28,20 +28,6 @@ export async function refreshAgentApps(): Promise<AgentApp[]> {
 }
 
 /**
- * 获取内置 Agent 应用列表
- */
-export async function listInternalAgentApps(): Promise<AgentApp[]> {
-  return apiCall<AgentApp[]>("list_internal_agent_apps");
-}
-
-/**
- * 获取用户自定义 Agent 应用列表
- */
-export async function listUserAgentApps(): Promise<AgentApp[]> {
-  return apiCall<AgentApp[]>("list_user_agent_apps");
-}
-
-/**
  * 添加用户自定义 Agent 应用
  */
 export async function addAgentApp(

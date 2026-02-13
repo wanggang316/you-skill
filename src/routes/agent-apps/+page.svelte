@@ -2,13 +2,7 @@
   import { onMount } from "svelte";
   import { confirm } from "@tauri-apps/plugin-dialog";
   import { goto } from "$app/navigation";
-  import {
-    listInternalAgentApps,
-    listUserAgentApps,
-    removeAgentApp,
-    refreshAgentApps,
-    type AgentApp,
-  } from "../../lib/api";
+  import { removeAgentApp, refreshAgentApps, type AgentApp } from "../../lib/api";
   import { t } from "../../lib/i18n";
   import { Plus, Trash2, Check, Loader2, Pencil, ChevronLeft, RefreshCw } from "@lucide/svelte";
   import IconButton from "../../lib/components/ui/IconButton.svelte";
@@ -50,14 +44,10 @@
     loading = true;
     error = "";
     try {
-      const [internal, user, local] = await Promise.all([
-        listInternalAgentApps(),
-        listUserAgentApps(),
-        refreshAgentApps(),
-      ]);
-      internalApps = internal;
-      userApps = user;
-      localAppsIds = new Set(local.map((app) => app.id));
+      const apps = await refreshAgentApps();
+      internalApps = apps.filter((app) => !app.is_user_custom);
+      userApps = apps.filter((app) => app.is_user_custom);
+      localAppsIds = new Set(apps.map((app) => app.id));
     } catch (err) {
       error = String(err);
     } finally {
