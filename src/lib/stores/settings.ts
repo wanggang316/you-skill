@@ -1,20 +1,11 @@
 import { derived, get, writable } from "svelte/store";
 import { getSettings as fetchSettings, updateSettings as persistSettings } from "../api";
-
-export type ThemeMode = "system" | "light" | "dark";
-export type LanguageMode = "en" | "zh";
-export type SyncMode = "symlink" | "copy";
-
-export interface AppSettings {
-  language: LanguageMode;
-  theme: ThemeMode;
-  syncMode: SyncMode;
-}
+import type { AppSettings } from "../api/settings";
 
 const defaultSettings: AppSettings = {
   language: "en",
   theme: "system",
-  syncMode: "symlink",
+  sync_mode: "symlink",
 };
 
 export const settings = writable<AppSettings>({ ...defaultSettings });
@@ -22,7 +13,7 @@ export const settings = writable<AppSettings>({ ...defaultSettings });
 let systemMedia: MediaQueryList | null = null;
 let systemListener: ((event: MediaQueryListEvent) => void) | null = null;
 
-const applyTheme = (theme: ThemeMode) => {
+const applyTheme = (theme: AppSettings["theme"]) => {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   if (theme === "dark") {
@@ -44,7 +35,7 @@ const applyTheme = (theme: ThemeMode) => {
   }
 };
 
-const syncSystemTheme = (theme: ThemeMode) => {
+const syncSystemTheme = (theme: AppSettings["theme"]) => {
   if (typeof window === "undefined" || !window.matchMedia) return;
   if (systemMedia && systemListener) {
     systemMedia.removeEventListener("change", systemListener);
@@ -59,26 +50,15 @@ const syncSystemTheme = (theme: ThemeMode) => {
   systemMedia.addEventListener("change", systemListener);
 };
 
-const fromApi = (remote: {
-  language: LanguageMode;
-  theme: ThemeMode;
-  sync_mode: SyncMode;
-}): AppSettings => ({
-  language: remote.language,
-  theme: remote.theme,
-  syncMode: remote.sync_mode,
-});
-
-const toApi = (value: AppSettings) => ({
-  language: value.language,
-  theme: value.theme,
-  sync_mode: value.syncMode,
-});
-
 export const loadSettings = async () => {
   try {
     const remote = await fetchSettings();
-    const merged = { ...defaultSettings, ...fromApi(remote) };
+    const merged = {
+      ...defaultSettings,
+      language: remote.language,
+      theme: remote.theme,
+      sync_mode: remote.sync_mode,
+    };
     settings.set(merged);
     applyTheme(merged.theme);
     syncSystemTheme(merged.theme);
@@ -90,14 +70,16 @@ export const loadSettings = async () => {
   }
 };
 
-export const updateSettings = async (patch: Partial<AppSettings>) => {
+export const updateSettings = async (
+  patch: Partial<Pick<AppSettings, "language" | "theme" | "sync_mode">>
+) => {
   const current = get(settings);
   const next = { ...current, ...patch };
   settings.set(next);
   applyTheme(next.theme);
   syncSystemTheme(next.theme);
   try {
-    await persistSettings(toApi(next));
+    await persistSettings(next);
   } catch (error) {
     console.error(error);
   }

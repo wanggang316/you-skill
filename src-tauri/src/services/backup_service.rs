@@ -1,3 +1,4 @@
+use crate::config::{load_config, save_config};
 use chrono::Local;
 use std::fs;
 use std::path::Path;
@@ -11,7 +12,7 @@ pub struct BackupResult {
 }
 
 /// Backup skills directory to a ZIP file
-pub fn backup_skills(backup_folder: String) -> Result<BackupResult, String> {
+pub fn backup_skills_sync(backup_folder: String) -> Result<BackupResult, String> {
   let home = dirs_next::home_dir().ok_or("无法获取用户目录")?;
   let skills_path = home.join(".agents").join("skills");
 
@@ -58,6 +59,54 @@ pub fn backup_skills(backup_folder: String) -> Result<BackupResult, String> {
     backup_path: Some(backup_file_path.to_string_lossy().to_string()),
     backup_time: Some(backup_time_str.clone()),
   })
+}
+
+pub fn open_backup_folder(path: String) -> Result<(), String> {
+  let backup_path = Path::new(&path);
+  if !backup_path.exists() {
+    std::fs::create_dir_all(backup_path).map_err(|e| format!("创建备份目录失败: {}", e))?;
+  }
+
+  #[cfg(target_os = "macos")]
+  {
+    std::process::Command::new("open")
+      .arg(&path)
+      .spawn()
+      .map_err(|e| format!("打开目录失败: {}", e))?;
+  }
+
+  #[cfg(target_os = "windows")]
+  {
+    std::process::Command::new("explorer")
+      .arg(&path)
+      .spawn()
+      .map_err(|e| format!("打开目录失败: {}", e))?;
+  }
+
+  #[cfg(target_os = "linux")]
+  {
+    std::process::Command::new("xdg-open")
+      .arg(&path)
+      .spawn()
+      .map_err(|e| format!("打开目录失败: {}", e))?;
+  }
+
+  Ok(())
+}
+
+pub async fn backup_skills(backup_folder: String) -> Result<BackupResult, String> {
+  let result = tokio::task::spawn_blocking(move || backup_skills_sync(backup_folder))
+    .await
+    .map_err(|e| format!("备份任务执行失败: {}", e))??;
+
+  if result.success {
+    if let Ok(mut config) = load_config() {
+      config.last_backup_time = result.backup_time.clone();
+      let _ = save_config(&config);
+    }
+  }
+
+  Ok(result)
 }
 
 fn add_dir_to_zip<P: AsRef<Path>>(
