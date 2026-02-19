@@ -14,8 +14,6 @@
     detectGithubAuto,
     installFromGithub,
     recordInstall,
-    checkCanonicalSkill,
-    unifySkill,
     deleteSkill,
     setAgentLink,
     checkSkillUpdate,
@@ -85,9 +83,6 @@
   let installingSkill = $state("");
   let linkBusy = $state(false);
 
-  // Pending import modal state
-  let pendingImportModalOpenState = $state(false);
-
   const agentMap = $derived.by(
     () => new Map(agents.map((agent) => [agent.id, agent.display_name]))
   );
@@ -129,8 +124,6 @@
       .filter((skill) => skill.source_type === "known")
       .map((skill) => toViewLocalSkill(skill, "unmanaged"))
   );
-
-  const unmanagedCount = $derived(unmanagedSkills.length);
 
   // Track if remote skills have been loaded
   let remoteLoaded = $state(false);
@@ -443,71 +436,6 @@
     selectAgentModalOpen = true;
   };
 
-  const handleUnify = async (skill: ViewLocalSkill) => {
-    const { confirm } = await import("@tauri-apps/plugin-dialog");
-    if (!skill || !skill.agents || skill.agents.length === 0) {
-      localError = $t("error.noSkillAgent");
-      return;
-    }
-    const agent = skill.agents[0];
-    try {
-      const check = await checkCanonicalSkill(skill.name, skill.scope);
-      let prefer = "current";
-      if (check.exists) {
-        const keepCanonical = await confirm($t("confirm.duplicateSkill"), {
-          title: $t("confirm.duplicateTitle"),
-        });
-        prefer = keepCanonical ? "canonical" : "current";
-      }
-      const result = await unifySkill({
-        name: skill.name,
-        agent,
-        scope: skill.scope,
-        current_path: skill.canonical_path,
-        prefer: prefer as "canonical" | "current",
-      });
-      if (!result.success) {
-        localError = result.message;
-      } else {
-        await refreshLocal();
-      }
-    } catch (error) {
-      localError = String(error);
-    }
-  };
-
-  const handleBulkUnify = async () => {
-    const { confirm } = await import("@tauri-apps/plugin-dialog");
-    if (!unmanagedSkills.length) return;
-    for (const skill of unmanagedSkills) {
-      if (!skill || !skill.agents || skill.agents.length === 0) continue;
-      try {
-        const check = await checkCanonicalSkill(skill.name, skill.scope);
-        let prefer = "current";
-        if (check.exists) {
-          const keepCanonical = await confirm(
-            $t("confirm.duplicateSkillWithName", { name: skill.name }),
-            { title: $t("confirm.duplicateTitle") }
-          );
-          prefer = keepCanonical ? "canonical" : "current";
-        }
-        const result = await unifySkill({
-          name: skill.name,
-          agent: skill.agents[0],
-          scope: skill.scope,
-          current_path: skill.canonical_path,
-          prefer: prefer as "canonical" | "current",
-        });
-        if (!result.success) {
-          localError = result.message;
-        }
-      } catch (error) {
-        localError = String(error);
-      }
-    }
-    await refreshLocal();
-  };
-
   const handleDeleteSkill = async (skill: ViewLocalSkill) => {
     const { confirm } = await import("@tauri-apps/plugin-dialog");
     try {
@@ -554,12 +482,10 @@
       currentView="list"
       activeTab={activeTab}
       skillName=""
-      {unmanagedCount}
       {hasUpdate}
       agentAppsLoading={false}
       onChangeTab={handleTabChange}
       onAddSkill={() => addSkillModalOpen = true}
-      onOpenPendingImport={() => pendingImportModalOpenState = true}
       onOpenUpdate={navigateToSettings}
       onBack={() => {}}
       onDetailAction={undefined}
@@ -583,10 +509,7 @@
             {updatingSkills}
             onRefresh={refreshLocal}
             onDeleteSkill={handleDeleteSkill}
-            onBulkUnify={handleBulkUnify}
-            onUnifySkill={handleUnify}
             onViewSkill={handleViewSkill}
-            onOpenPendingImport={() => (pendingImportModalOpenState = true)}
             onOpenSelectAgentModal={openSelectAgentModal}
             onUpdateSkill={handleUpdateSkill}
           />
@@ -634,17 +557,5 @@
     onCancel={() => {
       selectAgentModalCallback = null;
     }}
-  />
-{/await}
-
-<!-- Pending Import Modal -->
-{#await import("../lib/components/PendingImportModal.svelte") then { default: PendingImportModal }}
-  <PendingImportModal
-    bind:open={pendingImportModalOpenState}
-    {unmanagedSkills}
-    {agentMap}
-    onImport={handleUnify}
-    onImportAll={handleBulkUnify}
-    onDelete={handleDeleteSkill}
   />
 {/await}

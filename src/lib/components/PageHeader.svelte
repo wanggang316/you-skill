@@ -4,7 +4,6 @@
     ChevronLeft,
     Plus,
     Settings,
-    Download,
     ArrowUpCircle,
     ExternalLink,
     RefreshCw,
@@ -17,13 +16,11 @@
     currentView,
     activeTab,
     skillName,
-    unmanagedCount,
     hasUpdate,
     agentAppsLoading = false,
     onChangeView = undefined,
     onChangeTab,
     onAddSkill,
-    onOpenPendingImport,
     onOpenUpdate,
     onBack,
     onDetailAction,
@@ -77,20 +74,6 @@
           </IconButton>
         </div>
         <div class="flex items-center gap-2">
-          {#if unmanagedCount > 0}
-            <button
-              class="bg-warning text-warning-content hover:bg-warning-hover flex items-center rounded-xl px-3 py-1.5 text-sm font-medium transition"
-              onclick={onOpenPendingImport}
-              title={$t("header.pendingImport")}
-              type="button"
-            >
-              <Download size={16} class="mr-1.5" />
-              {$t("header.pendingImport")}
-              <span class="bg-warning-content text-warning ml-1 rounded-full px-1.5 py-0.5 text-xs"
-                >{unmanagedCount}</span
-              >
-            </button>
-          {/if}
           {#if hasUpdate}
             <button
               class="bg-success text-success-content hover:bg-success-hover flex items-center rounded-xl px-3 py-2 text-sm font-medium transition"

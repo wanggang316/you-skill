@@ -1,5 +1,4 @@
 use crate::config::load_config;
-use crate::models::{CanonicalCheckResult, UnifyRequest, UnifyResult};
 use crate::services::agent_apps_service::local_agent_apps;
 use std::env;
 use std::fs;
@@ -7,90 +6,10 @@ use std::path::{Path, PathBuf};
 
 const COPY_MARKER_FILE: &str = ".you-skills-link";
 
-pub fn delete_skill(path: String) -> Result<(), String> {
-  let target = PathBuf::from(path);
-  if target.is_dir() {
-    fs::remove_dir_all(&target).map_err(|e| e.to_string())?;
-  } else if target.is_file() {
-    fs::remove_file(&target).map_err(|e| e.to_string())?;
-  }
-  Ok(())
-}
-
 fn is_symlink(path: &Path) -> bool {
   fs::symlink_metadata(path)
     .map(|m| m.file_type().is_symlink())
     .unwrap_or(false)
-}
-
-pub fn move_skill(from: String, to: String) -> Result<(), String> {
-  let from_path = PathBuf::from(from);
-  let to_path = PathBuf::from(to);
-
-  match fs::rename(&from_path, &to_path) {
-    Ok(_) => Ok(()),
-    Err(_) => {
-      copy_dir_or_file(&from_path, &to_path)?;
-      delete_skill(from_path.to_string_lossy().to_string())
-    },
-  }
-}
-
-pub fn copy_skill(from: String, to: String) -> Result<(), String> {
-  let from_path = PathBuf::from(from);
-  let to_path = PathBuf::from(to);
-  copy_dir_or_file(&from_path, &to_path)
-}
-
-pub fn check_canonical_skill(name: String, scope: String) -> Result<CanonicalCheckResult, String> {
-  let canonical_path = canonical_skill_path(&name, &scope)?;
-  Ok(CanonicalCheckResult {
-    exists: canonical_path.exists(),
-    canonical_path: canonical_path.to_string_lossy().to_string(),
-  })
-}
-
-pub fn unify_skill(request: UnifyRequest) -> Result<UnifyResult, String> {
-  let canonical_path = canonical_skill_path(&request.name, &request.scope)?;
-  let current_path = PathBuf::from(&request.current_path);
-  let sync_mode = current_sync_mode();
-
-  if !current_path.exists() {
-    return Ok(UnifyResult {
-      success: false,
-      message: "当前 skill 路径不存在".to_string(),
-    });
-  }
-
-  if request.prefer == "canonical" {
-    if !canonical_path.exists() {
-      copy_dir_or_file(&current_path, &canonical_path)?;
-    }
-    remove_path(&current_path)?;
-    link_to_canonical(&canonical_path, &current_path, &sync_mode)?;
-    return Ok(UnifyResult {
-      success: true,
-      message: match sync_mode.as_str() {
-        "copy" => "已保留 .agents 版本并创建副本".to_string(),
-        _ => "已保留 .agents 版本并建立软链接".to_string(),
-      },
-    });
-  }
-
-  if canonical_path.exists() {
-    remove_path(&canonical_path)?;
-  }
-  copy_dir_or_file(&current_path, &canonical_path)?;
-  remove_path(&current_path)?;
-  link_to_canonical(&canonical_path, &current_path, &sync_mode)?;
-
-  Ok(UnifyResult {
-    success: true,
-    message: match sync_mode.as_str() {
-      "copy" => "已用当前版本覆盖 .agents 并创建副本".to_string(),
-      _ => "已用当前版本覆盖 .agents 并建立软链接".to_string(),
-    },
-  })
 }
 
 pub fn set_agent_link(

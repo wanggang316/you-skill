@@ -277,11 +277,9 @@
     currentView="detail"
     activeTab="local"
     skillName={currentName}
-    unmanagedCount={0}
     hasUpdate={false}
     onChangeTab={() => {}}
     onAddSkill={() => {}}
-    onOpenPendingImport={() => {}}
     onOpenUpdate={() => {}}
     onBack={handleBack}
     onDetailAction={handleDetailAction}

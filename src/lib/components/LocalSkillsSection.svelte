@@ -1,5 +1,5 @@
 <script>
-  import { RefreshCw, Search, Blend, Download, ChevronsUpDown } from "@lucide/svelte";
+  import { RefreshCw, Search, Blend, ChevronsUpDown } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
   import { t } from "../i18n";
 
@@ -17,10 +17,7 @@
     updatingSkills = [],
     onRefresh,
     onDeleteSkill,
-    onBulkUnify,
-    onUnifySkill,
     onViewSkill,
-    onOpenPendingImport,
     onOpenSelectAgentModal,
     onUpdateSkill,
   } = $props();
@@ -97,33 +94,10 @@
       </div>
     {:else}
       <div class="space-y-2">
-        <!-- <p class="text-base-content-muted text-sm font-semibold">
-          {$t("local.section.managed")}
-        </p> -->
-        {#if managedSkills.length === 0}
-          <div class="border-base-300 bg-base-100 rounded-xl border border-dashed p-6 text-center">
-            <p class="text-base-content-muted mb-4 text-sm">
-              {$t("local.section.emptyManaged")}
-            </p>
-            {#if unmanagedSkills.length > 0}
-              <p class="text-base-content mb-4 text-sm">
-                {$t("local.section.pendingImportPrompt", { count: unmanagedSkills.length })}
-              </p>
-              <button
-                class="bg-warning text-warning-content hover:bg-warning-hover inline-flex items-center rounded-xl px-4 py-2 text-sm font-medium transition"
-                onclick={onOpenPendingImport}
-                type="button"
-              >
-                <Download size={16} class="mr-2" />
-                {$t("header.pendingImport")}
-              </button>
-            {/if}
-          </div>
-        {:else}
-          {#each managedSkills as skill}
-            <div class="border-base-300 bg-base-100 rounded-2xl border p-4 transition">
-              <!-- First row: title and action buttons -->
-              <div class="flex flex-wrap items-center justify-between gap-3">
+        {#each [...managedSkills, ...unmanagedSkills] as skill}
+          <div class="border-base-300 bg-base-100 rounded-2xl border p-4 transition">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
                 <button
                   class="cursor-pointer border-none bg-transparent p-0 text-base font-medium"
                   onclick={() => onViewSkill(skill)}
@@ -131,45 +105,49 @@
                 >
                   {skill.name}
                 </button>
-                <div class="flex items-center gap-2">
-                  {#if hasUpdate(skill) && onUpdateSkill}
-                    <button
-                      class="border-base-300 bg-base-300 text-primary hover:bg-primary hover:text-primary-content inline-flex items-center rounded-lg border px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
-                      onclick={(e) => {
-                        e?.stopPropagation();
-                        onUpdateSkill(skill);
-                      }}
-                      disabled={isUpdating(skill)}
-                      type="button"
-                    >
-                      {$t("remote.update")}
-                    </button>
-                  {/if}
+                {#if skill.managed_status === "unmanaged"}
+                  <span class="bg-base-300 text-base-content-subtle rounded-full px-2 py-0.5 text-[11px]">
+                    {$t("local.section.unmanaged")}
+                  </span>
+                {/if}
+              </div>
+              <div class="flex items-center gap-2">
+                {#if hasUpdate(skill) && onUpdateSkill}
                   <button
-                    class="border-base-300 bg-base-300 text-error hover:bg-error hover:text-primary-content inline-flex items-center rounded-lg border px-2 py-0.5 text-xs transition"
+                    class="border-base-300 bg-base-300 text-primary hover:bg-primary hover:text-primary-content inline-flex items-center rounded-lg border px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
                     onclick={(e) => {
                       e?.stopPropagation();
-                      onDeleteSkill(skill);
+                      onUpdateSkill(skill);
                     }}
+                    disabled={isUpdating(skill)}
                     type="button"
                   >
-                    {$t("local.action.delete")}
+                    {$t("remote.update")}
                   </button>
-                </div>
+                {/if}
+                <button
+                  class="border-base-300 bg-base-300 text-error hover:bg-error hover:text-primary-content inline-flex items-center rounded-lg border px-2 py-0.5 text-xs transition"
+                  onclick={(e) => {
+                    e?.stopPropagation();
+                    onDeleteSkill(skill);
+                  }}
+                  type="button"
+                >
+                  {$t("local.action.delete")}
+                </button>
               </div>
-
-              <!-- Second row: agents toggle button -->
-              <button
-                class="text-base-content-subtle hover:border-base-300 hover:bg-base-300 inline-flex cursor-pointer items-center gap-1 rounded-md border border-transparent px-0.5 py-0.5 text-[11px] transition"
-                onclick={() => onOpenSelectAgentModal(skill)}
-                type="button"
-              >
-                <span>{$t("local.section.managedCount", { count: skill.agents.length })}</span>
-                <Blend size={10} />
-              </button>
             </div>
-          {/each}
-        {/if}
+
+            <button
+              class="text-base-content-subtle hover:border-base-300 hover:bg-base-300 inline-flex cursor-pointer items-center gap-1 rounded-md border border-transparent px-0.5 py-0.5 text-[11px] transition"
+              onclick={() => onOpenSelectAgentModal(skill)}
+              type="button"
+            >
+              <span>{$t("local.section.managedCount", { count: skill.agents.length })}</span>
+              <Blend size={10} />
+            </button>
+          </div>
+        {/each}
       </div>
     {/if}
   </div>

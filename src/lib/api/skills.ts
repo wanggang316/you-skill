@@ -58,24 +58,6 @@ export interface AgentInfo {
   is_user_custom: boolean;
 }
 
-export interface CanonicalCheckResult {
-  exists: boolean;
-  canonical_path: string;
-}
-
-export interface UnifyRequest {
-  name: string;
-  agent: string;
-  scope: string;
-  current_path: string;
-  prefer: "canonical" | "current";
-}
-
-export interface UnifyResult {
-  success: boolean;
-  message: string;
-}
-
 export interface DetectedSkill {
   name: string;
   tmp_path: string;
@@ -151,23 +133,6 @@ export async function fetchSkillsByNames(names: string[]): Promise<RemoteSkill[]
 }
 
 // ============ Skill Management ============
-
-/**
- * 检查规范技能是否存在
- */
-export async function checkCanonicalSkill(
-  name: string,
-  scope: string
-): Promise<CanonicalCheckResult> {
-  return apiCall<CanonicalCheckResult>("check_canonical_skill", { name, scope });
-}
-
-/**
- * 统一技能
- */
-export async function unifySkill(request: UnifyRequest): Promise<UnifyResult> {
-  return apiCall<UnifyResult>("unify_skill", { request });
-}
 
 /**
  * 设置代理链接

@@ -50,27 +50,6 @@ pub struct InstallResult {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CanonicalCheckResult {
-  pub exists: bool,
-  pub canonical_path: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct UnifyRequest {
-  pub name: String,
-  pub agent: String,
-  pub scope: String,
-  pub current_path: String,
-  pub prefer: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct UnifyResult {
-  pub success: bool,
-  pub message: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DetectedSkill {
   pub name: String,
   pub tmp_path: String,
