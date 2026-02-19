@@ -5,7 +5,15 @@ pub struct LocalSkill {
   pub name: String,
   pub global_folder: Option<String>,
   pub installed_agent_apps: Vec<InstalledAgentApp>,
-  pub source_type: String,
+  pub source_type: SourceType,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SourceType {
+  Github,
+  Native,
+  Known,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -81,4 +89,30 @@ pub struct InstallGithubRequest {
   pub skill_folder_hash: Option<String>,
   pub agent_apps: Vec<String>,
   pub method: InstallMethod,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct InstallKnownRequest {
+  pub name: String,
+  pub source_path: String,
+  pub agent_apps: Vec<String>,
+  pub method: InstallMethod,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SourceCheckResult {
+  pub source_path: Option<String>,
+  pub candidate_paths: Vec<String>,
+  pub requires_selection: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ManageSkillAgentAppsRequest {
+  pub name: String,
+  pub source_type: SourceType,
+  pub global_folder: Option<String>,
+  pub installed_agent_apps: Vec<InstalledAgentApp>,
+  pub agent_apps: Vec<String>,
+  pub method: InstallMethod,
+  pub source_path: Option<String>,
 }

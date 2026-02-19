@@ -9,7 +9,7 @@
     title = "",
     agents = [],
     initialSelection = [],
-    onConfirm = () => {},
+    onConfirm = async () => true,
     onCancel = () => {},
   } = $props();
 
@@ -35,8 +35,10 @@
     if (selectedAgents.length === 0) return;
     isInstalling = true;
     try {
-      await onConfirm(selectedAgents);
-      closeModal();
+      const shouldClose = await onConfirm(selectedAgents);
+      if (shouldClose !== false) {
+        closeModal();
+      }
     } finally {
       isInstalling = false;
     }

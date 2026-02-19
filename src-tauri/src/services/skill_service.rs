@@ -1,20 +1,23 @@
 use crate::models::{
-  DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallResult,
-  InstalledAgentApp, LocalSkill,
+  DetectedSkill, InstallGithubRequest, InstallKnownRequest, InstallMethod, InstallNativeRequest,
+  InstallResult, InstalledAgentApp, LocalSkill, ManageSkillAgentAppsRequest, SourceCheckResult,
+  SourceType,
 };
 use crate::services::agent_apps_service::local_agent_apps;
 use crate::services::native_skill_lock_service::{
   add_skill_to_native_lock, read_native_skill_lock_internal, remove_skill_from_native_lock,
 };
-use crate::services::skill_lock_service::{add_skill_to_lock, read_skill_lock_internal, SkillLockFile, SkillLockEntry};
+use crate::services::skill_lock_service::{
+  add_skill_to_lock, read_skill_lock_internal, SkillLockEntry, SkillLockFile,
+};
 use crate::utils::file::FileHelper;
 use crate::utils::folder::FolderHelper;
 use crate::utils::github::GithubHelper;
 use crate::utils::path::{expand_home, remove_path_any};
 use crate::utils::zip::ZipHelper;
+use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -85,7 +88,10 @@ pub fn detect_github_manual(github_path: String) -> Result<Vec<DetectedSkill>, S
   Ok(result)
 }
 
-pub fn detect_github_auto(github_path: String, skill_name: String) -> Result<DetectedSkill, String> {
+pub fn detect_github_auto(
+  github_path: String,
+  skill_name: String,
+) -> Result<DetectedSkill, String> {
   let (owner, repo) = GithubHelper::parse_github_url(&github_path)?;
   let clone_dir = create_temp_dir(&format!("detect-github-auto-{}-{}", owner, repo))?;
   GithubHelper::clone_repo_to(&owner, &repo, &clone_dir)?;
@@ -166,6 +172,8 @@ pub fn list_skills() -> Result<Vec<LocalSkill>, String> {
       continue;
     }
 
+    tracing::info!("-------------App root: {:?}", app_root);
+
     let entries = match fs::read_dir(&app_root) {
       Ok(entries) => entries,
       Err(_) => continue,
@@ -189,12 +197,11 @@ pub fn list_skills() -> Result<Vec<LocalSkill>, String> {
         method,
       };
 
+      tracing::info!("path: {:?}, Installed app: {:?}", skill_dir, installed_app);
       if let Some(index) = skill_index.get(&skill_name).copied() {
-        if !skills[index]
-          .installed_agent_apps
-          .iter()
-          .any(|item| item.id == installed_app.id && item.skill_folder == installed_app.skill_folder)
-        {
+        if !skills[index].installed_agent_apps.iter().any(|item| {
+          item.id == installed_app.id && item.skill_folder == installed_app.skill_folder
+        }) {
           skills[index].installed_agent_apps.push(installed_app);
         }
         continue;
@@ -212,13 +219,14 @@ pub fn list_skills() -> Result<Vec<LocalSkill>, String> {
     }
   }
 
+  tracing::info!("Local skills: {:?}", skills);
   Ok(skills)
 }
 
 pub fn install_from_native(request: InstallNativeRequest) -> Result<InstallResult, String> {
   validate_native_install_request(&request)?;
   let selected_apps = resolve_selected_apps_global_paths(&request.agent_apps)?;
-  remove_existing_associations(&request.name, &selected_apps)?;
+  remove_existing_associations_from_all_apps(&request.name)?;
   install_skill_to_apps(
     Path::new(&request.tmp_path),
     &request.name,
@@ -238,7 +246,7 @@ pub fn install_from_native(request: InstallNativeRequest) -> Result<InstallResul
 pub fn install_from_github(request: InstallGithubRequest) -> Result<InstallResult, String> {
   validate_github_install_request(&request)?;
   let selected_apps = resolve_selected_apps_global_paths(&request.agent_apps)?;
-  remove_existing_associations(&request.name, &selected_apps)?;
+  remove_existing_associations_from_all_apps(&request.name)?;
   install_skill_to_apps(
     Path::new(&request.tmp_path),
     &request.name,
@@ -271,6 +279,126 @@ pub fn install_from_github(request: InstallGithubRequest) -> Result<InstallResul
   Ok(InstallResult {
     success: true,
     stdout: format!("Skill '{}' installed from github source", request.name),
+    stderr: String::new(),
+    message: "安装成功".to_string(),
+  })
+}
+
+pub fn check_known_type(
+  name: String,
+  global_folder: Option<String>,
+  skill_paths: Vec<String>,
+) -> Result<SourceCheckResult, String> {
+  check_copy_source_folder(name, global_folder, skill_paths)
+}
+
+pub fn check_copy_source_folder(
+  name: String,
+  global_folder: Option<String>,
+  skill_paths: Vec<String>,
+) -> Result<SourceCheckResult, String> {
+  if let Some(global_folder) = normalize_optional_string(global_folder) {
+    let global_path = PathBuf::from(&global_folder);
+    if global_path.exists() && global_path.is_dir() {
+      return Ok(SourceCheckResult {
+        source_path: Some(global_folder),
+        candidate_paths: Vec::new(),
+        requires_selection: false,
+      });
+    }
+  }
+  resolve_source_path_by_consistency(&name, &skill_paths)
+}
+
+pub fn install_from_known(request: InstallKnownRequest) -> Result<InstallResult, String> {
+  validate_install_from_known_request(&request)?;
+
+  let source = Path::new(&request.source_path);
+  let canonical_path = prepare_canonical_skill_dir(source, &request.name)?;
+
+  install_from_native(InstallNativeRequest {
+    name: request.name,
+    tmp_path: canonical_path.to_string_lossy().to_string(),
+    skill_path: "SKILL.md".to_string(),
+    agent_apps: request.agent_apps,
+    method: request.method,
+  })
+}
+
+pub fn manage_skill_agent_apps(
+  request: ManageSkillAgentAppsRequest,
+) -> Result<InstallResult, String> {
+  if request.name.trim().is_empty() {
+    return Err("Skill name is required".to_string());
+  }
+  if request.agent_apps.is_empty() {
+    return Err("agent_apps is required".to_string());
+  }
+
+  let selected_apps = resolve_selected_apps_global_paths(&request.agent_apps)?;
+  let skill_paths: Vec<String> = request
+    .installed_agent_apps
+    .iter()
+    .map(|item| item.skill_folder.clone())
+    .collect();
+
+  let source = if request.source_type == SourceType::Known {
+    let resolved = match normalize_optional_string(request.source_path.clone()) {
+      Some(path) => path,
+      None => {
+        let check = check_known_type(
+          request.name.clone(),
+          request.global_folder.clone(),
+          skill_paths.clone(),
+        )?;
+        check.source_path.ok_or_else(|| {
+          format!(
+            "Source skill files are not identical, please choose one source path: {}",
+            check.candidate_paths.join(" | ")
+          )
+        })?
+      },
+    };
+
+    return install_from_known(InstallKnownRequest {
+      name: request.name,
+      source_path: resolved,
+      agent_apps: request.agent_apps,
+      method: request.method,
+    });
+  } else if matches!(request.method, InstallMethod::Copy) {
+    let check = check_copy_source_folder(
+      request.name.clone(),
+      request.global_folder.clone(),
+      skill_paths,
+    )?;
+    let resolved = match normalize_optional_string(request.source_path) {
+      Some(path) => path,
+      None => check.source_path.ok_or_else(|| {
+        format!(
+          "Source skill files are not identical, please choose one source path: {}",
+          check.candidate_paths.join(" | ")
+        )
+      })?,
+    };
+    PathBuf::from(resolved)
+  } else {
+    let global_folder = request
+      .global_folder
+      .ok_or("global_folder is required for symlink management")?;
+    let global_path = PathBuf::from(global_folder);
+    if !global_path.exists() || !global_path.is_dir() {
+      return Err("Global skill folder does not exist".to_string());
+    }
+    global_path
+  };
+
+  remove_existing_associations_from_all_apps(&request.name)?;
+  install_skill_to_apps(&source, &request.name, &request.method, &selected_apps)?;
+
+  Ok(InstallResult {
+    success: true,
+    stdout: format!("Skill '{}' agent apps updated", request.name),
     stderr: String::new(),
     message: "安装成功".to_string(),
   })
@@ -420,6 +548,38 @@ fn validate_github_install_request(request: &InstallGithubRequest) -> Result<(),
   Ok(())
 }
 
+fn validate_install_from_known_request(request: &InstallKnownRequest) -> Result<(), String> {
+  if request.name.trim().is_empty() {
+    return Err("Skill name is required".to_string());
+  }
+  if request.source_path.trim().is_empty() {
+    return Err("source_path is required".to_string());
+  }
+  if request.agent_apps.is_empty() {
+    return Err("agent_apps is required".to_string());
+  }
+
+  let source = Path::new(&request.source_path);
+  if !source.exists() || !source.is_dir() {
+    return Err(format!(
+      "Source path does not exist: {}",
+      source.to_string_lossy()
+    ));
+  }
+  let skill_md = source.join("SKILL.md");
+  let frontmatter = FileHelper::read_skill_frontmatter(&skill_md)?;
+  let name = frontmatter
+    .name
+    .ok_or("SKILL.md frontmatter missing valid 'name'".to_string())?;
+  if name != request.name {
+    return Err(format!(
+      "Source path skill name mismatch: expected '{}', got '{}'",
+      request.name, name
+    ));
+  }
+  Ok(())
+}
+
 fn validate_common_install_request(
   name: &str,
   tmp_path: &str,
@@ -455,7 +615,9 @@ struct SelectedAgentPath {
   global_path: PathBuf,
 }
 
-fn resolve_selected_apps_global_paths(agent_apps: &[String]) -> Result<Vec<SelectedAgentPath>, String> {
+fn resolve_selected_apps_global_paths(
+  agent_apps: &[String],
+) -> Result<Vec<SelectedAgentPath>, String> {
   let installed_apps = local_agent_apps();
   let mut selected = Vec::new();
   let mut errors = Vec::new();
@@ -485,7 +647,10 @@ fn resolve_selected_apps_global_paths(agent_apps: &[String]) -> Result<Vec<Selec
   Ok(selected)
 }
 
-fn remove_existing_associations(skill_name: &str, selected_apps: &[SelectedAgentPath]) -> Result<(), String> {
+fn remove_existing_associations(
+  skill_name: &str,
+  selected_apps: &[SelectedAgentPath],
+) -> Result<(), String> {
   let mut errors = Vec::new();
   for app in selected_apps {
     let target = app.global_path.join(skill_name);
@@ -499,6 +664,93 @@ fn remove_existing_associations(skill_name: &str, selected_apps: &[SelectedAgent
     return Err(errors.join("\n"));
   }
   Ok(())
+}
+
+fn remove_existing_associations_from_all_apps(skill_name: &str) -> Result<(), String> {
+  let all_apps: Vec<SelectedAgentPath> = local_agent_apps()
+    .into_iter()
+    .filter_map(|app| {
+      app.global_path.map(|global_path| SelectedAgentPath {
+        display_name: app.display_name,
+        global_path: expand_home(&global_path),
+      })
+    })
+    .collect();
+  remove_existing_associations(skill_name, &all_apps)
+}
+
+fn resolve_source_path_by_consistency(
+  skill_name: &str,
+  skill_paths: &[String],
+) -> Result<SourceCheckResult, String> {
+  let candidates = normalized_existing_skill_paths(skill_name, skill_paths)?;
+  if candidates.is_empty() {
+    return Err(format!(
+      "No valid skill source path found for '{}'",
+      skill_name
+    ));
+  }
+  if candidates.len() == 1 {
+    return Ok(SourceCheckResult {
+      source_path: Some(candidates[0].to_string_lossy().to_string()),
+      candidate_paths: Vec::new(),
+      requires_selection: false,
+    });
+  }
+
+  let first = &candidates[0];
+  let mut all_same = true;
+  for path in candidates.iter().skip(1) {
+    if !FolderHelper::are_folders_identical(first, path)? {
+      all_same = false;
+      break;
+    }
+  }
+
+  if all_same {
+    return Ok(SourceCheckResult {
+      source_path: Some(first.to_string_lossy().to_string()),
+      candidate_paths: Vec::new(),
+      requires_selection: false,
+    });
+  }
+
+  Ok(SourceCheckResult {
+    source_path: None,
+    candidate_paths: candidates
+      .into_iter()
+      .map(|p| p.to_string_lossy().to_string())
+      .collect(),
+    requires_selection: true,
+  })
+}
+
+fn normalized_existing_skill_paths(
+  skill_name: &str,
+  skill_paths: &[String],
+) -> Result<Vec<PathBuf>, String> {
+  let mut out: Vec<PathBuf> = Vec::new();
+  for path in skill_paths {
+    let path = PathBuf::from(path);
+    if !path.exists() || !path.is_dir() {
+      continue;
+    }
+    let skill_md = path.join("SKILL.md");
+    if !skill_md.exists() {
+      continue;
+    }
+    let frontmatter = match FileHelper::read_skill_frontmatter(&skill_md) {
+      Ok(frontmatter) => frontmatter,
+      Err(_) => continue,
+    };
+    if frontmatter.name.as_deref() != Some(skill_name) {
+      continue;
+    }
+    if !out.iter().any(|existing| existing == &path) {
+      out.push(path);
+    }
+  }
+  Ok(out)
 }
 
 fn install_skill_to_apps(
@@ -549,6 +801,15 @@ fn prepare_canonical_skill_dir(source: &Path, name: &str) -> Result<PathBuf, Str
   fs::create_dir_all(&canonical_root).map_err(|e| e.to_string())?;
 
   let canonical_skill_dir = canonical_root.join(name);
+  if canonical_skill_dir == source {
+    if !canonical_skill_dir.exists() {
+      return Err(format!(
+        "Canonical skill path does not exist: {}",
+        canonical_skill_dir.to_string_lossy()
+      ));
+    }
+    return Ok(canonical_skill_dir);
+  }
   if canonical_skill_dir.exists() {
     remove_path_any(&canonical_skill_dir)?;
   }
@@ -647,12 +908,12 @@ fn detect_source_type(
   skill_name: &str,
   github_lock: &SkillLockFile,
   native_lock: &crate::services::native_skill_lock_service::NativeSkillLockFile,
-) -> String {
+) -> SourceType {
   if github_lock.skills.contains_key(skill_name) {
-    "github".to_string()
+    SourceType::Github
   } else if native_lock.skills.contains_key(skill_name) {
-    "native".to_string()
+    SourceType::Native
   } else {
-    "known".to_string()
+    SourceType::Known
   }
 }

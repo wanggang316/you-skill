@@ -8,11 +8,13 @@ import { apiCall } from "./index";
 
 // ============ Types ============
 
+export type SourceType = "github" | "native" | "known";
+
 export interface LocalSkill {
   name: string;
   global_folder?: string | null;
   installed_agent_apps: InstalledAgentApp[];
-  source_type: "github" | "native" | "known";
+  source_type: SourceType;
 }
 
 export interface InstalledAgentApp {
@@ -84,6 +86,29 @@ export interface InstallGithubRequest {
   method: InstallMethod;
 }
 
+export interface InstallKnownRequest {
+  name: string;
+  source_path: string;
+  agent_apps: string[];
+  method: InstallMethod;
+}
+
+export interface SourceCheckResult {
+  source_path?: string | null;
+  candidate_paths: string[];
+  requires_selection: boolean;
+}
+
+export interface ManageSkillAgentAppsRequest {
+  name: string;
+  source_type: SourceType;
+  global_folder?: string | null;
+  installed_agent_apps: InstalledAgentApp[];
+  agent_apps: string[];
+  method: InstallMethod;
+  source_path?: string | null;
+}
+
 // ============ Local Skills ============
 
 /**
@@ -134,18 +159,6 @@ export async function fetchSkillsByNames(names: string[]): Promise<RemoteSkill[]
 
 // ============ Skill Management ============
 
-/**
- * 设置代理链接
- */
-export async function setAgentLink(
-  name: string,
-  agent: string,
-  scope: string,
-  linked: boolean
-): Promise<void> {
-  return apiCall<void>("set_agent_link", { name, agent, scope, linked });
-}
-
 // ============ Detection ============
 
 /**
@@ -187,6 +200,36 @@ export async function installFromNative(request: InstallNativeRequest): Promise<
 
 export async function installFromGithub(request: InstallGithubRequest): Promise<InstallResult> {
   return apiCall<InstallResult>("install_from_github", { request });
+}
+
+export async function checkKnownType(
+  name: string,
+  globalFolder: string | null | undefined,
+  skillPaths: string[]
+): Promise<SourceCheckResult> {
+  return apiCall<SourceCheckResult>("check_known_type", { name, globalFolder, skillPaths });
+}
+
+export async function checkCopySourceFolder(
+  name: string,
+  globalFolder: string | null | undefined,
+  skillPaths: string[]
+): Promise<SourceCheckResult> {
+  return apiCall<SourceCheckResult>("check_copy_source_folder", {
+    name,
+    globalFolder,
+    skillPaths,
+  });
+}
+
+export async function installFromKnown(request: InstallKnownRequest): Promise<InstallResult> {
+  return apiCall<InstallResult>("install_from_known", { request });
+}
+
+export async function manageSkillAgentApps(
+  request: ManageSkillAgentAppsRequest
+): Promise<InstallResult> {
+  return apiCall<InstallResult>("manage_skill_agent_apps", { request });
 }
 
 // ============ Other ============

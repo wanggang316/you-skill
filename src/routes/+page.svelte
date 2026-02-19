@@ -1,21 +1,27 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { get } from "svelte/store";
   import { listen } from "@tauri-apps/api/event";
   import { goto } from "$app/navigation";
+  import { confirm } from "@tauri-apps/plugin-dialog";
   import PageHeader from "../lib/components/PageHeader.svelte";
   import { t } from "../lib/i18n";
   import { check } from "@tauri-apps/plugin-updater";
   import LocalSkillsSection from "../lib/components/LocalSkillsSection.svelte";
   import RemoteSkillsSection from "../lib/components/RemoteSkillsSection.svelte";
+  import { settings } from "../lib/stores/settings";
   import {
     listSkills,
     fetchRemoteSkills,
     fetchSkillsByNames,
     detectGithubAuto,
+    checkKnownType,
+    checkCopySourceFolder,
+    installFromKnown,
     installFromGithub,
     recordInstall,
+    manageSkillAgentApps,
     deleteSkill,
-    setAgentLink,
     checkSkillUpdate,
   } from "../lib/api/skills";
   import { listLocalAgentApps } from "../lib/api/agent-apps";
@@ -27,6 +33,9 @@
     agents: string[];
     scope: "global";
     managed_status: "managed" | "unmanaged";
+    source_type: "github" | "native" | "known";
+    global_folder: string | null;
+    installed_agent_apps: import("../lib/api/skills").InstalledAgentApp[];
     name_conflict: boolean;
     conflict_with_managed: boolean;
   };
@@ -76,7 +85,13 @@
   let selectAgentModalOpen = $state(false);
   let selectAgentModalTitle = $state("");
   let selectAgentModalInitialSelection = $state<string[]>([]);
-  let selectAgentModalCallback = $state<((selectedAgents: string[]) => Promise<void>) | null>(null);
+  let selectAgentModalCallback = $state<((selectedAgents: string[]) => Promise<boolean>) | null>(null);
+
+  // Source path modal state
+  let sourcePathModalOpen = $state(false);
+  let sourcePathModalTitle = $state("");
+  let sourcePathModalCandidates = $state<string[]>([]);
+  let sourcePathModalConfirm = $state<((sourcePath: string) => Promise<void>) | null>(null);
 
   // Install state
   let installLog = $state("");
@@ -108,6 +123,9 @@
       agents,
       scope: "global",
       managed_status: managedStatus,
+      source_type: skill.source_type,
+      global_folder: skill.global_folder ?? null,
+      installed_agent_apps: skill.installed_agent_apps,
       name_conflict: false,
       conflict_with_managed: false,
     };
@@ -415,25 +433,143 @@
     selectAgentModalTitle = skill.name;
     selectAgentModalInitialSelection = skill.agents || [];
     selectAgentModalCallback = async (selectedAgents) => {
-      if (!skill || linkBusy) return;
-      linkBusy = true;
-      try {
-        // First: unlink all currently linked agents
-        for (const agentId of skill.agents || []) {
-          await setAgentLink(skill.name, agentId, skill.scope, false);
-        }
-        // Then: re-link selected agents
-        for (const agentId of selectedAgents) {
-          await setAgentLink(skill.name, agentId, skill.scope, true);
-        }
-        await refreshLocal();
-      } catch (error) {
-        localError = String(error);
-      } finally {
-        linkBusy = false;
-      }
+      return manageSkillAgentAppsFlow(skill, selectedAgents);
     };
     selectAgentModalOpen = true;
+  };
+
+  const currentInstallMethod = (skill: ViewLocalSkill): "symlink" | "copy" => {
+    const localMethod = skill.installed_agent_apps[0]?.method;
+    if (localMethod === "symlink" || localMethod === "copy") {
+      return localMethod;
+    }
+    return get(settings).sync_mode;
+  };
+
+  const openSourcePathModal = (
+    title: string,
+    candidates: string[],
+    onConfirm: (sourcePath: string) => Promise<void>
+  ) => {
+    sourcePathModalTitle = title;
+    sourcePathModalCandidates = candidates;
+    sourcePathModalConfirm = onConfirm;
+    sourcePathModalOpen = true;
+  };
+
+  const installKnownFlow = async (
+    skill: ViewLocalSkill,
+    selectedAgents: string[],
+    sourcePath?: string | null
+  ): Promise<boolean> => {
+    const method = currentInstallMethod(skill);
+    const knownCheck = await checkKnownType(
+      skill.name,
+      skill.global_folder,
+      skill.installed_agent_apps.map((item) => item.skill_folder)
+    );
+
+    const resolvedSourcePath = sourcePath ?? knownCheck.source_path ?? null;
+    if (!resolvedSourcePath) {
+      if (knownCheck.requires_selection && knownCheck.candidate_paths.length > 0) {
+        openSourcePathModal(
+          $t("local.sourceSelect.title", { name: skill.name }),
+          knownCheck.candidate_paths,
+          async (chosenPath) => {
+            await installKnownFlow(skill, selectedAgents, chosenPath);
+          }
+        );
+        return false;
+      }
+      throw new Error("No source path available for known skill");
+    }
+
+    const confirmed = await confirm($t("local.known.confirmManage", { name: skill.name }), {
+      title: $t("local.known.confirmTitle"),
+    });
+    if (!confirmed) {
+      return false;
+    }
+
+    const result = await installFromKnown({
+      name: skill.name,
+      source_path: resolvedSourcePath,
+      agent_apps: selectedAgents,
+      method,
+    });
+    if (!result.success) {
+      throw new Error(`${result.message}\n${result.stderr || result.stdout}`);
+    }
+    return true;
+  };
+
+  const manageSkillAgentAppsFlow = async (
+    skill: ViewLocalSkill,
+    selectedAgents: string[]
+  ): Promise<boolean> => {
+    if (!skill || linkBusy) return false;
+    linkBusy = true;
+    try {
+      const method = currentInstallMethod(skill);
+
+      if (skill.source_type === "known") {
+        const installed = await installKnownFlow(skill, selectedAgents);
+        if (installed) {
+          await refreshLocal();
+        }
+        return installed;
+      }
+
+      let sourcePath: string | null = null;
+      if (method === "copy") {
+        const copyCheck = await checkCopySourceFolder(
+          skill.name,
+          skill.global_folder,
+          skill.installed_agent_apps.map((item) => item.skill_folder)
+        );
+        sourcePath = copyCheck.source_path ?? null;
+
+        if (!sourcePath && copyCheck.requires_selection && copyCheck.candidate_paths.length > 0) {
+          openSourcePathModal(
+            $t("local.sourceSelect.title", { name: skill.name }),
+            copyCheck.candidate_paths,
+            async (chosenPath) => {
+              await manageSkillAgentApps({
+                name: skill.name,
+                source_type: skill.source_type,
+                global_folder: skill.global_folder,
+                installed_agent_apps: skill.installed_agent_apps,
+                agent_apps: selectedAgents,
+                method,
+                source_path: chosenPath,
+              });
+              await refreshLocal();
+            }
+          );
+          return false;
+        }
+      }
+
+      const result = await manageSkillAgentApps({
+        name: skill.name,
+        source_type: skill.source_type,
+        global_folder: skill.global_folder,
+        installed_agent_apps: skill.installed_agent_apps,
+        agent_apps: selectedAgents,
+        method,
+        source_path: sourcePath,
+      });
+      if (!result.success) {
+        throw new Error(`${result.message}\n${result.stderr || result.stdout}`);
+      }
+      await refreshLocal();
+      return true;
+    } catch (error) {
+      localError = String(error);
+      return false;
+    } finally {
+      linkBusy = false;
+    }
   };
 
   const handleDeleteSkill = async (skill: ViewLocalSkill) => {
@@ -551,11 +687,29 @@
     initialSelection={selectAgentModalInitialSelection}
     onConfirm={async (selectedAgents: string[]) => {
       if (selectAgentModalCallback) {
-        await selectAgentModalCallback(selectedAgents);
+        return await selectAgentModalCallback(selectedAgents);
       }
+      return true;
     }}
     onCancel={() => {
       selectAgentModalCallback = null;
+    }}
+  />
+{/await}
+
+{#await import("../lib/components/SourcePathModal.svelte") then { default: SourcePathModal }}
+  <SourcePathModal
+    bind:open={sourcePathModalOpen}
+    title={sourcePathModalTitle}
+    candidates={sourcePathModalCandidates}
+    onConfirm={async (sourcePath: string) => {
+      if (sourcePathModalConfirm) {
+        await sourcePathModalConfirm(sourcePath);
+      }
+      sourcePathModalConfirm = null;
+    }}
+    onCancel={() => {
+      sourcePathModalConfirm = null;
     }}
   />
 {/await}

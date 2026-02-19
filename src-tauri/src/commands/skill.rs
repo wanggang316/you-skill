@@ -1,4 +1,7 @@
-use crate::models::{DetectedSkill, InstallGithubRequest, InstallNativeRequest, InstallResult, LocalSkill};
+use crate::models::{
+  DetectedSkill, InstallGithubRequest, InstallKnownRequest, InstallNativeRequest, InstallResult,
+  LocalSkill, ManageSkillAgentAppsRequest, SourceCheckResult,
+};
 use crate::services::skill_service;
 
 #[tauri::command]
@@ -47,6 +50,34 @@ pub fn install_from_native(request: InstallNativeRequest) -> Result<InstallResul
 #[tauri::command]
 pub fn install_from_github(request: InstallGithubRequest) -> Result<InstallResult, String> {
   skill_service::install_from_github(request)
+}
+
+#[tauri::command]
+pub fn check_known_type(
+  name: String,
+  global_folder: Option<String>,
+  skill_paths: Vec<String>,
+) -> Result<SourceCheckResult, String> {
+  skill_service::check_known_type(name, global_folder, skill_paths)
+}
+
+#[tauri::command]
+pub fn check_copy_source_folder(
+  name: String,
+  global_folder: Option<String>,
+  skill_paths: Vec<String>,
+) -> Result<SourceCheckResult, String> {
+  skill_service::check_copy_source_folder(name, global_folder, skill_paths)
+}
+
+#[tauri::command]
+pub fn install_from_known(request: InstallKnownRequest) -> Result<InstallResult, String> {
+  skill_service::install_from_known(request)
+}
+
+#[tauri::command]
+pub fn manage_skill_agent_apps(request: ManageSkillAgentAppsRequest) -> Result<InstallResult, String> {
+  skill_service::manage_skill_agent_apps(request)
 }
 
 #[tauri::command]
