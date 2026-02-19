@@ -18,6 +18,7 @@
       class="border-base-300 bg-base-100 hover:bg-base-200 flex w-full cursor-pointer items-start gap-3 rounded-lg border px-3 py-2"
     >
       <input
+        class="mt-1 shrink-0"
         type="radio"
         name={radioName}
         value={group.source_path}
