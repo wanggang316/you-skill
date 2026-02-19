@@ -302,7 +302,7 @@ pub fn check_copy_source_folder(
     if global_path.exists() && global_path.is_dir() {
       return Ok(SourceCheckResult {
         source_path: Some(global_folder),
-        candidate_paths: Vec::new(),
+        version_groups: Vec::new(),
         requires_selection: false,
       });
     }
@@ -354,7 +354,12 @@ pub fn manage_skill_agent_apps(
         check.source_path.ok_or_else(|| {
           format!(
             "Source skill files are not identical, please choose one source path: {}",
-            check.candidate_paths.join(" | ")
+            check
+              .version_groups
+              .iter()
+              .flat_map(|g| g.paths.clone())
+              .collect::<Vec<String>>()
+              .join(" | ")
           )
         })?
       },
@@ -377,7 +382,12 @@ pub fn manage_skill_agent_apps(
       None => check.source_path.ok_or_else(|| {
         format!(
           "Source skill files are not identical, please choose one source path: {}",
-          check.candidate_paths.join(" | ")
+          check
+            .version_groups
+            .iter()
+            .flat_map(|g| g.paths.clone())
+            .collect::<Vec<String>>()
+            .join(" | ")
         )
       })?,
     };
@@ -693,34 +703,53 @@ fn resolve_source_path_by_consistency(
   if candidates.len() == 1 {
     return Ok(SourceCheckResult {
       source_path: Some(candidates[0].to_string_lossy().to_string()),
-      candidate_paths: Vec::new(),
+      version_groups: vec![crate::models::SourceVersionGroup {
+        version: "版本 1".to_string(),
+        source_path: candidates[0].to_string_lossy().to_string(),
+        paths: vec![candidates[0].to_string_lossy().to_string()],
+      }],
       requires_selection: false,
     });
   }
 
-  let first = &candidates[0];
-  let mut all_same = true;
-  for path in candidates.iter().skip(1) {
-    if !FolderHelper::are_folders_identical(first, path)? {
-      all_same = false;
-      break;
+  let mut grouped: Vec<(String, Vec<PathBuf>)> = Vec::new();
+  for path in &candidates {
+    let digest = FolderHelper::compute_folder_digest(path)?;
+    if let Some((_, paths)) = grouped.iter_mut().find(|(hash, _)| *hash == digest) {
+      paths.push(path.clone());
+    } else {
+      grouped.push((digest, vec![path.clone()]));
     }
   }
 
-  if all_same {
+  if grouped.len() == 1 {
     return Ok(SourceCheckResult {
-      source_path: Some(first.to_string_lossy().to_string()),
-      candidate_paths: Vec::new(),
+      source_path: Some(candidates[0].to_string_lossy().to_string()),
+      version_groups: vec![crate::models::SourceVersionGroup {
+        version: "版本 1".to_string(),
+        source_path: candidates[0].to_string_lossy().to_string(),
+        paths: candidates.iter().map(|p| p.to_string_lossy().to_string()).collect(),
+      }],
       requires_selection: false,
     });
   }
 
+  let version_groups = grouped
+    .into_iter()
+    .enumerate()
+    .map(|(idx, (_, paths))| {
+      let source_path = paths[0].to_string_lossy().to_string();
+      crate::models::SourceVersionGroup {
+        version: format!("版本 {}", idx + 1),
+        source_path,
+        paths: paths.into_iter().map(|p| p.to_string_lossy().to_string()).collect(),
+      }
+    })
+    .collect();
+
   Ok(SourceCheckResult {
     source_path: None,
-    candidate_paths: candidates
-      .into_iter()
-      .map(|p| p.to_string_lossy().to_string())
-      .collect(),
+    version_groups,
     requires_selection: true,
   })
 }

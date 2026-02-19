@@ -10,6 +10,7 @@ export interface AppSettings {
   language: "en" | "zh";
   theme: "system" | "light" | "dark";
   sync_mode: "symlink" | "copy";
+  known_skill_install_permission: boolean;
   backup_folder?: string | null;
   last_backup_time?: string | null;
 }
@@ -25,7 +26,7 @@ export async function getSettings(): Promise<AppSettings> {
  * 更新应用设置
  */
 export async function updateSettings(
-  settings: Pick<AppSettings, "language" | "theme" | "sync_mode">
+  settings: Pick<AppSettings, "language" | "theme" | "sync_mode" | "known_skill_install_permission">
 ): Promise<AppSettings> {
   return apiCall<AppSettings>("update_settings", { settings });
 }
@@ -50,7 +51,6 @@ export async function openBackupFolder(path: string): Promise<void> {
 export async function backupSkills(backupFolder: string): Promise<BackupResult> {
   return apiCall<BackupResult>("backup_skills", { backupFolder });
 }
-
 
 export interface BackupResult {
   success: boolean;

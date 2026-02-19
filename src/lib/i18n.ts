@@ -143,6 +143,8 @@ const translations: Record<string, Dictionary> = {
     "local.known.confirmTitle": "Take over skill management",
     "local.known.confirmManage":
       '"{name}" is not managed by YouSkill yet. Do you want YouSkill to take over and manage it?',
+    "local.known.pathSelectTitle": 'Select "{name}" version',
+    "local.known.rememberChoice": "Remember this choice",
     "detail.retry": "Retry",
     "detail.openInBrowser": "Open in browser",
     "detail.openRepo": "Open Repository",
@@ -314,9 +316,12 @@ const translations: Record<string, Dictionary> = {
     "selectAgent.confirm": "确认",
     "local.sourceSelect.title": '选择 "{name}" 的来源',
     "local.sourceSelect.titleDefault": "选择来源路径",
-    "local.sourceSelect.description": "检测到该 skill 的来源目录内容不一致，请选择一个作为重新安装来源。",
+    "local.sourceSelect.description":
+      "检测到该 skill 的来源目录内容不一致，请选择一个作为重新安装来源。",
     "local.known.confirmTitle": "接管 Skill 管理",
     "local.known.confirmManage": '"{name}" 尚未由 YouSkill 管理，是否交给 YouSkill 统一管理？',
+    "local.known.pathSelectTitle": '选择 "{name}" 版本',
+    "local.known.rememberChoice": "记住此选择",
     "detail.retry": "重试",
     "detail.openInBrowser": "在浏览器中打开",
     "detail.openRepo": "打开仓库",

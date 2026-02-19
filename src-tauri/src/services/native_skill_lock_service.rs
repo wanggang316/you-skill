@@ -33,8 +33,8 @@ fn default_version() -> i64 {
 }
 
 fn native_skill_lock_path() -> Result<PathBuf, String> {
-  let home_dir = dirs_next::home_dir().ok_or("Unable to get user home directory")?;
-  Ok(home_dir.join(LOCK_FILE))
+  let config_dir = dirs_next::config_dir().ok_or("Unable to get config directory")?;
+  Ok(config_dir.join("youskill").join(LOCK_FILE))
 }
 
 pub fn read_native_skill_lock_internal() -> Result<NativeSkillLockFile, String> {

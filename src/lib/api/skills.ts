@@ -95,8 +95,14 @@ export interface InstallKnownRequest {
 
 export interface SourceCheckResult {
   source_path?: string | null;
-  candidate_paths: string[];
+  version_groups: SourceVersionGroup[];
   requires_selection: boolean;
+}
+
+export interface SourceVersionGroup {
+  version: string;
+  source_path: string;
+  paths: string[];
 }
 
 export interface ManageSkillAgentAppsRequest {

@@ -102,8 +102,15 @@ pub struct InstallKnownRequest {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SourceCheckResult {
   pub source_path: Option<String>,
-  pub candidate_paths: Vec<String>,
+  pub version_groups: Vec<SourceVersionGroup>,
   pub requires_selection: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SourceVersionGroup {
+  pub version: String,
+  pub source_path: String,
+  pub paths: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

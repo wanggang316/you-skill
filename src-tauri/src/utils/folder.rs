@@ -25,16 +25,6 @@ impl FolderHelper {
     Ok(dirs)
   }
 
-  pub fn are_folders_identical(path_a: &Path, path_b: &Path) -> Result<bool, String> {
-    if !path_a.exists() || !path_a.is_dir() {
-      return Err(format!("Directory does not exist: {}", path_a.to_string_lossy()));
-    }
-    if !path_b.exists() || !path_b.is_dir() {
-      return Err(format!("Directory does not exist: {}", path_b.to_string_lossy()));
-    }
-    Ok(Self::compute_folder_digest(path_a)? == Self::compute_folder_digest(path_b)?)
-  }
-
   fn relative_file_paths(root: &Path) -> Result<Vec<PathBuf>, String> {
     let mut files = Vec::new();
     for entry in WalkDir::new(root).follow_links(false).into_iter() {
@@ -53,7 +43,7 @@ impl FolderHelper {
     Ok(files)
   }
 
-  fn compute_folder_digest(root: &Path) -> Result<String, String> {
+  pub fn compute_folder_digest(root: &Path) -> Result<String, String> {
     let files = Self::relative_file_paths(root)?;
     let mut hasher = Sha256::new();
 

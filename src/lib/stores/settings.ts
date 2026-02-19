@@ -6,6 +6,7 @@ const defaultSettings: AppSettings = {
   language: "en",
   theme: "system",
   sync_mode: "symlink",
+  known_skill_install_permission: false,
 };
 
 export const settings = writable<AppSettings>({ ...defaultSettings });
@@ -58,6 +59,7 @@ export const loadSettings = async () => {
       language: remote.language,
       theme: remote.theme,
       sync_mode: remote.sync_mode,
+      known_skill_install_permission: remote.known_skill_install_permission,
     };
     settings.set(merged);
     applyTheme(merged.theme);
@@ -71,7 +73,9 @@ export const loadSettings = async () => {
 };
 
 export const updateSettings = async (
-  patch: Partial<Pick<AppSettings, "language" | "theme" | "sync_mode">>
+  patch: Partial<
+    Pick<AppSettings, "language" | "theme" | "sync_mode" | "known_skill_install_permission">
+  >
 ) => {
   const current = get(settings);
   const next = { ...current, ...patch };
