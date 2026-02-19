@@ -10,7 +10,7 @@ use crate::services::skill_lock_service::{add_skill_to_lock, read_skill_lock_int
 use crate::utils::file::FileHelper;
 use crate::utils::folder::FolderHelper;
 use crate::utils::github::GithubHelper;
-use crate::utils::path::expand_home;
+use crate::utils::path::{expand_home, remove_path_any};
 use crate::utils::zip::ZipHelper;
 use std::env;
 use std::fs;
@@ -601,14 +601,6 @@ fn install_to_app(source: &Path, target: &Path, method: &InstallMethod) -> Resul
       }
     },
     InstallMethod::Copy => copy_dir_all_sync(source, target),
-  }
-}
-
-fn remove_path_any(path: &Path) -> Result<(), String> {
-  if path.is_dir() && !path.is_symlink() {
-    fs::remove_dir_all(path).map_err(|e| e.to_string())
-  } else {
-    fs::remove_file(path).map_err(|e| e.to_string())
   }
 }
 
