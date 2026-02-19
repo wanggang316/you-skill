@@ -106,7 +106,9 @@
                   {skill.name}
                 </button>
                 {#if skill.managed_status === "unmanaged"}
-                  <span class="bg-base-300 text-base-content-subtle rounded-full px-2 py-0.5 text-[11px]">
+                  <span
+                    class="bg-base-300 text-base-content-subtle rounded-full px-2 py-0.5 text-[11px]"
+                  >
                     {$t("local.section.unmanaged")}
                   </span>
                 {/if}

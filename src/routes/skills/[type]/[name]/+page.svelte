@@ -314,11 +314,13 @@
             </div>
           {:else}
             {#if hasFrontmatter}
-              <div class="mb-6 overflow-hidden rounded-xl border border-base-300 bg-base-200">
+              <div class="border-base-300 bg-base-200 mb-6 overflow-hidden rounded-xl border">
                 <div class="flex flex-col gap-3 p-4">
                   {#if parsedFrontmatter.description}
                     <div class="flex flex-col gap-1">
-                      <span class="text-sm leading-6 text-base-content">{parsedFrontmatter.description}</span>
+                      <span class="text-base-content text-sm leading-6"
+                        >{parsedFrontmatter.description}</span
+                      >
                     </div>
                   {/if}
                 </div>

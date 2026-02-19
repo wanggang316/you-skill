@@ -123,7 +123,8 @@
                     <span class="text-base-content text-xs font-medium">{app.display_name}</span>
                     {#if app.global_path}
                       <span class="text-base-content/50 mt-0.5 truncate text-[10px]"
-                        >{app.global_path}</span>
+                        >{app.global_path}</span
+                      >
                     {/if}
                   </div>
                 {/each}
@@ -147,7 +148,9 @@
                     <div class="flex min-w-0 flex-col">
                       <span class="text-base-content text-xs font-medium">{app.display_name}</span>
                       {#if app.global_path}
-                        <span class="text-base-content/50 mt-0.5 truncate text-[10px]">{app.global_path}</span>
+                        <span class="text-base-content/50 mt-0.5 truncate text-[10px]"
+                          >{app.global_path}</span
+                        >
                       {/if}
                     </div>
                     <div class="flex shrink-0 gap-1">
@@ -195,8 +198,4 @@
 </div>
 
 <!-- Add Agent App Modal -->
-<AddAgentAppModal
-  bind:open={showAddModal}
-  appToEdit={editingApp}
-  onAppsChange={loadAgentApps}
-/>
+<AddAgentAppModal bind:open={showAddModal} appToEdit={editingApp} onAppsChange={loadAgentApps} />

@@ -1,14 +1,14 @@
 <script lang="ts">
-import { onMount } from "svelte";
-import { get } from "svelte/store";
-import { listen } from "@tauri-apps/api/event";
-import { goto } from "$app/navigation";
-import PageHeader from "../lib/components/PageHeader.svelte";
+  import { onMount } from "svelte";
+  import { get } from "svelte/store";
+  import { listen } from "@tauri-apps/api/event";
+  import { goto } from "$app/navigation";
+  import PageHeader from "../lib/components/PageHeader.svelte";
   import { t } from "../lib/i18n";
   import { check } from "@tauri-apps/plugin-updater";
-import LocalSkillsSection from "../lib/components/LocalSkillsSection.svelte";
-import RemoteSkillsSection from "../lib/components/RemoteSkillsSection.svelte";
-import { settings, updateSettings as updateAppSettings } from "../lib/stores/settings";
+  import LocalSkillsSection from "../lib/components/LocalSkillsSection.svelte";
+  import RemoteSkillsSection from "../lib/components/RemoteSkillsSection.svelte";
+  import { settings, updateSettings as updateAppSettings } from "../lib/stores/settings";
   import {
     listSkills,
     fetchRemoteSkills,
@@ -81,7 +81,7 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
   let updateCheckPromise = $state<Promise<void> | null>(null);
 
   // Pending install state
-  let pendingInstallSkill = $state<RemoteSkill & { detectedSkill?: DetectedSkill } | null>(null);
+  let pendingInstallSkill = $state<(RemoteSkill & { detectedSkill?: DetectedSkill }) | null>(null);
   let pendingInstallAgents = $state<string[]>([]);
   let isDownloading = $state(false);
   let downloadError = $state("");
@@ -90,7 +90,9 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
   let selectAgentModalOpen = $state(false);
   let selectAgentModalTitle = $state("");
   let selectAgentModalInitialSelection = $state<string[]>([]);
-  let selectAgentModalCallback = $state<((selectedAgents: string[]) => Promise<boolean>) | null>(null);
+  let selectAgentModalCallback = $state<
+    ((selectedAgents: string[], method: "symlink" | "copy") => Promise<boolean>) | null
+  >(null);
 
   // Check known path modal state
   let checkKnownPathModalOpen = $state(false);
@@ -101,7 +103,9 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
   // Known permission modal state
   let knownPermissionModalOpen = $state(false);
   let knownPermissionModalSkillName = $state("");
-  let knownPermissionModalConfirm = $state<((rememberChoice: boolean) => Promise<void>) | null>(null);
+  let knownPermissionModalConfirm = $state<((rememberChoice: boolean) => Promise<void>) | null>(
+    null
+  );
 
   // Check copy source modal state
   let checkCopySourceModalOpen = $state(false);
@@ -122,15 +126,17 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
     const source = Array.isArray(localSkills) ? localSkills : [];
     const needle = localSearch.trim().toLowerCase();
     return source.filter((skill) => {
-      const matchesSearch =
-        !needle || skill.name.toLowerCase().includes(needle);
+      const matchesSearch = !needle || skill.name.toLowerCase().includes(needle);
       const agentIds = skill.installed_agent_apps.map((app) => app.id);
       const matchesAgent = localAgent === "all" || agentIds.includes(localAgent);
       return matchesSearch && matchesAgent;
     });
   });
 
-  const toViewLocalSkill = (skill: LocalSkill, managedStatus: "managed" | "unmanaged"): ViewLocalSkill => {
+  const toViewLocalSkill = (
+    skill: LocalSkill,
+    managedStatus: "managed" | "unmanaged"
+  ): ViewLocalSkill => {
     const agents = Array.from(new Set(skill.installed_agent_apps.map((app) => app.id)));
     const canonicalPath = skill.global_folder || skill.installed_agent_apps[0]?.skill_folder || "";
     return {
@@ -329,7 +335,7 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
 
       selectAgentModalTitle = $t("installConfirm.title", { name: skill.name });
       selectAgentModalInitialSelection = currentAgents;
-      selectAgentModalCallback = async (selectedAgents) => {
+      selectAgentModalCallback = async (selectedAgents, method) => {
         if (!pendingInstallSkill) return;
         installLog = "";
         installingSkill = pendingInstallSkill.id;
@@ -343,7 +349,7 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
             source_url: toGitRepoUrl(skill.url!),
             skill_folder_hash: skill.skill_path_sha ?? null,
             agent_apps: selectedAgents,
-            method: "symlink",
+            method,
           });
           if (!result.success) {
             installLog = `${result.message}\n${result.stderr || result.stdout}`;
@@ -398,7 +404,7 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
 
       selectAgentModalTitle = $t("installConfirm.title", { name: skill.name });
       selectAgentModalInitialSelection = agents.map((a) => a.id);
-      selectAgentModalCallback = async (selectedAgents) => {
+      selectAgentModalCallback = async (selectedAgents, method) => {
         if (!pendingInstallSkill) return;
         installLog = "";
         installingSkill = pendingInstallSkill.id;
@@ -412,7 +418,7 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
             source_url: toGitRepoUrl(pendingInstallSkill.url!),
             skill_folder_hash: pendingInstallSkill.skill_path_sha ?? null,
             agent_apps: selectedAgents,
-            method: "symlink",
+            method,
           });
           if (!result.success) {
             installLog = `${result.message}\n${result.stderr || result.stdout}`;
@@ -453,20 +459,9 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
       return;
     }
 
-    selectAgentModalTitle = skill.name;
-    selectAgentModalInitialSelection = skill.agents || [];
-    selectAgentModalCallback = async (selectedAgents) => {
-      return manageSkillAgentAppsFlow(skill, selectedAgents);
-    };
-    selectAgentModalOpen = true;
-  };
-
-  const currentInstallMethod = (skill: ViewLocalSkill): "symlink" | "copy" => {
-    const localMethod = skill.installed_agent_apps[0]?.method;
-    if (localMethod === "symlink" || localMethod === "copy") {
-      return localMethod;
-    }
-    return get(settings).sync_mode;
+    startNonKnownFlow(skill).catch((error) => {
+      localError = String(error);
+    });
   };
 
   const openCheckKnownPathModal = (
@@ -500,16 +495,25 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
     checkCopySourceModalOpen = true;
   };
 
+  const openNonKnownSelectAgentModal = (skill: ViewLocalSkill, copySourcePath: string | null) => {
+    selectAgentModalTitle = skill.name;
+    selectAgentModalInitialSelection = skill.agents || [];
+    selectAgentModalCallback = async (selectedAgents, method) => {
+      return manageSkillAgentAppsFlow(skill, selectedAgents, method, copySourcePath);
+    };
+    selectAgentModalOpen = true;
+  };
+
   const openKnownSelectAgentModal = (skill: ViewLocalSkill, sourcePath: string) => {
     selectAgentModalTitle = skill.name;
     selectAgentModalInitialSelection = skill.agents || [];
-    selectAgentModalCallback = async (selectedAgents) => {
+    selectAgentModalCallback = async (selectedAgents, method) => {
       try {
         const result = await installFromKnown({
           name: skill.name,
           source_path: sourcePath,
           agent_apps: selectedAgents,
-          method: currentInstallMethod(skill),
+          method,
         });
         if (!result.success) {
           throw new Error(`${result.message}\n${result.stderr || result.stdout}`);
@@ -529,15 +533,12 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
     skipPermissionPrompt = false
   ): Promise<void> => {
     if (!skipPermissionPrompt && !get(settings).known_skill_install_permission) {
-      openKnownPermissionModal(
-        skill.name,
-        async (rememberChoice) => {
-          if (rememberChoice) {
-            await updateAppSettings({ known_skill_install_permission: true });
-          }
-          await startKnownFlow(skill, true);
+      openKnownPermissionModal(skill.name, async (rememberChoice) => {
+        if (rememberChoice) {
+          await updateAppSettings({ known_skill_install_permission: true });
         }
-      );
+        await startKnownFlow(skill, true);
+      });
       return;
     }
 
@@ -560,58 +561,52 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
     openKnownSelectAgentModal(skill, resolvedSourcePath);
   };
 
+  const startNonKnownFlow = async (skill: ViewLocalSkill): Promise<void> => {
+    const copyCheck = await checkCopySourceFolder(
+      skill.name,
+      skill.global_folder,
+      skill.installed_agent_apps.map((item) => item.skill_folder)
+    );
+    const resolvedSourcePath = copyCheck.source_path ?? null;
+    if (!resolvedSourcePath && copyCheck.version_groups.length > 0) {
+      openCheckCopySourceModal(skill.name, copyCheck.version_groups, async (chosenPath) => {
+        openNonKnownSelectAgentModal(skill, chosenPath);
+      });
+      return;
+    }
+    openNonKnownSelectAgentModal(skill, resolvedSourcePath);
+  };
+
   const manageSkillAgentAppsFlow = async (
     skill: ViewLocalSkill,
-    selectedAgents: string[]
+    selectedAgents: string[],
+    method: "symlink" | "copy",
+    copySourcePath: string | null
   ): Promise<boolean> => {
     if (!skill || linkBusy) return false;
     linkBusy = true;
     try {
-      const method = currentInstallMethod(skill);
-
-      let sourcePath: string | null = null;
-      if (method === "copy") {
-        const copyCheck = await checkCopySourceFolder(
-          skill.name,
-          skill.global_folder,
-          skill.installed_agent_apps.map((item) => item.skill_folder)
-        );
-        sourcePath = copyCheck.source_path ?? null;
-
-        if (!sourcePath && copyCheck.version_groups.length > 0) {
-          openCheckCopySourceModal(
-            skill.name,
-            copyCheck.version_groups,
-            async (chosenPath) => {
-              await manageSkillAgentApps({
-                name: skill.name,
-                source_type: skill.source_type,
-                global_folder: skill.global_folder,
-                installed_agent_apps: skill.installed_agent_apps,
-                agent_apps: selectedAgents,
-                method,
-                source_path: chosenPath,
-              });
-              await refreshLocal();
-            }
-          );
-          return false;
+      const executeManage = async (sourcePath: string | null) => {
+        const result = await manageSkillAgentApps({
+          name: skill.name,
+          source_type: skill.source_type,
+          global_folder: skill.global_folder,
+          installed_agent_apps: skill.installed_agent_apps,
+          agent_apps: selectedAgents,
+          method,
+          source_path: sourcePath,
+        });
+        if (!result.success) {
+          throw new Error(`${result.message}\n${result.stderr || result.stdout}`);
         }
-      }
+        await refreshLocal();
+      };
 
-      const result = await manageSkillAgentApps({
-        name: skill.name,
-        source_type: skill.source_type,
-        global_folder: skill.global_folder,
-        installed_agent_apps: skill.installed_agent_apps,
-        agent_apps: selectedAgents,
-        method,
-        source_path: sourcePath,
-      });
-      if (!result.success) {
-        throw new Error(`${result.message}\n${result.stderr || result.stdout}`);
+      const sourcePath = method === "copy" ? copySourcePath : null;
+      if (method === "copy" && !sourcePath) {
+        throw new Error("No source path available for copy install");
       }
-      await refreshLocal();
+      await executeManage(sourcePath);
       return true;
     } catch (error) {
       localError = String(error);
@@ -664,67 +659,67 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
 
 <div class="bg-base-100 text-base-content flex h-screen flex-col overflow-hidden">
   <PageHeader
-      currentView="list"
-      activeTab={activeTab}
-      skillName=""
-      {hasUpdate}
-      agentAppsLoading={false}
-      onChangeTab={handleTabChange}
-      onAddSkill={() => addSkillModalOpen = true}
-      onOpenUpdate={navigateToSettings}
-      onBack={() => {}}
-      onDetailAction={undefined}
-      onRefreshAgentApps={() => {}}
-    />
+    currentView="list"
+    {activeTab}
+    skillName=""
+    {hasUpdate}
+    agentAppsLoading={false}
+    onChangeTab={handleTabChange}
+    onAddSkill={() => (addSkillModalOpen = true)}
+    onOpenUpdate={navigateToSettings}
+    onBack={() => {}}
+    onDetailAction={undefined}
+    onRefreshAgentApps={() => {}}
+  />
 
-    <main class="flex-1 overflow-y-auto">
-      <div class="mx-auto max-w-6xl px-6 py-6">
-        {#if activeTab === "local"}
-          <LocalSkillsSection
-            bind:localSearch
-            bind:localAgent
-            {agents}
-            {localLoading}
-            {localError}
-            {filteredLocalSkills}
-            {managedSkills}
-            {unmanagedSkills}
-            {agentMap}
-            {skillsWithUpdate}
-            {updatingSkills}
-            onRefresh={refreshLocal}
-            onDeleteSkill={handleDeleteSkill}
-            onViewSkill={handleViewSkill}
-            onOpenSelectAgentModal={openSelectAgentModal}
-            onUpdateSkill={handleUpdateSkill}
-          />
-        {:else}
-          <RemoteSkillsSection
-            bind:remoteQuery
-            bind:remoteSortBy
-            bind:remoteSortOrder
-            {localSkills}
-            {remoteLoading}
-            {remoteSkills}
-            {remoteError}
-            {installLog}
-            {installingSkill}
-            {isDownloading}
-            {remoteHasMore}
-            {remoteTotal}
-            {skillsWithUpdate}
-            {updatingSkills}
-            onSearch={handleSearchRemote}
-            onLoadMore={loadMoreRemote}
-            onInstall={handleInstall}
-            onUpdateSkill={handleUpdateSkill}
-            onViewSkill={handleViewSkill}
-            onSortChange={handleSortChange}
-            onRefresh={handleSearchRemote}
-          />
-        {/if}
-      </div>
-    </main>
+  <main class="flex-1 overflow-y-auto">
+    <div class="mx-auto max-w-6xl px-6 py-6">
+      {#if activeTab === "local"}
+        <LocalSkillsSection
+          bind:localSearch
+          bind:localAgent
+          {agents}
+          {localLoading}
+          {localError}
+          {filteredLocalSkills}
+          {managedSkills}
+          {unmanagedSkills}
+          {agentMap}
+          {skillsWithUpdate}
+          {updatingSkills}
+          onRefresh={refreshLocal}
+          onDeleteSkill={handleDeleteSkill}
+          onViewSkill={handleViewSkill}
+          onOpenSelectAgentModal={openSelectAgentModal}
+          onUpdateSkill={handleUpdateSkill}
+        />
+      {:else}
+        <RemoteSkillsSection
+          bind:remoteQuery
+          bind:remoteSortBy
+          bind:remoteSortOrder
+          {localSkills}
+          {remoteLoading}
+          {remoteSkills}
+          {remoteError}
+          {installLog}
+          {installingSkill}
+          {isDownloading}
+          {remoteHasMore}
+          {remoteTotal}
+          {skillsWithUpdate}
+          {updatingSkills}
+          onSearch={handleSearchRemote}
+          onLoadMore={loadMoreRemote}
+          onInstall={handleInstall}
+          onUpdateSkill={handleUpdateSkill}
+          onViewSkill={handleViewSkill}
+          onSortChange={handleSortChange}
+          onRefresh={handleSearchRemote}
+        />
+      {/if}
+    </div>
+  </main>
 </div>
 
 <!-- Select Agent Modal -->
@@ -734,9 +729,9 @@ import { settings, updateSettings as updateAppSettings } from "../lib/stores/set
     title={selectAgentModalTitle}
     {agents}
     initialSelection={selectAgentModalInitialSelection}
-    onConfirm={async (selectedAgents: string[]) => {
+    onConfirm={async (selectedAgents: string[], method: "symlink" | "copy") => {
       if (selectAgentModalCallback) {
-        return await selectAgentModalCallback(selectedAgents);
+        return await selectAgentModalCallback(selectedAgents, method);
       }
       return true;
     }}

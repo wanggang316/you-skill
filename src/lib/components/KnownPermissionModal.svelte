@@ -36,9 +36,13 @@
 <Modal bind:open title={$t("local.known.confirmTitle")} onClose={closeModal}>
   <div class="flex h-full max-h-[90vh] w-full max-w-lg flex-col">
     <div class="flex-1 overflow-y-auto px-6 pt-16 pb-6">
-      <p class="text-base-content text-sm">{$t("local.known.confirmManage", { name: skillName })}</p>
+      <p class="text-base-content text-sm">
+        {$t("local.known.confirmManage", { name: skillName })}
+      </p>
     </div>
-    <div class="border-base-300 bg-base-100 flex items-center justify-end gap-3 border-t px-6 py-3 rounded-b-2xl">
+    <div
+      class="border-base-300 bg-base-100 flex items-center justify-end gap-3 rounded-b-2xl border-t px-6 py-3"
+    >
       <label class="text-base-content-subtle mr-1 inline-flex items-center gap-2 text-xs">
         <input type="checkbox" bind:checked={rememberChoice} />
         {$t("local.known.rememberChoice")}

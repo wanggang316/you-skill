@@ -18,9 +18,7 @@
     ghost: "text-base-content hover:bg-base-200",
   };
 
-  const resolvedClass = $derived(
-    `${baseClass} ${variants[variant]} ${className}`
-  );
+  const resolvedClass = $derived(`${baseClass} ${variants[variant]} ${className}`);
 </script>
 
 <button

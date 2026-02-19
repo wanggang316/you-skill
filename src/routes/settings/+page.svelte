@@ -2,12 +2,7 @@
   import { goto } from "$app/navigation";
   import { t } from "../../lib/i18n";
   import { settings, updateSettings } from "../../lib/stores/settings";
-  import {
-    getSettings,
-    setBackupFolder,
-    openBackupFolder,
-    backupSkills,
-  } from "../../lib/api";
+  import { getSettings, setBackupFolder, openBackupFolder, backupSkills } from "../../lib/api";
   import { open } from "@tauri-apps/plugin-dialog";
   import { FolderOpen, Loader2, ChevronRight, Download, ChevronLeft } from "@lucide/svelte";
   import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -212,11 +207,15 @@
           <div class="flex items-center justify-between">
             <span class="text-base-content text-[15px]">{$t("settings.language")}</span>
             <div class="relative">
-                <select
-                  class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
-                  value={$settings.language}
-                  onchange={(event) => updateSettings({ language: event.currentTarget.value as import('../../lib/api/settings').AppSettings["language"] })}
-                >
+              <select
+                class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
+                value={$settings.language}
+                onchange={(event) =>
+                  updateSettings({
+                    language: event.currentTarget
+                      .value as import("../../lib/api/settings").AppSettings["language"],
+                  })}
+              >
                 <option value="en">English</option>
                 <option value="zh">中文</option>
               </select>
@@ -232,11 +231,15 @@
           <div class="flex items-center justify-between">
             <span class="text-base-content text-[15px]">{$t("settings.theme")}</span>
             <div class="relative">
-                <select
-                  class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
-                  value={$settings.theme}
-                  onchange={(event) => updateSettings({ theme: event.currentTarget.value as import('../../lib/api/settings').AppSettings["theme"] })}
-                >
+              <select
+                class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
+                value={$settings.theme}
+                onchange={(event) =>
+                  updateSettings({
+                    theme: event.currentTarget
+                      .value as import("../../lib/api/settings").AppSettings["theme"],
+                  })}
+              >
                 <option value="system">{$t("settings.theme.system")}</option>
                 <option value="light">{$t("settings.theme.light")}</option>
                 <option value="dark">{$t("settings.theme.dark")}</option>
@@ -254,11 +257,15 @@
           <div class="flex items-center justify-between">
             <span class="text-base-content text-[15px]">{$t("settings.syncMode")}</span>
             <div class="relative">
-                <select
-                  class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
-                  value={$settings.sync_mode}
-                  onchange={(event) => updateSettings({ sync_mode: event.currentTarget.value as import('../../lib/api/settings').AppSettings["sync_mode"] })}
-                >
+              <select
+                class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
+                value={$settings.sync_mode}
+                onchange={(event) =>
+                  updateSettings({
+                    sync_mode: event.currentTarget
+                      .value as import("../../lib/api/settings").AppSettings["sync_mode"],
+                  })}
+              >
                 <option value="symlink">{$t("settings.syncMode.symlink")}</option>
                 <option value="copy">{$t("settings.syncMode.copy")}</option>
               </select>

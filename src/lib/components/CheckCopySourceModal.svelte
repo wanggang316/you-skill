@@ -48,7 +48,9 @@
         radioName="copyVersionGroup"
       />
     </div>
-    <div class="border-base-300 bg-base-100 flex items-center justify-end gap-2 border-t px-6 py-3 rounded-b-2xl">
+    <div
+      class="border-base-300 bg-base-100 flex items-center justify-end gap-2 rounded-b-2xl border-t px-6 py-3"
+    >
       <button
         class="border-base-300 text-base-content hover:bg-base-200 rounded-xl border px-4 py-2 text-sm transition"
         onclick={closeModal}

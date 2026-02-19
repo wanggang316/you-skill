@@ -31,7 +31,7 @@
         <div class="text-base-content mb-1 text-sm font-medium">{group.version}</div>
         <div class="space-y-1">
           {#each group.paths as path}
-            <div class="text-base-content-subtle break-all text-xs">{path}</div>
+            <div class="text-base-content-subtle text-xs break-all">{path}</div>
           {/each}
         </div>
       </div>

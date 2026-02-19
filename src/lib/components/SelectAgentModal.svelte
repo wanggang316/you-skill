@@ -15,6 +15,8 @@
 
   /** @type {string[]} */
   let selectedAgents = $state([]);
+  /** @type {"symlink" | "copy"} */
+  let selectedMethod = $state("symlink");
   let isInstalling = $state(false);
 
   // Reset state when modal opens
@@ -23,6 +25,7 @@
       // Use initialSelection if provided, otherwise select all
       selectedAgents =
         initialSelection.length > 0 ? [...initialSelection] : agents.map((a) => a.id);
+      selectedMethod = "symlink";
     }
   });
 
@@ -35,7 +38,7 @@
     if (selectedAgents.length === 0) return;
     isInstalling = true;
     try {
-      const shouldClose = await onConfirm(selectedAgents);
+      const shouldClose = await onConfirm(selectedAgents, selectedMethod);
       if (shouldClose !== false) {
         closeModal();
       }
@@ -63,6 +66,13 @@
     <div
       class="border-base-300 bg-base-100 flex items-center justify-end rounded-b-2xl border-t px-6 py-3"
     >
+      <select
+        bind:value={selectedMethod}
+        class="bg-base-100 text-base-content mr-3 rounded-lg px-3 py-2 text-sm"
+      >
+        <option value="symlink">{$t("settings.syncMode.symlink")}</option>
+        <option value="copy">{$t("settings.syncMode.copy")}</option>
+      </select>
       <button
         class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-6 py-2 text-sm transition disabled:opacity-50"
         onclick={handleConfirm}
