@@ -45,11 +45,7 @@
     }
   };
 
-  const buildGitHubUrl = (
-    url: string,
-    path: string | null | undefined,
-    relativePath?: string
-  ) => {
+  const buildGitHubUrl = (url: string, path: string | null | undefined, relativePath?: string) => {
     if (!url || !url.includes("github.com")) return null;
     const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
     if (!match) return null;

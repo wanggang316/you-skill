@@ -170,7 +170,6 @@
     listen("open-install-modal", () => {
       addSkillModalOpen = true;
     });
-
   });
 
   const checkForUpdate = async () => {
