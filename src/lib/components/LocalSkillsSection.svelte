@@ -9,7 +9,7 @@
     agents,
     localLoading,
     localError,
-    localSkillViews,
+    filteredLocalSkills,
     agentMap,
     skillsWithUpdate = [],
     updatingSkills = [],
@@ -89,7 +89,7 @@
       >
         {$t("local.loading")}
       </div>
-    {:else if localSkillViews.length === 0}
+    {:else if filteredLocalSkills.length === 0}
       <div
         class="border-base-300 bg-base-100 text-base-content-muted rounded-2xl border border-dashed p-6 text-center text-sm"
       >
@@ -97,7 +97,7 @@
       </div>
     {:else}
       <div class="space-y-2">
-        {#each localSkillViews as skill}
+        {#each filteredLocalSkills as skill}
           <div class="border-base-300 bg-base-100 rounded-2xl border p-4 transition">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex items-center gap-2">

@@ -32,13 +32,6 @@
     SourceVersionGroup,
   } from "../lib/api/skills";
 
-  type LocalSkillView = {
-    name: string;
-    source_type: "github" | "native" | "unknown";
-    global_folder: string | null;
-    installed_agent_apps: import("../lib/api/skills").InstalledAgentApp[];
-  };
-
   // Shared state for modals
   let addSkillModalOpen = $state(false);
   let hasUpdate = $state(false);
@@ -120,21 +113,8 @@
     });
   });
 
-  const toLocalSkillView = (skill: LocalSkill): LocalSkillView => {
-    return {
-      name: skill.name,
-      source_type: skill.source_type,
-      global_folder: skill.global_folder ?? null,
-      installed_agent_apps: skill.installed_agent_apps,
-    };
-  };
-
-  const getSkillAgentIds = (skill: LocalSkillView): string[] =>
+  const getSkillAgentIds = (skill: LocalSkill): string[] =>
     Array.from(new Set(skill.installed_agent_apps.map((app) => app.id)));
-
-  const localSkillViews = $derived.by(() =>
-    filteredLocalSkills.map((skill) => toLocalSkillView(skill))
-  );
 
   // Track if remote skills have been loaded
   let remoteLoaded = $state(false);
@@ -416,7 +396,7 @@
     }
   };
 
-  const openSelectAgentModal = (skill: LocalSkillView) => {
+  const openSelectAgentModal = (skill: LocalSkill) => {
     if (skill.source_type === "unknown") {
       startUnknownFlow(skill).catch((error) => {
         localError = String(error);
@@ -451,7 +431,7 @@
     checkSkillVersionModalOpen = true;
   };
 
-  const openSourceTypeSelectAgentModal = (skill: LocalSkillView, sourcePath: string) => {
+  const openSourceTypeSelectAgentModal = (skill: LocalSkill, sourcePath: string) => {
     selectAgentModalTitle = skill.name;
     selectAgentModalInitialSelection = getSkillAgentIds(skill);
     selectAgentModalCallback = async (selectedAgents, method) => {
@@ -460,7 +440,7 @@
     selectAgentModalOpen = true;
   };
 
-  const openUnknownSelectAgentModal = (skill: LocalSkillView, sourcePath: string) => {
+  const openUnknownSelectAgentModal = (skill: LocalSkill, sourcePath: string) => {
     selectAgentModalTitle = skill.name;
     selectAgentModalInitialSelection = getSkillAgentIds(skill);
     selectAgentModalCallback = async (selectedAgents, method) => {
@@ -485,7 +465,7 @@
   };
 
   const startUnknownFlow = async (
-    skill: LocalSkillView,
+    skill: LocalSkill,
     skipPermissionPrompt = false
   ): Promise<void> => {
     if (!skipPermissionPrompt && !get(settings).unknown_skill_install_permission) {
@@ -522,7 +502,7 @@
     openUnknownSelectAgentModal(skill, resolvedSourcePath);
   };
 
-  const startSourceTypeFlow = async (skill: LocalSkillView): Promise<void> => {
+  const startSourceTypeFlow = async (skill: LocalSkill): Promise<void> => {
     const copyCheck = await checkSkillVersion(
       skill.name,
       skill.global_folder,
@@ -547,7 +527,7 @@
   };
 
   const manageSkillAgentAppsFlow = async (
-    skill: LocalSkillView,
+    skill: LocalSkill,
     selectedAgents: string[],
     method: "symlink" | "copy",
     sourcePath: string
@@ -579,7 +559,7 @@
     }
   };
 
-  const handleDeleteSkill = async (skill: LocalSkillView) => {
+  const handleDeleteSkill = async (skill: LocalSkill) => {
     const { confirm } = await import("@tauri-apps/plugin-dialog");
     try {
       const confirmed = await confirm($t("confirm.deleteSkill", { name: skill.name }), {
@@ -593,7 +573,7 @@
     }
   };
 
-  const handleViewSkill = (skill: LocalSkillView | RemoteSkill) => {
+  const handleViewSkill = (skill: LocalSkill | RemoteSkill) => {
     const type = "source_type" in skill ? "local" : "remote";
     goto(`/skills/${type}/${encodeURIComponent(skill.name)}`);
   };
@@ -644,7 +624,7 @@
           {agents}
           {localLoading}
           {localError}
-          {localSkillViews}
+          {filteredLocalSkills}
           {agentMap}
           {skillsWithUpdate}
           {updatingSkills}
