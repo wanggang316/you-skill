@@ -817,7 +817,7 @@
 </script>
 
 <Modal bind:open title={$t("addSkill.title")} onClose={closeModal}>
-  <div class="flex h-full max-h-[90vh] w-full max-w-lg flex-col">
+  <div class="flex h-full w-full flex-col">
     <!-- Content -->
     <div class="flex-1 overflow-y-auto p-6 pt-1">
       <!-- Tabs -->

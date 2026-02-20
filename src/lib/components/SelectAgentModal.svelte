@@ -51,7 +51,7 @@
 </script>
 
 <Modal bind:open title={title || $t("selectAgent.defaultTitle")} onClose={closeModal}>
-  <div class="flex h-full w-full max-w-md flex-col">
+  <div class="flex h-full w-full min-w-md flex-col">
     <!-- Content -->
     <div class="flex-1 overflow-y-auto px-6 pt-2 pb-6">
       <p class="text-base-content-muted mb-4 text-sm">
@@ -64,7 +64,7 @@
 
     <!-- Footer -->
     <div
-      class="border-base-300 bg-base-100 flex items-center justify-end rounded-b-2xl border-t px-6 py-3"
+      class="border-base-300 bg-base-100 flex items-center justify-end border-t px-6 py-3"
     >
       <select
         bind:value={selectedMethod}

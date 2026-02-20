@@ -49,7 +49,7 @@
 {#if open}
   <div
     bind:this={modalElement}
-    class="animate-backdrop fixed inset-0 z-[10010] flex items-center justify-center"
+    class="animate-backdrop fixed inset-0 z-[10010] flex items-center justify-center p-4"
     style="background-color: var(--overlay);"
     class:animate-backdrop-close={closing}
     role="dialog"
@@ -60,47 +60,31 @@
       if (e.key === "Escape") handleClose();
     }}
   >
-    <!-- Modal container -->
-    <div class="animate-modal relative" class:animate-modal-close={closing}>
-      <!-- Background layer: responsible for visual effects and border clipping -->
-      <div
-        class="bg-base-100 border-base-200 pointer-events-none relative max-h-[90vh] max-w-[90vw] overflow-hidden rounded-2xl border-[1px] shadow-2xl"
-        style="border-radius: 20px; z-index: 1;"
-      >
-        <!-- Reserve content space -->
-        <div class="invisible px-0 py-0">
-          {#if children}
-            {@render children()}
+    <div
+      class="animate-modal bg-base-100 border-base-200 relative flex max-h-[90vh] w-full max-w-[min(90vw,56rem)] flex-col overflow-hidden rounded-2xl border shadow-2xl"
+      class:animate-modal-close={closing}
+    >
+      {#if showCloseButton || title}
+        <div
+          class="bg-base-100/95 border-base-200 sticky top-0 z-20 flex shrink-0 items-center justify-between gap-3 border-b px-5 py-2 backdrop-blur-sm"
+        >
+          {#if title}
+            <h3 class="text-base-content text-base font-medium">
+              {title}
+            </h3>
+          {/if}
+          {#if showCloseButton}
+            <IconButton onclick={handleClose} ariaLabel="Close" title="Close">
+              <X size={20} />
+            </IconButton>
           {/if}
         </div>
-      </div>
+      {/if}
 
-      <!-- Content layer: independent of background layer, not affected by clipping -->
-      <div class="absolute inset-0 flex w-full flex-col bg-transparent" style="z-index: 2;">
-        <!-- Header with close button and title -->
-        {#if showCloseButton || title}
-          <div
-            class="bg-base-100/95 border-base-200 sticky top-0 z-20 flex shrink-0 items-center justify-between rounded-t-2xl border-b px-5 py-2 backdrop-blur-sm"
-          >
-            {#if title}
-              <h3 class="text-base-content text-base font-medium">
-                {title}
-              </h3>
-            {/if}
-            {#if showCloseButton}
-              <IconButton onclick={handleClose} ariaLabel="Close" title="Close">
-                <X size={20} />
-              </IconButton>
-            {/if}
-          </div>
+      <div class="min-h-0 flex-1 overflow-y-auto">
+        {#if children}
+          {@render children()}
         {/if}
-
-        <!-- Content area: not affected by background layer clipping -->
-        <div class="min-h-0 flex-1 overflow-y-auto px-0 py-0">
-          {#if children}
-            {@render children()}
-          {/if}
-        </div>
       </div>
     </div>
   </div>
