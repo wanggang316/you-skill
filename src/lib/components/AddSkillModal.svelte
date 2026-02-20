@@ -109,6 +109,7 @@
       if (result) {
         selectedZipPath = result;
         zipFileName = result.split(/[/\\]/).pop() || "";
+        await handleDetectZip();
       }
     } catch (error) {
       console.error("Failed to select zip file:", error);
@@ -144,6 +145,7 @@
       if (result) {
         selectedFolderPath = result;
         folderName = result.split(/[/\\]/).pop() || "";
+        await handleDetectFolder();
       }
     } catch (error) {
       console.error("Failed to select folder:", error);
@@ -375,51 +377,42 @@
         </div>
       {:else if activeTab === "zip"}
         <!-- ZIP Mode -->
-        <div class="space-y-4">
-          <p class="text-base-content-muted text-sm">
+        <div class="space-y-3">
+          <p class="text-base-content-muted text-xs">
             {$t("addSkill.zip.description")}
           </p>
           <button
-            class="border-base-300 hover:border-primary hover:bg-base-200 w-full rounded-xl border-2 border-dashed p-8 transition"
+            class="border-base-300 hover:border-primary hover:bg-base-200 w-full rounded-xl border-2 border-dashed p-3 transition"
             onclick={handleSelectZipFile}
             type="button"
           >
             {#if selectedZipPath}
-              <div class="text-base-content flex items-center justify-center gap-2">
-                <FileArchive size={20} class="text-primary" />
+              <div class="text-base-content flex items-center justify-center gap-2 text-sm">
+                <FileArchive size={16} class="text-primary" />
                 <span class="font-medium">{zipFileName}</span>
               </div>
-              <p class="text-base-content-muted mt-2 text-xs">
+              <p class="text-base-content-muted mt-1 text-[11px]">
                 {$t("addSkill.zip.clickToChange")}
               </p>
             {:else}
-              <div class="text-base-content-muted flex flex-col items-center gap-2">
-                <FileArchive size={32} />
+              <div class="text-base-content-muted flex flex-col items-center gap-1 text-sm">
+                <FileArchive size={24} />
                 <span>{$t("addSkill.zip.selectFile")}</span>
               </div>
             {/if}
           </button>
 
-          {#if selectedZipPath}
-            <div class="flex gap-2">
-              <button
-                class="bg-primary text-primary-content hover:bg-primary-hover flex-1 rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
-                onclick={handleDetectZip}
-                disabled={isDetectingZip}
-                type="button"
-              >
-                {#if isDetectingZip}
-                  <Loader2 size={16} class="mr-1 inline animate-spin" />
-                {/if}
-                {$t("addSkill.zip.detect")}
-              </button>
-            </div>
-          {/if}
-
           {#if zipError}
             <div class="text-error flex items-center gap-2 text-sm">
               <AlertCircle size={16} />
               <span>{zipError}</span>
+            </div>
+          {/if}
+
+          {#if isDetectingZip}
+            <div class="text-base-content-muted flex items-center gap-2 text-sm">
+              <Loader2 size={16} class="animate-spin" />
+              <span>{$t("addSkill.zip.detect")}</span>
             </div>
           {/if}
 
@@ -456,51 +449,42 @@
         </div>
       {:else}
         <!-- Folder Mode -->
-        <div class="space-y-4">
-          <p class="text-base-content-muted text-sm">
+        <div class="space-y-3">
+          <p class="text-base-content-muted text-xs">
             {$t("addSkill.folder.description")}
           </p>
           <button
-            class="border-base-300 hover:border-primary hover:bg-base-200 w-full rounded-xl border-2 border-dashed p-8 transition"
+            class="border-base-300 hover:border-primary hover:bg-base-200 w-full rounded-xl border-2 border-dashed p-3 transition"
             onclick={handleSelectFolder}
             type="button"
           >
             {#if selectedFolderPath}
-              <div class="text-base-content flex items-center justify-center gap-2">
-                <Folder size={20} class="text-primary" />
+              <div class="text-base-content flex items-center justify-center gap-2 text-sm">
+                <Folder size={16} class="text-primary" />
                 <span class="font-medium">{folderName}</span>
               </div>
-              <p class="text-base-content-muted mt-2 text-xs">
+              <p class="text-base-content-muted mt-1 text-[11px]">
                 {$t("addSkill.folder.clickToChange")}
               </p>
             {:else}
-              <div class="text-base-content-muted flex flex-col items-center gap-2">
-                <Folder size={32} />
+              <div class="text-base-content-muted flex flex-col items-center gap-1 text-sm">
+                <Folder size={24} />
                 <span>{$t("addSkill.folder.selectFolder")}</span>
               </div>
             {/if}
           </button>
 
-          {#if selectedFolderPath}
-            <div class="flex gap-2">
-              <button
-                class="bg-primary text-primary-content hover:bg-primary-hover flex-1 rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
-                onclick={handleDetectFolder}
-                disabled={isDetectingFolder}
-                type="button"
-              >
-                {#if isDetectingFolder}
-                  <Loader2 size={16} class="mr-1 inline animate-spin" />
-                {/if}
-                {$t("addSkill.folder.detect")}
-              </button>
-            </div>
-          {/if}
-
           {#if folderError}
             <div class="text-error flex items-center gap-2 text-sm">
               <AlertCircle size={16} />
               <span>{folderError}</span>
+            </div>
+          {/if}
+
+          {#if isDetectingFolder}
+            <div class="text-base-content-muted flex items-center gap-2 text-sm">
+              <Loader2 size={16} class="animate-spin" />
+              <span>{$t("addSkill.folder.detect")}</span>
             </div>
           {/if}
 
