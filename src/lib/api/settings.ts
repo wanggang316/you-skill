@@ -26,7 +26,10 @@ export async function getSettings(): Promise<AppSettings> {
  * 更新应用设置
  */
 export async function updateSettings(
-  settings: Pick<AppSettings, "language" | "theme" | "sync_mode" | "unknown_skill_install_permission">
+  settings: Pick<
+    AppSettings,
+    "language" | "theme" | "sync_mode" | "unknown_skill_install_permission"
+  >
 ): Promise<AppSettings> {
   return apiCall<AppSettings>("update_settings", { settings });
 }

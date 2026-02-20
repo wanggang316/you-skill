@@ -8,6 +8,7 @@
   import { check } from "@tauri-apps/plugin-updater";
   import LocalSkillsSection from "../lib/components/LocalSkillsSection.svelte";
   import RemoteSkillsSection from "../lib/components/RemoteSkillsSection.svelte";
+  import AddSkillModal from "../lib/components/AddSkillModal.svelte";
   import { settings, updateSettings as updateAppSettings } from "../lib/stores/settings";
   import {
     listSkills,
@@ -707,6 +708,8 @@
     </div>
   </main>
 </div>
+
+<AddSkillModal bind:open={addSkillModalOpen} {agents} onSuccess={refreshLocal} />
 
 <!-- Select Agent Modal -->
 {#await import("../lib/components/SelectAgentModal.svelte") then { default: SelectAgentModal }}
