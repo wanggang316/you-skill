@@ -1092,7 +1092,6 @@
         </div>
       {/if}
     </div>
-
   </div>
   {#snippet footer()}
     <select

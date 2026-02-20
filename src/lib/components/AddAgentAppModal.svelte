@@ -90,10 +90,10 @@
   }
 </script>
 
-<Modal bind:open title={modalTitle}>
-  <div class="mx-auto flex h-[60vh] w-[50vw] max-w-lg flex-col">
+<Modal bind:open title={modalTitle} containerClass="max-w-sm">
+  <div class="mx-auto w-full px-5 pt-2 pb-4">
     <!-- Form content -->
-    <div class="flex-1 space-y-6 overflow-y-auto px-5 pt-2 pb-4">
+    <div class="space-y-6">
       <div>
         <label for="display-name-input" class="text-base-content mb-1.5 block text-sm">
           {$t("agentApps.displayName")}
@@ -158,21 +158,19 @@
         </div>
       {/if}
     </div>
-
-    <!-- Actions -->
-    <div class="border-base-200 flex justify-end gap-3 border-t px-5 py-3">
-      <button
-        class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-6 py-2 text-sm transition disabled:opacity-50"
-        onclick={handleAdd}
-        disabled={adding || !displayName.trim() || !globalPath.trim() || !projectPath.trim()}
-        type="button"
-      >
-        {#if adding}
-          <Loader2 size={16} class="mr-1 inline animate-spin" />
-        {:else}
-          {buttonText}
-        {/if}
-      </button>
-    </div>
   </div>
+  {#snippet footer()}
+    <button
+      class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-6 py-2 text-sm transition disabled:opacity-50"
+      onclick={handleAdd}
+      disabled={adding || !displayName.trim() || !globalPath.trim() || !projectPath.trim()}
+      type="button"
+    >
+      {#if adding}
+        <Loader2 size={16} class="mr-1 inline animate-spin" />
+      {:else}
+        {buttonText}
+      {/if}
+    </button>
+  {/snippet}
 </Modal>
