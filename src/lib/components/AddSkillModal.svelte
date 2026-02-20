@@ -51,6 +51,8 @@
   let selectedAgents = $state([]);
   /** @type {"symlink" | "copy"} */
   let selectedMethod = $state("symlink");
+  let isZipDragOver = $state(false);
+  let isFolderDragOver = $state(false);
 
   // Global loading state
   let isInstalling = $state(false);
@@ -114,6 +116,89 @@
     } catch (error) {
       console.error("Failed to select zip file:", error);
     }
+  }
+
+  /**
+   * @param {DragEvent} event
+   * @returns {string | null}
+   */
+  function extractPathFromDrop(event) {
+    const dt = event.dataTransfer;
+    if (!dt) return null;
+
+    const firstFile = dt.files && dt.files.length > 0 ? dt.files[0] : null;
+    if (firstFile) {
+      const fileWithPath = /** @type {{ path?: string }} */ (firstFile);
+      if (typeof fileWithPath.path === "string" && fileWithPath.path) {
+        return fileWithPath.path;
+      }
+    }
+
+    for (const item of Array.from(dt.items || [])) {
+      const file = item.getAsFile?.();
+      if (file) {
+        const fileWithPath = /** @type {{ path?: string }} */ (file);
+        if (typeof fileWithPath.path === "string" && fileWithPath.path) {
+          return fileWithPath.path;
+        }
+      }
+    }
+
+    const rawUri = dt.getData("text/uri-list") || dt.getData("text/plain");
+    if (rawUri) {
+      const firstLine = rawUri
+        .split("\n")
+        .map((line) => line.trim())
+        .find((line) => line && !line.startsWith("#"));
+      if (firstLine && firstLine.startsWith("file://")) {
+        try {
+          return decodeURIComponent(new URL(firstLine).pathname);
+        } catch {
+          // no-op
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /** @param {DragEvent} event */
+  function handleDragOver(event) {
+    event.preventDefault();
+  }
+
+  /** @param {DragEvent} event */
+  async function handleZipDrop(event) {
+    event.preventDefault();
+    isZipDragOver = false;
+    const path = extractPathFromDrop(event);
+    if (!path) {
+      zipError = "Failed to read dropped file path.";
+      return;
+    }
+    if (!/\.(zip|skill)$/i.test(path)) {
+      zipError = "Please drop a .zip or .skill file.";
+      return;
+    }
+    zipError = "";
+    selectedZipPath = path;
+    zipFileName = path.split(/[/\\]/).pop() || "";
+    await handleDetectZip();
+  }
+
+  /** @param {DragEvent} event */
+  async function handleFolderDrop(event) {
+    event.preventDefault();
+    isFolderDragOver = false;
+    const path = extractPathFromDrop(event);
+    if (!path) {
+      folderError = "Failed to read dropped folder path.";
+      return;
+    }
+    folderError = "";
+    selectedFolderPath = path;
+    folderName = path.split(/[/\\]/).pop() || "";
+    await handleDetectFolder();
   }
 
   async function handleDetectZip() {
@@ -382,8 +467,16 @@
             {$t("addSkill.zip.description")}
           </p>
           <button
-            class="border-base-300 hover:border-primary hover:bg-base-200 w-full rounded-xl border-2 border-dashed p-3 transition"
+            class={`w-full rounded-xl border-2 border-dashed p-3 transition ${
+              isZipDragOver
+                ? "border-primary bg-base-200"
+                : "border-base-300 hover:border-primary hover:bg-base-200"
+            }`}
             onclick={handleSelectZipFile}
+            ondragover={handleDragOver}
+            ondragenter={() => (isZipDragOver = true)}
+            ondragleave={() => (isZipDragOver = false)}
+            ondrop={handleZipDrop}
             type="button"
           >
             {#if selectedZipPath}
@@ -454,8 +547,16 @@
             {$t("addSkill.folder.description")}
           </p>
           <button
-            class="border-base-300 hover:border-primary hover:bg-base-200 w-full rounded-xl border-2 border-dashed p-3 transition"
+            class={`w-full rounded-xl border-2 border-dashed p-3 transition ${
+              isFolderDragOver
+                ? "border-primary bg-base-200"
+                : "border-base-300 hover:border-primary hover:bg-base-200"
+            }`}
             onclick={handleSelectFolder}
+            ondragover={handleDragOver}
+            ondragenter={() => (isFolderDragOver = true)}
+            ondragleave={() => (isFolderDragOver = false)}
+            ondrop={handleFolderDrop}
             type="button"
           >
             {#if selectedFolderPath}
