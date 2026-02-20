@@ -34,7 +34,6 @@
 
   type LocalSkillView = {
     name: string;
-    canonical_path: string;
     agents: string[];
     source_type: "github" | "native" | "unknown";
     global_folder: string | null;
@@ -124,10 +123,8 @@
 
   const toLocalSkillView = (skill: LocalSkill): LocalSkillView => {
     const agents = Array.from(new Set(skill.installed_agent_apps.map((app) => app.id)));
-    const canonicalPath = skill.global_folder || skill.installed_agent_apps[0]?.skill_folder || "";
     return {
       name: skill.name,
-      canonical_path: canonicalPath,
       agents,
       source_type: skill.source_type,
       global_folder: skill.global_folder ?? null,
@@ -597,7 +594,7 @@
   };
 
   const handleViewSkill = (skill: LocalSkillView | RemoteSkill) => {
-    const type = "canonical_path" in skill ? "local" : "remote";
+    const type = "source_type" in skill ? "local" : "remote";
     goto(`/skills/${type}/${encodeURIComponent(skill.name)}`);
   };
 
