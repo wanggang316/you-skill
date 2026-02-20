@@ -118,7 +118,6 @@ pub struct ManageSkillAgentAppsRequest {
   pub name: String,
   pub source_type: SourceType,
   pub global_folder: Option<String>,
-  pub installed_agent_apps: Vec<InstalledAgentApp>,
   pub agent_apps: Vec<String>,
   pub method: InstallMethod,
   pub source_path: Option<String>,

@@ -578,7 +578,6 @@
           name: skill.name,
           source_type: skill.source_type,
           global_folder: skill.global_folder,
-          installed_agent_apps: skill.installed_agent_apps,
           agent_apps: selectedAgents,
           method,
           source_path: sourcePath,

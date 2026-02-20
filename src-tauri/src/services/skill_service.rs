@@ -327,63 +327,22 @@ pub fn manage_skill_agent_apps(
     return Err("agent_apps is required".to_string());
   }
 
+  if request.source_type == SourceType::Known {
+    return Err(
+      "Known source should use install_from_known flow; manage_skill_agent_apps only handles managed skills"
+        .to_string(),
+    );
+  }
+
   let selected_apps = resolve_selected_apps_global_paths(&request.agent_apps)?;
-  let skill_paths: Vec<String> = request
-    .installed_agent_apps
-    .iter()
-    .map(|item| item.skill_folder.clone())
-    .collect();
-
-  let source = if request.source_type == SourceType::Known {
-    let resolved = match normalize_optional_string(request.source_path.clone()) {
-      Some(path) => path,
-      None => {
-        let check = check_skill_version(
-          request.name.clone(),
-          request.global_folder.clone(),
-          skill_paths.clone(),
-        )?;
-        check.source_path.ok_or_else(|| {
-          format!(
-            "Source skill files are not identical, please choose one source path: {}",
-            check
-              .version_groups
-              .iter()
-              .flat_map(|g| g.paths.clone())
-              .collect::<Vec<String>>()
-              .join(" | ")
-          )
-        })?
-      },
-    };
-
-    return install_from_known(InstallKnownRequest {
-      name: request.name,
-      source_path: resolved,
-      agent_apps: request.agent_apps,
-      method: request.method,
-    });
-  } else if matches!(request.method, InstallMethod::Copy) {
-    let check = check_skill_version(
-      request.name.clone(),
-      request.global_folder.clone(),
-      skill_paths,
-    )?;
-    let resolved = match normalize_optional_string(request.source_path) {
-      Some(path) => path,
-      None => check.source_path.ok_or_else(|| {
-        format!(
-          "Source skill files are not identical, please choose one source path: {}",
-          check
-            .version_groups
-            .iter()
-            .flat_map(|g| g.paths.clone())
-            .collect::<Vec<String>>()
-            .join(" | ")
-        )
-      })?,
-    };
-    PathBuf::from(resolved)
+  let source = if matches!(request.method, InstallMethod::Copy) {
+    let resolved = normalize_optional_string(request.source_path)
+      .ok_or("source_path is required for copy management")?;
+    let source_path = PathBuf::from(&resolved);
+    if !source_path.exists() || !source_path.is_dir() {
+      return Err("source_path does not exist".to_string());
+    }
+    source_path
   } else {
     let global_folder = request
       .global_folder

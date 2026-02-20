@@ -109,7 +109,6 @@ export interface ManageSkillAgentAppsRequest {
   name: string;
   source_type: SourceType;
   global_folder?: string | null;
-  installed_agent_apps: InstalledAgentApp[];
   agent_apps: string[];
   method: InstallMethod;
   source_path?: string | null;
