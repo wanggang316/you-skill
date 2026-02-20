@@ -1,5 +1,5 @@
 <script>
-  import { FileArchive, Github, Check, AlertCircle, Loader2, Folder } from "@lucide/svelte";
+  import { FileArchive, Github, AlertCircle, Loader2, Folder } from "@lucide/svelte";
   import { get } from "svelte/store";
   import { t } from "../i18n";
   import {
@@ -11,6 +11,7 @@
   } from "../api/skills";
   import Modal from "./ui/Modal.svelte";
   import AgentSelector from "./AgentSelector.svelte";
+  import DetectedSkillList from "./DetectedSkillList.svelte";
   import { settings } from "../stores/settings";
 
   /** @type {{ open?: boolean; agents?: import('../api/skills').AgentInfo[]; onSuccess?: () => void }} */
@@ -892,29 +893,11 @@
               <p class="text-base-content text-sm">
                 {$t("addSkill.github.selectSkill")}
               </p>
-              <div
-                class="border-base-300 bg-base-200 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-2"
-              >
-                {#each detectedSkills as skill}
-                  <button
-                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedSkill?.skill_path === skill.skill_path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
-                    onclick={() => (selectedSkill = skill)}
-                    type="button"
-                  >
-                    <div>
-                      <p class="font-medium">{skill.name}</p>
-                      <p
-                        class={`text-xs ${selectedSkill?.skill_path === skill.skill_path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
-                      >
-                        {skill.skill_path}
-                      </p>
-                    </div>
-                    {#if selectedSkill?.skill_path === skill.skill_path}
-                      <Check size={16} />
-                    {/if}
-                  </button>
-                {/each}
-              </div>
+              <DetectedSkillList
+                skills={detectedSkills}
+                selectedSkill={selectedSkill}
+                onSelect={(skill) => (selectedSkill = skill)}
+              />
             </div>
           {/if}
         </div>
@@ -972,29 +955,11 @@
               <p class="text-base-content text-sm">
                 {$t("addSkill.zip.selectSkill")}
               </p>
-              <div
-                class="border-base-300 bg-base-200 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-2"
-              >
-                {#each detectedZipSkills as skill}
-                  <button
-                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedZipSkill?.skill_path === skill.skill_path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
-                    onclick={() => (selectedZipSkill = skill)}
-                    type="button"
-                  >
-                    <div>
-                      <p class="font-medium">{skill.name}</p>
-                      <p
-                        class={`text-xs ${selectedZipSkill?.skill_path === skill.skill_path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
-                      >
-                        {skill.skill_path}
-                      </p>
-                    </div>
-                    {#if selectedZipSkill?.skill_path === skill.skill_path}
-                      <Check size={16} />
-                    {/if}
-                  </button>
-                {/each}
-              </div>
+              <DetectedSkillList
+                skills={detectedZipSkills}
+                selectedSkill={selectedZipSkill}
+                onSelect={(skill) => (selectedZipSkill = skill)}
+              />
             </div>
           {/if}
         </div>
@@ -1052,29 +1017,11 @@
               <p class="text-base-content text-sm">
                 {$t("addSkill.folder.selectSkill")}
               </p>
-              <div
-                class="border-base-300 bg-base-200 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-2"
-              >
-                {#each detectedFolderSkills as skill}
-                  <button
-                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedFolderSkill?.skill_path === skill.skill_path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
-                    onclick={() => (selectedFolderSkill = skill)}
-                    type="button"
-                  >
-                    <div>
-                      <p class="font-medium">{skill.name}</p>
-                      <p
-                        class={`text-xs ${selectedFolderSkill?.skill_path === skill.skill_path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
-                      >
-                        {skill.skill_path}
-                      </p>
-                    </div>
-                    {#if selectedFolderSkill?.skill_path === skill.skill_path}
-                      <Check size={16} />
-                    {/if}
-                  </button>
-                {/each}
-              </div>
+              <DetectedSkillList
+                skills={detectedFolderSkills}
+                selectedSkill={selectedFolderSkill}
+                onSelect={(skill) => (selectedFolderSkill = skill)}
+              />
             </div>
           {/if}
         </div>
