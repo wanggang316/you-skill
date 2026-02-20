@@ -19,10 +19,9 @@ use commands::{
     backup_skills, get_settings, open_backup_folder, set_backup_folder, update_settings,
   },
   skill::{
-    check_copy_source_folder, check_known_type, check_skill_update, delete_skill, detect_folder,
-    detect_github_auto, detect_github_manual, detect_zip, install_from_github, install_from_known,
-    install_from_native, list_skills, manage_skill_agent_apps, open_in_file_manager,
-    read_skill_readme,
+    check_skill_update, check_skill_version, delete_skill, detect_folder, detect_github_auto,
+    detect_github_manual, detect_zip, install_from_github, install_from_known, install_from_native,
+    list_skills, manage_skill_agent_apps, open_in_file_manager, read_skill_readme,
   },
 };
 use tray::setup_tray;
@@ -94,8 +93,7 @@ fn main() {
       detect_github_auto,
       install_from_native,
       install_from_github,
-      check_known_type,
-      check_copy_source_folder,
+      check_skill_version,
       install_from_known,
       manage_skill_agent_apps,
       set_backup_folder,

@@ -14,8 +14,7 @@
     fetchRemoteSkills,
     fetchSkillsByNames,
     detectGithubAuto,
-    checkKnownType,
-    checkCopySourceFolder,
+    checkSkillVersion,
     installFromKnown,
     installFromGithub,
     recordInstall,
@@ -94,12 +93,6 @@
     ((selectedAgents: string[], method: "symlink" | "copy") => Promise<boolean>) | null
   >(null);
 
-  // Check known path modal state
-  let checkKnownPathModalOpen = $state(false);
-  let checkKnownPathModalSkillName = $state("");
-  let checkKnownPathModalVersionGroups = $state<SourceVersionGroup[]>([]);
-  let checkKnownPathModalConfirm = $state<((sourcePath: string) => Promise<void>) | null>(null);
-
   // Known permission modal state
   let knownPermissionModalOpen = $state(false);
   let knownPermissionModalSkillName = $state("");
@@ -107,11 +100,14 @@
     null
   );
 
-  // Check copy source modal state
-  let checkCopySourceModalOpen = $state(false);
-  let checkCopySourceModalSkillName = $state("");
-  let checkCopySourceModalVersionGroups = $state<SourceVersionGroup[]>([]);
-  let checkCopySourceModalConfirm = $state<((sourcePath: string) => Promise<void>) | null>(null);
+  // Skill version modal state
+  let checkSkillVersionModalOpen = $state(false);
+  let checkSkillVersionModalTitle = $state("");
+  let checkSkillVersionModalSkillName = $state("");
+  let checkSkillVersionModalVersionGroups = $state<SourceVersionGroup[]>([]);
+  let checkSkillVersionModalConfirm = $state<((sourcePath: string) => Promise<void>) | null>(
+    null
+  );
 
   // Install state
   let installLog = $state("");
@@ -464,17 +460,6 @@
     });
   };
 
-  const openCheckKnownPathModal = (
-    skillName: string,
-    versionGroups: SourceVersionGroup[],
-    onConfirm: (sourcePath: string) => Promise<void>
-  ) => {
-    checkKnownPathModalSkillName = skillName;
-    checkKnownPathModalVersionGroups = versionGroups;
-    checkKnownPathModalConfirm = onConfirm;
-    checkKnownPathModalOpen = true;
-  };
-
   const openKnownPermissionModal = (
     skillName: string,
     onConfirm: (rememberChoice: boolean) => Promise<void>
@@ -484,15 +469,17 @@
     knownPermissionModalOpen = true;
   };
 
-  const openCheckCopySourceModal = (
+  const openCheckSkillVersionModal = (
+    title: string,
     skillName: string,
     versionGroups: SourceVersionGroup[],
     onConfirm: (sourcePath: string) => Promise<void>
   ) => {
-    checkCopySourceModalSkillName = skillName;
-    checkCopySourceModalVersionGroups = versionGroups;
-    checkCopySourceModalConfirm = onConfirm;
-    checkCopySourceModalOpen = true;
+    checkSkillVersionModalTitle = title;
+    checkSkillVersionModalSkillName = skillName;
+    checkSkillVersionModalVersionGroups = versionGroups;
+    checkSkillVersionModalConfirm = onConfirm;
+    checkSkillVersionModalOpen = true;
   };
 
   const openNonKnownSelectAgentModal = (skill: ViewLocalSkill, copySourcePath: string | null) => {
@@ -542,7 +529,7 @@
       return;
     }
 
-    const knownCheck = await checkKnownType(
+    const knownCheck = await checkSkillVersion(
       skill.name,
       skill.global_folder,
       skill.installed_agent_apps.map((item) => item.skill_folder)
@@ -551,9 +538,14 @@
     const resolvedSourcePath = knownCheck.source_path ?? null;
     if (!resolvedSourcePath) {
       if (knownCheck.version_groups.length > 0) {
-        openCheckKnownPathModal(skill.name, knownCheck.version_groups, async (chosenPath) => {
+        openCheckSkillVersionModal(
+          $t("local.known.pathSelectTitle", { name: skill.name }),
+          skill.name,
+          knownCheck.version_groups,
+          async (chosenPath) => {
           openKnownSelectAgentModal(skill, chosenPath);
-        });
+          }
+        );
         return;
       }
       throw new Error("No source path available for known skill");
@@ -562,16 +554,21 @@
   };
 
   const startNonKnownFlow = async (skill: ViewLocalSkill): Promise<void> => {
-    const copyCheck = await checkCopySourceFolder(
+    const copyCheck = await checkSkillVersion(
       skill.name,
       skill.global_folder,
       skill.installed_agent_apps.map((item) => item.skill_folder)
     );
     const resolvedSourcePath = copyCheck.source_path ?? null;
     if (!resolvedSourcePath && copyCheck.version_groups.length > 0) {
-      openCheckCopySourceModal(skill.name, copyCheck.version_groups, async (chosenPath) => {
-        openNonKnownSelectAgentModal(skill, chosenPath);
-      });
+      openCheckSkillVersionModal(
+        $t("local.sourceSelect.title", { name: skill.name }),
+        skill.name,
+        copyCheck.version_groups,
+        async (chosenPath) => {
+          openNonKnownSelectAgentModal(skill, chosenPath);
+        }
+      );
       return;
     }
     openNonKnownSelectAgentModal(skill, resolvedSourcePath);
@@ -757,36 +754,20 @@
   />
 {/await}
 
-{#await import("../lib/components/CheckKnownPathModal.svelte") then { default: CheckKnownPathModal }}
-  <CheckKnownPathModal
-    bind:open={checkKnownPathModalOpen}
-    skillName={checkKnownPathModalSkillName}
-    versionGroups={checkKnownPathModalVersionGroups}
+{#await import("../lib/components/CheckSkillVersionModal.svelte") then { default: CheckSkillVersionModal }}
+  <CheckSkillVersionModal
+    bind:open={checkSkillVersionModalOpen}
+    title={checkSkillVersionModalTitle}
+    skillName={checkSkillVersionModalSkillName}
+    versionGroups={checkSkillVersionModalVersionGroups}
     onConfirm={async (sourcePath: string) => {
-      if (checkKnownPathModalConfirm) {
-        await checkKnownPathModalConfirm(sourcePath);
+      if (checkSkillVersionModalConfirm) {
+        await checkSkillVersionModalConfirm(sourcePath);
       }
-      checkKnownPathModalConfirm = null;
+      checkSkillVersionModalConfirm = null;
     }}
     onCancel={() => {
-      checkKnownPathModalConfirm = null;
-    }}
-  />
-{/await}
-
-{#await import("../lib/components/CheckCopySourceModal.svelte") then { default: CheckCopySourceModal }}
-  <CheckCopySourceModal
-    bind:open={checkCopySourceModalOpen}
-    skillName={checkCopySourceModalSkillName}
-    versionGroups={checkCopySourceModalVersionGroups}
-    onConfirm={async (sourcePath: string) => {
-      if (checkCopySourceModalConfirm) {
-        await checkCopySourceModalConfirm(sourcePath);
-      }
-      checkCopySourceModalConfirm = null;
-    }}
-    onCancel={() => {
-      checkCopySourceModalConfirm = null;
+      checkSkillVersionModalConfirm = null;
     }}
   />
 {/await}

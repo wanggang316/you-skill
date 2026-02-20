@@ -53,21 +53,12 @@ pub fn install_from_github(request: InstallGithubRequest) -> Result<InstallResul
 }
 
 #[tauri::command]
-pub fn check_known_type(
+pub fn check_skill_version(
   name: String,
   global_folder: Option<String>,
   skill_paths: Vec<String>,
 ) -> Result<SourceCheckResult, String> {
-  skill_service::check_known_type(name, global_folder, skill_paths)
-}
-
-#[tauri::command]
-pub fn check_copy_source_folder(
-  name: String,
-  global_folder: Option<String>,
-  skill_paths: Vec<String>,
-) -> Result<SourceCheckResult, String> {
-  skill_service::check_copy_source_folder(name, global_folder, skill_paths)
+  skill_service::check_skill_version(name, global_folder, skill_paths)
 }
 
 #[tauri::command]

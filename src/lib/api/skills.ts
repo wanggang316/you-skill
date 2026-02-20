@@ -208,20 +208,12 @@ export async function installFromGithub(request: InstallGithubRequest): Promise<
   return apiCall<InstallResult>("install_from_github", { request });
 }
 
-export async function checkKnownType(
+export async function checkSkillVersion(
   name: string,
   globalFolder: string | null | undefined,
   skillPaths: string[]
 ): Promise<SourceCheckResult> {
-  return apiCall<SourceCheckResult>("check_known_type", { name, globalFolder, skillPaths });
-}
-
-export async function checkCopySourceFolder(
-  name: string,
-  globalFolder: string | null | undefined,
-  skillPaths: string[]
-): Promise<SourceCheckResult> {
-  return apiCall<SourceCheckResult>("check_copy_source_folder", {
+  return apiCall<SourceCheckResult>("check_skill_version", {
     name,
     globalFolder,
     skillPaths,

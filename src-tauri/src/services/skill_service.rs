@@ -284,15 +284,7 @@ pub fn install_from_github(request: InstallGithubRequest) -> Result<InstallResul
   })
 }
 
-pub fn check_known_type(
-  name: String,
-  global_folder: Option<String>,
-  skill_paths: Vec<String>,
-) -> Result<SourceCheckResult, String> {
-  check_copy_source_folder(name, global_folder, skill_paths)
-}
-
-pub fn check_copy_source_folder(
+pub fn check_skill_version(
   name: String,
   global_folder: Option<String>,
   skill_paths: Vec<String>,
@@ -346,7 +338,7 @@ pub fn manage_skill_agent_apps(
     let resolved = match normalize_optional_string(request.source_path.clone()) {
       Some(path) => path,
       None => {
-        let check = check_known_type(
+        let check = check_skill_version(
           request.name.clone(),
           request.global_folder.clone(),
           skill_paths.clone(),
@@ -372,7 +364,7 @@ pub fn manage_skill_agent_apps(
       method: request.method,
     });
   } else if matches!(request.method, InstallMethod::Copy) {
-    let check = check_copy_source_folder(
+    let check = check_skill_version(
       request.name.clone(),
       request.global_folder.clone(),
       skill_paths,
