@@ -330,7 +330,7 @@
             all.push(...entries);
             readChunk();
           },
-          (error) => reject(error),
+          (error) => reject(error)
         );
       };
       readChunk();
@@ -412,11 +412,11 @@
     const debug = buildDropDebugInfo(dt || null);
     if (type === "zip") {
       console.error("[AddSkillModal] ZIP drop failed:", error || "", debug);
-      zipError = `Failed to read dropped file path. ${debug}`;
+      zipError = $t("addSkill.zip.dropReadError");
       return;
     }
     console.error("[AddSkillModal] Folder drop failed:", error || "", debug);
-    folderError = `Failed to read dropped folder path. ${debug}`;
+    folderError = $t("addSkill.folder.dropReadError");
   }
 
   /** @param {string} path */
@@ -616,11 +616,11 @@
   async function applyDroppedZipPath(path, displayName = "") {
     const normalizedPath = normalizeDroppedPath(path);
     if (!normalizedPath) {
-      zipError = `Failed to read dropped file path. raw="${String(path)}"`;
+      zipError = $t("addSkill.zip.dropReadError");
       return;
     }
     if (!/\.(zip|skill)$/i.test(normalizedPath)) {
-      zipError = "Please drop a compressed file (.zip or .skill).";
+      zipError = $t("addSkill.zip.invalidCompressedFile");
       return;
     }
     zipError = "";
@@ -636,7 +636,7 @@
   async function applyDroppedFolderPath(path, displayName = "") {
     const normalizedPath = normalizeDroppedPath(path);
     if (!normalizedPath) {
-      folderError = `Failed to read dropped folder path. raw="${String(path)}"`;
+      folderError = $t("addSkill.folder.dropReadError");
       return;
     }
     folderError = "";
@@ -816,7 +816,8 @@
     <!-- Content -->
     <div class="flex-1 overflow-y-auto p-6 pt-16">
       <!-- Tabs -->
-      <div class="bg-base-200 mb-6 flex gap-2 rounded-full p-1">
+      <div class="bg-base-100 sticky top-0 z-10 mb-6 pb-2">
+        <div class="bg-base-200 flex gap-2 rounded-full p-1">
         <button
           class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "github" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
           onclick={() => (activeTab = "github")}
@@ -841,6 +842,7 @@
           <Folder size={16} />
           {$t("addSkill.tab.folder")}
         </button>
+        </div>
       </div>
 
       {#if activeTab === "github"}
