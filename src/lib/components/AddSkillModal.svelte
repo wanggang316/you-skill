@@ -14,8 +14,8 @@
   /** @type {{ open?: boolean; agents?: import('../api/skills').AgentInfo[]; onSuccess?: () => void }} */
   let { open = $bindable(false), agents = [], onSuccess = () => {} } = $props();
 
-  // Tab state: 'zip' | 'folder' | 'github'
-  let activeTab = $state("zip");
+  // Tab state: 'github' | 'zip' | 'folder'
+  let activeTab = $state("github");
 
   // ZIP file state
   let selectedZipPath = $state("");
@@ -49,6 +49,8 @@
   // Agent selection state
   /** @type {string[]} */
   let selectedAgents = $state([]);
+  /** @type {"symlink" | "copy"} */
+  let selectedMethod = $state("symlink");
 
   // Global loading state
   let isInstalling = $state(false);
@@ -62,7 +64,7 @@
   });
 
   function resetState() {
-    activeTab = "zip";
+    activeTab = "github";
     selectedZipPath = "";
     zipFileName = "";
     isDetectingZip = false;
@@ -81,6 +83,7 @@
     selectedSkill = null;
     githubError = "";
     selectedAgents = agents.map((a) => a.id);
+    selectedMethod = "symlink";
     isInstalling = false;
     installError = "";
   }
@@ -215,7 +218,7 @@
           tmp_path: selectedZipSkill.tmp_path,
           skill_path: selectedZipSkill.skill_path,
           agent_apps: selectedAgents,
-          method: "symlink",
+          method: selectedMethod,
         });
       } else if (activeTab === "folder") {
         if (!selectedFolderPath) {
@@ -233,7 +236,7 @@
           tmp_path: selectedFolderSkill.tmp_path,
           skill_path: selectedFolderSkill.skill_path,
           agent_apps: selectedAgents,
-          method: "symlink",
+          method: selectedMethod,
         });
       } else {
         if (!selectedSkill) {
@@ -247,7 +250,7 @@
           source_url: toGitRepoUrl(githubUrl),
           skill_folder_hash: null,
           agent_apps: selectedAgents,
-          method: "symlink",
+          method: selectedMethod,
         });
       }
 
@@ -279,6 +282,14 @@
       <!-- Tabs -->
       <div class="bg-base-200 mb-6 flex gap-2 rounded-full p-1">
         <button
+          class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "github" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
+          onclick={() => (activeTab = "github")}
+          type="button"
+        >
+          <Github size={16} />
+          {$t("addSkill.tab.github")}
+        </button>
+        <button
           class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "zip" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
           onclick={() => (activeTab = "zip")}
           type="button"
@@ -294,18 +305,76 @@
           <Folder size={16} />
           {$t("addSkill.tab.folder")}
         </button>
-        <button
-          class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "github" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
-          onclick={() => (activeTab = "github")}
-          type="button"
-        >
-          <Github size={16} />
-          {$t("addSkill.tab.github")}
-        </button>
       </div>
 
-      <!-- ZIP Mode -->
-      {#if activeTab === "zip"}
+      {#if activeTab === "github"}
+        <!-- GitHub Mode -->
+        <div class="space-y-4">
+          <p class="text-base-content-muted text-sm">
+            {$t("addSkill.github.description")}
+          </p>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              class="border-base-300 bg-base-200 text-base-content placeholder:text-base-content-subtle focus:border-primary flex-1 rounded-xl border px-4 py-2 text-sm focus:outline-none"
+              placeholder={$t("addSkill.github.urlPlaceholder")}
+              bind:value={githubUrl}
+              onkeydown={(e) => e.key === "Enter" && handleDetectGithub()}
+            />
+            <button
+              class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
+              onclick={handleDetectGithub}
+              disabled={!githubUrl.trim() || isDetecting}
+              type="button"
+            >
+              {#if isDetecting}
+                <Loader2 size={16} class="animate-spin" />
+              {:else}
+                {$t("addSkill.github.detect")}
+              {/if}
+            </button>
+          </div>
+
+          {#if githubError}
+            <div class="text-error flex items-center gap-2 text-sm">
+              <AlertCircle size={16} />
+              <span>{githubError}</span>
+            </div>
+          {/if}
+
+          {#if detectedSkills.length > 0}
+            <div class="space-y-2">
+              <p class="text-base-content text-sm font-medium">
+                {$t("addSkill.github.selectSkill")}
+              </p>
+              <div
+                class="border-base-300 bg-base-200 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-2"
+              >
+                {#each detectedSkills as skill}
+                  <button
+                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedSkill?.skill_path === skill.skill_path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
+                    onclick={() => (selectedSkill = skill)}
+                    type="button"
+                  >
+                    <div>
+                      <p class="font-medium">{skill.name}</p>
+                      <p
+                        class={`text-xs ${selectedSkill?.skill_path === skill.skill_path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
+                      >
+                        {skill.skill_path}
+                      </p>
+                    </div>
+                    {#if selectedSkill?.skill_path === skill.skill_path}
+                      <Check size={16} />
+                    {/if}
+                  </button>
+                {/each}
+              </div>
+            </div>
+          {/if}
+        </div>
+      {:else if activeTab === "zip"}
+        <!-- ZIP Mode -->
         <div class="space-y-4">
           <p class="text-base-content-muted text-sm">
             {$t("addSkill.zip.description")}
@@ -385,7 +454,7 @@
             </div>
           {/if}
         </div>
-      {:else if activeTab === "folder"}
+      {:else}
         <!-- Folder Mode -->
         <div class="space-y-4">
           <p class="text-base-content-muted text-sm">
@@ -466,74 +535,7 @@
             </div>
           {/if}
         </div>
-      {:else}
-        <!-- GitHub Mode -->
-        <div class="space-y-4">
-          <p class="text-base-content-muted text-sm">
-            {$t("addSkill.github.description")}
-          </p>
-          <div class="flex gap-2">
-            <input
-              type="text"
-              class="border-base-300 bg-base-200 text-base-content placeholder:text-base-content-subtle focus:border-primary flex-1 rounded-xl border px-4 py-2 text-sm focus:outline-none"
-              placeholder={$t("addSkill.github.urlPlaceholder")}
-              bind:value={githubUrl}
-              onkeydown={(e) => e.key === "Enter" && handleDetectGithub()}
-            />
-            <button
-              class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
-              onclick={handleDetectGithub}
-              disabled={!githubUrl.trim() || isDetecting}
-              type="button"
-            >
-              {#if isDetecting}
-                <Loader2 size={16} class="animate-spin" />
-              {:else}
-                {$t("addSkill.github.detect")}
-              {/if}
-            </button>
-          </div>
-
-          {#if githubError}
-            <div class="text-error flex items-center gap-2 text-sm">
-              <AlertCircle size={16} />
-              <span>{githubError}</span>
-            </div>
-          {/if}
-
-          {#if detectedSkills.length > 0}
-            <div class="space-y-2">
-              <p class="text-base-content text-sm font-medium">
-                {$t("addSkill.github.selectSkill")}
-              </p>
-              <div
-                class="border-base-300 bg-base-200 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-2"
-              >
-                {#each detectedSkills as skill}
-                  <button
-                    class={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${selectedSkill?.skill_path === skill.skill_path ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
-                    onclick={() => (selectedSkill = skill)}
-                    type="button"
-                  >
-                    <div>
-                      <p class="font-medium">{skill.name}</p>
-                      <p
-                        class={`text-xs ${selectedSkill?.skill_path === skill.skill_path ? "text-primary-content opacity-80" : "text-base-content-muted"}`}
-                      >
-                        {skill.skill_path}
-                      </p>
-                    </div>
-                    {#if selectedSkill?.skill_path === skill.skill_path}
-                      <Check size={16} />
-                    {/if}
-                  </button>
-                {/each}
-              </div>
-            </div>
-          {/if}
-        </div>
       {/if}
-
       <!-- Agent Selection -->
       <div class="mt-6 space-y-3">
         <p class="text-base-content text-sm font-medium">
@@ -552,8 +554,16 @@
 
     <!-- Footer -->
     <div
-      class="border-base-300 bg-base-100 flex justify-end gap-3 rounded-b-2xl border-t px-6 py-3"
+      class="border-base-300 bg-base-100 flex items-center justify-end gap-3 rounded-b-2xl border-t px-6 py-3"
     >
+      <select
+        bind:value={selectedMethod}
+        class="bg-base-100 text-base-content rounded-lg px-3 py-2 text-sm"
+        disabled={isInstalling}
+      >
+        <option value="symlink">{$t("settings.syncMode.symlink")}</option>
+        <option value="copy">{$t("settings.syncMode.copy")}</option>
+      </select>
       <button
         class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
         onclick={handleConfirm}
