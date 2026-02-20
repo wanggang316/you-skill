@@ -1,5 +1,5 @@
 use crate::models::{
-  DetectedSkill, InstallGithubRequest, InstallKnownRequest, InstallNativeRequest, InstallResult,
+  DetectedSkill, InstallGithubRequest, InstallNativeRequest, InstallResult, InstallUnknownRequest,
   LocalSkill, ManageSkillAgentAppsRequest, SourceCheckResult,
 };
 use crate::services::skill_service;
@@ -62,8 +62,8 @@ pub fn check_skill_version(
 }
 
 #[tauri::command]
-pub fn install_from_known(request: InstallKnownRequest) -> Result<InstallResult, String> {
-  skill_service::install_from_known(request)
+pub fn install_from_unknown(request: InstallUnknownRequest) -> Result<InstallResult, String> {
+  skill_service::install_from_unknown(request)
 }
 
 #[tauri::command]

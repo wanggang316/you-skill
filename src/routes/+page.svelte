@@ -15,7 +15,7 @@
     fetchSkillsByNames,
     detectGithubAuto,
     checkSkillVersion,
-    installFromKnown,
+    installFromUnknown,
     installFromGithub,
     recordInstall,
     manageSkillAgentApps,
@@ -37,7 +37,7 @@
     agents: string[];
     scope: "global";
     managed_status: "managed" | "unmanaged";
-    source_type: "github" | "native" | "known";
+    source_type: "github" | "native" | "unknown";
     global_folder: string | null;
     installed_agent_apps: import("../lib/api/skills").InstalledAgentApp[];
     name_conflict: boolean;
@@ -91,10 +91,10 @@
     ((selectedAgents: string[], method: "symlink" | "copy") => Promise<boolean>) | null
   >(null);
 
-  // Known permission modal state
-  let knownPermissionModalOpen = $state(false);
-  let knownPermissionModalSkillName = $state("");
-  let knownPermissionModalConfirm = $state<((rememberChoice: boolean) => Promise<void>) | null>(
+  // Unknown permission modal state
+  let unknownPermissionModalOpen = $state(false);
+  let unknownPermissionModalSkillName = $state("");
+  let unknownPermissionModalConfirm = $state<((rememberChoice: boolean) => Promise<void>) | null>(
     null
   );
 
@@ -153,7 +153,7 @@
 
   const unmanagedSkills = $derived.by(() =>
     filteredLocalSkills
-      .filter((skill) => skill.source_type === "known")
+      .filter((skill) => skill.source_type === "unknown")
       .map((skill) => toViewLocalSkill(skill, "unmanaged"))
   );
 
@@ -438,25 +438,25 @@
   };
 
   const openSelectAgentModal = (skill: ViewLocalSkill) => {
-    if (skill.source_type === "known") {
-      startKnownFlow(skill).catch((error) => {
+    if (skill.source_type === "unknown") {
+      startUnknownFlow(skill).catch((error) => {
         localError = String(error);
       });
       return;
     }
 
-    startNonKnownFlow(skill).catch((error) => {
+    startManagedFlow(skill).catch((error) => {
       localError = String(error);
     });
   };
 
-  const openKnownPermissionModal = (
+  const openUnknownPermissionModal = (
     skillName: string,
     onConfirm: (rememberChoice: boolean) => Promise<void>
   ) => {
-    knownPermissionModalSkillName = skillName;
-    knownPermissionModalConfirm = onConfirm;
-    knownPermissionModalOpen = true;
+    unknownPermissionModalSkillName = skillName;
+    unknownPermissionModalConfirm = onConfirm;
+    unknownPermissionModalOpen = true;
   };
 
   const openCheckSkillVersionModal = (
@@ -472,7 +472,7 @@
     checkSkillVersionModalOpen = true;
   };
 
-  const openNonKnownSelectAgentModal = (skill: ViewLocalSkill, copySourcePath: string | null) => {
+  const openManagedSelectAgentModal = (skill: ViewLocalSkill, copySourcePath: string | null) => {
     selectAgentModalTitle = skill.name;
     selectAgentModalInitialSelection = skill.agents || [];
     selectAgentModalCallback = async (selectedAgents, method) => {
@@ -481,12 +481,12 @@
     selectAgentModalOpen = true;
   };
 
-  const openKnownSelectAgentModal = (skill: ViewLocalSkill, sourcePath: string) => {
+  const openUnknownSelectAgentModal = (skill: ViewLocalSkill, sourcePath: string) => {
     selectAgentModalTitle = skill.name;
     selectAgentModalInitialSelection = skill.agents || [];
     selectAgentModalCallback = async (selectedAgents, method) => {
       try {
-        const result = await installFromKnown({
+        const result = await installFromUnknown({
           name: skill.name,
           source_path: sourcePath,
           agent_apps: selectedAgents,
@@ -505,45 +505,45 @@
     selectAgentModalOpen = true;
   };
 
-  const startKnownFlow = async (
+  const startUnknownFlow = async (
     skill: ViewLocalSkill,
     skipPermissionPrompt = false
   ): Promise<void> => {
-    if (!skipPermissionPrompt && !get(settings).known_skill_install_permission) {
-      openKnownPermissionModal(skill.name, async (rememberChoice) => {
+    if (!skipPermissionPrompt && !get(settings).unknown_skill_install_permission) {
+      openUnknownPermissionModal(skill.name, async (rememberChoice) => {
         if (rememberChoice) {
-          await updateAppSettings({ known_skill_install_permission: true });
+          await updateAppSettings({ unknown_skill_install_permission: true });
         }
-        await startKnownFlow(skill, true);
+        await startUnknownFlow(skill, true);
       });
       return;
     }
 
-    const knownCheck = await checkSkillVersion(
+    const unknownCheck = await checkSkillVersion(
       skill.name,
       skill.global_folder,
       skill.installed_agent_apps.map((item) => item.skill_folder)
     );
 
-    const resolvedSourcePath = knownCheck.source_path ?? null;
+    const resolvedSourcePath = unknownCheck.source_path ?? null;
     if (!resolvedSourcePath) {
-      if (knownCheck.version_groups.length > 0) {
+      if (unknownCheck.version_groups.length > 0) {
         openCheckSkillVersionModal(
-          $t("local.known.pathSelectTitle", { name: skill.name }),
+          $t("local.unknown.pathSelectTitle", { name: skill.name }),
           skill.name,
-          knownCheck.version_groups,
+          unknownCheck.version_groups,
           async (chosenPath) => {
-            openKnownSelectAgentModal(skill, chosenPath);
+            openUnknownSelectAgentModal(skill, chosenPath);
           }
         );
         return;
       }
-      throw new Error("No source path available for known skill");
+      throw new Error("No source path available for unknown skill");
     }
-    openKnownSelectAgentModal(skill, resolvedSourcePath);
+    openUnknownSelectAgentModal(skill, resolvedSourcePath);
   };
 
-  const startNonKnownFlow = async (skill: ViewLocalSkill): Promise<void> => {
+  const startManagedFlow = async (skill: ViewLocalSkill): Promise<void> => {
     const copyCheck = await checkSkillVersion(
       skill.name,
       skill.global_folder,
@@ -556,12 +556,12 @@
         skill.name,
         copyCheck.version_groups,
         async (chosenPath) => {
-          openNonKnownSelectAgentModal(skill, chosenPath);
+          openManagedSelectAgentModal(skill, chosenPath);
         }
       );
       return;
     }
-    openNonKnownSelectAgentModal(skill, resolvedSourcePath);
+    openManagedSelectAgentModal(skill, resolvedSourcePath);
   };
 
   const manageSkillAgentAppsFlow = async (
@@ -727,18 +727,18 @@
   />
 {/await}
 
-{#await import("../lib/components/KnownPermissionModal.svelte") then { default: KnownPermissionModal }}
-  <KnownPermissionModal
-    bind:open={knownPermissionModalOpen}
-    skillName={knownPermissionModalSkillName}
+{#await import("../lib/components/UnknownPermissionModal.svelte") then { default: UnknownPermissionModal }}
+  <UnknownPermissionModal
+    bind:open={unknownPermissionModalOpen}
+    skillName={unknownPermissionModalSkillName}
     onConfirm={async (rememberChoice: boolean) => {
-      if (knownPermissionModalConfirm) {
-        await knownPermissionModalConfirm(rememberChoice);
+      if (unknownPermissionModalConfirm) {
+        await unknownPermissionModalConfirm(rememberChoice);
       }
-      knownPermissionModalConfirm = null;
+      unknownPermissionModalConfirm = null;
     }}
     onCancel={() => {
-      knownPermissionModalConfirm = null;
+      unknownPermissionModalConfirm = null;
     }}
   />
 {/await}

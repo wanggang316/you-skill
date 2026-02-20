@@ -8,7 +8,7 @@ pub struct AppConfig {
   pub language: String,
   pub theme: String,
   pub sync_mode: String,
-  pub known_skill_install_permission: bool,
+  pub unknown_skill_install_permission: bool,
   pub backup_folder: Option<String>,
   pub last_backup_time: Option<String>,
 }
@@ -19,7 +19,7 @@ impl Default for AppConfig {
       language: "en".to_string(),
       theme: "system".to_string(),
       sync_mode: "symlink".to_string(),
-      known_skill_install_permission: false,
+      unknown_skill_install_permission: false,
       backup_folder: None,
       last_backup_time: None,
     }

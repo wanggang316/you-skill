@@ -20,8 +20,9 @@ use commands::{
   },
   skill::{
     check_skill_update, check_skill_version, delete_skill, detect_folder, detect_github_auto,
-    detect_github_manual, detect_zip, install_from_github, install_from_known, install_from_native,
-    list_skills, manage_skill_agent_apps, open_in_file_manager, read_skill_readme,
+    detect_github_manual, detect_zip, install_from_github, install_from_native,
+    install_from_unknown, list_skills, manage_skill_agent_apps, open_in_file_manager,
+    read_skill_readme,
   },
 };
 use tray::setup_tray;
@@ -94,7 +95,7 @@ fn main() {
       install_from_native,
       install_from_github,
       check_skill_version,
-      install_from_known,
+      install_from_unknown,
       manage_skill_agent_apps,
       set_backup_folder,
       open_backup_folder,

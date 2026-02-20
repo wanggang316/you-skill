@@ -13,7 +13,7 @@ pub struct LocalSkill {
 pub enum SourceType {
   Github,
   Native,
-  Known,
+  Unknown,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -92,7 +92,7 @@ pub struct InstallGithubRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct InstallKnownRequest {
+pub struct InstallUnknownRequest {
   pub name: String,
   pub source_path: String,
   pub agent_apps: Vec<String>,

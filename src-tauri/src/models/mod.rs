@@ -3,7 +3,7 @@ pub mod skill;
 
 pub use agent_app::AgentApp;
 pub use skill::{
-  DetectedSkill, InstallGithubRequest, InstallKnownRequest, InstallMethod, InstallNativeRequest,
+  DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallUnknownRequest,
   InstallResult, InstalledAgentApp, LocalSkill, ManageSkillAgentAppsRequest, RemoteSkill,
   RemoteSkillsResponse, SourceCheckResult, SourceType, SourceVersionGroup,
 };

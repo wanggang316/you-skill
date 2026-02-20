@@ -1,7 +1,7 @@
 use crate::models::{
-  DetectedSkill, InstallGithubRequest, InstallKnownRequest, InstallMethod, InstallNativeRequest,
-  InstallResult, InstalledAgentApp, LocalSkill, ManageSkillAgentAppsRequest, SourceCheckResult,
-  SourceType,
+  DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallResult,
+  InstallUnknownRequest, InstalledAgentApp, LocalSkill, ManageSkillAgentAppsRequest,
+  SourceCheckResult, SourceType,
 };
 use crate::services::agent_apps_service::local_agent_apps;
 use crate::services::native_skill_lock_service::{
@@ -302,8 +302,8 @@ pub fn check_skill_version(
   resolve_source_path_by_consistency(&name, &skill_paths)
 }
 
-pub fn install_from_known(request: InstallKnownRequest) -> Result<InstallResult, String> {
-  validate_install_from_known_request(&request)?;
+pub fn install_from_unknown(request: InstallUnknownRequest) -> Result<InstallResult, String> {
+  validate_install_from_unknown_request(&request)?;
 
   let source = Path::new(&request.source_path);
   let canonical_path = prepare_canonical_skill_dir(source, &request.name)?;
@@ -327,9 +327,9 @@ pub fn manage_skill_agent_apps(
     return Err("agent_apps is required".to_string());
   }
 
-  if request.source_type == SourceType::Known {
+  if request.source_type == SourceType::Unknown {
     return Err(
-      "Known source should use install_from_known flow; manage_skill_agent_apps only handles managed skills"
+      "Unknown source should use install_from_unknown flow; manage_skill_agent_apps only handles managed skills"
         .to_string(),
     );
   }
@@ -509,7 +509,7 @@ fn validate_github_install_request(request: &InstallGithubRequest) -> Result<(),
   Ok(())
 }
 
-fn validate_install_from_known_request(request: &InstallKnownRequest) -> Result<(), String> {
+fn validate_install_from_unknown_request(request: &InstallUnknownRequest) -> Result<(), String> {
   if request.name.trim().is_empty() {
     return Err("Skill name is required".to_string());
   }
@@ -894,6 +894,6 @@ fn detect_source_type(
   } else if native_lock.skills.contains_key(skill_name) {
     SourceType::Native
   } else {
-    SourceType::Known
+    SourceType::Unknown
   }
 }

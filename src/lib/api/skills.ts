@@ -8,7 +8,7 @@ import { apiCall } from "./index";
 
 // ============ Types ============
 
-export type SourceType = "github" | "native" | "known";
+export type SourceType = "github" | "native" | "unknown";
 
 export interface LocalSkill {
   name: string;
@@ -86,7 +86,7 @@ export interface InstallGithubRequest {
   method: InstallMethod;
 }
 
-export interface InstallKnownRequest {
+export interface InstallUnknownRequest {
   name: string;
   source_path: string;
   agent_apps: string[];
@@ -219,8 +219,8 @@ export async function checkSkillVersion(
   });
 }
 
-export async function installFromKnown(request: InstallKnownRequest): Promise<InstallResult> {
-  return apiCall<InstallResult>("install_from_known", { request });
+export async function installFromUnknown(request: InstallUnknownRequest): Promise<InstallResult> {
+  return apiCall<InstallResult>("install_from_unknown", { request });
 }
 
 export async function manageSkillAgentApps(
