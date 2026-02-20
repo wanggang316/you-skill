@@ -26,23 +26,34 @@ pub fn detect_folder(folder_path: String) -> Result<DetectedSkill, String> {
     return Err(format!("Folder does not exist: {}", folder_path));
   }
 
-  let skill_md = folder.join("SKILL.md");
-  if !skill_md.exists() {
+  if folder.join("SKILL.md").exists() {
+    return detect_folder_exact(folder);
+  }
+
+  let skill_dirs = FolderHelper::find_dirs_containing_file(folder, "SKILL.md")?;
+  if skill_dirs.is_empty() {
     return Err(format!("SKILL.md not found in folder: {}", folder_path));
   }
 
-  let name = FileHelper::read_skill_frontmatter(&skill_md)?
-    .name
-    .ok_or("SKILL.md frontmatter missing valid 'name'".to_string())?;
-  let tmp_dir = create_temp_dir("detect-folder")?;
-  let tmp_path = tmp_dir.join(&name);
-  copy_dir_all_sync(folder, &tmp_path)?;
+  for dir in skill_dirs {
+    if let Ok(mut detected) = detect_folder_exact(&dir) {
+      let relative_dir = dir
+        .strip_prefix(folder)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default();
+      detected.skill_path = if relative_dir.is_empty() {
+        "SKILL.md".to_string()
+      } else {
+        format!("{}/SKILL.md", relative_dir)
+      };
+      return Ok(detected);
+    }
+  }
 
-  Ok(DetectedSkill {
-    name,
-    tmp_path: tmp_path.to_string_lossy().to_string(),
-    skill_path: "SKILL.md".to_string(),
-  })
+  Err(format!(
+    "No valid SKILL.md found after parsing in folder: {}",
+    folder_path
+  ))
 }
 
 pub fn detect_zip(zip_path: String) -> Result<DetectedSkill, String> {
@@ -63,7 +74,7 @@ pub fn detect_github_manual(github_path: String) -> Result<Vec<DetectedSkill>, S
 
   let mut result = Vec::new();
   for dir in skill_dirs {
-    match detect_folder(dir.to_string_lossy().to_string()) {
+    match detect_folder_exact(&dir) {
       Ok(mut detected) => {
         let relative_dir = dir
           .strip_prefix(&clone_dir)
@@ -112,7 +123,7 @@ pub fn detect_github_auto(
       continue;
     }
 
-    let mut detected = detect_folder(dir.to_string_lossy().to_string())?;
+    let mut detected = detect_folder_exact(&dir)?;
     let relative_dir = dir
       .strip_prefix(&clone_dir)
       .map(|p| p.to_string_lossy().to_string())
@@ -126,6 +137,26 @@ pub fn detect_github_auto(
   }
 
   Err(format!("No skill matched '{}'", skill_name))
+}
+
+fn detect_folder_exact(folder: &Path) -> Result<DetectedSkill, String> {
+  let skill_md = folder.join("SKILL.md");
+  if !skill_md.exists() {
+    return Err(format!("SKILL.md not found in folder: {}", folder.to_string_lossy()));
+  }
+
+  let name = FileHelper::read_skill_frontmatter(&skill_md)?
+    .name
+    .ok_or("SKILL.md frontmatter missing valid 'name'".to_string())?;
+  let tmp_dir = create_temp_dir("detect-folder")?;
+  let tmp_path = tmp_dir.join(&name);
+  copy_dir_all_sync(folder, &tmp_path)?;
+
+  Ok(DetectedSkill {
+    name,
+    tmp_path: tmp_path.to_string_lossy().to_string(),
+    skill_path: "SKILL.md".to_string(),
+  })
 }
 
 pub fn list_skills() -> Result<Vec<LocalSkill>, String> {
