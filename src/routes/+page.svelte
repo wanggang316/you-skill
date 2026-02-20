@@ -34,7 +34,6 @@
 
   type LocalSkillView = {
     name: string;
-    agents: string[];
     source_type: "github" | "native" | "unknown";
     global_folder: string | null;
     installed_agent_apps: import("../lib/api/skills").InstalledAgentApp[];
@@ -122,15 +121,16 @@
   });
 
   const toLocalSkillView = (skill: LocalSkill): LocalSkillView => {
-    const agents = Array.from(new Set(skill.installed_agent_apps.map((app) => app.id)));
     return {
       name: skill.name,
-      agents,
       source_type: skill.source_type,
       global_folder: skill.global_folder ?? null,
       installed_agent_apps: skill.installed_agent_apps,
     };
   };
+
+  const getSkillAgentIds = (skill: LocalSkillView): string[] =>
+    Array.from(new Set(skill.installed_agent_apps.map((app) => app.id)));
 
   const localSkillViews = $derived.by(() =>
     filteredLocalSkills.map((skill) => toLocalSkillView(skill))
@@ -453,7 +453,7 @@
 
   const openSourceTypeSelectAgentModal = (skill: LocalSkillView, sourcePath: string) => {
     selectAgentModalTitle = skill.name;
-    selectAgentModalInitialSelection = skill.agents || [];
+    selectAgentModalInitialSelection = getSkillAgentIds(skill);
     selectAgentModalCallback = async (selectedAgents, method) => {
       return manageSkillAgentAppsFlow(skill, selectedAgents, method, sourcePath);
     };
@@ -462,7 +462,7 @@
 
   const openUnknownSelectAgentModal = (skill: LocalSkillView, sourcePath: string) => {
     selectAgentModalTitle = skill.name;
-    selectAgentModalInitialSelection = skill.agents || [];
+    selectAgentModalInitialSelection = getSkillAgentIds(skill);
     selectAgentModalCallback = async (selectedAgents, method) => {
       try {
         const result = await installFromUnknown({

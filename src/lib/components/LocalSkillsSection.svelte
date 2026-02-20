@@ -31,6 +31,11 @@
   function isUpdating(skill) {
     return updatingSkills.includes(skill.name);
   }
+
+  /** @param {{ installed_agent_apps?: { id: string }[] }} skill */
+  function appCount(skill) {
+    return new Set((skill.installed_agent_apps || []).map((app) => app.id)).size;
+  }
 </script>
 
 <section class="space-y-6">
@@ -141,7 +146,7 @@
               onclick={() => onOpenSelectAgentModal(skill)}
               type="button"
             >
-              <span>{$t("local.section.appCount", { count: skill.agents.length })}</span>
+              <span>{$t("local.section.appCount", { count: appCount(skill) })}</span>
               <Blend size={10} />
             </button>
           </div>
