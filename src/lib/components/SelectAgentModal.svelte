@@ -1,8 +1,10 @@
 <script>
   import { Loader2 } from "@lucide/svelte";
+  import { get } from "svelte/store";
   import { t } from "../i18n";
   import Modal from "./ui/Modal.svelte";
   import AgentSelector from "./AgentSelector.svelte";
+  import { settings } from "../stores/settings";
 
   let {
     open = $bindable(false),
@@ -25,7 +27,7 @@
       // Use initialSelection if provided, otherwise select all
       selectedAgents =
         initialSelection.length > 0 ? [...initialSelection] : agents.map((a) => a.id);
-      selectedMethod = "symlink";
+      selectedMethod = get(settings).sync_mode || "symlink";
     }
   });
 

@@ -1,5 +1,6 @@
 <script>
   import { FileArchive, Github, Check, AlertCircle, Loader2, Folder } from "@lucide/svelte";
+  import { get } from "svelte/store";
   import { t } from "../i18n";
   import {
     detectZip,
@@ -10,6 +11,7 @@
   } from "../api/skills";
   import Modal from "./ui/Modal.svelte";
   import AgentSelector from "./AgentSelector.svelte";
+  import { settings } from "../stores/settings";
 
   /** @type {{ open?: boolean; agents?: import('../api/skills').AgentInfo[]; onSuccess?: () => void }} */
   let { open = $bindable(false), agents = [], onSuccess = () => {} } = $props();
@@ -89,7 +91,7 @@
     selectedSkill = null;
     githubError = "";
     selectedAgents = agents.map((a) => a.id);
-    selectedMethod = "symlink";
+    selectedMethod = get(settings).sync_mode || "symlink";
     suppressZipClick = false;
     suppressFolderClick = false;
     isInstalling = false;
