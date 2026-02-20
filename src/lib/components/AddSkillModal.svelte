@@ -53,6 +53,10 @@
   let selectedMethod = $state("symlink");
   let isZipDragOver = $state(false);
   let isFolderDragOver = $state(false);
+  let suppressZipClick = $state(false);
+  let suppressFolderClick = $state(false);
+  /** @type {null | (() => void)} */
+  let unlistenNativeDragDrop = null;
 
   // Global loading state
   let isInstalling = $state(false);
@@ -86,6 +90,8 @@
     githubError = "";
     selectedAgents = agents.map((a) => a.id);
     selectedMethod = "symlink";
+    suppressZipClick = false;
+    suppressFolderClick = false;
     isInstalling = false;
     installError = "";
   }
@@ -94,13 +100,356 @@
     open = false;
   }
 
+  /**
+   * @param {"zip" | "folder"} type
+   * @param {string} path
+   * @param {string} [displayName]
+   */
+  async function applyDroppedPath(type, path, displayName = "") {
+    if (type === "zip") {
+      await applyDroppedZipPath(path, displayName);
+    } else {
+      await applyDroppedFolderPath(path, displayName);
+    }
+  }
+
+  // Use Tauri native drag-drop events as a fallback because some webview environments
+  // do not dispatch HTML5 drop events to DOM nodes reliably.
+  $effect(() => {
+    if (!open) return;
+    let disposed = false;
+    const onWindowDragOver = (event) => {
+      event.preventDefault();
+      if (activeTab === "zip") isZipDragOver = true;
+      if (activeTab === "folder") isFolderDragOver = true;
+    };
+    const onWindowDragLeave = () => {
+      isZipDragOver = false;
+      isFolderDragOver = false;
+    };
+    const onWindowDrop = (event) => {
+      event.preventDefault();
+      isZipDragOver = false;
+      isFolderDragOver = false;
+    };
+
+    const setup = async () => {
+      if (typeof window === "undefined") return;
+      window.addEventListener("dragover", onWindowDragOver);
+      window.addEventListener("dragleave", onWindowDragLeave);
+      window.addEventListener("drop", onWindowDrop);
+      try {
+        const { getCurrentWebview } = await import("@tauri-apps/api/webview");
+        const unlisten = await getCurrentWebview().onDragDropEvent((event) => {
+          if (event.type === "enter" || event.type === "over") {
+            if (activeTab === "zip") isZipDragOver = true;
+            if (activeTab === "folder") isFolderDragOver = true;
+            return;
+          }
+
+          if (event.type === "leave") {
+            isZipDragOver = false;
+            isFolderDragOver = false;
+            return;
+          }
+
+          if (event.type === "drop") {
+            isZipDragOver = false;
+            isFolderDragOver = false;
+            if (activeTab !== "zip" && activeTab !== "folder") return;
+            const droppedPath = event.paths && event.paths.length > 0 ? event.paths[0] : "";
+            if (!droppedPath) return;
+            const name = droppedPath.split(/[/\\]/).pop() || "";
+            void applyDroppedPath(activeTab, droppedPath, name);
+          }
+        });
+
+        if (disposed) {
+          unlisten();
+          return;
+        }
+        unlistenNativeDragDrop = unlisten;
+      } catch {
+        // no-op: likely running in browser preview
+      }
+    };
+
+    void setup();
+
+    return () => {
+      disposed = true;
+      isZipDragOver = false;
+      isFolderDragOver = false;
+      if (typeof window !== "undefined") {
+        window.removeEventListener("dragover", onWindowDragOver);
+        window.removeEventListener("dragleave", onWindowDragLeave);
+        window.removeEventListener("drop", onWindowDrop);
+      }
+      if (unlistenNativeDragDrop) {
+        unlistenNativeDragDrop();
+        unlistenNativeDragDrop = null;
+      }
+    };
+  });
+
   /** @param {string} url */
   function toGitRepoUrl(url) {
     const trimmed = url.trim();
     return trimmed.endsWith(".git") ? trimmed : `${trimmed}.git`;
   }
 
+  /** @param {string} uri */
+  function pathFromUri(uri) {
+    if (!uri.startsWith("file://")) return null;
+    try {
+      return decodeURIComponent(new URL(uri).pathname);
+    } catch {
+      return null;
+    }
+  }
+
+  /** @param {string} raw */
+  function pathFromDropText(raw) {
+    const firstLine = raw
+      .split("\n")
+      .map((line) => line.trim())
+      .find((line) => line && !line.startsWith("#"));
+    if (!firstLine) return null;
+
+    const uriPath = pathFromUri(firstLine);
+    if (uriPath) return uriPath;
+
+    // Some platforms provide plain absolute paths in text/plain instead of file:// URIs.
+    const unquoted = firstLine.replace(/^['"]|['"]$/g, "");
+    return unquoted || null;
+  }
+
+  /** @param {string} path */
+  function normalizeDroppedPath(path) {
+    const normalized = path.trim();
+    if (!normalized) return "";
+    if (normalized.startsWith("file://")) {
+      return pathFromUri(normalized) || "";
+    }
+    return normalized;
+  }
+
+  /**
+   * @param {DataTransfer | null} dt
+   * @returns {string}
+   */
+  function buildDropDebugInfo(dt) {
+    if (!dt) return "dataTransfer=null";
+
+    const filesLen = dt.files?.length || 0;
+    const items = Array.from(dt.items || []);
+    const kinds = items.map((i) => i.kind).join(",");
+    const types = items.map((i) => i.type || "(empty)").join(",");
+    const textPlain = (dt.getData("text/plain") || "").trim().slice(0, 200);
+    const uriList = (dt.getData("text/uri-list") || "").trim().slice(0, 200);
+
+    /** @type {string[]} */
+    const filePaths = [];
+    for (const file of Array.from(dt.files || [])) {
+      const fileWithPath = /** @type {{ path?: string }} */ (file);
+      if (fileWithPath.path) filePaths.push(fileWithPath.path);
+    }
+
+    return [
+      `files=${filesLen}`,
+      `items=${items.length}`,
+      `kinds=[${kinds}]`,
+      `types=[${types}]`,
+      `paths=[${filePaths.join(" | ")}]`,
+      `textPlain="${textPlain}"`,
+      `uriList="${uriList}"`,
+    ].join("; ");
+  }
+
+  /**
+   * @param {File} file
+   * @returns {Promise<string>}
+   */
+  async function persistDroppedZipFile(file) {
+    const { mkdir, writeFile, BaseDirectory } = await import("@tauri-apps/plugin-fs");
+    const { appLocalDataDir, join } = await import("@tauri-apps/api/path");
+
+    const folder = "dropped-skills";
+    await mkdir(folder, { baseDir: BaseDirectory.AppLocalData, recursive: true });
+
+    const safeName = (file.name || "dropped.skill").replace(/[^\w.-]/g, "_");
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${safeName}`;
+    const relativePath = `${folder}/${uniqueName}`;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+
+    await writeFile(relativePath, bytes, { baseDir: BaseDirectory.AppLocalData });
+
+    const baseDir = await appLocalDataDir();
+    return await join(baseDir, relativePath);
+  }
+
+  /**
+   * @param {DataTransfer | null | undefined} dt
+   * @returns {File | null}
+   */
+  function firstDroppedFile(dt) {
+    return dt?.files && dt.files.length > 0 ? dt.files[0] : null;
+  }
+
+  /**
+   * @param {DataTransfer | null | undefined} dt
+   * @returns {any | null}
+   */
+  function droppedDirectoryEntry(dt) {
+    if (!dt) return null;
+    for (const item of Array.from(dt.items || [])) {
+      const entry = /** @type {{ webkitGetAsEntry?: () => any }} */ (item).webkitGetAsEntry?.();
+      if (entry?.isDirectory) return entry;
+    }
+    return null;
+  }
+
+  /** @param {any} entry */
+  function readFileFromEntry(entry) {
+    return new Promise((resolve, reject) => entry.file(resolve, reject));
+  }
+
+  /** @param {any} dirEntry */
+  function readAllDirectoryEntries(dirEntry) {
+    return new Promise((resolve, reject) => {
+      const reader = dirEntry.createReader();
+      /** @type {any[]} */
+      const all = [];
+      const readChunk = () => {
+        reader.readEntries(
+          (entries) => {
+            if (!entries.length) {
+              resolve(all);
+              return;
+            }
+            all.push(...entries);
+            readChunk();
+          },
+          (error) => reject(error),
+        );
+      };
+      readChunk();
+    });
+  }
+
+  /**
+   * @param {any} dirEntry
+   * @param {string} basePath
+   * @returns {Promise<Array<{ relativePath: string; file: File }>>}
+   */
+  async function collectDroppedDirectoryFiles(dirEntry, basePath = "") {
+    /** @type {Array<{ relativePath: string; file: File }>} */
+    const result = [];
+    const entries = await readAllDirectoryEntries(dirEntry);
+
+    for (const entry of entries) {
+      const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
+      if (entry.isDirectory) {
+        const nested = await collectDroppedDirectoryFiles(entry, relativePath);
+        result.push(...nested);
+      } else if (entry.isFile) {
+        const file = await readFileFromEntry(entry);
+        result.push({ relativePath, file });
+      }
+    }
+
+    return result;
+  }
+
+  /** @param {string} path */
+  function sanitizeRelativePath(path) {
+    return path
+      .replace(/\\/g, "/")
+      .split("/")
+      .filter((part) => part && part !== "." && part !== "..")
+      .join("/");
+  }
+
+  /**
+   * @param {any} dirEntry
+   * @returns {Promise<string>}
+   */
+  async function persistDroppedFolderEntry(dirEntry) {
+    const { mkdir, writeFile, BaseDirectory } = await import("@tauri-apps/plugin-fs");
+    const { appLocalDataDir, join } = await import("@tauri-apps/api/path");
+
+    const folder = "dropped-folders";
+    await mkdir(folder, { baseDir: BaseDirectory.AppLocalData, recursive: true });
+
+    const safeName = (dirEntry.name || "dropped-folder").replace(/[^\w.-]/g, "_");
+    const uniqueRoot = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${safeName}`;
+    const relativeRoot = `${folder}/${uniqueRoot}`;
+    await mkdir(relativeRoot, { baseDir: BaseDirectory.AppLocalData, recursive: true });
+
+    const files = await collectDroppedDirectoryFiles(dirEntry);
+    for (const { relativePath, file } of files) {
+      const cleanRelativePath = sanitizeRelativePath(relativePath);
+      if (!cleanRelativePath) continue;
+
+      const outputRelativePath = `${relativeRoot}/${cleanRelativePath}`;
+      const outputRelativeDir = parentDirectory(outputRelativePath);
+      await mkdir(outputRelativeDir, { baseDir: BaseDirectory.AppLocalData, recursive: true });
+      await writeFile(outputRelativePath, new Uint8Array(await file.arrayBuffer()), {
+        baseDir: BaseDirectory.AppLocalData,
+      });
+    }
+
+    const baseDir = await appLocalDataDir();
+    return await join(baseDir, relativeRoot);
+  }
+
+  /**
+   * @param {"zip" | "folder"} type
+   * @param {DataTransfer | null | undefined} dt
+   * @param {unknown} [error]
+   */
+  function reportDropFailure(type, dt, error) {
+    const debug = buildDropDebugInfo(dt || null);
+    if (type === "zip") {
+      console.error("[AddSkillModal] ZIP drop failed:", error || "", debug);
+      zipError = `Failed to read dropped file path. ${debug}`;
+      return;
+    }
+    console.error("[AddSkillModal] Folder drop failed:", error || "", debug);
+    folderError = `Failed to read dropped folder path. ${debug}`;
+  }
+
+  /** @param {string} path */
+  function parentDirectory(path) {
+    return path.replace(/[/\\][^/\\]+$/, "");
+  }
+
+  /**
+   * @param {string[]} paths
+   * @returns {string}
+   */
+  function commonDirectory(paths) {
+    if (paths.length === 0) return "";
+    if (paths.length === 1) return parentDirectory(paths[0]);
+
+    const splitPaths = paths.map((p) => p.replace(/\\/g, "/").split("/"));
+    let common = splitPaths[0];
+
+    for (let i = 1; i < splitPaths.length; i += 1) {
+      const current = splitPaths[i];
+      let j = 0;
+      while (j < common.length && j < current.length && common[j] === current[j]) {
+        j += 1;
+      }
+      common = common.slice(0, j);
+      if (common.length === 0) return "";
+    }
+
+    return common.join("/");
+  }
+
   async function handleSelectZipFile() {
+    if (suppressZipClick) return;
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const result = await open({
@@ -109,9 +458,7 @@
         filters: [{ name: "Skill Files", extensions: ["skill", "zip"] }],
       });
       if (result) {
-        selectedZipPath = result;
-        zipFileName = result.split(/[/\\]/).pop() || "";
-        await handleDetectZip();
+        await applyDroppedZipPath(result, result.split(/[/\\]/).pop() || "");
       }
     } catch (error) {
       console.error("Failed to select zip file:", error);
@@ -122,8 +469,15 @@
    * @param {DragEvent} event
    * @returns {string | null}
    */
-  function extractPathFromDrop(event) {
-    const dt = event.dataTransfer;
+  function extractZipPathFromDrop(event) {
+    return extractPathFromTransfer(event.dataTransfer);
+  }
+
+  /**
+   * @param {DataTransfer | null} dt
+   * @returns {string | null}
+   */
+  function extractPathFromTransfer(dt) {
     if (!dt) return null;
 
     const firstFile = dt.files && dt.files.length > 0 ? dt.files[0] : null;
@@ -146,17 +500,53 @@
 
     const rawUri = dt.getData("text/uri-list") || dt.getData("text/plain");
     if (rawUri) {
-      const firstLine = rawUri
-        .split("\n")
-        .map((line) => line.trim())
-        .find((line) => line && !line.startsWith("#"));
-      if (firstLine && firstLine.startsWith("file://")) {
-        try {
-          return decodeURIComponent(new URL(firstLine).pathname);
-        } catch {
-          // no-op
+      const path = pathFromDropText(rawUri);
+      if (path) return path;
+    }
+
+    return null;
+  }
+
+  /**
+   * @param {DragEvent} event
+   * @returns {string | null}
+   */
+  function extractFolderPathFromDrop(event) {
+    const dt = event.dataTransfer;
+    if (!dt) return null;
+
+    for (const item of Array.from(dt.items || [])) {
+      const entry = /** @type {{ webkitGetAsEntry?: () => { isDirectory?: boolean } | null }} */ (
+        item
+      ).webkitGetAsEntry?.();
+      if (entry?.isDirectory) {
+        const file = item.getAsFile?.();
+        const fileWithPath = /** @type {{ path?: string }} */ (file || {});
+        if (typeof fileWithPath.path === "string" && fileWithPath.path) {
+          return fileWithPath.path;
         }
       }
+    }
+
+    if (dt.files && dt.files.length > 0) {
+      /** @type {string[]} */
+      const filePaths = [];
+      for (const file of Array.from(dt.files)) {
+        const fileWithPath = /** @type {{ path?: string }} */ (file);
+        if (typeof fileWithPath.path === "string" && fileWithPath.path) {
+          filePaths.push(fileWithPath.path);
+        }
+      }
+      if (filePaths.length > 0) {
+        const dir = commonDirectory(filePaths);
+        if (dir) return dir;
+      }
+    }
+
+    const rawUri = dt.getData("text/uri-list") || dt.getData("text/plain");
+    if (rawUri) {
+      const path = pathFromDropText(rawUri);
+      if (path) return path;
     }
 
     return null;
@@ -171,33 +561,87 @@
   async function handleZipDrop(event) {
     event.preventDefault();
     isZipDragOver = false;
-    const path = extractPathFromDrop(event);
-    if (!path) {
-      zipError = "Failed to read dropped file path.";
+    suppressZipClick = true;
+    setTimeout(() => (suppressZipClick = false), 100);
+    const path = extractZipPathFromDrop(event);
+    if (path) {
+      await applyDroppedZipPath(path, path.split(/[/\\]/).pop() || "");
       return;
     }
-    if (!/\.(zip|skill)$/i.test(path)) {
-      zipError = "Please drop a .zip or .skill file.";
+
+    const fallbackFile = firstDroppedFile(event.dataTransfer);
+    if (!fallbackFile) {
+      reportDropFailure("zip", event.dataTransfer);
       return;
     }
-    zipError = "";
-    selectedZipPath = path;
-    zipFileName = path.split(/[/\\]/).pop() || "";
-    await handleDetectZip();
+
+    try {
+      const tempPath = await persistDroppedZipFile(fallbackFile);
+      await applyDroppedZipPath(tempPath, fallbackFile.name || "");
+    } catch (error) {
+      reportDropFailure("zip", event.dataTransfer, error);
+    }
   }
 
   /** @param {DragEvent} event */
   async function handleFolderDrop(event) {
     event.preventDefault();
     isFolderDragOver = false;
-    const path = extractPathFromDrop(event);
-    if (!path) {
-      folderError = "Failed to read dropped folder path.";
+    suppressFolderClick = true;
+    setTimeout(() => (suppressFolderClick = false), 100);
+    const path = extractFolderPathFromDrop(event);
+    if (path) {
+      await applyDroppedFolderPath(path, path.split(/[/\\]/).pop() || "");
+      return;
+    }
+
+    const entry = droppedDirectoryEntry(event.dataTransfer);
+    if (!entry) {
+      reportDropFailure("folder", event.dataTransfer);
+      return;
+    }
+
+    try {
+      const tempPath = await persistDroppedFolderEntry(entry);
+      await applyDroppedFolderPath(tempPath, entry.name || "");
+    } catch (error) {
+      reportDropFailure("folder", event.dataTransfer, error);
+    }
+  }
+
+  /**
+   * @param {string} path
+   * @param {string} [displayName]
+   */
+  async function applyDroppedZipPath(path, displayName = "") {
+    const normalizedPath = normalizeDroppedPath(path);
+    if (!normalizedPath) {
+      zipError = `Failed to read dropped file path. raw="${String(path)}"`;
+      return;
+    }
+    if (!/\.(zip|skill)$/i.test(normalizedPath)) {
+      zipError = "Please drop a compressed file (.zip or .skill).";
+      return;
+    }
+    zipError = "";
+    selectedZipPath = normalizedPath;
+    zipFileName = displayName || normalizedPath.split(/[/\\]/).pop() || "";
+    await handleDetectZip();
+  }
+
+  /**
+   * @param {string} path
+   * @param {string} [displayName]
+   */
+  async function applyDroppedFolderPath(path, displayName = "") {
+    const normalizedPath = normalizeDroppedPath(path);
+    if (!normalizedPath) {
+      folderError = `Failed to read dropped folder path. raw="${String(path)}"`;
       return;
     }
     folderError = "";
-    selectedFolderPath = path;
-    folderName = path.split(/[/\\]/).pop() || "";
+    selectedFolderPath = normalizedPath;
+    folderName = displayName || normalizedPath.split(/[/\\]/).pop() || "";
     await handleDetectFolder();
   }
 
@@ -210,9 +654,12 @@
     selectedZipSkill = null;
 
     try {
-      const skill = await detectZip(selectedZipPath);
-      detectedZipSkills = [skill];
-      selectedZipSkill = skill;
+      const skills = await detectZip(selectedZipPath);
+      detectedZipSkills = skills;
+      selectedZipSkill = skills.length === 1 ? skills[0] : null;
+      if (skills.length === 0) {
+        zipError = $t("addSkill.noSkillsFound");
+      }
     } catch (error) {
       zipError = String(error);
     } finally {
@@ -221,6 +668,7 @@
   }
 
   async function handleSelectFolder() {
+    if (suppressFolderClick) return;
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
       const result = await open({
@@ -228,9 +676,7 @@
         directory: true,
       });
       if (result) {
-        selectedFolderPath = result;
-        folderName = result.split(/[/\\]/).pop() || "";
-        await handleDetectFolder();
+        await applyDroppedFolderPath(result, result.split(/[/\\]/).pop() || "");
       }
     } catch (error) {
       console.error("Failed to select folder:", error);
@@ -246,9 +692,12 @@
     selectedFolderSkill = null;
 
     try {
-      const skill = await detectFolder(selectedFolderPath);
-      detectedFolderSkills = [skill];
-      selectedFolderSkill = skill;
+      const skills = await detectFolder(selectedFolderPath);
+      detectedFolderSkills = skills;
+      selectedFolderSkill = skills.length === 1 ? skills[0] : null;
+      if (skills.length === 0) {
+        folderError = $t("addSkill.noSkillsFound");
+      }
     } catch (error) {
       folderError = String(error);
     } finally {

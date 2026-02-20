@@ -15,12 +15,12 @@ pub fn delete_skill(name: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn detect_zip(zip_path: String) -> Result<DetectedSkill, String> {
+pub fn detect_zip(zip_path: String) -> Result<Vec<DetectedSkill>, String> {
   skill_service::detect_zip(zip_path)
 }
 
 #[tauri::command]
-pub fn detect_folder(folder_path: String) -> Result<DetectedSkill, String> {
+pub fn detect_folder(folder_path: String) -> Result<Vec<DetectedSkill>, String> {
   skill_service::detect_folder(folder_path)
 }
 

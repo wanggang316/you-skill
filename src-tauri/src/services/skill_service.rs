@@ -20,14 +20,14 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub fn detect_folder(folder_path: String) -> Result<DetectedSkill, String> {
+pub fn detect_folder(folder_path: String) -> Result<Vec<DetectedSkill>, String> {
   let folder = Path::new(&folder_path);
   if !folder.exists() || !folder.is_dir() {
     return Err(format!("Folder does not exist: {}", folder_path));
   }
 
   if folder.join("SKILL.md").exists() {
-    return detect_folder_exact(folder);
+    return Ok(vec![detect_folder_exact(folder)?]);
   }
 
   let skill_dirs = FolderHelper::find_dirs_containing_file(folder, "SKILL.md")?;
@@ -35,6 +35,7 @@ pub fn detect_folder(folder_path: String) -> Result<DetectedSkill, String> {
     return Err(format!("SKILL.md not found in folder: {}", folder_path));
   }
 
+  let mut result = Vec::new();
   for dir in skill_dirs {
     if let Ok(mut detected) = detect_folder_exact(&dir) {
       let relative_dir = dir
@@ -46,17 +47,21 @@ pub fn detect_folder(folder_path: String) -> Result<DetectedSkill, String> {
       } else {
         format!("{}/SKILL.md", relative_dir)
       };
-      return Ok(detected);
+      result.push(detected);
     }
   }
 
-  Err(format!(
-    "No valid SKILL.md found after parsing in folder: {}",
-    folder_path
-  ))
+  if result.is_empty() {
+    Err(format!(
+      "No valid SKILL.md found after parsing in folder: {}",
+      folder_path
+    ))
+  } else {
+    Ok(result)
+  }
 }
 
-pub fn detect_zip(zip_path: String) -> Result<DetectedSkill, String> {
+pub fn detect_zip(zip_path: String) -> Result<Vec<DetectedSkill>, String> {
   let temp_extract_dir = create_temp_dir("detect-zip")?;
   ZipHelper::extract_to_dir(&zip_path, &temp_extract_dir)?;
   detect_folder(temp_extract_dir.to_string_lossy().to_string())

@@ -66,6 +66,13 @@ export interface DetectedSkill {
   skill_path: string;
 }
 
+function normalizeDetectedSkills(
+  value: DetectedSkill | DetectedSkill[] | null | undefined
+): DetectedSkill[] {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
 export type InstallMethod = "symlink" | "copy";
 
 export interface InstallNativeRequest {
@@ -165,8 +172,9 @@ export async function detectGithubManual(githubPath: string): Promise<DetectedSk
 /**
  * 从 ZIP 文件检测技能
  */
-export async function detectZip(zipPath: string): Promise<DetectedSkill> {
-  return apiCall<DetectedSkill>("detect_zip", { zipPath });
+export async function detectZip(zipPath: string): Promise<DetectedSkill[]> {
+  const result = await apiCall<DetectedSkill | DetectedSkill[]>("detect_zip", { zipPath });
+  return normalizeDetectedSkills(result);
 }
 
 // ============ Installation ============
@@ -174,8 +182,9 @@ export async function detectZip(zipPath: string): Promise<DetectedSkill> {
 /**
  * 从 ZIP 文件安装技能
  */
-export async function detectFolder(folderPath: string): Promise<DetectedSkill> {
-  return apiCall<DetectedSkill>("detect_folder", { folderPath });
+export async function detectFolder(folderPath: string): Promise<DetectedSkill[]> {
+  const result = await apiCall<DetectedSkill | DetectedSkill[]>("detect_folder", { folderPath });
+  return normalizeDetectedSkills(result);
 }
 
 /**
