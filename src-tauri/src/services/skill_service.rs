@@ -334,26 +334,23 @@ pub fn manage_skill_agent_apps(
     );
   }
 
-  let selected_apps = resolve_selected_apps_global_paths(&request.agent_apps)?;
-  let source = if matches!(request.method, InstallMethod::Copy) {
-    let resolved = normalize_optional_string(request.source_path)
-      .ok_or("source_path is required for copy management")?;
-    let source_path = PathBuf::from(&resolved);
-    if !source_path.exists() || !source_path.is_dir() {
-      return Err("source_path does not exist".to_string());
-    }
+  let source_path = PathBuf::from(&request.source_path);
+  if request.source_path.trim().is_empty() {
+    return Err("source_path is required for manage_skill_agent_apps".to_string());
+  }
+  if !source_path.exists() || !source_path.is_dir() {
+    return Err("source_path does not exist".to_string());
+  }
+
+  let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
+  let canonical_root = home_dir.join(".agents").join("skills");
+  let source = if source_path.starts_with(&canonical_root) {
     source_path
   } else {
-    let global_folder = request
-      .global_folder
-      .ok_or("global_folder is required for symlink management")?;
-    let global_path = PathBuf::from(global_folder);
-    if !global_path.exists() || !global_path.is_dir() {
-      return Err("Global skill folder does not exist".to_string());
-    }
-    global_path
+    prepare_canonical_skill_dir(&source_path, &request.name)?
   };
 
+  let selected_apps = resolve_selected_apps_global_paths(&request.agent_apps)?;
   remove_existing_associations_from_all_apps(&request.name)?;
   install_skill_to_apps(&source, &request.name, &request.method, &selected_apps)?;
 

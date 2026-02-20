@@ -108,10 +108,9 @@ export interface SourceVersionGroup {
 export interface ManageSkillAgentAppsRequest {
   name: string;
   source_type: SourceType;
-  global_folder?: string | null;
   agent_apps: string[];
   method: InstallMethod;
-  source_path?: string | null;
+  source_path: string;
 }
 
 // ============ Local Skills ============

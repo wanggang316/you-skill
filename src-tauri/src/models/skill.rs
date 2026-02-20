@@ -117,8 +117,7 @@ pub struct SourceVersionGroup {
 pub struct ManageSkillAgentAppsRequest {
   pub name: String,
   pub source_type: SourceType,
-  pub global_folder: Option<String>,
   pub agent_apps: Vec<String>,
   pub method: InstallMethod,
-  pub source_path: Option<String>,
+  pub source_path: String,
 }

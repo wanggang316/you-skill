@@ -473,11 +473,11 @@
     checkSkillVersionModalOpen = true;
   };
 
-  const openManagedSelectAgentModal = (skill: ViewLocalSkill, copySourcePath: string | null) => {
+  const openManagedSelectAgentModal = (skill: ViewLocalSkill, sourcePath: string) => {
     selectAgentModalTitle = skill.name;
     selectAgentModalInitialSelection = skill.agents || [];
     selectAgentModalCallback = async (selectedAgents, method) => {
-      return manageSkillAgentAppsFlow(skill, selectedAgents, method, copySourcePath);
+      return manageSkillAgentAppsFlow(skill, selectedAgents, method, sourcePath);
     };
     selectAgentModalOpen = true;
   };
@@ -562,6 +562,9 @@
       );
       return;
     }
+    if (!resolvedSourcePath) {
+      throw new Error("No source path available for managed skill");
+    }
     openManagedSelectAgentModal(skill, resolvedSourcePath);
   };
 
@@ -569,16 +572,15 @@
     skill: ViewLocalSkill,
     selectedAgents: string[],
     method: "symlink" | "copy",
-    copySourcePath: string | null
+    sourcePath: string
   ): Promise<boolean> => {
     if (!skill || linkBusy) return false;
     linkBusy = true;
     try {
-      const executeManage = async (sourcePath: string | null) => {
+      const executeManage = async (sourcePath: string) => {
         const result = await manageSkillAgentApps({
           name: skill.name,
           source_type: skill.source_type,
-          global_folder: skill.global_folder,
           agent_apps: selectedAgents,
           method,
           source_path: sourcePath,
@@ -589,10 +591,6 @@
         await refreshLocal();
       };
 
-      const sourcePath = method === "copy" ? copySourcePath : null;
-      if (method === "copy" && !sourcePath) {
-        throw new Error("No source path available for copy install");
-      }
       await executeManage(sourcePath);
       return true;
     } catch (error) {
