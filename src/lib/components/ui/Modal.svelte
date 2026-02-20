@@ -76,11 +76,11 @@
       </div>
 
       <!-- Content layer: independent of background layer, not affected by clipping -->
-      <div class="absolute inset-0 w-full bg-transparent" style="z-index: 2;">
+      <div class="absolute inset-0 flex w-full flex-col bg-transparent" style="z-index: 2;">
         <!-- Header with close button and title -->
         {#if showCloseButton || title}
           <div
-            class="absolute top-0 right-0 left-0 z-20 flex items-center justify-between px-5 py-4"
+            class="bg-base-100/95 border-base-200 sticky top-0 z-20 flex shrink-0 items-center justify-between border-b rounded-t-2xl px-5 py-2 backdrop-blur-sm"
           >
             {#if title}
               <h3 class="text-base-content text-base font-medium">
@@ -96,7 +96,7 @@
         {/if}
 
         <!-- Content area: not affected by background layer clipping -->
-        <div class="px-0 py-0">
+        <div class="min-h-0 flex-1 overflow-y-auto px-0 py-0">
           {#if children}
             {@render children()}
           {/if}

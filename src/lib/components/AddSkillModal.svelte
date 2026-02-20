@@ -820,9 +820,9 @@
 <Modal bind:open title={$t("addSkill.title")} onClose={closeModal}>
   <div class="flex h-full max-h-[90vh] w-full max-w-lg flex-col">
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto p-6 pt-16">
+    <div class="flex-1 overflow-y-auto p-6 pt-2">
       <!-- Tabs -->
-      <div class="bg-base-100 sticky top-0 z-10 mb-6 pb-2">
+      <div class="sticky top-0 z-10 mb-6 pb-2">
         <div class="bg-base-200 flex gap-2 rounded-full p-1">
           <button
             class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "github" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
