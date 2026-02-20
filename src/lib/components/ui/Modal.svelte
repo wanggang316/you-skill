@@ -10,6 +10,7 @@
     closeOnBackdropClick?: boolean;
     onClose?: () => void;
     children?: import("svelte").Snippet;
+    footer?: import("svelte").Snippet;
   }
 
   let {
@@ -19,6 +20,7 @@
     closeOnBackdropClick = false,
     onClose = () => {},
     children,
+    footer,
   }: Props = $props();
 
   let closing = $state(false);
@@ -86,6 +88,11 @@
           {@render children()}
         {/if}
       </div>
+      {#if footer}
+        <div class="bg-base-100 border-base-200 flex shrink-0 items-center justify-end gap-3 border-t px-6 py-3">
+          {@render footer()}
+        </div>
+      {/if}
     </div>
   </div>
 {/if}

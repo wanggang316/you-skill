@@ -63,9 +63,7 @@
     </div>
 
     <!-- Footer -->
-    <div
-      class="border-base-300 bg-base-100 flex items-center justify-end border-t px-6 py-3"
-    >
+    <div class="border-base-300 bg-base-100 flex items-center justify-end border-t px-6 py-3">
       <select
         bind:value={selectedMethod}
         class="bg-base-100 text-base-content mr-3 rounded-lg px-3 py-2 text-sm"

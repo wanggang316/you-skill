@@ -817,9 +817,9 @@
 </script>
 
 <Modal bind:open title={$t("addSkill.title")} onClose={closeModal}>
-  <div class="flex h-full w-full flex-col">
+  <div class="flex h-full min-h-0 w-full flex-col">
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto p-6 pt-1">
+    <div class="flex-1 p-6 pt-1">
       <!-- Tabs -->
       <div class="sticky top-0 z-10 mb-4 pb-0">
         <div class="bg-base-200 flex gap-2 rounded-full p-1">
@@ -1093,31 +1093,28 @@
       {/if}
     </div>
 
-    <!-- Footer -->
-    <div
-      class="border-base-300 bg-base-100 flex items-center justify-end gap-3 rounded-b-2xl border-t px-6 py-3"
-    >
-      <select
-        bind:value={selectedMethod}
-        class="bg-base-100 text-base-content rounded-lg px-3 py-2 text-sm"
-        disabled={isInstalling}
-      >
-        <option value="symlink">{$t("settings.syncMode.symlink")}</option>
-        <option value="copy">{$t("settings.syncMode.copy")}</option>
-      </select>
-      <button
-        class="bg-primary text-primary-content hover:bg-primary-hover inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
-        onclick={handleConfirm}
-        disabled={!canConfirm() || isInstalling}
-        type="button"
-      >
-        {#if isInstalling}
-          <Loader2 size={16} class="animate-spin" />
-          <span>{$t("addSkill.installing")}</span>
-        {:else}
-          {$t("addSkill.confirm")}
-        {/if}
-      </button>
-    </div>
   </div>
+  {#snippet footer()}
+    <select
+      bind:value={selectedMethod}
+      class="bg-base-100 text-base-content rounded-lg px-3 py-2 text-sm"
+      disabled={isInstalling}
+    >
+      <option value="symlink">{$t("settings.syncMode.symlink")}</option>
+      <option value="copy">{$t("settings.syncMode.copy")}</option>
+    </select>
+    <button
+      class="bg-primary text-primary-content hover:bg-primary-hover inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
+      onclick={handleConfirm}
+      disabled={!canConfirm() || isInstalling}
+      type="button"
+    >
+      {#if isInstalling}
+        <Loader2 size={16} class="animate-spin" />
+        <span>{$t("addSkill.installing")}</span>
+      {:else}
+        {$t("addSkill.confirm")}
+      {/if}
+    </button>
+  {/snippet}
 </Modal>
