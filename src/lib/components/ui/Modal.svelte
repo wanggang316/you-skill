@@ -80,7 +80,7 @@
         <!-- Header with close button and title -->
         {#if showCloseButton || title}
           <div
-            class="bg-base-100/95 border-base-200 sticky top-0 z-20 flex shrink-0 items-center justify-between border-b rounded-t-2xl px-5 py-2 backdrop-blur-sm"
+            class="bg-base-100/95 border-base-200 sticky top-0 z-20 flex shrink-0 items-center justify-between rounded-t-2xl border-b px-5 py-2 backdrop-blur-sm"
           >
             {#if title}
               <h3 class="text-base-content text-base font-medium">

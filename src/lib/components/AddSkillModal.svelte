@@ -160,8 +160,7 @@
             isZipDragOver = false;
             isFolderDragOver = false;
             if (activeTab !== "zip" && activeTab !== "folder") return;
-            const droppedPath =
-              payload.paths && payload.paths.length > 0 ? payload.paths[0] : "";
+            const droppedPath = payload.paths && payload.paths.length > 0 ? payload.paths[0] : "";
             if (!droppedPath) return;
             const name = droppedPath.split(/[/\\]/).pop() || "";
             void applyDroppedPath(activeTab, droppedPath, name);
