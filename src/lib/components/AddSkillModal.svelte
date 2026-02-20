@@ -819,9 +819,9 @@
 <Modal bind:open title={$t("addSkill.title")} onClose={closeModal}>
   <div class="flex h-full max-h-[90vh] w-full max-w-lg flex-col">
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto p-6 pt-2">
+    <div class="flex-1 overflow-y-auto p-6 pt-1">
       <!-- Tabs -->
-      <div class="sticky top-0 z-10 mb-6 pb-2">
+      <div class="sticky top-0 z-10 mb-4 pb-0">
         <div class="bg-base-200 flex gap-2 rounded-full p-1">
           <button
             class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "github" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
@@ -1082,7 +1082,7 @@
         <p class="text-base-content text-sm font-medium">
           {$t("addSkill.selectAgents")}
         </p>
-        <AgentSelector {agents} selectedIds={selectedAgents} />
+        <AgentSelector {agents} bind:selectedIds={selectedAgents} />
       </div>
 
       {#if installError}
@@ -1106,13 +1106,14 @@
         <option value="copy">{$t("settings.syncMode.copy")}</option>
       </select>
       <button
-        class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
+        class="bg-primary text-primary-content hover:bg-primary-hover inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
         onclick={handleConfirm}
         disabled={!canConfirm() || isInstalling}
         type="button"
       >
         {#if isInstalling}
           <Loader2 size={16} class="animate-spin" />
+          <span>{$t("addSkill.installing")}</span>
         {:else}
           {$t("addSkill.confirm")}
         {/if}

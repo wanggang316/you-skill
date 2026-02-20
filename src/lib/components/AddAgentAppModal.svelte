@@ -93,7 +93,7 @@
 <Modal bind:open title={modalTitle}>
   <div class="mx-auto flex h-[60vh] w-[50vw] max-w-lg flex-col">
     <!-- Form content -->
-    <div class="flex-1 space-y-6 overflow-y-auto px-5 pt-14 pb-4">
+    <div class="flex-1 space-y-6 overflow-y-auto px-5 pt-2 pb-4">
       <div>
         <label for="display-name-input" class="text-base-content mb-1.5 block text-sm">
           {$t("agentApps.displayName")}
