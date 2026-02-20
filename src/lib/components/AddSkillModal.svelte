@@ -89,6 +89,7 @@
     open = false;
   }
 
+  /** @param {string} url */
   function toGitRepoUrl(url) {
     const trimmed = url.trim();
     return trimmed.endsWith(".git") ? trimmed : `${trimmed}.git`;

@@ -81,9 +81,7 @@
 
   // Pending install state
   let pendingInstallSkill = $state<(RemoteSkill & { detectedSkill?: DetectedSkill }) | null>(null);
-  let pendingInstallAgents = $state<string[]>([]);
   let isDownloading = $state(false);
-  let downloadError = $state("");
 
   // Select agent modal state
   let selectAgentModalOpen = $state(false);
@@ -105,9 +103,7 @@
   let checkSkillVersionModalTitle = $state("");
   let checkSkillVersionModalSkillName = $state("");
   let checkSkillVersionModalVersionGroups = $state<SourceVersionGroup[]>([]);
-  let checkSkillVersionModalConfirm = $state<((sourcePath: string) => Promise<void>) | null>(
-    null
-  );
+  let checkSkillVersionModalConfirm = $state<((sourcePath: string) => Promise<void>) | null>(null);
 
   // Install state
   let installLog = $state("");
@@ -175,7 +171,6 @@
       addSkillModalOpen = true;
     });
 
-    return () => {};
   });
 
   const checkForUpdate = async () => {
@@ -318,7 +313,6 @@
       }
 
       isDownloading = true;
-      downloadError = "";
       installingSkill = skill.id;
 
       const detectedSkill = await detectGithubAuto(skill.url, skill.name);
@@ -332,12 +326,11 @@
       selectAgentModalTitle = $t("installConfirm.title", { name: skill.name });
       selectAgentModalInitialSelection = currentAgents;
       selectAgentModalCallback = async (selectedAgents, method) => {
-        if (!pendingInstallSkill) return;
+        if (!pendingInstallSkill) return false;
         installLog = "";
         installingSkill = pendingInstallSkill.id;
-        pendingInstallAgents = selectedAgents;
         try {
-          if (!pendingInstallSkill.detectedSkill) return;
+          if (!pendingInstallSkill.detectedSkill) return false;
           const result = await installFromGithub({
             name: pendingInstallSkill.detectedSkill.name,
             tmp_path: pendingInstallSkill.detectedSkill.tmp_path,
@@ -354,17 +347,17 @@
             await refreshLocal();
             await checkForSkillUpdates();
           }
+          return true;
         } catch (error) {
           installLog = String(error);
+          return false;
         } finally {
           installingSkill = "";
           pendingInstallSkill = null;
-          pendingInstallAgents = [];
         }
       };
       selectAgentModalOpen = true;
     } catch (error) {
-      downloadError = String(error);
       installLog = String(error);
     } finally {
       isDownloading = false;
@@ -391,7 +384,6 @@
 
   const handleInstall = async (skill: RemoteSkill) => {
     isDownloading = true;
-    downloadError = "";
     installingSkill = skill.id;
     try {
       if (!skill.url) return;
@@ -401,12 +393,11 @@
       selectAgentModalTitle = $t("installConfirm.title", { name: skill.name });
       selectAgentModalInitialSelection = agents.map((a) => a.id);
       selectAgentModalCallback = async (selectedAgents, method) => {
-        if (!pendingInstallSkill) return;
+        if (!pendingInstallSkill) return false;
         installLog = "";
         installingSkill = pendingInstallSkill.id;
-        pendingInstallAgents = selectedAgents;
         try {
-          if (!pendingInstallSkill.detectedSkill) return;
+          if (!pendingInstallSkill.detectedSkill) return false;
           const result = await installFromGithub({
             name: pendingInstallSkill.detectedSkill.name,
             tmp_path: pendingInstallSkill.detectedSkill.tmp_path,
@@ -429,17 +420,17 @@
             }
             await refreshLocal();
           }
+          return true;
         } catch (error) {
           installLog = String(error);
+          return false;
         } finally {
           installingSkill = "";
           pendingInstallSkill = null;
-          pendingInstallAgents = [];
         }
       };
       selectAgentModalOpen = true;
     } catch (error) {
-      downloadError = String(error);
       installLog = String(error);
     } finally {
       isDownloading = false;
@@ -543,7 +534,7 @@
           skill.name,
           knownCheck.version_groups,
           async (chosenPath) => {
-          openKnownSelectAgentModal(skill, chosenPath);
+            openKnownSelectAgentModal(skill, chosenPath);
           }
         );
         return;

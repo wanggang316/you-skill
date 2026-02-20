@@ -45,13 +45,25 @@
     }
   };
 
-  const buildGitHubUrl = (url: string, path: string | null | undefined) => {
+  const buildGitHubUrl = (
+    url: string,
+    path: string | null | undefined,
+    relativePath?: string
+  ) => {
     if (!url || !url.includes("github.com")) return null;
     const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
     if (!match) return null;
     const [, owner, repo] = match;
     const cleanRepo = repo.replace(/\.git$/, "");
-    return `https://github.com/${owner}/${cleanRepo}/tree/main/${path || ""}`;
+    const basePath = (path || "").replace(/^\/+|\/+$/g, "");
+    if (!relativePath) {
+      return basePath
+        ? `https://github.com/${owner}/${cleanRepo}/tree/main/${basePath}`
+        : `https://github.com/${owner}/${cleanRepo}`;
+    }
+    const normalizedRelativePath = relativePath.replace(/^\/+/, "");
+    const fullPath = basePath ? `${basePath}/${normalizedRelativePath}` : normalizedRelativePath;
+    return `https://github.com/${owner}/${cleanRepo}/tree/main/${fullPath}`;
   };
 
   const loadSkill = async () => {
@@ -97,11 +109,6 @@
     const [, owner, repo] = match;
     const cleanRepo = repo.replace(/\.git$/, "");
     return `https://raw.githubusercontent.com/${owner}/${cleanRepo}/refs/heads/main/${path}/SKILL.md`;
-  };
-
-  const getBaseUrl = () => {
-    if (!skill || !("url" in skill) || !skill.url) return null;
-    return buildGitHubUrl(skill.url, skill.path || "");
   };
 
   const resolveLocalPath = (relativePath: string) => {
@@ -245,7 +252,7 @@
       if (currentType === "local") {
         const localPath = resolveLocalPath(href);
         if (localPath) await openInFileManager(localPath);
-      } else if (getBaseUrl() && "url" in skill) {
+      } else if ("url" in skill && skill.url) {
         const fullUrl = buildGitHubUrl(skill.url, skill.path || "", href);
         if (fullUrl) await open(fullUrl);
       }
