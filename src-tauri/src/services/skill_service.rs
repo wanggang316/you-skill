@@ -13,7 +13,7 @@ use crate::services::skill_lock_service::{
 use crate::utils::file::FileHelper;
 use crate::utils::folder::FolderHelper;
 use crate::utils::github::GithubHelper;
-use crate::utils::path::{expand_home, remove_path_any};
+use crate::utils::path::{canonical_skills_root, expand_home, remove_path_any};
 use crate::utils::zip::ZipHelper;
 use std::collections::HashMap;
 use std::fs;
@@ -135,7 +135,7 @@ pub fn list_skills() -> Result<Vec<LocalSkill>, String> {
   let mut skills: Vec<LocalSkill> = Vec::new();
   let mut skill_index: HashMap<String, usize> = HashMap::new();
 
-  let global_root = expand_home("~/.agents/skills");
+  let global_root = canonical_skills_root()?;
   if global_root.exists() && global_root.is_dir() {
     for entry in fs::read_dir(&global_root).map_err(|e| e.to_string())? {
       let entry = entry.map_err(|e| e.to_string())?;
@@ -750,11 +750,6 @@ fn prepare_canonical_skill_dir(source: &Path, name: &str) -> Result<PathBuf, Str
   }
   copy_dir_all_sync(source, &canonical_skill_dir)?;
   Ok(canonical_skill_dir)
-}
-
-fn canonical_skills_root() -> Result<PathBuf, String> {
-  let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
-  Ok(home_dir.join(".agents").join("skills"))
 }
 
 fn canonical_skill_dir_by_name(name: &str) -> Result<PathBuf, String> {

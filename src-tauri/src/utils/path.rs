@@ -1,6 +1,11 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+pub fn canonical_skills_root() -> Result<PathBuf, String> {
+  let home = dirs_next::home_dir().ok_or("Could not find home directory")?;
+  Ok(home.join(".agents").join("skills"))
+}
+
 pub fn expand_home(path: &str) -> PathBuf {
   if path.starts_with("~/") {
     if let Some(home) = dirs_next::home_dir() {

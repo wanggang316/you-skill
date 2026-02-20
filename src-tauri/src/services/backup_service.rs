@@ -1,4 +1,5 @@
 use crate::config::{load_config, save_config};
+use crate::utils::path::canonical_skills_root;
 use chrono::Local;
 use std::fs;
 use std::path::Path;
@@ -13,8 +14,7 @@ pub struct BackupResult {
 
 /// Backup skills directory to a ZIP file
 pub fn backup_skills_sync(backup_folder: String) -> Result<BackupResult, String> {
-  let home = dirs_next::home_dir().ok_or("无法获取用户目录")?;
-  let skills_path = home.join(".agents").join("skills");
+  let skills_path = canonical_skills_root()?;
 
   if !skills_path.exists() {
     return Ok(BackupResult {
