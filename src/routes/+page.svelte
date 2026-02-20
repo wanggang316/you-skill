@@ -32,17 +32,13 @@
     SourceVersionGroup,
   } from "../lib/api/skills";
 
-  type ViewLocalSkill = {
+  type LocalSkillView = {
     name: string;
     canonical_path: string;
     agents: string[];
-    scope: "global";
-    managed_status: "managed" | "unmanaged";
     source_type: "github" | "native" | "unknown";
     global_folder: string | null;
     installed_agent_apps: import("../lib/api/skills").InstalledAgentApp[];
-    name_conflict: boolean;
-    conflict_with_managed: boolean;
   };
 
   // Shared state for modals
@@ -126,37 +122,20 @@
     });
   });
 
-  const toViewLocalSkill = (
-    skill: LocalSkill,
-    managedStatus: "managed" | "unmanaged"
-  ): ViewLocalSkill => {
+  const toLocalSkillView = (skill: LocalSkill): LocalSkillView => {
     const agents = Array.from(new Set(skill.installed_agent_apps.map((app) => app.id)));
     const canonicalPath = skill.global_folder || skill.installed_agent_apps[0]?.skill_folder || "";
     return {
       name: skill.name,
       canonical_path: canonicalPath,
       agents,
-      scope: "global",
-      managed_status: managedStatus,
       source_type: skill.source_type,
       global_folder: skill.global_folder ?? null,
       installed_agent_apps: skill.installed_agent_apps,
-      name_conflict: false,
-      conflict_with_managed: false,
     };
   };
 
-  const managedSkills = $derived.by(() =>
-    filteredLocalSkills
-      .filter((skill) => skill.source_type === "github" || skill.source_type === "native")
-      .map((skill) => toViewLocalSkill(skill, "managed"))
-  );
-
-  const unmanagedSkills = $derived.by(() =>
-    filteredLocalSkills
-      .filter((skill) => skill.source_type === "unknown")
-      .map((skill) => toViewLocalSkill(skill, "unmanaged"))
-  );
+  const localSkillViews = $derived.by(() => filteredLocalSkills.map((skill) => toLocalSkillView(skill)));
 
   // Track if remote skills have been loaded
   let remoteLoaded = $state(false);
@@ -438,7 +417,7 @@
     }
   };
 
-  const openSelectAgentModal = (skill: ViewLocalSkill) => {
+  const openSelectAgentModal = (skill: LocalSkillView) => {
     if (skill.source_type === "unknown") {
       startUnknownFlow(skill).catch((error) => {
         localError = String(error);
@@ -446,7 +425,7 @@
       return;
     }
 
-    startManagedFlow(skill).catch((error) => {
+    startSourceTypeFlow(skill).catch((error) => {
       localError = String(error);
     });
   };
@@ -473,7 +452,7 @@
     checkSkillVersionModalOpen = true;
   };
 
-  const openManagedSelectAgentModal = (skill: ViewLocalSkill, sourcePath: string) => {
+  const openSourceTypeSelectAgentModal = (skill: LocalSkillView, sourcePath: string) => {
     selectAgentModalTitle = skill.name;
     selectAgentModalInitialSelection = skill.agents || [];
     selectAgentModalCallback = async (selectedAgents, method) => {
@@ -482,7 +461,7 @@
     selectAgentModalOpen = true;
   };
 
-  const openUnknownSelectAgentModal = (skill: ViewLocalSkill, sourcePath: string) => {
+  const openUnknownSelectAgentModal = (skill: LocalSkillView, sourcePath: string) => {
     selectAgentModalTitle = skill.name;
     selectAgentModalInitialSelection = skill.agents || [];
     selectAgentModalCallback = async (selectedAgents, method) => {
@@ -507,7 +486,7 @@
   };
 
   const startUnknownFlow = async (
-    skill: ViewLocalSkill,
+    skill: LocalSkillView,
     skipPermissionPrompt = false
   ): Promise<void> => {
     if (!skipPermissionPrompt && !get(settings).unknown_skill_install_permission) {
@@ -544,7 +523,7 @@
     openUnknownSelectAgentModal(skill, resolvedSourcePath);
   };
 
-  const startManagedFlow = async (skill: ViewLocalSkill): Promise<void> => {
+  const startSourceTypeFlow = async (skill: LocalSkillView): Promise<void> => {
     const copyCheck = await checkSkillVersion(
       skill.name,
       skill.global_folder,
@@ -557,19 +536,19 @@
         skill.name,
         copyCheck.version_groups,
         async (chosenPath) => {
-          openManagedSelectAgentModal(skill, chosenPath);
+          openSourceTypeSelectAgentModal(skill, chosenPath);
         }
       );
       return;
     }
     if (!resolvedSourcePath) {
-      throw new Error("No source path available for managed skill");
+      throw new Error("No source path available for this skill");
     }
-    openManagedSelectAgentModal(skill, resolvedSourcePath);
+    openSourceTypeSelectAgentModal(skill, resolvedSourcePath);
   };
 
   const manageSkillAgentAppsFlow = async (
-    skill: ViewLocalSkill,
+    skill: LocalSkillView,
     selectedAgents: string[],
     method: "symlink" | "copy",
     sourcePath: string
@@ -601,21 +580,21 @@
     }
   };
 
-  const handleDeleteSkill = async (skill: ViewLocalSkill) => {
+  const handleDeleteSkill = async (skill: LocalSkillView) => {
     const { confirm } = await import("@tauri-apps/plugin-dialog");
     try {
       const confirmed = await confirm($t("confirm.deleteSkill", { name: skill.name }), {
         title: $t("confirm.deleteTitle"),
       });
       if (!confirmed) return;
-      await deleteSkill(skill.name, skill.canonical_path, skill.scope, skill.agents || []);
+      await deleteSkill(skill.name, skill.canonical_path, "global", skill.agents || []);
       await refreshLocal();
     } catch (error) {
       localError = String(error);
     }
   };
 
-  const handleViewSkill = (skill: ViewLocalSkill | RemoteSkill) => {
+  const handleViewSkill = (skill: LocalSkillView | RemoteSkill) => {
     const type = "canonical_path" in skill ? "local" : "remote";
     goto(`/skills/${type}/${encodeURIComponent(skill.name)}`);
   };
@@ -666,9 +645,7 @@
           {agents}
           {localLoading}
           {localError}
-          {filteredLocalSkills}
-          {managedSkills}
-          {unmanagedSkills}
+          {localSkillViews}
           {agentMap}
           {skillsWithUpdate}
           {updatingSkills}

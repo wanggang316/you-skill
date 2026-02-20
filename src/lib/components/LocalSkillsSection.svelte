@@ -9,9 +9,7 @@
     agents,
     localLoading,
     localError,
-    filteredLocalSkills,
-    managedSkills,
-    unmanagedSkills,
+    localSkillViews,
     agentMap,
     skillsWithUpdate = [],
     updatingSkills = [],
@@ -86,7 +84,7 @@
       >
         {$t("local.loading")}
       </div>
-    {:else if filteredLocalSkills.length === 0}
+    {:else if localSkillViews.length === 0}
       <div
         class="border-base-300 bg-base-100 text-base-content-muted rounded-2xl border border-dashed p-6 text-center text-sm"
       >
@@ -94,7 +92,7 @@
       </div>
     {:else}
       <div class="space-y-2">
-        {#each [...managedSkills, ...unmanagedSkills] as skill}
+        {#each localSkillViews as skill}
           <div class="border-base-300 bg-base-100 rounded-2xl border p-4 transition">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex items-center gap-2">
@@ -105,13 +103,9 @@
                 >
                   {skill.name}
                 </button>
-                {#if skill.managed_status === "unmanaged"}
-                  <span
-                    class="bg-base-300 text-base-content-subtle rounded-full px-2 py-0.5 text-[11px]"
-                  >
-                    {$t("local.section.unmanaged")}
-                  </span>
-                {/if}
+                <span class="bg-base-300 text-base-content-subtle rounded-full px-2 py-0.5 text-[11px]">
+                  {skill.source_type}
+                </span>
               </div>
               <div class="flex items-center gap-2">
                 {#if hasUpdate(skill) && onUpdateSkill}
@@ -145,7 +139,7 @@
               onclick={() => onOpenSelectAgentModal(skill)}
               type="button"
             >
-              <span>{$t("local.section.managedCount", { count: skill.agents.length })}</span>
+              <span>{$t("local.section.appCount", { count: skill.agents.length })}</span>
               <Blend size={10} />
             </button>
           </div>
