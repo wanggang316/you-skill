@@ -740,33 +740,16 @@ fn install_skill_to_apps(
   selected_apps: &[SelectedAgentPath],
 ) -> Result<(), String> {
   let mut errors = Vec::new();
-
-  match method {
-    InstallMethod::Symlink => {
-      let canonical_skill_dir = prepare_canonical_skill_dir(source, name)?;
-      for app in selected_apps {
-        if let Err(err) = fs::create_dir_all(&app.global_path) {
-          errors.push(format!("{}: {}", app.display_name, err));
-          continue;
-        }
-        let target = app.global_path.join(name);
-        if let Err(err) = install_to_app(&canonical_skill_dir, &target, method) {
-          errors.push(format!("{}: {}", app.display_name, err));
-        }
-      }
-    },
-    InstallMethod::Copy => {
-      for app in selected_apps {
-        if let Err(err) = fs::create_dir_all(&app.global_path) {
-          errors.push(format!("{}: {}", app.display_name, err));
-          continue;
-        }
-        let target = app.global_path.join(name);
-        if let Err(err) = install_to_app(source, &target, method) {
-          errors.push(format!("{}: {}", app.display_name, err));
-        }
-      }
-    },
+  let canonical_skill_dir = prepare_canonical_skill_dir(source, name)?;
+  for app in selected_apps {
+    if let Err(err) = fs::create_dir_all(&app.global_path) {
+      errors.push(format!("{}: {}", app.display_name, err));
+      continue;
+    }
+    let target = app.global_path.join(name);
+    if let Err(err) = install_to_app(&canonical_skill_dir, &target, method) {
+      errors.push(format!("{}: {}", app.display_name, err));
+    }
   }
 
   if !errors.is_empty() {
