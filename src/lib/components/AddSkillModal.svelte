@@ -816,7 +816,7 @@
   }
 </script>
 
-<Modal bind:open title={$t("addSkill.title")} onClose={closeModal}>
+<Modal bind:open title={$t("addSkill.title")} onClose={closeModal} containerClass="max-w-xl">
   <div class="flex h-full min-h-0 w-full flex-col">
     <!-- Content -->
     <div class="flex-1 p-6 pt-1">
@@ -887,7 +887,7 @@
 
           {#if detectedSkills.length > 0}
             <div class="space-y-2">
-              <p class="text-base-content text-sm font-medium">
+              <p class="text-base-content text-sm">
                 {$t("addSkill.github.selectSkill")}
               </p>
               <div
@@ -919,7 +919,7 @@
       {:else if activeTab === "zip"}
         <!-- ZIP Mode -->
         <div class="space-y-3">
-          <p class="text-base-content-muted text-xs">
+          <p class="text-base-content-muted text-sm">
             {$t("addSkill.zip.description")}
           </p>
           <button
@@ -967,7 +967,7 @@
 
           {#if detectedZipSkills.length > 0}
             <div class="space-y-2">
-              <p class="text-base-content text-sm font-medium">
+              <p class="text-base-content text-sm">
                 {$t("addSkill.zip.selectSkill")}
               </p>
               <div
@@ -999,7 +999,7 @@
       {:else}
         <!-- Folder Mode -->
         <div class="space-y-3">
-          <p class="text-base-content-muted text-xs">
+          <p class="text-base-content-muted text-sm">
             {$t("addSkill.folder.description")}
           </p>
           <button
@@ -1047,7 +1047,7 @@
 
           {#if detectedFolderSkills.length > 0}
             <div class="space-y-2">
-              <p class="text-base-content text-sm font-medium">
+              <p class="text-base-content text-sm">
                 {$t("addSkill.folder.selectSkill")}
               </p>
               <div
@@ -1079,7 +1079,7 @@
       {/if}
       <!-- Agent Selection -->
       <div class="mt-6 space-y-3">
-        <p class="text-base-content text-sm font-medium">
+        <p class="text-base-content text-sm">
           {$t("addSkill.selectAgents")}
         </p>
         <AgentSelector {agents} bind:selectedIds={selectedAgents} />

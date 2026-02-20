@@ -115,8 +115,7 @@ const translations: Record<string, Dictionary> = {
     "addSkill.folder.selectSkill": "Select a skill to install:",
     "addSkill.folder.dropReadError":
       "Could not read the folder from drag and drop. Please drag the folder itself or use click-to-select.",
-    "addSkill.github.description":
-      "Enter a GitHub repository URL or skill directory URL containing the skill.",
+    "addSkill.github.description": "Enter a GitHub repository URL containing the skill.",
     "addSkill.github.urlPlaceholder": "https://github.com/owner/repo",
     "addSkill.github.detect": "Detect",
     "addSkill.github.selectSkill": "Select a skill to install:",
@@ -295,7 +294,7 @@ const translations: Record<string, Dictionary> = {
     "addSkill.folder.detect": "检测",
     "addSkill.folder.selectSkill": "选择要安装的 skill：",
     "addSkill.folder.dropReadError": "无法读取拖入的文件夹，请拖拽文件夹本身，或改用点击选择。",
-    "addSkill.github.description": "输入包含 skill 的 GitHub 仓库地址或 skill 目录地址",
+    "addSkill.github.description": "输入包含 skill 的 GitHub 仓库地址",
     "addSkill.github.urlPlaceholder": "https://github.com/owner/repo",
     "addSkill.github.detect": "检测",
     "addSkill.github.selectSkill": "选择要安装的 skill：",
