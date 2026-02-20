@@ -106,7 +106,8 @@ const translations: Record<string, Dictionary> = {
     "addSkill.zip.selectSkill": "Select a skill to install:",
     "addSkill.zip.dropReadError":
       "Could not read the compressed file from drag and drop. Please try click-to-select.",
-    "addSkill.zip.invalidCompressedFile": "Please select a compressed file in .zip or .skill format.",
+    "addSkill.zip.invalidCompressedFile":
+      "Please select a compressed file in .zip or .skill format.",
     "addSkill.folder.description": "Select a skill folder to install.",
     "addSkill.folder.selectFolder": "Click to select folder",
     "addSkill.folder.clickToChange": "Click to change folder",
@@ -291,8 +292,7 @@ const translations: Record<string, Dictionary> = {
     "addSkill.folder.clickToChange": "点击更换文件夹",
     "addSkill.folder.detect": "检测",
     "addSkill.folder.selectSkill": "选择要安装的 skill：",
-    "addSkill.folder.dropReadError":
-      "无法读取拖入的文件夹，请拖拽文件夹本身，或改用点击选择。",
+    "addSkill.folder.dropReadError": "无法读取拖入的文件夹，请拖拽文件夹本身，或改用点击选择。",
     "addSkill.github.description": "输入 GitHub 仓库地址来检测 skills。",
     "addSkill.github.urlPlaceholder": "https://github.com/owner/repo",
     "addSkill.github.detect": "检测",

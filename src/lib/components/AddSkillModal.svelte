@@ -118,6 +118,7 @@
   $effect(() => {
     if (!open) return;
     let disposed = false;
+    /** @param {DragEvent} event */
     const onWindowDragOver = (event) => {
       event.preventDefault();
       if (activeTab === "zip") isZipDragOver = true;
@@ -127,6 +128,7 @@
       isZipDragOver = false;
       isFolderDragOver = false;
     };
+    /** @param {DragEvent} event */
     const onWindowDrop = (event) => {
       event.preventDefault();
       isZipDragOver = false;
@@ -141,23 +143,25 @@
       try {
         const { getCurrentWebview } = await import("@tauri-apps/api/webview");
         const unlisten = await getCurrentWebview().onDragDropEvent((event) => {
-          if (event.type === "enter" || event.type === "over") {
+          const payload = event.payload;
+          if (payload.type === "enter" || payload.type === "over") {
             if (activeTab === "zip") isZipDragOver = true;
             if (activeTab === "folder") isFolderDragOver = true;
             return;
           }
 
-          if (event.type === "leave") {
+          if (payload.type === "leave") {
             isZipDragOver = false;
             isFolderDragOver = false;
             return;
           }
 
-          if (event.type === "drop") {
+          if (payload.type === "drop") {
             isZipDragOver = false;
             isFolderDragOver = false;
             if (activeTab !== "zip" && activeTab !== "folder") return;
-            const droppedPath = event.paths && event.paths.length > 0 ? event.paths[0] : "";
+            const droppedPath =
+              payload.paths && payload.paths.length > 0 ? payload.paths[0] : "";
             if (!droppedPath) return;
             const name = droppedPath.split(/[/\\]/).pop() || "";
             void applyDroppedPath(activeTab, droppedPath, name);
@@ -322,6 +326,7 @@
       const all = [];
       const readChunk = () => {
         reader.readEntries(
+          /** @param {any[]} entries */
           (entries) => {
             if (!entries.length) {
               resolve(all);
@@ -330,6 +335,7 @@
             all.push(...entries);
             readChunk();
           },
+          /** @param {unknown} error */
           (error) => reject(error)
         );
       };
@@ -818,30 +824,30 @@
       <!-- Tabs -->
       <div class="bg-base-100 sticky top-0 z-10 mb-6 pb-2">
         <div class="bg-base-200 flex gap-2 rounded-full p-1">
-        <button
-          class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "github" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
-          onclick={() => (activeTab = "github")}
-          type="button"
-        >
-          <Github size={16} />
-          {$t("addSkill.tab.github")}
-        </button>
-        <button
-          class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "zip" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
-          onclick={() => (activeTab = "zip")}
-          type="button"
-        >
-          <FileArchive size={16} />
-          {$t("addSkill.tab.zip")}
-        </button>
-        <button
-          class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "folder" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
-          onclick={() => (activeTab = "folder")}
-          type="button"
-        >
-          <Folder size={16} />
-          {$t("addSkill.tab.folder")}
-        </button>
+          <button
+            class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "github" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
+            onclick={() => (activeTab = "github")}
+            type="button"
+          >
+            <Github size={16} />
+            {$t("addSkill.tab.github")}
+          </button>
+          <button
+            class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "zip" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
+            onclick={() => (activeTab = "zip")}
+            type="button"
+          >
+            <FileArchive size={16} />
+            {$t("addSkill.tab.zip")}
+          </button>
+          <button
+            class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "folder" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
+            onclick={() => (activeTab = "folder")}
+            type="button"
+          >
+            <Folder size={16} />
+            {$t("addSkill.tab.folder")}
+          </button>
         </div>
       </div>
 
