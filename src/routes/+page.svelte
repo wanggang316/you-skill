@@ -135,7 +135,9 @@
     };
   };
 
-  const localSkillViews = $derived.by(() => filteredLocalSkills.map((skill) => toLocalSkillView(skill)));
+  const localSkillViews = $derived.by(() =>
+    filteredLocalSkills.map((skill) => toLocalSkillView(skill))
+  );
 
   // Track if remote skills have been loaded
   let remoteLoaded = $state(false);
@@ -587,7 +589,7 @@
         title: $t("confirm.deleteTitle"),
       });
       if (!confirmed) return;
-      await deleteSkill(skill.name, skill.canonical_path, "global", skill.agents || []);
+      await deleteSkill(skill.name);
       await refreshLocal();
     } catch (error) {
       localError = String(error);

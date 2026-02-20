@@ -10,13 +10,8 @@ pub fn list_skills() -> Result<Vec<LocalSkill>, String> {
 }
 
 #[tauri::command]
-pub fn delete_skill(
-  name: String,
-  canonical_path: String,
-  scope: String,
-  agents: Vec<String>,
-) -> Result<(), String> {
-  skill_service::delete_skill(name, canonical_path, scope, agents)
+pub fn delete_skill(name: String) -> Result<(), String> {
+  skill_service::delete_skill(name)
 }
 
 #[tauri::command]

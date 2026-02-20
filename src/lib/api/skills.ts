@@ -123,20 +123,10 @@ export async function listSkills(): Promise<LocalSkill[]> {
 }
 
 /**
- * 完整删除技能（先删除软链接，再删除源文件）
+ * 删除技能（按名称自动解析路径并清理关联）
  */
-export async function deleteSkill(
-  name: string,
-  canonicalPath: string,
-  scope: string,
-  agents: string[]
-): Promise<void> {
-  return apiCall<void>("delete_skill", {
-    name,
-    canonicalPath,
-    scope,
-    agents,
-  });
+export async function deleteSkill(name: string): Promise<void> {
+  return apiCall<void>("delete_skill", { name });
 }
 
 // ============ Remote Skills ============

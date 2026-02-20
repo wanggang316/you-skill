@@ -103,7 +103,9 @@
                 >
                   {skill.name}
                 </button>
-                <span class="bg-base-300 text-base-content-subtle rounded-full px-2 py-0.5 text-[11px]">
+                <span
+                  class="bg-base-300 text-base-content-subtle rounded-full px-2 py-0.5 text-[11px]"
+                >
                   {skill.source_type}
                 </span>
               </div>

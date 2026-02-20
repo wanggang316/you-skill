@@ -16,7 +16,6 @@ use crate::utils::github::GithubHelper;
 use crate::utils::path::{expand_home, remove_path_any};
 use crate::utils::zip::ZipHelper;
 use std::collections::HashMap;
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -342,8 +341,7 @@ pub fn manage_skill_agent_apps(
     return Err("source_path does not exist".to_string());
   }
 
-  let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
-  let canonical_root = home_dir.join(".agents").join("skills");
+  let canonical_root = canonical_skills_root()?;
   let source = if source_path.starts_with(&canonical_root) {
     source_path
   } else {
@@ -447,39 +445,17 @@ pub fn check_skill_update(skill_name: String, remote_sha: String) -> Result<bool
   Ok(local_sha != remote_sha)
 }
 
-pub fn delete_skill(
-  name: String,
-  canonical_path: String,
-  _scope: String,
-  _agents: Vec<String>,
-) -> Result<(), String> {
-  let skill_path = PathBuf::from(&canonical_path);
-  let folder_name = skill_path
-    .file_name()
-    .map(|s| s.to_string_lossy().to_string())
-    .ok_or("无法获取技能文件夹名")?;
-  let cwd = env::current_dir().map_err(|e| e.to_string())?;
-
-  for app in local_agent_apps() {
-    let mut dirs_to_check: Vec<PathBuf> = Vec::new();
-    if let Some(ref project_path) = app.project_path {
-      dirs_to_check.push(cwd.join(project_path));
-    }
-    if let Some(ref global_path) = app.global_path {
-      dirs_to_check.push(expand_home(global_path));
-    }
-    for dir in dirs_to_check {
-      let link_path = dir.join(&folder_name);
-      if link_path.exists() || link_path.is_symlink() {
-        let _ = remove_path_any(&link_path);
-      }
-    }
-  }
-
+pub fn delete_skill(name: String) -> Result<(), String> {
+  // 1) 删除 ~/.agents/skills/{name}
+  let skill_path = canonical_skill_dir_by_name(&name)?;
   if skill_path.exists() || skill_path.is_symlink() {
     remove_path_any(&skill_path)?;
   }
 
+  // 2) 删除所有 agent app 下的关联
+  remove_existing_associations_from_all_apps(&name)?;
+
+  // 3) 清理 lock
   let _ = crate::services::skill_lock_service::remove_skill_from_lock(name.clone());
   let _ = remove_skill_from_native_lock(name);
 
@@ -756,8 +732,7 @@ fn install_skill_to_apps(
 }
 
 fn prepare_canonical_skill_dir(source: &Path, name: &str) -> Result<PathBuf, String> {
-  let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
-  let canonical_root = home_dir.join(".agents/skills");
+  let canonical_root = canonical_skills_root()?;
   fs::create_dir_all(&canonical_root).map_err(|e| e.to_string())?;
 
   let canonical_skill_dir = canonical_root.join(name);
@@ -775,6 +750,18 @@ fn prepare_canonical_skill_dir(source: &Path, name: &str) -> Result<PathBuf, Str
   }
   copy_dir_all_sync(source, &canonical_skill_dir)?;
   Ok(canonical_skill_dir)
+}
+
+fn canonical_skills_root() -> Result<PathBuf, String> {
+  let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
+  Ok(home_dir.join(".agents").join("skills"))
+}
+
+fn canonical_skill_dir_by_name(name: &str) -> Result<PathBuf, String> {
+  if name.trim().is_empty() {
+    return Err("Skill name is required".to_string());
+  }
+  Ok(canonical_skills_root()?.join(name))
 }
 
 fn normalize_optional_string(value: Option<String>) -> Option<String> {
