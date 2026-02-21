@@ -1,9 +1,9 @@
 <script>
-  import { Loader2 } from "@lucide/svelte";
   import { get } from "svelte/store";
   import { t } from "../i18n";
   import Modal from "./ui/Modal.svelte";
   import AgentSelector from "./AgentSelector.svelte";
+  import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
   import { settings } from "../stores/settings";
 
   let {
@@ -74,16 +74,14 @@
       <option value="symlink">{$t("settings.syncMode.symlink")}</option>
       <option value="copy">{$t("settings.syncMode.copy")}</option>
     </select>
-    <button
-      class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-6 py-2 text-sm transition disabled:opacity-50"
+    <PrimaryActionButton
       onclick={handleConfirm}
       disabled={!hasSelection || isInstalling}
-      type="button"
+      loading={isInstalling}
+      loadingText={$t("selectAgent.confirm")}
+      className="px-6"
     >
-      {#if isInstalling}
-        <Loader2 size={16} class="mr-1 inline animate-spin" />
-      {/if}
       {$t("selectAgent.confirm")}
-    </button>
+    </PrimaryActionButton>
   {/snippet}
 </Modal>

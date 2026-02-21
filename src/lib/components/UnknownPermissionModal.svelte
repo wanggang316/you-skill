@@ -1,5 +1,6 @@
 <script lang="ts">
   import Modal from "./ui/Modal.svelte";
+  import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
   import { t } from "../i18n";
 
   let {
@@ -49,12 +50,8 @@
       <input type="checkbox" bind:checked={rememberChoice} />
       {$t("local.unknown.rememberChoice")}
     </label>
-    <button
-      class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-4 py-2 text-sm transition"
-      onclick={handleConfirm}
-      type="button"
-    >
+    <PrimaryActionButton onclick={handleConfirm}>
       {$t("selectAgent.confirm")}
-    </button>
+    </PrimaryActionButton>
   {/snippet}
 </Modal>

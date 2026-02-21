@@ -10,6 +10,7 @@
     installFromGithub,
   } from "../api/skills";
   import Modal from "./ui/Modal.svelte";
+  import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
   import AgentSelector from "./AgentSelector.svelte";
   import DetectedSkillList from "./DetectedSkillList.svelte";
   import { settings } from "../stores/settings";
@@ -889,18 +890,13 @@
               bind:value={githubUrl}
               onkeydown={(e) => e.key === "Enter" && handleDetectGithub()}
             />
-            <button
-              class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
+            <PrimaryActionButton
               onclick={handleDetectGithub}
               disabled={!githubUrl.trim() || isDetecting}
-              type="button"
+              loading={isDetecting}
             >
-              {#if isDetecting}
-                <Loader2 size={16} class="animate-spin" />
-              {:else}
-                {$t("addSkill.github.detect")}
-              {/if}
-            </button>
+              {$t("addSkill.github.detect")}
+            </PrimaryActionButton>
           </div>
 
           {#if githubError}
@@ -1073,18 +1069,14 @@
       <option value="symlink">{$t("settings.syncMode.symlink")}</option>
       <option value="copy">{$t("settings.syncMode.copy")}</option>
     </select>
-    <button
-      class="bg-primary text-primary-content hover:bg-primary-hover disabled:bg-primary/60 inline-flex select-none items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm"
+    <PrimaryActionButton
       onclick={handleConfirm}
       disabled={!canConfirm() || isInstalling}
-      type="button"
+      loading={isInstalling}
+      loadingText={$t("addSkill.installing")}
+      className="select-none"
     >
-      {#if isInstalling}
-        <Loader2 size={16} class="animate-spin" />
-        <span>{$t("addSkill.installing")}</span>
-      {:else}
-        {$t("addSkill.confirm")}
-      {/if}
-    </button>
+      {$t("addSkill.confirm")}
+    </PrimaryActionButton>
   {/snippet}
 </Modal>

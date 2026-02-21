@@ -1,5 +1,6 @@
 <script lang="ts">
   import Modal from "./ui/Modal.svelte";
+  import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
   import { t } from "../i18n";
   import type { SourceVersionGroup } from "../api/skills";
 
@@ -82,13 +83,8 @@
     >
       {$t("addSkill.cancel")}
     </button>
-    <button
-      class="bg-primary text-primary-content hover:bg-primary-hover rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
-      onclick={handleConfirm}
-      disabled={!selectedSourcePath}
-      type="button"
-    >
+    <PrimaryActionButton onclick={handleConfirm} disabled={!selectedSourcePath}>
       {$t("selectAgent.confirm")}
-    </button>
+    </PrimaryActionButton>
   {/snippet}
 </Modal>
