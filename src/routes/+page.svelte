@@ -71,6 +71,7 @@
   // Select agent modal state
   let selectAgentModalOpen = $state(false);
   let selectAgentModalTitle = $state("");
+  let selectAgentModalConfirmText = $state("");
   let selectAgentModalInitialSelection = $state<string[]>([]);
   let selectAgentModalCallback = $state<
     ((selectedAgents: string[], method: "symlink" | "copy") => Promise<boolean>) | null
@@ -212,7 +213,8 @@
         ? Array.from(new Set(localSkill.installed_agent_apps.map((app) => app.id)))
         : get(agentsStore).map((a) => a.id);
 
-      selectAgentModalTitle = $t("installConfirm.title", { name: skill.name });
+      selectAgentModalTitle = `${$t("remote.update")} ${skill.name}`;
+      selectAgentModalConfirmText = $t("selectAgent.confirm");
       selectAgentModalInitialSelection = currentAgents;
       selectAgentModalCallback = async (selectedAgents, method) => {
         if (!pendingInstallSkill) return false;
@@ -279,7 +281,8 @@
       const detectedSkill = await detectGithubAuto(skill.url, skill.name);
       pendingInstallSkill = { ...skill, detectedSkill };
 
-      selectAgentModalTitle = $t("installConfirm.title", { name: skill.name });
+      selectAgentModalTitle = `${$t("remote.install")} ${skill.name}`;
+      selectAgentModalConfirmText = $t("selectAgent.confirm");
       selectAgentModalInitialSelection = get(agentsStore).map((a) => a.id);
       selectAgentModalCallback = async (selectedAgents, method) => {
         if (!pendingInstallSkill) return false;
@@ -364,6 +367,7 @@
 
   const openSourceTypeSelectAgentModal = (skill: LocalSkill, sourcePath: string) => {
     selectAgentModalTitle = skill.name;
+    selectAgentModalConfirmText = $t("remote.update");
     selectAgentModalInitialSelection = getSkillAgentIds(skill);
     selectAgentModalCallback = async (selectedAgents, method) => {
       return manageSkillAgentAppsFlow(skill, selectedAgents, method, sourcePath);
@@ -373,6 +377,7 @@
 
   const openUnknownSelectAgentModal = (skill: LocalSkill, sourcePath: string) => {
     selectAgentModalTitle = skill.name;
+    selectAgentModalConfirmText = $t("remote.update");
     selectAgentModalInitialSelection = getSkillAgentIds(skill);
     selectAgentModalCallback = async (selectedAgents, method) => {
       try {
@@ -614,6 +619,7 @@
   <SelectAgentModal
     bind:open={selectAgentModalOpen}
     title={selectAgentModalTitle}
+    confirmText={selectAgentModalConfirmText}
     agents={$agentsStore}
     initialSelection={selectAgentModalInitialSelection}
     onConfirm={async (selectedAgents: string[], method: "symlink" | "copy") => {
@@ -624,6 +630,7 @@
     }}
     onCancel={() => {
       selectAgentModalCallback = null;
+      selectAgentModalConfirmText = "";
     }}
   />
 {/await}

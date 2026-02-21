@@ -9,6 +9,7 @@
   let {
     open = $bindable(false),
     title = "",
+    confirmText = "",
     agents = [],
     initialSelection = [],
     onConfirm = async () => true,
@@ -50,6 +51,7 @@
   }
 
   const hasSelection = $derived(selectedAgents.length > 0);
+  const finalConfirmText = $derived(confirmText || $t("selectAgent.confirm"));
 </script>
 
 <Modal
@@ -78,10 +80,10 @@
       onclick={handleConfirm}
       disabled={!hasSelection || isInstalling}
       loading={isInstalling}
-      loadingText={$t("selectAgent.confirm")}
+      loadingText={finalConfirmText}
       className="px-6"
     >
-      {$t("selectAgent.confirm")}
+      {finalConfirmText}
     </PrimaryActionButton>
   {/snippet}
 </Modal>
