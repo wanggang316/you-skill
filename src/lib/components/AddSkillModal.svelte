@@ -839,7 +839,6 @@
       method: selectedMethod,
     });
   }
-
 </script>
 
 <Modal bind:open title={$t("addSkill.title")} onClose={closeModal} containerClass="max-w-xl">
@@ -1075,7 +1074,7 @@
       <option value="copy">{$t("settings.syncMode.copy")}</option>
     </select>
     <button
-      class="bg-primary text-primary-content hover:bg-primary-hover inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm transition disabled:opacity-50"
+      class="bg-primary text-primary-content hover:bg-primary-hover disabled:bg-primary/60 inline-flex select-none items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm"
       onclick={handleConfirm}
       disabled={!canConfirm() || isInstalling}
       type="button"
