@@ -162,7 +162,7 @@
         {@const installed = isInstalled(skill)}
         {@const isBusy = installingSkill === skill.id || isDownloading}
         <div
-          class="border-base-300 bg-base-100 hover:bg-base-200 border-b px-4 py-3 transition"
+          class="border-base-300 bg-base-100 hover:bg-base-200 border-b px-4 py-4 transition"
           onclick={() => onViewSkill(skill)}
           onkeydown={(e) => (e.key === "Enter" || e.key === " ") && onViewSkill(skill)}
           role="button"
