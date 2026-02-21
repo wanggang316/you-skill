@@ -8,7 +8,8 @@ use crate::services::native_skill_lock_service::{
   add_skill_to_native_lock, read_native_skill_lock_internal, remove_skill_from_native_lock,
 };
 use crate::services::skill_lock_service::{
-  add_skill_to_lock, read_skill_lock_internal, SkillLockEntry, SkillLockFile,
+  add_skill_to_lock, read_skill_lock_internal, remove_skill_from_lock, SkillLockEntry,
+  SkillLockFile,
 };
 use crate::utils::file::FileHelper;
 use crate::utils::folder::FolderHelper;
@@ -147,7 +148,10 @@ pub fn detect_github_auto(
 fn detect_folder_exact(folder: &Path) -> Result<DetectedSkill, String> {
   let skill_md = folder.join("SKILL.md");
   if !skill_md.exists() {
-    return Err(format!("SKILL.md not found in folder: {}", folder.to_string_lossy()));
+    return Err(format!(
+      "SKILL.md not found in folder: {}",
+      folder.to_string_lossy()
+    ));
   }
 
   let name = FileHelper::read_skill_frontmatter(&skill_md)?
@@ -268,6 +272,7 @@ pub fn install_from_native(request: InstallNativeRequest) -> Result<InstallResul
     &request.method,
     &selected_apps,
   )?;
+  let _ = remove_skill_from_lock(request.name.clone())?;
   add_skill_to_native_lock(request.name.clone())?;
 
   Ok(InstallResult {
@@ -298,6 +303,7 @@ pub fn install_from_github(request: InstallGithubRequest) -> Result<InstallResul
     .map(|(owner, repo)| format!("{}/{}", owner, repo))
     .unwrap_or_else(|_| request.source_url.clone());
 
+  let _ = remove_skill_from_native_lock(request.name.clone())?;
   add_skill_to_lock(
     request.name.clone(),
     SkillLockEntry {
@@ -688,7 +694,10 @@ fn resolve_source_path_by_consistency(
       version_groups: vec![crate::models::SourceVersionGroup {
         version: "版本 1".to_string(),
         source_path: candidates[0].to_string_lossy().to_string(),
-        paths: candidates.iter().map(|p| p.to_string_lossy().to_string()).collect(),
+        paths: candidates
+          .iter()
+          .map(|p| p.to_string_lossy().to_string())
+          .collect(),
       }],
       requires_selection: false,
     });
@@ -702,7 +711,10 @@ fn resolve_source_path_by_consistency(
       crate::models::SourceVersionGroup {
         version: format!("版本 {}", idx + 1),
         source_path,
-        paths: paths.into_iter().map(|p| p.to_string_lossy().to_string()).collect(),
+        paths: paths
+          .into_iter()
+          .map(|p| p.to_string_lossy().to_string())
+          .collect(),
       }
     })
     .collect();
