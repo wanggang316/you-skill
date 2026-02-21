@@ -98,7 +98,7 @@
     {:else}
       <div class="space-y-2">
         {#each filteredLocalSkills as skill}
-          <div class="border-base-300 bg-base-100 rounded-2xl border p-4 transition">
+          <div class="border-base-300 bg-base-100 rounded-2xl border p-4 hover:bg-base-200 transition">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex items-center gap-2">
                 <button
@@ -142,12 +142,12 @@
             </div>
 
             <button
-              class="text-base-content/80 hover:border-base-300 hover:bg-base-300 inline-flex cursor-pointer items-center gap-1 rounded-md border border-transparent px-0.5 py-0.5 text-[11px] transition"
+              class="text-base-content/55 hover:text-base-content inline-flex cursor-pointer items-center gap-1 rounded-md border border-transparent p-0 text-[11px] transition"
               onclick={() => onOpenSelectAgentModal(skill)}
               type="button"
             >
               <span>{$t("local.section.appCount", { count: appCount(skill) })}</span>
-              <Blend size={10} />
+              <ChevronsUpDown size={10} />
             </button>
           </div>
         {/each}
