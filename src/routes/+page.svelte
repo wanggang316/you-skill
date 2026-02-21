@@ -32,12 +32,15 @@
     SourceVersionGroup,
   } from "../lib/api/skills";
 
+  type HomeTab = "local" | "remote";
+  const HOME_TAB_STORAGE_KEY = "youskill:home-tab";
+
   // Shared state for modals
   let addSkillModalOpen = $state(false);
   let hasUpdate = $state(false);
 
   // Active tab
-  let activeTab = $state("local");
+  let activeTab = $state<HomeTab>("local");
 
   // Local skills state
   let localSkills = $state<LocalSkill[]>([]);
@@ -119,11 +122,29 @@
   // Track if remote skills have been loaded
   let remoteLoaded = $state(false);
 
+  const isHomeTab = (value: string | null): value is HomeTab =>
+    value === "local" || value === "remote";
+
+  const persistHomeTab = (tab: HomeTab) => {
+    sessionStorage.setItem(HOME_TAB_STORAGE_KEY, tab);
+  };
+
   // Initialize and load shared data on mount - 只加载本地数据
   onMount(() => {
+    const storedTab = sessionStorage.getItem(HOME_TAB_STORAGE_KEY);
+    if (isHomeTab(storedTab)) {
+      activeTab = storedTab;
+    }
+    persistHomeTab(activeTab);
+
     // 只加载首屏必需的本地数据
     loadAgents().catch(console.error);
     refreshLocal().catch(console.error);
+
+    if (activeTab === "remote") {
+      remoteLoaded = true;
+      loadRemote(true).catch(console.error);
+    }
 
     // Listen for tray menu events
     listen("open-install-modal", () => {
@@ -580,7 +601,9 @@
 
   // Handle tab change - 延迟加载非关键数据
   const handleTabChange = (tab: string) => {
+    if (!isHomeTab(tab)) return;
     activeTab = tab;
+    persistHomeTab(tab);
 
     // 切换到远程标签时，首次加载远程数据
     if (tab === "remote" && !remoteLoaded) {
