@@ -202,7 +202,7 @@
             >
               {#if hasUpdate(skill) && onUpdateSkill}
                 <button
-                  class="border-base-300 bg-base-300 text-primary hover:bg-primary hover:text-primary-content inline-flex items-center rounded-lg border px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
+                  class="border-base-300 bg-base-300 text-primary hover:bg-primary hover:text-primary-content inline-flex h-6 items-center rounded-lg border px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
                   onclick={(e) => {
                     e?.stopPropagation();
                     onUpdateSkill(skill);
@@ -211,13 +211,14 @@
                   type="button"
                 >
                   {#if isUpdating(skill)}
-                    <RefreshCw size={12} class="mr-1.5 animate-spin" />
+                    <Loader2 size={12} class="animate-spin" />
+                  {:else}
+                    {getButtonText(skill)}
                   {/if}
-                  {getButtonText(skill)}
                 </button>
               {:else}
                 <button
-                  class="border-base-300 bg-base-300 text-primary hover:bg-primary hover:text-primary-content inline-flex items-center rounded-lg border px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
+                  class="border-base-300 bg-base-300 text-primary hover:bg-primary hover:text-primary-content inline-flex h-6 items-center rounded-lg border px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
                   onclick={(e) => {
                     e?.stopPropagation();
                     onInstall(skill);
@@ -226,9 +227,10 @@
                   type="button"
                 >
                   {#if installingSkill === skill.id}
-                    <Loader2 size={12} class="mr-1.5 animate-spin" />
+                    <Loader2 size={12} class="animate-spin" />
+                  {:else}
+                    {getButtonText(skill)}
                   {/if}
-                  {getButtonText(skill)}
                 </button>
               {/if}
             </div>

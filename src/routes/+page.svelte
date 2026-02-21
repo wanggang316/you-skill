@@ -343,6 +343,19 @@
     });
   };
 
+  const handleLocalUpdateSkill = async (skill: LocalSkill) => {
+    const remoteSkill = get(skillsWithUpdateStore).find((item) => item.name === skill.name);
+    if (!remoteSkill) {
+      localErrorStore.set(`No update metadata found for skill ${skill.name}`);
+      return;
+    }
+    if (!remoteSkill.url) {
+      localErrorStore.set(`Skill ${skill.name} has no source URL`);
+      return;
+    }
+    await handleUpdateSkill(remoteSkill);
+  };
+
   const openUnknownPermissionModal = (
     skillName: string,
     onConfirm: (rememberChoice: boolean) => Promise<void>
@@ -581,7 +594,7 @@
           onDeleteSkill={handleDeleteSkill}
           onViewSkill={handleViewSkill}
           onOpenSelectAgentModal={openSelectAgentModal}
-          onUpdateSkill={handleUpdateSkill}
+          onUpdateSkill={handleLocalUpdateSkill}
         />
       {:else}
         <RemoteSkillsSection
