@@ -12,14 +12,17 @@ use crate::services::skill_lock_service::{
   SkillLockFile,
 };
 use crate::utils::file::FileHelper;
-use crate::utils::folder::FolderHelper;
+use crate::utils::folder::{copy_dir_all_sync, FolderHelper};
 use crate::utils::github::GithubHelper;
 use crate::utils::path::{canonical_skills_root, expand_home, remove_path_any};
+use crate::utils::time::now_millis;
 use crate::utils::zip::ZipHelper;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+const SKILL_MD_FILE_NAME: &str = "SKILL.md";
 
 pub fn detect_folder(folder_path: String) -> Result<Vec<DetectedSkill>, String> {
   let folder = Path::new(&folder_path);
@@ -27,11 +30,11 @@ pub fn detect_folder(folder_path: String) -> Result<Vec<DetectedSkill>, String> 
     return Err(format!("Folder does not exist: {}", folder_path));
   }
 
-  if folder.join("SKILL.md").exists() {
+  if folder.join(SKILL_MD_FILE_NAME).exists() {
     return Ok(vec![detect_folder_exact(folder)?]);
   }
 
-  let skill_dirs = FolderHelper::find_dirs_containing_file(folder, "SKILL.md")?;
+  let skill_dirs = FolderHelper::find_dirs_containing_file(folder, SKILL_MD_FILE_NAME)?;
   if skill_dirs.is_empty() {
     return Err(format!("SKILL.md not found in folder: {}", folder_path));
   }
@@ -44,9 +47,9 @@ pub fn detect_folder(folder_path: String) -> Result<Vec<DetectedSkill>, String> 
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_default();
       detected.skill_path = if relative_dir.is_empty() {
-        "SKILL.md".to_string()
+        SKILL_MD_FILE_NAME.to_string()
       } else {
-        format!("{}/SKILL.md", relative_dir)
+        format!("{}/{}", relative_dir, SKILL_MD_FILE_NAME)
       };
       result.push(detected);
     }
@@ -73,7 +76,7 @@ pub fn detect_github_manual(github_path: String) -> Result<Vec<DetectedSkill>, S
   let clone_dir = create_temp_dir(&format!("detect-github-manual-{}-{}", owner, repo))?;
   GithubHelper::clone_repo_to(&owner, &repo, &clone_dir)?;
 
-  let skill_dirs = FolderHelper::find_dirs_containing_file(&clone_dir, "SKILL.md")?;
+  let skill_dirs = FolderHelper::find_dirs_containing_file(&clone_dir, SKILL_MD_FILE_NAME)?;
   if skill_dirs.is_empty() {
     return Err("No SKILL.md found in repository".to_string());
   }
@@ -82,17 +85,17 @@ pub fn detect_github_manual(github_path: String) -> Result<Vec<DetectedSkill>, S
   for dir in skill_dirs {
     match detect_folder_exact(&dir) {
       Ok(mut detected) => {
-        let relative_dir = dir
-          .strip_prefix(&clone_dir)
-          .map(|p| p.to_string_lossy().to_string())
-          .unwrap_or_default();
-        detected.skill_path = if relative_dir.is_empty() {
-          "SKILL.md".to_string()
-        } else {
-          format!("{}/SKILL.md", relative_dir)
-        };
-        result.push(detected);
-      },
+          let relative_dir = dir
+            .strip_prefix(&clone_dir)
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
+          detected.skill_path = if relative_dir.is_empty() {
+            SKILL_MD_FILE_NAME.to_string()
+          } else {
+            format!("{}/{}", relative_dir, SKILL_MD_FILE_NAME)
+          };
+          result.push(detected);
+        },
       Err(_) => continue,
     }
   }
@@ -112,13 +115,13 @@ pub fn detect_github_auto(
   let clone_dir = create_temp_dir(&format!("detect-github-auto-{}-{}", owner, repo))?;
   GithubHelper::clone_repo_to(&owner, &repo, &clone_dir)?;
 
-  let skill_dirs = FolderHelper::find_dirs_containing_file(&clone_dir, "SKILL.md")?;
+  let skill_dirs = FolderHelper::find_dirs_containing_file(&clone_dir, SKILL_MD_FILE_NAME)?;
   if skill_dirs.is_empty() {
     return Err("No SKILL.md found in repository".to_string());
   }
 
   for dir in skill_dirs {
-    let skill_md = dir.join("SKILL.md");
+    let skill_md = dir.join(SKILL_MD_FILE_NAME);
     let Ok(frontmatter) = FileHelper::read_skill_frontmatter(&skill_md) else {
       continue;
     };
@@ -135,9 +138,9 @@ pub fn detect_github_auto(
       .map(|p| p.to_string_lossy().to_string())
       .unwrap_or_default();
     detected.skill_path = if relative_dir.is_empty() {
-      "SKILL.md".to_string()
+      SKILL_MD_FILE_NAME.to_string()
     } else {
-      format!("{}/SKILL.md", relative_dir)
+      format!("{}/{}", relative_dir, SKILL_MD_FILE_NAME)
     };
     return Ok(detected);
   }
@@ -146,7 +149,7 @@ pub fn detect_github_auto(
 }
 
 fn detect_folder_exact(folder: &Path) -> Result<DetectedSkill, String> {
-  let skill_md = folder.join("SKILL.md");
+  let skill_md = folder.join(SKILL_MD_FILE_NAME);
   if !skill_md.exists() {
     return Err(format!(
       "SKILL.md not found in folder: {}",
@@ -164,7 +167,7 @@ fn detect_folder_exact(folder: &Path) -> Result<DetectedSkill, String> {
   Ok(DetectedSkill {
     name,
     tmp_path: tmp_path.to_string_lossy().to_string(),
-    skill_path: "SKILL.md".to_string(),
+    skill_path: SKILL_MD_FILE_NAME.to_string(),
   })
 }
 
@@ -352,7 +355,7 @@ pub fn install_from_unknown(request: InstallUnknownRequest) -> Result<InstallRes
   install_from_native(InstallNativeRequest {
     name: request.name,
     tmp_path: canonical_path.to_string_lossy().to_string(),
-    skill_path: "SKILL.md".to_string(),
+    skill_path: SKILL_MD_FILE_NAME.to_string(),
     agent_apps: request.agent_apps,
     method: request.method,
   })
@@ -459,7 +462,7 @@ pub async fn read_skill_readme(skill_path: String) -> Result<String, String> {
     return Err(format!("Skill directory does not exist: {}", skill_path));
   }
 
-  let skill_md = path.join("SKILL.md");
+  let skill_md = path.join(SKILL_MD_FILE_NAME);
   if skill_md.exists() {
     return tokio::fs::read_to_string(&skill_md)
       .await
@@ -542,7 +545,7 @@ fn validate_install_from_unknown_request(request: &InstallUnknownRequest) -> Res
       source.to_string_lossy()
     ));
   }
-  let skill_md = source.join("SKILL.md");
+    let skill_md = source.join(SKILL_MD_FILE_NAME);
   let frontmatter = FileHelper::read_skill_frontmatter(&skill_md)?;
   let name = frontmatter
     .name
@@ -736,7 +739,7 @@ fn normalized_existing_skill_paths(
     if !path.exists() || !path.is_dir() {
       continue;
     }
-    let skill_md = path.join("SKILL.md");
+    let skill_md = path.join(SKILL_MD_FILE_NAME);
     if !skill_md.exists() {
       continue;
     }
@@ -829,13 +832,6 @@ fn create_temp_dir(prefix: &str) -> Result<PathBuf, String> {
   Ok(dir)
 }
 
-fn now_millis() -> u128 {
-  std::time::SystemTime::now()
-    .duration_since(std::time::UNIX_EPOCH)
-    .map(|d| d.as_millis())
-    .unwrap_or(0)
-}
-
 fn install_to_app(source: &Path, target: &Path, method: &InstallMethod) -> Result<(), String> {
   match method {
     InstallMethod::Symlink => {
@@ -843,39 +839,24 @@ fn install_to_app(source: &Path, target: &Path, method: &InstallMethod) -> Resul
       {
         std::os::unix::fs::symlink(source, target).map_err(|e| e.to_string())
       }
-      #[cfg(windows)]
-      {
-        match std::os::windows::fs::symlink_dir(source, target) {
-          Ok(_) => Ok(()),
-          Err(_) => copy_dir_all_sync(source, target),
+        #[cfg(windows)]
+        {
+          match std::os::windows::fs::symlink_dir(source, target) {
+            Ok(_) => Ok(()),
+            Err(_) => copy_dir_all_sync(source, target),
         }
       }
     },
-    InstallMethod::Copy => copy_dir_all_sync(source, target),
-  }
-}
-
-fn copy_dir_all_sync(src: &Path, dst: &Path) -> Result<(), String> {
-  fs::create_dir_all(dst).map_err(|e| e.to_string())?;
-  for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
-    let entry = entry.map_err(|e| e.to_string())?;
-    let src_path = entry.path();
-    let dst_path = dst.join(entry.file_name());
-    if src_path.is_dir() {
-      copy_dir_all_sync(&src_path, &dst_path)?;
-    } else {
-      fs::copy(&src_path, &dst_path).map_err(|e| e.to_string())?;
+      InstallMethod::Copy => copy_dir_all_sync(source, target),
     }
   }
-  Ok(())
-}
 
 fn is_skill_folder(path: &Path) -> bool {
-  (path.is_dir() || path.is_symlink()) && path.join("SKILL.md").exists()
+  (path.is_dir() || path.is_symlink()) && path.join(SKILL_MD_FILE_NAME).exists()
 }
 
 fn read_valid_skill_name(skill_dir: &Path) -> Option<String> {
-  let skill_md = skill_dir.join("SKILL.md");
+  let skill_md = skill_dir.join(SKILL_MD_FILE_NAME);
   if !skill_md.exists() {
     return None;
   }

@@ -1,4 +1,5 @@
 use sha2::{Digest, Sha256};
+use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
@@ -69,4 +70,19 @@ impl FolderHelper {
     let digest = hasher.finalize();
     Ok(format!("{:x}", digest))
   }
+}
+
+pub fn copy_dir_all_sync(src: &Path, dst: &Path) -> Result<(), String> {
+  fs::create_dir_all(dst).map_err(|e| e.to_string())?;
+  for entry in fs::read_dir(src).map_err(|e| e.to_string())? {
+    let entry = entry.map_err(|e| e.to_string())?;
+    let src_path = entry.path();
+    let dst_path = dst.join(entry.file_name());
+    if src_path.is_dir() {
+      copy_dir_all_sync(&src_path, &dst_path)?;
+    } else {
+      fs::copy(&src_path, &dst_path).map_err(|e| e.to_string())?;
+    }
+  }
+  Ok(())
 }
