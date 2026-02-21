@@ -15,7 +15,7 @@
       <div>
         <p class="font-medium">{skill.name}</p>
         <p
-          class={`text-xs ${selectedSkill?.skill_path === skill.skill_path ? "text-primary-content opacity-70" : "text-base-content-subtle opacity-80"}`}
+          class={`text-[10px] ${selectedSkill?.skill_path === skill.skill_path ? "text-primary-content opacity-60" : "text-base-content-subtle opacity-50"}`}
         >
           {skill.skill_path}
         </p>

@@ -895,7 +895,7 @@
               </p>
               <DetectedSkillList
                 skills={detectedSkills}
-                selectedSkill={selectedSkill}
+                {selectedSkill}
                 onSelect={(skill) => (selectedSkill = skill)}
               />
             </div>

@@ -36,3 +36,6 @@ src-tauri/gen/schemas/
 !.env.example
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+.codex/
+.claude/
