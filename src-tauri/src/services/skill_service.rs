@@ -23,6 +23,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const SKILL_MD_FILE_NAME: &str = "SKILL.md";
+const README_MD_FILE_NAME: &str = "README.md";
 
 pub fn detect_folder(folder_path: String) -> Result<Vec<DetectedSkill>, String> {
   let folder = Path::new(&folder_path);
@@ -46,11 +47,7 @@ pub fn detect_folder(folder_path: String) -> Result<Vec<DetectedSkill>, String> 
         .strip_prefix(folder)
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_default();
-      detected.skill_path = if relative_dir.is_empty() {
-        SKILL_MD_FILE_NAME.to_string()
-      } else {
-        format!("{}/{}", relative_dir, SKILL_MD_FILE_NAME)
-      };
+      detected.skill_path = skill_path_from_relative_dir(&relative_dir);
       result.push(detected);
     }
   }
@@ -89,11 +86,7 @@ pub fn detect_github_manual(github_path: String) -> Result<Vec<DetectedSkill>, S
             .strip_prefix(&clone_dir)
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_default();
-          detected.skill_path = if relative_dir.is_empty() {
-            SKILL_MD_FILE_NAME.to_string()
-          } else {
-            format!("{}/{}", relative_dir, SKILL_MD_FILE_NAME)
-          };
+          detected.skill_path = skill_path_from_relative_dir(&relative_dir);
           result.push(detected);
         },
       Err(_) => continue,
@@ -137,11 +130,7 @@ pub fn detect_github_auto(
       .strip_prefix(&clone_dir)
       .map(|p| p.to_string_lossy().to_string())
       .unwrap_or_default();
-    detected.skill_path = if relative_dir.is_empty() {
-      SKILL_MD_FILE_NAME.to_string()
-    } else {
-      format!("{}/{}", relative_dir, SKILL_MD_FILE_NAME)
-    };
+    detected.skill_path = skill_path_from_relative_dir(&relative_dir);
     return Ok(detected);
   }
 
@@ -275,8 +264,7 @@ pub fn install_from_native(request: InstallNativeRequest) -> Result<InstallResul
     &request.method,
     &selected_apps,
   )?;
-  let _ = remove_skill_from_lock(request.name.clone())?;
-  add_skill_to_native_lock(request.name.clone())?;
+  sync_lock_for_native_install(&request.name)?;
 
   Ok(InstallResult {
     success: true,
@@ -306,8 +294,7 @@ pub fn install_from_github(request: InstallGithubRequest) -> Result<InstallResul
     .map(|(owner, repo)| format!("{}/{}", owner, repo))
     .unwrap_or_else(|_| request.source_url.clone());
 
-  let _ = remove_skill_from_native_lock(request.name.clone())?;
-  add_skill_to_lock(
+  sync_lock_for_github_install(
     request.name.clone(),
     SkillLockEntry {
       source,
@@ -469,11 +456,11 @@ pub async fn read_skill_readme(skill_path: String) -> Result<String, String> {
       .map_err(|e| format!("Failed to read SKILL.md: {}", e));
   }
 
-  let readme_md = path.join("README.md");
+  let readme_md = path.join(README_MD_FILE_NAME);
   if readme_md.exists() {
     return tokio::fs::read_to_string(&readme_md)
       .await
-      .map_err(|e| format!("Failed to read README.md: {}", e));
+      .map_err(|e| format!("Failed to read {}: {}", README_MD_FILE_NAME, e));
   }
 
   Err(format!("No SKILL.md or README.md found in: {}", skill_path))
@@ -819,6 +806,24 @@ fn normalize_optional_string(value: Option<String>) -> Option<String> {
       Some(trimmed.to_string())
     }
   })
+}
+
+fn skill_path_from_relative_dir(relative_dir: &str) -> String {
+  if relative_dir.is_empty() {
+    SKILL_MD_FILE_NAME.to_string()
+  } else {
+    format!("{}/{}", relative_dir, SKILL_MD_FILE_NAME)
+  }
+}
+
+fn sync_lock_for_native_install(skill_name: &str) -> Result<(), String> {
+  let _ = remove_skill_from_lock(skill_name.to_string())?;
+  add_skill_to_native_lock(skill_name.to_string())
+}
+
+fn sync_lock_for_github_install(skill_name: String, entry: SkillLockEntry) -> Result<(), String> {
+  let _ = remove_skill_from_native_lock(skill_name.clone())?;
+  add_skill_to_lock(skill_name, entry)
 }
 
 fn create_temp_dir(prefix: &str) -> Result<PathBuf, String> {
