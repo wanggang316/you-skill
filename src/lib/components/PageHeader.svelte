@@ -10,6 +10,7 @@
     Loader2,
   } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
+  import SegmentedTabs from "./ui/SegmentedTabs.svelte";
   import { t } from "../i18n";
 
   const {
@@ -48,22 +49,14 @@
     >
       {#if currentView === "list"}
         <div class="flex items-center gap-3">
-          <div class="bg-base-200 flex items-center gap-2 rounded-full p-1">
-            <button
-              class={`hover:text-base-content rounded-full px-4 py-2 transition ${activeTab === "local" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted"}`}
-              onclick={() => onChangeTab("local")}
-              type="button"
-            >
-              {$t("header.localTab")}
-            </button>
-            <button
-              class={`hover:text-base-content rounded-full px-4 py-2 transition ${activeTab === "remote" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted"}`}
-              onclick={() => onChangeTab("remote")}
-              type="button"
-            >
-              {$t("header.remoteTab")}
-            </button>
-          </div>
+          <SegmentedTabs
+            items={[
+              { value: "local", label: $t("header.localTab") },
+              { value: "remote", label: $t("header.remoteTab") },
+            ]}
+            value={activeTab}
+            onChange={onChangeTab}
+          />
           <IconButton
             variant="primary"
             onclick={onAddSkill}

@@ -11,6 +11,7 @@
   } from "../api/skills";
   import Modal from "./ui/Modal.svelte";
   import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
+  import SegmentedTabs from "./ui/SegmentedTabs.svelte";
   import AgentSelector from "./AgentSelector.svelte";
   import DetectedSkillList from "./DetectedSkillList.svelte";
   import { settings } from "../stores/settings";
@@ -848,32 +849,16 @@
     <div class="flex-1 p-6 pt-1">
       <!-- Tabs -->
       <div class="sticky top-0 z-10 mb-4 pb-0">
-        <div class="bg-base-200 flex gap-2 rounded-full p-1">
-          <button
-            class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "github" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
-            onclick={() => (activeTab = "github")}
-            type="button"
-          >
-            <Github size={16} />
-            {$t("addSkill.tab.github")}
-          </button>
-          <button
-            class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "zip" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
-            onclick={() => (activeTab = "zip")}
-            type="button"
-          >
-            <FileArchive size={16} />
-            {$t("addSkill.tab.zip")}
-          </button>
-          <button
-            class={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm transition ${activeTab === "folder" ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted hover:text-base-content"}`}
-            onclick={() => (activeTab = "folder")}
-            type="button"
-          >
-            <Folder size={16} />
-            {$t("addSkill.tab.folder")}
-          </button>
-        </div>
+        <SegmentedTabs
+          items={[
+            { value: "github", label: $t("addSkill.tab.github"), icon: Github },
+            { value: "zip", label: $t("addSkill.tab.zip"), icon: FileArchive },
+            { value: "folder", label: $t("addSkill.tab.folder"), icon: Folder },
+          ]}
+          value={activeTab}
+          onChange={(tab) => (activeTab = tab)}
+          fullWidth={true}
+        />
       </div>
 
       {#if activeTab === "github"}
