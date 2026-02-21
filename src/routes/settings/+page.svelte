@@ -1,7 +1,9 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import { t } from "../../lib/i18n";
   import { settings, updateSettings } from "../../lib/stores/settings";
+  import { get } from "svelte/store";
   import { getSettings, setBackupFolder, openBackupFolder, backupSkills } from "../../lib/api";
   import { open } from "@tauri-apps/plugin-dialog";
   import { FolderOpen, Loader2, ChevronRight, Download, ChevronLeft } from "@lucide/svelte";
@@ -174,7 +176,12 @@
   };
 
   const goBack = () => {
-    goto("/");
+    const returnTo = get(page).url.searchParams.get("returnTo");
+    if (returnTo) {
+      goto(decodeURIComponent(returnTo));
+      return;
+    }
+    window.history.back();
   };
 </script>
 

@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { get } from "svelte/store";
   import { listen } from "@tauri-apps/api/event";
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import PageHeader from "../lib/components/PageHeader.svelte";
   import { t } from "../lib/i18n";
   import { check } from "@tauri-apps/plugin-updater";
@@ -11,9 +12,6 @@
   import AddSkillModal from "../lib/components/AddSkillModal.svelte";
   import { settings, updateSettings as updateAppSettings } from "../lib/stores/settings";
   import {
-    listSkills,
-    fetchRemoteSkills,
-    fetchSkillsByNames,
     detectGithubAuto,
     checkSkillVersion,
     installFromUnknown,
@@ -21,54 +19,50 @@
     recordInstall,
     manageSkillAgentApps,
     deleteSkill,
-    checkSkillUpdate,
   } from "../lib/api/skills";
-  import { listLocalAgentApps } from "../lib/api/agent-apps";
+  import {
+    agents as agentsStore,
+    checkForSkillUpdates,
+    loadAgents,
+    loadRemote as loadRemoteState,
+    localError as localErrorStore,
+    localLoading as localLoadingStore,
+    localSkills as localSkillsStore,
+    refreshLocal as refreshLocalState,
+    remoteError as remoteErrorStore,
+    remoteHasMore as remoteHasMoreStore,
+    remoteLoaded as remoteLoadedStore,
+    remoteLoading as remoteLoadingStore,
+    remoteSkills as remoteSkillsStore,
+    remoteTotal as remoteTotalStore,
+    skillsWithUpdate as skillsWithUpdateStore,
+    updatingSkills as updatingSkillsStore,
+  } from "../lib/stores/skills";
   import type {
     DetectedSkill,
     LocalSkill,
     RemoteSkill,
-    AgentInfo,
     SourceVersionGroup,
   } from "../lib/api/skills";
-
-  type HomeTab = "local" | "remote";
-  const HOME_TAB_STORAGE_KEY = "youskill:home-tab";
 
   // Shared state for modals
   let addSkillModalOpen = $state(false);
   let hasUpdate = $state(false);
+  let mainScrollContainer = $state<HTMLElement | null>(null);
+  let initialScrollTop = $state<number | null>(null);
 
   // Active tab
-  let activeTab = $state<HomeTab>("local");
+  let activeTab = $state("local");
 
-  // Local skills state
-  let localSkills = $state<LocalSkill[]>([]);
   let localSearch = $state("");
   let localAgent = $state("all");
-  let localLoading = $state(false);
-  let localError = $state("");
 
   // Remote skills state
-  let remoteSkills = $state<RemoteSkill[]>([]);
   let remoteQuery = $state("");
   let remoteSkip = $state(0);
   let remoteLimit = $state(20);
-  let remoteHasMore = $state(false);
-  let remoteLoading = $state(false);
-  let remoteError = $state("");
-  let remoteTotal = $state(0);
   let remoteSortBy = $state("heat_score");
   let remoteSortOrder = $state("desc");
-
-  // Agents state
-  let agents = $state<AgentInfo[]>([]);
-
-  // Update skills state
-  let skillsWithUpdate = $state<RemoteSkill[]>([]);
-  let updatingSkills = $state<string[]>([]);
-  let isCheckingUpdates = $state(false);
-  let updateCheckPromise = $state<Promise<void> | null>(null);
 
   // Pending install state
   let pendingInstallSkill = $state<(RemoteSkill & { detectedSkill?: DetectedSkill }) | null>(null);
@@ -102,11 +96,11 @@
   let linkBusy = $state(false);
 
   const agentMap = $derived.by(
-    () => new Map(agents.map((agent) => [agent.id, agent.display_name]))
+    () => new Map($agentsStore.map((agent) => [agent.id, agent.display_name]))
   );
 
   const filteredLocalSkills = $derived.by(() => {
-    const source = Array.isArray(localSkills) ? localSkills : [];
+    const source = Array.isArray($localSkillsStore) ? $localSkillsStore : [];
     const needle = localSearch.trim().toLowerCase();
     return source.filter((skill) => {
       const matchesSearch = !needle || skill.name.toLowerCase().includes(needle);
@@ -119,38 +113,45 @@
   const getSkillAgentIds = (skill: LocalSkill): string[] =>
     Array.from(new Set(skill.installed_agent_apps.map((app) => app.id)));
 
-  // Track if remote skills have been loaded
-  let remoteLoaded = $state(false);
-
-  const isHomeTab = (value: string | null): value is HomeTab =>
-    value === "local" || value === "remote";
-
-  const persistHomeTab = (tab: HomeTab) => {
-    sessionStorage.setItem(HOME_TAB_STORAGE_KEY, tab);
-  };
-
   // Initialize and load shared data on mount - 只加载本地数据
   onMount(() => {
-    const storedTab = sessionStorage.getItem(HOME_TAB_STORAGE_KEY);
-    if (isHomeTab(storedTab)) {
-      activeTab = storedTab;
+    const searchParams = get(page).url.searchParams;
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "remote" || tabParam === "local") {
+      activeTab = tabParam;
     }
-    persistHomeTab(activeTab);
+    const scrollParam = searchParams.get("scroll");
+    if (scrollParam) {
+      const parsed = Number(scrollParam);
+      if (Number.isFinite(parsed) && parsed >= 0) {
+        initialScrollTop = parsed;
+      }
+    }
 
     // 只加载首屏必需的本地数据
     loadAgents().catch(console.error);
     refreshLocal().catch(console.error);
 
-    if (activeTab === "remote") {
-      remoteLoaded = true;
+    if (activeTab === "remote" && !get(remoteLoadedStore)) {
+      remoteLoadedStore.set(true);
       loadRemote(true).catch(console.error);
     }
+
+    // 如果数据已在 store 中（不触发加载），也要尝试恢复一次滚动位置
+    restoreInitialScroll().catch(console.error);
 
     // Listen for tray menu events
     listen("open-install-modal", () => {
       addSkillModalOpen = true;
     });
   });
+
+  const restoreInitialScroll = async () => {
+    if (initialScrollTop === null || !mainScrollContainer) return;
+    await tick();
+    mainScrollContainer.scrollTop = initialScrollTop;
+    initialScrollTop = null;
+  };
 
   const checkForUpdate = async () => {
     try {
@@ -163,131 +164,40 @@
     }
   };
 
-  const loadAgents = async () => {
-    try {
-      agents = await listLocalAgentApps();
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   const refreshLocal = async () => {
-    localLoading = true;
-    localError = "";
-    try {
-      localSkills = await listSkills();
-
-      // 延迟检查更新，不阻塞首屏
-      setTimeout(() => checkForSkillUpdates().catch(console.error), 100);
-    } catch (error) {
-      localError = String(error);
-    } finally {
-      localLoading = false;
+    await refreshLocalState();
+    setTimeout(() => checkForSkillUpdates().catch(console.error), 100);
+    if (activeTab === "local") {
+      await restoreInitialScroll();
     }
   };
 
   const loadRemote = async (reset = false) => {
-    remoteLoading = true;
-    remoteError = "";
-    try {
-      if (reset) {
-        remoteSkip = 0;
-        remoteSkills = [];
-      }
-      const response = await fetchRemoteSkills({
-        skip: remoteSkip,
-        limit: remoteLimit,
-        search: remoteQuery,
-        sortBy: remoteSortBy,
-        sortOrder: remoteSortOrder,
-      });
-      remoteHasMore = response.has_more;
-      remoteTotal = response.total;
-      if (reset) {
-        remoteSkills = response.skills;
-      } else {
-        remoteSkills = [...remoteSkills, ...response.skills];
-      }
-      await checkUpdatesFromRemoteList();
-    } catch (error) {
-      remoteError = String(error);
-    } finally {
-      remoteLoading = false;
+    if (reset) {
+      remoteSkip = 0;
     }
-  };
-
-  const checkForSkillUpdates = async () => {
-    if (isCheckingUpdates) {
-      if (updateCheckPromise) {
-        await updateCheckPromise;
-      }
-      return;
-    }
-
-    if (localSkills.length === 0) {
-      skillsWithUpdate = [];
-      return;
-    }
-
-    isCheckingUpdates = true;
-    skillsWithUpdate = [];
-
-    const checkPromise = (async () => {
-      try {
-        const skillNames = localSkills.map((s) => s.name);
-        const remoteSkillsMap = await fetchSkillsByNames(skillNames);
-
-        for (const remoteSkill of remoteSkillsMap) {
-          if (remoteSkill.skill_path_sha) {
-            const hasUpdate = await checkSkillUpdate(remoteSkill.name, remoteSkill.skill_path_sha);
-            if (hasUpdate) {
-              skillsWithUpdate.push(remoteSkill);
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Failed to check for skill updates:", error);
-      } finally {
-        isCheckingUpdates = false;
-        updateCheckPromise = null;
-      }
-    })();
-
-    updateCheckPromise = checkPromise;
-    await checkPromise;
-  };
-
-  const checkUpdatesFromRemoteList = async () => {
-    if (localSkills.length === 0 || remoteSkills.length === 0) {
-      return;
-    }
-
-    const remoteSkillsMap = new Map(remoteSkills.map((rs) => [rs.name, rs]));
-
-    for (const localSkill of localSkills) {
-      const remoteSkill = remoteSkillsMap.get(localSkill.name);
-      if (remoteSkill && remoteSkill.skill_path_sha) {
-        const hasUpdate = await checkSkillUpdate(localSkill.name, remoteSkill.skill_path_sha);
-        if (hasUpdate) {
-          if (!skillsWithUpdate.some((s) => s.name === remoteSkill.name)) {
-            skillsWithUpdate = [...skillsWithUpdate, remoteSkill];
-          }
-        } else {
-          skillsWithUpdate = skillsWithUpdate.filter((s) => s.name !== remoteSkill.name);
-        }
-      }
+    await loadRemoteState({
+      reset,
+      skip: remoteSkip,
+      limit: remoteLimit,
+      search: remoteQuery,
+      sortBy: remoteSortBy,
+      sortOrder: remoteSortOrder,
+    });
+    if (activeTab === "remote") {
+      await restoreInitialScroll();
     }
   };
 
   const toGitRepoUrl = (url: string) => (url.endsWith(".git") ? url : `${url}.git`);
 
   const handleUpdateSkill = async (skill: RemoteSkill) => {
-    if (updatingSkills.includes(skill.name)) return;
+    if (get(updatingSkillsStore).includes(skill.name)) return;
 
-    updatingSkills = [...updatingSkills, skill.name];
+    updatingSkillsStore.update((names) => [...names, skill.name]);
     try {
       if (!skill.url) {
-        localError = `Skill ${skill.name} has no source URL`;
+        localErrorStore.set(`Skill ${skill.name} has no source URL`);
         return;
       }
 
@@ -297,10 +207,10 @@
       const detectedSkill = await detectGithubAuto(skill.url, skill.name);
       pendingInstallSkill = { ...skill, detectedSkill };
 
-      const localSkill = localSkills.find((ls) => ls.name === skill.name);
+      const localSkill = get(localSkillsStore).find((ls) => ls.name === skill.name);
       const currentAgents = localSkill
         ? Array.from(new Set(localSkill.installed_agent_apps.map((app) => app.id)))
-        : agents.map((a) => a.id);
+        : get(agentsStore).map((a) => a.id);
 
       selectAgentModalTitle = $t("installConfirm.title", { name: skill.name });
       selectAgentModalInitialSelection = currentAgents;
@@ -341,7 +251,7 @@
     } finally {
       isDownloading = false;
       installingSkill = "";
-      updatingSkills = updatingSkills.filter((name) => name !== skill.name);
+      updatingSkillsStore.update((names) => names.filter((name) => name !== skill.name));
     }
   };
 
@@ -350,7 +260,7 @@
   };
 
   const loadMoreRemote = async () => {
-    if (!remoteHasMore) return;
+    if (!get(remoteHasMoreStore)) return;
     remoteSkip += remoteLimit;
     await loadRemote(false);
   };
@@ -370,7 +280,7 @@
       pendingInstallSkill = { ...skill, detectedSkill };
 
       selectAgentModalTitle = $t("installConfirm.title", { name: skill.name });
-      selectAgentModalInitialSelection = agents.map((a) => a.id);
+      selectAgentModalInitialSelection = get(agentsStore).map((a) => a.id);
       selectAgentModalCallback = async (selectedAgents, method) => {
         if (!pendingInstallSkill) return false;
         installLog = "";
@@ -420,13 +330,13 @@
   const openSelectAgentModal = (skill: LocalSkill) => {
     if (skill.source_type === "unknown") {
       startUnknownFlow(skill).catch((error) => {
-        localError = String(error);
+        localErrorStore.set(String(error));
       });
       return;
     }
 
     startSourceTypeFlow(skill).catch((error) => {
-      localError = String(error);
+      localErrorStore.set(String(error));
     });
   };
 
@@ -478,7 +388,7 @@
         await refreshLocal();
         return true;
       } catch (error) {
-        localError = String(error);
+        localErrorStore.set(String(error));
         return false;
       }
     };
@@ -573,7 +483,7 @@
       await executeManage(sourcePath);
       return true;
     } catch (error) {
-      localError = String(error);
+      localErrorStore.set(String(error));
       return false;
     } finally {
       linkBusy = false;
@@ -590,36 +500,47 @@
       await deleteSkill(skill.name);
       await refreshLocal();
     } catch (error) {
-      localError = String(error);
+      localErrorStore.set(String(error));
     }
+  };
+
+  const getHomeReturnTo = () => {
+    const params = new URLSearchParams();
+    params.set("tab", activeTab);
+    if (mainScrollContainer) {
+      params.set("scroll", String(mainScrollContainer.scrollTop));
+    }
+    return `/?${params.toString()}`;
   };
 
   const handleViewSkill = (skill: LocalSkill | RemoteSkill) => {
     const type = "source_type" in skill ? "local" : "remote";
-    goto(`/skills/${type}/${encodeURIComponent(skill.name)}`);
+    const returnTo = encodeURIComponent(getHomeReturnTo());
+    goto(`/skills/${type}/${encodeURIComponent(skill.name)}?returnTo=${returnTo}`);
   };
 
   // Handle tab change - 延迟加载非关键数据
   const handleTabChange = (tab: string) => {
-    if (!isHomeTab(tab)) return;
     activeTab = tab;
-    persistHomeTab(tab);
 
     // 切换到远程标签时，首次加载远程数据
-    if (tab === "remote" && !remoteLoaded) {
-      remoteLoaded = true;
+    if (tab === "remote" && !get(remoteLoadedStore)) {
+      remoteLoadedStore.set(true);
       loadRemote(true).catch(console.error);
+    } else {
+      restoreInitialScroll().catch(console.error);
     }
 
     // 切换到本地标签时，延迟检查更新（非阻塞）
-    if (tab === "local" && localSkills.length > 0) {
+    if (tab === "local" && get(localSkillsStore).length > 0) {
       setTimeout(() => checkForSkillUpdates().catch(console.error), 50);
     }
   };
 
   // Navigation handlers
   const navigateToSettings = () => {
-    goto("/settings");
+    const returnTo = encodeURIComponent(getHomeReturnTo());
+    goto(`/settings?returnTo=${returnTo}`);
   };
 </script>
 
@@ -638,19 +559,19 @@
     onRefreshAgentApps={() => {}}
   />
 
-  <main class="flex-1 overflow-y-auto">
+  <main bind:this={mainScrollContainer} class="flex-1 overflow-y-auto">
     <div class="mx-auto max-w-6xl px-6 py-6">
       {#if activeTab === "local"}
         <LocalSkillsSection
           bind:localSearch
           bind:localAgent
-          {agents}
-          {localLoading}
-          {localError}
+          agents={$agentsStore}
+          localLoading={$localLoadingStore}
+          localError={$localErrorStore}
           {filteredLocalSkills}
           {agentMap}
-          {skillsWithUpdate}
-          {updatingSkills}
+          skillsWithUpdate={$skillsWithUpdateStore}
+          updatingSkills={$updatingSkillsStore}
           onRefresh={refreshLocal}
           onDeleteSkill={handleDeleteSkill}
           onViewSkill={handleViewSkill}
@@ -662,17 +583,17 @@
           bind:remoteQuery
           bind:remoteSortBy
           bind:remoteSortOrder
-          {localSkills}
-          {remoteLoading}
-          {remoteSkills}
-          {remoteError}
+          localSkills={$localSkillsStore}
+          remoteLoading={$remoteLoadingStore}
+          remoteSkills={$remoteSkillsStore}
+          remoteError={$remoteErrorStore}
           {installLog}
           {installingSkill}
           {isDownloading}
-          {remoteHasMore}
-          {remoteTotal}
-          {skillsWithUpdate}
-          {updatingSkills}
+          remoteHasMore={$remoteHasMoreStore}
+          remoteTotal={$remoteTotalStore}
+          skillsWithUpdate={$skillsWithUpdateStore}
+          updatingSkills={$updatingSkillsStore}
           onSearch={handleSearchRemote}
           onLoadMore={loadMoreRemote}
           onInstall={handleInstall}
@@ -686,14 +607,14 @@
   </main>
 </div>
 
-<AddSkillModal bind:open={addSkillModalOpen} {agents} onSuccess={refreshLocal} />
+<AddSkillModal bind:open={addSkillModalOpen} agents={$agentsStore} onSuccess={refreshLocal} />
 
 <!-- Select Agent Modal -->
 {#await import("../lib/components/SelectAgentModal.svelte") then { default: SelectAgentModal }}
   <SelectAgentModal
     bind:open={selectAgentModalOpen}
     title={selectAgentModalTitle}
-    {agents}
+    agents={$agentsStore}
     initialSelection={selectAgentModalInitialSelection}
     onConfirm={async (selectedAgents: string[], method: "symlink" | "copy") => {
       if (selectAgentModalCallback) {

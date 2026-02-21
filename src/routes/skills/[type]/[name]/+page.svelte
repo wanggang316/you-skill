@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
+  import { get } from "svelte/store";
   import { open } from "@tauri-apps/plugin-shell";
   import { Loader2 } from "@lucide/svelte";
   import PageHeader from "../../../../lib/components/PageHeader.svelte";
@@ -170,7 +171,12 @@
   };
 
   const handleBack = () => {
-    goto("/");
+    const returnTo = get(page).url.searchParams.get("returnTo");
+    if (returnTo) {
+      goto(decodeURIComponent(returnTo));
+      return;
+    }
+    window.history.back();
   };
 
   const handleDetailAction = async () => {
