@@ -25,12 +25,10 @@
 <div class={`bg-base-200 flex gap-2 rounded-full p-1 ${className}`}>
   {#each items as item}
     <button
-      class={`rounded-full px-4 py-2 text-sm transition hover:text-base-content ${
+      class={`hover:text-base-content rounded-full px-4 py-2 text-sm transition ${
         fullWidth ? "flex flex-1 items-center justify-center gap-2" : ""
       } ${
-        value === item.value
-          ? "bg-base-100 text-base-content shadow-sm"
-          : "text-base-content-muted"
+        value === item.value ? "bg-base-100 text-base-content shadow-sm" : "text-base-content-muted"
       }`}
       onclick={() => onChange(item.value)}
       type="button"
