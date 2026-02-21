@@ -8,6 +8,9 @@
   --color-base-200: oklch(98% 0 0);
   --color-base-300: oklch(95% 0 0);
   --color-base-content: oklch(21% 0.006 285.885);
+  --color-base-content-muted: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+  --color-base-content-subtle: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+  --color-base-content-faint: color-mix(in oklch, var(--color-base-content) 40%, transparent);
   --color-primary: oklch(62.43% 0.206 255.523);
   --color-primary-content: oklch(93% 0.034 272.788);
   --color-secondary: oklch(65% 0.241 354.308);
@@ -131,9 +134,9 @@
   --overlay: var(--color-overlay);
 
   /* 内容颜色变体 */
-  --base-content-muted: color-mix(in oklch, var(--base-content) 60%, transparent);
-  --base-content-subtle: color-mix(in oklch, var(--base-content) 55%, transparent);
-  --base-content-faint: color-mix(in oklch, var(--base-content) 40%, transparent);
+  --base-content-muted: var(--color-base-content-muted);
+  --base-content-subtle: var(--color-base-content-subtle);
+  --base-content-faint: var(--color-base-content-faint);
 
   /* 标签颜色 */
   --tag-warning-bg: color-mix(in oklch, var(--warning) 20%, var(--base-100));

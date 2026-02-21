@@ -189,7 +189,7 @@
                 {$t("remote.stars", { count: skill.star_count })}
               </p> -->
               {#if skill.description}
-                <p class="text-base-content/55 mt-1 line-clamp-1 text-xs">
+                <p class="text-base-content-subtle mt-1 line-clamp-1 text-xs">
                   {skill.description}
                 </p>
               {/if}
