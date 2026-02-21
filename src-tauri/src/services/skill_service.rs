@@ -869,14 +869,14 @@ fn read_valid_skill_name(skill_dir: &Path) -> Option<String> {
   frontmatter.name
 }
 
-fn detect_install_method(skill_dir: &Path) -> String {
+fn detect_install_method(skill_dir: &Path) -> InstallMethod {
   if fs::symlink_metadata(skill_dir)
     .map(|m| m.file_type().is_symlink())
     .unwrap_or(false)
   {
-    "symlink".to_string()
+    InstallMethod::Symlink
   } else {
-    "copy".to_string()
+    InstallMethod::Copy
   }
 }
 

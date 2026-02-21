@@ -20,7 +20,7 @@ pub enum SourceType {
 pub struct InstalledAgentApp {
   pub id: String,
   pub skill_folder: String,
-  pub method: String,
+  pub method: InstallMethod,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
