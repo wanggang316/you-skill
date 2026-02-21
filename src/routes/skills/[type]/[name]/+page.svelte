@@ -6,14 +6,14 @@
   import PageHeader from "../../../../lib/components/PageHeader.svelte";
   import { parseMarkdown, renderMarkdownBody } from "../../../../lib/utils/markdown";
   import { t } from "../../../../lib/i18n";
-    import {
-      fetchSkillsByNames,
-      listSkills,
-      openInFileManager,
-      readSkillFile,
-      type LocalSkill,
-      type RemoteSkill,
-    } from "../../../../lib/api/skills";
+  import {
+    fetchSkillsByNames,
+    listSkills,
+    openInFileManager,
+    readSkillFile,
+    type LocalSkill,
+    type RemoteSkill,
+  } from "../../../../lib/api/skills";
 
   type SkillType = "local" | "remote";
 
@@ -140,7 +140,7 @@
         if (!localPath) {
           throw new Error("Skill path is missing");
         }
-          rawContent = await readSkillFile(localPath);
+        rawContent = await readSkillFile(localPath);
       } else {
         if (!("url" in skill)) {
           throw new Error("Skill source URL is missing");

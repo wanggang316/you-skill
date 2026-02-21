@@ -27,6 +27,7 @@ export interface RemoteSkill {
   id: string;
   skill_id: string;
   name: string;
+  description?: string | null;
   star_count: number;
   heat_score: number;
   install_count: number;

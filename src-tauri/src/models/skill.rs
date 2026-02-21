@@ -28,6 +28,8 @@ pub struct RemoteSkill {
   pub id: String,
   pub skill_id: String,
   pub name: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub description: Option<String>,
   pub star_count: u64,
   pub heat_score: u64,
   pub install_count: u64,

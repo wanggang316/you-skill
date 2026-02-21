@@ -172,7 +172,7 @@
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <p class="truncate text-base font-medium">
+                <p class="truncate text-base">
                   {skill.name}
                   <span class="text-base-content/70 text-sm font-normal">({skill.source})</span>
                 </p>
@@ -185,9 +185,14 @@
                   </span>
                 {/if}
               </div>
-              <p class="text-base-content-faint mt-1 text-xs">
+              <!-- <p class="text-base-content-faint mt-1 text-xs">
                 {$t("remote.stars", { count: skill.star_count })}
-              </p>
+              </p> -->
+              {#if skill.description}
+                <p class="text-base-content/55 mt-1 line-clamp-1 text-xs">
+                  {skill.description}
+                </p>
+              {/if}
             </div>
             <div
               class="flex items-center gap-2"
