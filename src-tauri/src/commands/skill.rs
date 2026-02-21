@@ -82,8 +82,8 @@ pub fn open_in_file_manager(file_path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn read_skill_readme(skill_path: String) -> Result<String, String> {
-  skill_service::read_skill_readme(skill_path).await
+pub async fn read_skill_file(skill_path: String) -> Result<String, String> {
+  skill_service::read_skill_file(skill_path).await
 }
 
 #[tauri::command]

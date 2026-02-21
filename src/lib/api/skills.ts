@@ -230,10 +230,10 @@ export async function manageSkillAgentApps(
 // ============ Other ============
 
 /**
- * 读取技能 README 文件
+ * 读取技能 SKILL.md 文件
  */
-export async function readSkillReadme(skillPath: string): Promise<string> {
-  return apiCall<string>("read_skill_readme", { skillPath });
+export async function readSkillFile(skillPath: string): Promise<string> {
+  return apiCall<string>("read_skill_file", { skillPath });
 }
 
 /**

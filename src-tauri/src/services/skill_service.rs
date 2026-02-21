@@ -23,7 +23,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const SKILL_MD_FILE_NAME: &str = "SKILL.md";
-const README_MD_FILE_NAME: &str = "README.md";
 
 pub fn detect_folder(folder_path: String) -> Result<Vec<DetectedSkill>, String> {
   let folder = Path::new(&folder_path);
@@ -443,7 +442,7 @@ pub fn open_in_file_manager(file_path: String) -> Result<(), String> {
   }
 }
 
-pub async fn read_skill_readme(skill_path: String) -> Result<String, String> {
+pub async fn read_skill_file(skill_path: String) -> Result<String, String> {
   let path = Path::new(&skill_path);
   if !path.exists() {
     return Err(format!("Skill directory does not exist: {}", skill_path));
@@ -456,14 +455,7 @@ pub async fn read_skill_readme(skill_path: String) -> Result<String, String> {
       .map_err(|e| format!("Failed to read SKILL.md: {}", e));
   }
 
-  let readme_md = path.join(README_MD_FILE_NAME);
-  if readme_md.exists() {
-    return tokio::fs::read_to_string(&readme_md)
-      .await
-      .map_err(|e| format!("Failed to read {}: {}", README_MD_FILE_NAME, e));
-  }
-
-  Err(format!("No SKILL.md or README.md found in: {}", skill_path))
+  Err(format!("SKILL.md not found in: {}", skill_path))
 }
 
 pub fn check_skill_update(skill_name: String, remote_sha: String) -> Result<bool, String> {
