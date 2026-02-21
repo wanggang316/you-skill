@@ -38,13 +38,17 @@ pub async fn detect_github_auto(
 }
 
 #[tauri::command]
-pub fn install_from_native(request: InstallNativeRequest) -> Result<InstallResult, String> {
-  skill_service::install_from_native(request)
+pub async fn install_from_native(request: InstallNativeRequest) -> Result<InstallResult, String> {
+  tauri::async_runtime::spawn_blocking(move || skill_service::install_from_native(request))
+    .await
+    .map_err(|e| format!("install_from_native join error: {}", e))?
 }
 
 #[tauri::command]
-pub fn install_from_github(request: InstallGithubRequest) -> Result<InstallResult, String> {
-  skill_service::install_from_github(request)
+pub async fn install_from_github(request: InstallGithubRequest) -> Result<InstallResult, String> {
+  tauri::async_runtime::spawn_blocking(move || skill_service::install_from_github(request))
+    .await
+    .map_err(|e| format!("install_from_github join error: {}", e))?
 }
 
 #[tauri::command]
@@ -57,13 +61,19 @@ pub fn check_skill_version(
 }
 
 #[tauri::command]
-pub fn install_from_unknown(request: InstallUnknownRequest) -> Result<InstallResult, String> {
-  skill_service::install_from_unknown(request)
+pub async fn install_from_unknown(request: InstallUnknownRequest) -> Result<InstallResult, String> {
+  tauri::async_runtime::spawn_blocking(move || skill_service::install_from_unknown(request))
+    .await
+    .map_err(|e| format!("install_from_unknown join error: {}", e))?
 }
 
 #[tauri::command]
-pub fn manage_skill_agent_apps(request: ManageSkillAgentAppsRequest) -> Result<InstallResult, String> {
-  skill_service::manage_skill_agent_apps(request)
+pub async fn manage_skill_agent_apps(
+  request: ManageSkillAgentAppsRequest,
+) -> Result<InstallResult, String> {
+  tauri::async_runtime::spawn_blocking(move || skill_service::manage_skill_agent_apps(request))
+    .await
+    .map_err(|e| format!("manage_skill_agent_apps join error: {}", e))?
 }
 
 #[tauri::command]

@@ -64,12 +64,14 @@
   // Global loading state
   let isInstalling = $state(false);
   let installError = $state("");
+  let wasOpen = $state(false);
 
   // Reset state when modal opens
   $effect(() => {
-    if (open) {
+    if (open && !wasOpen) {
       resetState();
     }
+    wasOpen = open;
   });
 
   function resetState() {
@@ -737,67 +739,13 @@
   }
 
   async function handleConfirm() {
-    if (selectedAgents.length === 0) {
-      installError = $t("addSkill.noAgentsSelected");
-      return;
-    }
+    if (!validateConfirm()) return;
 
     isInstalling = true;
     installError = "";
 
     try {
-      if (activeTab === "zip") {
-        if (!selectedZipPath) {
-          installError = $t("addSkill.noZipSelected");
-          isInstalling = false;
-          return;
-        }
-        if (!selectedZipSkill) {
-          installError = $t("addSkill.noSkillSelected");
-          isInstalling = false;
-          return;
-        }
-        await installFromNative({
-          name: selectedZipSkill.name,
-          tmp_path: selectedZipSkill.tmp_path,
-          skill_path: selectedZipSkill.skill_path,
-          agent_apps: selectedAgents,
-          method: selectedMethod,
-        });
-      } else if (activeTab === "folder") {
-        if (!selectedFolderPath) {
-          installError = $t("addSkill.noFolderSelected");
-          isInstalling = false;
-          return;
-        }
-        if (!selectedFolderSkill) {
-          installError = $t("addSkill.noSkillSelected");
-          isInstalling = false;
-          return;
-        }
-        await installFromNative({
-          name: selectedFolderSkill.name,
-          tmp_path: selectedFolderSkill.tmp_path,
-          skill_path: selectedFolderSkill.skill_path,
-          agent_apps: selectedAgents,
-          method: selectedMethod,
-        });
-      } else {
-        if (!selectedSkill) {
-          installError = $t("addSkill.noSkillSelected");
-          return;
-        }
-        await installFromGithub({
-          name: selectedSkill.name,
-          tmp_path: selectedSkill.tmp_path,
-          skill_path: selectedSkill.skill_path,
-          source_url: toGitRepoUrl(githubUrl),
-          skill_folder_hash: null,
-          agent_apps: selectedAgents,
-          method: selectedMethod,
-        });
-      }
-
+      await installCurrentSelection();
       onSuccess();
       closeModal();
     } catch (error) {
@@ -817,6 +765,81 @@
       return !!selectedSkill;
     }
   }
+
+  function validateConfirm() {
+    if (selectedAgents.length === 0) {
+      installError = $t("addSkill.noAgentsSelected");
+      return false;
+    }
+    if (activeTab === "zip") {
+      if (!selectedZipPath) {
+        installError = $t("addSkill.noZipSelected");
+        return false;
+      }
+      if (!selectedZipSkill) {
+        installError = $t("addSkill.noSkillSelected");
+        return false;
+      }
+      return true;
+    }
+    if (activeTab === "folder") {
+      if (!selectedFolderPath) {
+        installError = $t("addSkill.noFolderSelected");
+        return false;
+      }
+      if (!selectedFolderSkill) {
+        installError = $t("addSkill.noSkillSelected");
+        return false;
+      }
+      return true;
+    }
+    if (!selectedSkill) {
+      installError = $t("addSkill.noSkillSelected");
+      return false;
+    }
+    return true;
+  }
+
+  async function installCurrentSelection() {
+    if (activeTab === "zip") {
+      const zipSkill = selectedZipSkill;
+      if (!zipSkill) return;
+      await installFromNative({
+        name: zipSkill.name,
+        tmp_path: zipSkill.tmp_path,
+        skill_path: zipSkill.skill_path,
+        agent_apps: selectedAgents,
+        method: selectedMethod,
+      });
+      return;
+    }
+
+    if (activeTab === "folder") {
+      const folderSkill = selectedFolderSkill;
+      if (!folderSkill) return;
+      await installFromNative({
+        name: folderSkill.name,
+        tmp_path: folderSkill.tmp_path,
+        skill_path: folderSkill.skill_path,
+        agent_apps: selectedAgents,
+        method: selectedMethod,
+      });
+      return;
+    }
+
+    const githubSkill = selectedSkill;
+    if (!githubSkill) return;
+    await installFromGithub({
+      name: githubSkill.name,
+      tmp_path: githubSkill.tmp_path,
+      skill_path: githubSkill.skill_path,
+      source_url: toGitRepoUrl(githubUrl),
+      skill_folder_hash: null,
+      agent_apps: selectedAgents,
+      method: selectedMethod,
+    });
+  }
+
 </script>
 
 <Modal bind:open title={$t("addSkill.title")} onClose={closeModal} containerClass="max-w-xl">
