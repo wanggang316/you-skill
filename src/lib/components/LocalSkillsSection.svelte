@@ -98,7 +98,9 @@
     {:else}
       <div class="space-y-2">
         {#each filteredLocalSkills as skill}
-          <div class="border-base-300 bg-base-100 rounded-2xl border p-4 hover:bg-base-200 transition">
+          <div
+            class="border-base-300 bg-base-100 hover:bg-base-200 rounded-2xl border p-4 transition"
+          >
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex items-center gap-2">
                 <button
