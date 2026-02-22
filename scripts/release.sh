@@ -115,24 +115,19 @@ else
 fi
 
 echo ""
-echo -e "${GREEN}🔨 步骤 3/6: 本地构建测试...${NC}"
-echo "  (跳过构建测试，CI 会处理)"
+echo -e "${GREEN}🔨 步骤 3/6: 更新 Cargo.lock...${NC}"
+# 更新 Cargo.lock 以反映新版本
+cd src-tauri && cargo generate-lockfile && cd ..
+echo "  ✓ Cargo.lock 已更新"
 
 echo ""
 echo -e "${GREEN}📤 步骤 4/6: 提交版本更新...${NC}"
 
+# 添加所有修改的文件
 git add package.json
-# 尝试添加 Cargo.lock，如果不存在也没关系
-if [ -f src-tauri/Cargo.lock ]; then
-    git add src-tauri/Cargo.lock
-fi
-
 git add src-tauri/tauri.conf.json
-# 尝试添加 Cargo.toml
-if [ -f src-tauri/Cargo.toml ]; then
-    git add src-tauri/Cargo.toml
-fi
-
+git add src-tauri/Cargo.toml
+git add src-tauri/Cargo.lock
 git add CHANGELOG.md
 
 git commit -m "chore: bump version to ${NEW_VERSION}
