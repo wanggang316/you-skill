@@ -20,6 +20,8 @@
   let updateInstance = $state<Update | null>(null);
   let isInstalling = $state(false);
   let downloadProgress = $state(0);
+  let downloadTotalBytes = $state(0);
+  let downloadedBytes = $state(0);
 
   // Backup state
   let backupFolder = $state("");
@@ -80,6 +82,8 @@
     updateMessage = "";
     hasUpdate = false;
     downloadProgress = 0;
+    downloadTotalBytes = 0;
+    downloadedBytes = 0;
     try {
       const update = await check();
       if (update) {
@@ -101,14 +105,24 @@
     if (!updateInstance) return;
     isInstalling = true;
     downloadProgress = 0;
+    downloadTotalBytes = 0;
+    downloadedBytes = 0;
     try {
       await updateInstance.downloadAndInstall((event: DownloadEvent) => {
         switch (event.event) {
           case "Started":
+            downloadTotalBytes = event.data.contentLength ?? 0;
+            downloadedBytes = 0;
             downloadProgress = 0;
             break;
           case "Progress":
-            downloadProgress = event.data.chunkLength;
+            downloadedBytes += event.data.chunkLength;
+            if (downloadTotalBytes > 0) {
+              downloadProgress = Math.min(
+                100,
+                Math.round((downloadedBytes / downloadTotalBytes) * 100)
+              );
+            }
             break;
           case "Finished":
             downloadProgress = 100;

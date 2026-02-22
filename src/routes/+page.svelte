@@ -145,6 +145,16 @@
     listen("open-install-modal", () => {
       addSkillModalOpen = true;
     });
+
+    const handleHasUpdate = () => {
+      hasUpdate = true;
+    };
+    window.addEventListener("app:has-update", handleHasUpdate);
+    checkForUpdate().catch(console.error);
+
+    return () => {
+      window.removeEventListener("app:has-update", handleHasUpdate);
+    };
   });
 
   const restoreInitialScroll = async () => {
