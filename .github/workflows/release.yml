@@ -117,6 +117,8 @@ jobs:
 
   publish-release:
     needs: [create-release, build-tauri]
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Publish Release
