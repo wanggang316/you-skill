@@ -1,6 +1,6 @@
 use crate::models::{
   DetectedSkill, InstallGithubRequest, InstallNativeRequest, InstallResult, InstallUnknownRequest,
-  LocalSkill, ManageSkillAgentAppsRequest, SourceCheckResult,
+  LocalSkill, ManageSkillAgentAppsRequest, SkillUpdateCheckItem, SourceCheckResult,
 };
 use crate::services::skill_service;
 
@@ -87,6 +87,6 @@ pub async fn read_skill_file(skill_path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn check_skill_update(skill_name: String, remote_sha: String) -> Result<bool, String> {
-  skill_service::check_skill_update(skill_name, remote_sha)
+pub fn check_skills_updates(checks: Vec<SkillUpdateCheckItem>) -> Result<Vec<String>, String> {
+  skill_service::check_skills_updates(checks)
 }

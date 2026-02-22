@@ -5,5 +5,5 @@ pub use agent_app::AgentApp;
 pub use skill::{
   DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallUnknownRequest,
   InstallResult, InstalledAgentApp, LocalSkill, ManageSkillAgentAppsRequest, RemoteSkill,
-  RemoteSkillsResponse, SourceCheckResult, SourceType, SourceVersionGroup,
+  RemoteSkillsResponse, SkillUpdateCheckItem, SourceCheckResult, SourceType, SourceVersionGroup,
 };

@@ -167,7 +167,7 @@
 
   const refreshLocal = async () => {
     await refreshLocalState();
-    setTimeout(() => checkForSkillUpdates().catch(console.error), 100);
+    checkForSkillUpdates().catch(console.error);
     if (activeTab === "local") {
       await restoreInitialScroll();
     }
@@ -551,7 +551,7 @@
 
     // 切换到本地标签时，延迟检查更新（非阻塞）
     if (tab === "local" && get(localSkillsStore).length > 0) {
-      setTimeout(() => checkForSkillUpdates().catch(console.error), 50);
+      checkForSkillUpdates().catch(console.error);
     }
   };
 

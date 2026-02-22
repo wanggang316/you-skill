@@ -123,3 +123,9 @@ pub struct ManageSkillAgentAppsRequest {
   pub method: InstallMethod,
   pub source_path: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SkillUpdateCheckItem {
+  pub name: String,
+  pub remote_sha: String,
+}

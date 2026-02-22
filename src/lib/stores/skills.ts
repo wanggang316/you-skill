@@ -1,7 +1,7 @@
 import { get, writable } from "svelte/store";
 import { listLocalAgentApps } from "../api/agent-apps";
 import {
-  checkSkillUpdate,
+  checkSkillsUpdates,
   fetchRemoteSkills,
   fetchSkillsByNames,
   listSkills,
@@ -101,20 +101,20 @@ export async function checkForSkillUpdates(): Promise<void> {
   }
 
   isCheckingUpdates = true;
-  skillsWithUpdate.set([]);
 
   const checkPromise = (async () => {
     try {
       const skillNames = local.map((s) => s.name);
-      const remoteMap = await fetchSkillsByNames(skillNames);
-      const updates: RemoteSkill[] = [];
-      for (const remoteSkill of remoteMap) {
-        if (!remoteSkill.skill_path_sha) continue;
-        const hasUpdate = await checkSkillUpdate(remoteSkill.name, remoteSkill.skill_path_sha);
-        if (hasUpdate) {
-          updates.push(remoteSkill);
-        }
-      }
+      const remoteSkillsByName = await fetchSkillsByNames(skillNames);
+      const remoteByName = new Map(remoteSkillsByName.map((skill) => [skill.name, skill]));
+      const checks = remoteSkillsByName
+        .filter((skill) => Boolean(skill.skill_path_sha))
+        .map((skill) => ({ name: skill.name, remote_sha: skill.skill_path_sha! }));
+      const updatedNames = new Set(await checkSkillsUpdates(checks));
+      const updates = skillNames
+        .filter((name) => updatedNames.has(name))
+        .map((name) => remoteByName.get(name))
+        .filter((skill): skill is RemoteSkill => Boolean(skill));
       skillsWithUpdate.set(updates);
     } catch (error) {
       console.error("Failed to check for skill updates:", error);
@@ -134,22 +134,19 @@ export async function checkUpdatesFromRemoteList(): Promise<void> {
   if (local.length === 0 || remote.length === 0) return;
 
   const remoteMap = new Map(remote.map((item) => [item.name, item]));
-  const next = [...get(skillsWithUpdate)];
+  const checks = local
+    .map((localSkill) => {
+      const remoteSkill = remoteMap.get(localSkill.name);
+      if (!remoteSkill?.skill_path_sha) return null;
+      return { name: localSkill.name, remote_sha: remoteSkill.skill_path_sha };
+    })
+    .filter((item): item is { name: string; remote_sha: string } => item !== null);
+  if (checks.length === 0) return;
 
-  for (const localSkill of local) {
-    const remoteSkill = remoteMap.get(localSkill.name);
-    if (!remoteSkill?.skill_path_sha) continue;
-
-    const hasUpdate = await checkSkillUpdate(localSkill.name, remoteSkill.skill_path_sha);
-    const exists = next.some((s) => s.name === remoteSkill.name);
-
-    if (hasUpdate && !exists) {
-      next.push(remoteSkill);
-    } else if (!hasUpdate && exists) {
-      const index = next.findIndex((s) => s.name === remoteSkill.name);
-      if (index !== -1) next.splice(index, 1);
-    }
-  }
-
+  const updatedNames = new Set(await checkSkillsUpdates(checks));
+  const next = checks
+    .filter((check) => updatedNames.has(check.name))
+    .map((check) => remoteMap.get(check.name))
+    .filter((skill): skill is RemoteSkill => Boolean(skill));
   skillsWithUpdate.set(next);
 }

@@ -113,6 +113,11 @@ export interface SourceVersionGroup {
   paths: string[];
 }
 
+export interface SkillUpdateCheckItem {
+  name: string;
+  remote_sha: string;
+}
+
 export interface ManageSkillAgentAppsRequest {
   name: string;
   source_type: SourceType;
@@ -237,18 +242,12 @@ export async function readSkillFile(skillPath: string): Promise<string> {
   return apiCall<string>("read_skill_file", { skillPath });
 }
 
-/**
- * 检查技能是否有可用更新
- *
- * @param skillName - 技能名称
- * @param remoteSha - 远程技能的 SHA
- * @returns 是否有更新可用
- */
-export async function checkSkillUpdate(skillName: string, remoteSha: string): Promise<boolean> {
+export async function checkSkillsUpdates(checks: SkillUpdateCheckItem[]): Promise<string[]> {
+  if (checks.length === 0) return [];
   try {
-    return apiCall<boolean>("check_skill_update", { skillName, remoteSha });
+    return apiCall<string[]>("check_skills_updates", { checks });
   } catch {
-    return false;
+    return [];
   }
 }
 

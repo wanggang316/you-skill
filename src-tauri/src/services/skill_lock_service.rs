@@ -103,8 +103,3 @@ pub fn remove_skill_from_lock(skill_name: String) -> Result<bool, String> {
   write_skill_lock_internal(&lock)?;
   Ok(true)
 }
-
-pub fn get_skill_from_lock(skill_name: String) -> Result<Option<SkillLockEntry>, String> {
-  let lock = read_skill_lock_internal()?;
-  Ok(lock.skills.get(&skill_name).cloned())
-}

@@ -458,15 +458,27 @@ pub async fn read_skill_file(skill_path: String) -> Result<String, String> {
   Err(format!("SKILL.md not found in: {}", skill_path))
 }
 
-pub fn check_skill_update(skill_name: String, remote_sha: String) -> Result<bool, String> {
-  let entry = crate::services::skill_lock_service::get_skill_from_lock(skill_name)?;
-  let Some(entry) = entry else {
-    return Ok(false);
-  };
-  let Some(local_sha) = entry.skill_folder_hash else {
-    return Ok(false);
-  };
-  Ok(local_sha != remote_sha)
+pub fn check_skills_updates(
+  checks: Vec<crate::models::SkillUpdateCheckItem>,
+) -> Result<Vec<String>, String> {
+  if checks.is_empty() {
+    return Ok(Vec::new());
+  }
+
+  let lock = read_skill_lock_internal()?;
+  let mut updated = Vec::new();
+  for check in checks {
+    let Some(entry) = lock.skills.get(&check.name) else {
+      continue;
+    };
+    let Some(local_sha) = &entry.skill_folder_hash else {
+      continue;
+    };
+    if local_sha != &check.remote_sha {
+      updated.push(check.name);
+    }
+  }
+  Ok(updated)
 }
 
 pub fn delete_skill(name: String) -> Result<(), String> {
