@@ -90,9 +90,22 @@ NEW_ENTRY="## [${NEW_VERSION}] - ${TODAY}
 
 # 插入到 CHANGELOG.md 的顶部（第一个 ## 之前）
 if [ -f CHANGELOG.md ]; then
-    # 找到第一个 ## 的位置并插入新条目
-    awk -v entry="$NEW_ENTRY" 'NR==1{print} /^## \[/{print entry} {print}' CHANGELOG.md > CHANGELOG.md.tmp
-    mv CHANGELOG.md.tmp CHANGELOG.md
+    # 创建临时文件存放新条目
+    echo "$NEW_ENTRY" > /tmp/new_entry.tmp
+
+    # 找到第一个 ## 的行号，在其前面插入新条目
+    first_section=$(grep -n '^## \[' CHANGELOG.md | head -1 | cut -d: -f1)
+    if [ -n "$first_section" ]; then
+        # 在第一个版本条目前插入新内容
+        head -n $((first_section - 1)) CHANGELOG.md > CHANGELOG.md.tmp
+        cat /tmp/new_entry.tmp >> CHANGELOG.md.tmp
+        tail -n +$first_section CHANGELOG.md >> CHANGELOG.md.tmp
+        mv CHANGELOG.md.tmp CHANGELOG.md
+    else
+        # 没有找到版本条目，追加到文件末尾
+        echo "$NEW_ENTRY" >> CHANGELOG.md
+    fi
+    rm -f /tmp/new_entry.tmp
     echo "  ✓ CHANGELOG.md 已更新"
 else
     echo "# Changelog" > CHANGELOG.md
