@@ -23,6 +23,8 @@
     onChangeTab,
     onAddSkill,
     onOpenUpdate,
+    onOpenSettings,
+    updateLoading = false,
     onBack,
     onDetailAction,
     onRefreshAgentApps,
@@ -69,18 +71,24 @@
         <div class="flex items-center gap-2">
           {#if hasUpdate}
             <button
-              class="bg-success text-success-content hover:bg-success-hover flex items-center rounded-xl px-3 py-2 text-sm font-medium transition"
+              class="bg-error/10 text-warning hover:bg-error/25 border-error/20 flex items-center rounded-lg border px-2 py-1 text-xs transition disabled:bg-error/5"
               onclick={onOpenUpdate}
-              title={$t("header.update")}
+              disabled={updateLoading}
+              title={$t("header.updateAvailable")}
               type="button"
             >
-              <ArrowUpCircle size={16} class="mr-1.5" />
-              {$t("header.update")}
+              {#if updateLoading}
+                <Loader2 size={14} class="mr-1 animate-spin" />
+                {$t("settings.installingUpdate")}
+              {:else}
+                <ArrowUpCircle size={14} class="mr-1" />
+                {$t("header.updateAvailable")}
+              {/if}
             </button>
           {/if}
           <IconButton
             variant="outline"
-            onclick={onOpenUpdate}
+            onclick={onOpenSettings ?? onOpenUpdate}
             title={$t("header.settings")}
             ariaLabel={$t("header.settings")}
           >

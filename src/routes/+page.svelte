@@ -1,16 +1,16 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
   import { get } from "svelte/store";
-  import { listen } from "@tauri-apps/api/event";
+  import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import PageHeader from "../lib/components/PageHeader.svelte";
   import { t } from "../lib/i18n";
-  import { check } from "@tauri-apps/plugin-updater";
   import LocalSkillsSection from "../lib/components/LocalSkillsSection.svelte";
   import RemoteSkillsSection from "../lib/components/RemoteSkillsSection.svelte";
   import AddSkillModal from "../lib/components/AddSkillModal.svelte";
   import { settings, updateSettings as updateAppSettings } from "../lib/stores/settings";
+  import { ensureUpdateChecked, installAvailableUpdate, updaterState } from "../lib/stores/updater";
   import {
     detectGithubAuto,
     checkSkillVersion,
@@ -48,6 +48,7 @@
   // Shared state for modals
   let addSkillModalOpen = $state(false);
   let hasUpdate = $state(false);
+  let updatingApp = $state(false);
   let mainScrollContainer = $state<HTMLElement | null>(null);
   let initialScrollTop = $state<number | null>(null);
 
@@ -116,6 +117,12 @@
 
   // Initialize and load shared data on mount - 只加载本地数据
   onMount(() => {
+    let unlistenOpenInstallModal: UnlistenFn | null = null;
+    const unsubscribeUpdater = updaterState.subscribe((state) => {
+      hasUpdate = state.hasUpdate;
+      updatingApp = state.installing;
+    });
+
     const searchParams = get(page).url.searchParams;
     const tabParam = searchParams.get("tab");
     if (tabParam === "remote" || tabParam === "local") {
@@ -144,16 +151,18 @@
     // Listen for tray menu events
     listen("open-install-modal", () => {
       addSkillModalOpen = true;
-    });
-
-    const handleHasUpdate = () => {
-      hasUpdate = true;
-    };
-    window.addEventListener("app:has-update", handleHasUpdate);
-    checkForUpdate().catch(console.error);
+    })
+      .then((unlisten) => {
+        unlistenOpenInstallModal = unlisten;
+      })
+      .catch(console.error);
+    ensureUpdateChecked().catch(console.error);
 
     return () => {
-      window.removeEventListener("app:has-update", handleHasUpdate);
+      unsubscribeUpdater();
+      if (unlistenOpenInstallModal) {
+        unlistenOpenInstallModal();
+      }
     };
   });
 
@@ -162,17 +171,6 @@
     await tick();
     mainScrollContainer.scrollTop = initialScrollTop;
     initialScrollTop = null;
-  };
-
-  const checkForUpdate = async () => {
-    try {
-      const update = await check();
-      if (update) {
-        hasUpdate = true;
-      }
-    } catch (error) {
-      console.error("Failed to check for update:", error);
-    }
   };
 
   const refreshLocal = async () => {
@@ -566,6 +564,15 @@
   };
 
   // Navigation handlers
+  const handleAppUpdate = async () => {
+    if (updatingApp) return;
+    try {
+      await installAvailableUpdate();
+    } catch (error) {
+      console.error("Failed to install update:", error);
+    }
+  };
+
   const navigateToSettings = () => {
     const returnTo = encodeURIComponent(getHomeReturnTo());
     goto(`/settings?returnTo=${returnTo}`);
@@ -578,10 +585,12 @@
     {activeTab}
     skillName=""
     {hasUpdate}
+    updateLoading={updatingApp}
     agentAppsLoading={false}
     onChangeTab={handleTabChange}
     onAddSkill={() => (addSkillModalOpen = true)}
-    onOpenUpdate={navigateToSettings}
+    onOpenUpdate={handleAppUpdate}
+    onOpenSettings={navigateToSettings}
     onBack={() => {}}
     onDetailAction={undefined}
     onRefreshAgentApps={() => {}}
