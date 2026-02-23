@@ -290,6 +290,7 @@
     onChangeTab={() => {}}
     onAddSkill={() => {}}
     onOpenUpdate={() => {}}
+    onOpenSettings={() => {}}
     onBack={handleBack}
     onDetailAction={handleDetailAction}
     onRefreshAgentApps={() => {}}
