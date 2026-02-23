@@ -82,14 +82,14 @@
     <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
       <div class="flex w-full items-center justify-between">
         <div class="flex items-center gap-4">
-          <button
-            class="border-base-300 text-base-content hover:bg-base-200 flex items-center rounded-xl border p-2 text-sm transition"
+          <IconButton
+            variant="outline"
             onclick={goBack}
             title={$t("header.back")}
-            type="button"
+            ariaLabel={$t("header.back")}
           >
             <ChevronLeft size={16} />
-          </button>
+          </IconButton>
           <h1 class="text-base-content text-lg font-medium">
             {$t("agentApps.title")}
           </h1>

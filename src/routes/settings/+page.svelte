@@ -5,6 +5,7 @@
   import { settings, updateSettings } from "../../lib/stores/settings";
   import { get } from "svelte/store";
   import { getSettings, setBackupFolder, openBackupFolder, backupSkills } from "../../lib/api";
+  import IconButton from "../../lib/components/ui/IconButton.svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import { FolderOpen, Loader2, ChevronRight, Download, ChevronLeft } from "@lucide/svelte";
   import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -206,14 +207,14 @@
   <header class="border-base-300 bg-base-100 sticky top-0 z-50 border-b">
     <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
       <div class="flex items-center gap-4">
-        <button
-          class="border-base-300 text-base-content hover:bg-base-200 flex items-center rounded-xl border p-2 text-sm transition"
+        <IconButton
+          variant="outline"
           onclick={goBack}
           title={$t("header.back")}
-          type="button"
+          ariaLabel={$t("header.back")}
         >
           <ChevronLeft size={16} />
-        </button>
+        </IconButton>
         <h1 class="text-base-content text-lg font-medium">
           {$t("header.settings")}
         </h1>
