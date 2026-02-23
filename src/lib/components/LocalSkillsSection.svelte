@@ -110,11 +110,11 @@
                 >
                   {skill.name}
                 </button>
-                <span
+                <!-- <span
                   class="bg-base-300 text-base-content-subtle rounded-full px-2 py-0.5 text-[11px]"
                 >
                   {skill.source_type}
-                </span>
+                </span> -->
               </div>
               <div class="flex items-center gap-2">
                 {#if hasUpdate(skill) && onUpdateSkill}
