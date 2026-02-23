@@ -1,5 +1,6 @@
 import { derived, get, writable } from "svelte/store";
 import { getSettings as fetchSettings, updateSettings as persistSettings } from "../api";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { AppSettings } from "../api/settings";
 
 const defaultSettings: AppSettings = {
@@ -13,8 +14,10 @@ export const settings = writable<AppSettings>({ ...defaultSettings });
 
 let systemMedia: MediaQueryList | null = null;
 let systemListener: ((event: MediaQueryListEvent) => void) | null = null;
+let systemThemeUnlisten: (() => void) | null = null;
+let systemSyncToken = 0;
 
-const applyTheme = (theme: AppSettings["theme"]) => {
+const applyDocumentTheme = (theme: AppSettings["theme"]) => {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   if (theme === "dark") {
@@ -36,19 +39,58 @@ const applyTheme = (theme: AppSettings["theme"]) => {
   }
 };
 
+const applyNativeTheme = (theme: AppSettings["theme"]) => {
+  if (typeof window === "undefined") return;
+  const nativeTheme = theme === "system" ? null : theme;
+  getCurrentWindow()
+    .setTheme(nativeTheme)
+    .catch((error) => {
+      // Non-tauri environment (e.g. web preview) can fail here, safe to ignore.
+      console.debug("Failed to apply native app theme:", error);
+    });
+};
+
+const applyTheme = (theme: AppSettings["theme"]) => {
+  applyNativeTheme(theme);
+  applyDocumentTheme(theme);
+};
+
 const syncSystemTheme = (theme: AppSettings["theme"]) => {
-  if (typeof window === "undefined" || !window.matchMedia) return;
+  const syncToken = ++systemSyncToken;
+
   if (systemMedia && systemListener) {
     systemMedia.removeEventListener("change", systemListener);
     systemMedia = null;
     systemListener = null;
   }
+  if (systemThemeUnlisten) {
+    systemThemeUnlisten();
+    systemThemeUnlisten = null;
+  }
+
+  if (typeof window === "undefined" || !window.matchMedia) return;
   if (theme !== "system") return;
+
   systemMedia = window.matchMedia("(prefers-color-scheme: dark)");
   systemListener = (event) => {
-    applyTheme(event.matches ? "dark" : "light");
+    applyDocumentTheme(event.matches ? "dark" : "light");
   };
   systemMedia.addEventListener("change", systemListener);
+
+  getCurrentWindow()
+    .onThemeChanged(({ payload }) => {
+      applyDocumentTheme(payload);
+    })
+    .then((unlisten) => {
+      if (syncToken !== systemSyncToken) {
+        unlisten();
+        return;
+      }
+      systemThemeUnlisten = unlisten;
+    })
+    .catch((error) => {
+      console.debug("Failed to listen for native theme change:", error);
+    });
 };
 
 export const loadSettings = async () => {
