@@ -78,6 +78,17 @@
     }
   };
 
+  const getErrorMessage = (error: unknown, fallback: string): string => {
+    if (error instanceof Error && error.message) return error.message;
+    if (typeof error === "string" && error.trim()) return error;
+    try {
+      const text = JSON.stringify(error);
+      return text && text !== "{}" ? text : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
   const handleCheckUpdate = async () => {
     checkingUpdate = true;
     updateMessage = "";
@@ -133,7 +144,8 @@
       // 安装完成后重启应用
       await relaunch();
     } catch (error) {
-      updateMessage = error instanceof Error ? error.message : $t("settings.updateInstallFailed");
+      updateMessage = getErrorMessage(error, $t("settings.updateInstallFailed"));
+      console.error("Failed to install update:", error);
       isInstalling = false;
     }
   };
