@@ -106,14 +106,14 @@ export async function checkForSkillUpdates(): Promise<void> {
     try {
       const skillNames = local.map((s) => s.name);
       const remoteSkillsByName = await fetchSkillsByNames(skillNames);
-        const remoteByName = new Map(remoteSkillsByName.map((skill) => [skill.name, skill]));
-        const checks = remoteSkillsByName
-          .filter((skill) => Boolean(skill.skill_path_sha))
-          .map((skill) => ({
-            name: skill.name,
-            source: skill.source,
-            remote_sha: skill.skill_path_sha!,
-          }));
+      const remoteByName = new Map(remoteSkillsByName.map((skill) => [skill.name, skill]));
+      const checks = remoteSkillsByName
+        .filter((skill) => Boolean(skill.skill_path_sha))
+        .map((skill) => ({
+          name: skill.name,
+          source: skill.source,
+          remote_sha: skill.skill_path_sha!,
+        }));
       const updatedNames = new Set(await checkSkillsUpdates(checks));
       const updates = skillNames
         .filter((name) => updatedNames.has(name))
@@ -139,16 +139,16 @@ export async function checkUpdatesFromRemoteList(): Promise<void> {
 
   const remoteMap = new Map(remote.map((item) => [item.name, item]));
   const checks = local
-      .map((localSkill) => {
-        const remoteSkill = remoteMap.get(localSkill.name);
-        if (!remoteSkill?.skill_path_sha) return null;
-        return {
-          name: localSkill.name,
-          source: remoteSkill.source,
-          remote_sha: remoteSkill.skill_path_sha,
-        };
-      })
-      .filter((item): item is { name: string; source: string; remote_sha: string } => item !== null);
+    .map((localSkill) => {
+      const remoteSkill = remoteMap.get(localSkill.name);
+      if (!remoteSkill?.skill_path_sha) return null;
+      return {
+        name: localSkill.name,
+        source: remoteSkill.source,
+        remote_sha: remoteSkill.skill_path_sha,
+      };
+    })
+    .filter((item): item is { name: string; source: string; remote_sha: string } => item !== null);
   if (checks.length === 0) return;
 
   const updatedNames = new Set(await checkSkillsUpdates(checks));
