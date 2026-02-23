@@ -12,6 +12,10 @@
     "fs:allow-applocaldata-write-recursive",
     "fs:allow-read-text-file",
     "shell:allow-open",
-    "updater:default"
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-download-and-install",
+    "process:default",
+    "process:allow-restart"
   ]
 }
