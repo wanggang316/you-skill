@@ -81,13 +81,13 @@ pub fn detect_github_manual(github_path: String) -> Result<Vec<DetectedSkill>, S
   for dir in skill_dirs {
     match detect_folder_exact(&dir) {
       Ok(mut detected) => {
-          let relative_dir = dir
-            .strip_prefix(&clone_dir)
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_default();
-          detected.skill_path = skill_path_from_relative_dir(&relative_dir);
-          result.push(detected);
-        },
+        let relative_dir = dir
+          .strip_prefix(&clone_dir)
+          .map(|p| p.to_string_lossy().to_string())
+          .unwrap_or_default();
+        detected.skill_path = skill_path_from_relative_dir(&relative_dir);
+        result.push(detected);
+      },
       Err(_) => continue,
     }
   }
@@ -182,9 +182,11 @@ pub fn list_skills() -> Result<Vec<LocalSkill>, String> {
       }
 
       let source_type = detect_source_type(&skill_name, &github_lock, &native_lock);
+      let source = resolve_local_skill_source(&skill_name, &source_type, &github_lock);
       let index = skills.len();
       skills.push(LocalSkill {
         name: skill_name.clone(),
+        source,
         global_folder: Some(skill_dir.to_string_lossy().to_string()),
         installed_agent_apps: Vec::new(),
         source_type,
@@ -238,9 +240,11 @@ pub fn list_skills() -> Result<Vec<LocalSkill>, String> {
       }
 
       let source_type = detect_source_type(&skill_name, &github_lock, &native_lock);
+      let source = resolve_local_skill_source(&skill_name, &source_type, &github_lock);
       let index = skills.len();
       skills.push(LocalSkill {
         name: skill_name.clone(),
+        source,
         global_folder: None,
         installed_agent_apps: vec![installed_app],
         source_type,
@@ -536,7 +540,7 @@ fn validate_install_from_unknown_request(request: &InstallUnknownRequest) -> Res
       source.to_string_lossy()
     ));
   }
-    let skill_md = source.join(SKILL_MD_FILE_NAME);
+  let skill_md = source.join(SKILL_MD_FILE_NAME);
   let frontmatter = FileHelper::read_skill_frontmatter(&skill_md)?;
   let name = frontmatter
     .name
@@ -848,17 +852,17 @@ fn install_to_app(source: &Path, target: &Path, method: &InstallMethod) -> Resul
       {
         std::os::unix::fs::symlink(source, target).map_err(|e| e.to_string())
       }
-        #[cfg(windows)]
-        {
-          match std::os::windows::fs::symlink_dir(source, target) {
-            Ok(_) => Ok(()),
-            Err(_) => copy_dir_all_sync(source, target),
+      #[cfg(windows)]
+      {
+        match std::os::windows::fs::symlink_dir(source, target) {
+          Ok(_) => Ok(()),
+          Err(_) => copy_dir_all_sync(source, target),
         }
       }
     },
-      InstallMethod::Copy => copy_dir_all_sync(source, target),
-    }
+    InstallMethod::Copy => copy_dir_all_sync(source, target),
   }
+}
 
 fn is_skill_folder(path: &Path) -> bool {
   (path.is_dir() || path.is_symlink()) && path.join(SKILL_MD_FILE_NAME).exists()
@@ -896,4 +900,27 @@ fn detect_source_type(
   } else {
     SourceType::Unknown
   }
+}
+
+fn resolve_local_skill_source(
+  skill_name: &str,
+  source_type: &SourceType,
+  github_lock: &SkillLockFile,
+) -> Option<String> {
+  if *source_type != SourceType::Github {
+    return None;
+  }
+
+  let Some(entry) = github_lock.skills.get(skill_name) else {
+    return None;
+  };
+
+  let source = entry.source.trim();
+  if !source.is_empty() {
+    return Some(source.to_string());
+  }
+
+  GithubHelper::parse_github_url(&entry.source_url)
+    .map(|(owner, repo)| format!("{}/{}", owner, repo))
+    .ok()
 }

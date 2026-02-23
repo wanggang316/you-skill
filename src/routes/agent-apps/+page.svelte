@@ -2,6 +2,8 @@
   import { onMount } from "svelte";
   import { confirm } from "@tauri-apps/plugin-dialog";
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
+  import { get } from "svelte/store";
   import { removeAgentApp, refreshAgentApps, type AgentApp } from "../../lib/api";
   import { t } from "../../lib/i18n";
   import { Plus, Trash2, Check, Loader2, Pencil, ChevronLeft, RefreshCw } from "@lucide/svelte";
@@ -65,6 +67,11 @@
   }
 
   function goBack() {
+    const returnTo = get(page).url.searchParams.get("returnTo");
+    if (returnTo) {
+      goto(decodeURIComponent(returnTo));
+      return;
+    }
     goto("/settings");
   }
 </script>

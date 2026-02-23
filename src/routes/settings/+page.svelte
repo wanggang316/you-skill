@@ -186,7 +186,9 @@
   };
 
   const navigateToAgentApps = () => {
-    goto("/agent-apps");
+    const currentUrl = get(page).url;
+    const returnTo = encodeURIComponent(`${currentUrl.pathname}${currentUrl.search}`);
+    goto(`/agent-apps?returnTo=${returnTo}`);
   };
 
   const goBack = () => {

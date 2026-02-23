@@ -12,6 +12,7 @@ export type SourceType = "github" | "native" | "unknown";
 
 export interface LocalSkill {
   name: string;
+  source?: string | null;
   global_folder?: string | null;
   installed_agent_apps: InstalledAgentApp[];
   source_type: SourceType;
