@@ -172,7 +172,7 @@
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <p class="truncate text-base">
+                <p class="truncate text-base cursor-pointer">
                   {skill.name}
                   <span class="text-base-content/70 text-sm font-normal">({skill.source})</span>
                 </p>
