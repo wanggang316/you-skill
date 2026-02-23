@@ -116,6 +116,7 @@ export interface SourceVersionGroup {
 
 export interface SkillUpdateCheckItem {
   name: string;
+  source: string;
   remote_sha: string;
 }
 

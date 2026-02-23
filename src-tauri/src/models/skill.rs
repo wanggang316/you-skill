@@ -128,5 +128,6 @@ pub struct ManageSkillAgentAppsRequest {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SkillUpdateCheckItem {
   pub name: String,
+  pub source: String,
   pub remote_sha: String,
 }

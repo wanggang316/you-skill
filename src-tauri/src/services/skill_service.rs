@@ -475,6 +475,9 @@ pub fn check_skills_updates(
     let Some(entry) = lock.skills.get(&check.name) else {
       continue;
     };
+    if entry.source.trim() != check.source.trim() {
+      continue;
+    }
     let Some(local_sha) = &entry.skill_folder_hash else {
       continue;
     };
