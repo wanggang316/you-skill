@@ -1,6 +1,6 @@
 [package]
 name = "you-skill"
-version = "0.2.1"
+version = "0.2.2"
 description = "Skill manager desktop app"
 authors = ["gumpwang2020@gmail.com"]
 edition = "2021"
