@@ -64,14 +64,13 @@ npm install
 ### 本地运行
 
 ```bash
-npm run tauri -- dev
+npm run tauri dev
 ```
 
 ### 构建
 
 ```bash
-npm run build
-npm run tauri -- build
+npm run tauri build
 ```
 
 ### 开发规则
