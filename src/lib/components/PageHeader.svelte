@@ -71,7 +71,7 @@
         <div class="flex items-center gap-2">
           {#if hasUpdate}
             <button
-              class="bg-error/10 text-warning hover:bg-error/25 border-error/20 flex items-center rounded-lg border px-2 py-1 text-xs transition disabled:bg-error/5"
+              class="bg-error/10 text-warning hover:bg-error/25 border-error/20 disabled:bg-error/5 flex items-center rounded-lg border px-2 py-1 text-xs transition"
               onclick={onOpenUpdate}
               disabled={updateLoading}
               title={$t("header.updateAvailable")}
