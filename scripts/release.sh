@@ -214,6 +214,7 @@ if [ -f CHANGELOG.md ]; then
             echo "$new_unreleased" >> CHANGELOG.md.tmp
             echo "" >> CHANGELOG.md.tmp
             echo "$NEW_ENTRY" >> CHANGELOG.md.tmp
+            echo "" >> CHANGELOG.md.tmp
             tail -n +$next_version_line CHANGELOG.md >> CHANGELOG.md.tmp
             mv CHANGELOG.md.tmp CHANGELOG.md
         fi
@@ -235,6 +236,7 @@ if [ -f CHANGELOG.md ]; then
             if [ -n "$first_version" ]; then
                 head -n $((first_version - 1)) CHANGELOG.md > CHANGELOG.md.tmp
                 echo "$NEW_ENTRY" >> CHANGELOG.md.tmp
+                echo "" >> CHANGELOG.md.tmp
                 tail -n +$first_version CHANGELOG.md >> CHANGELOG.md.tmp
                 mv CHANGELOG.md.tmp CHANGELOG.md
             fi
@@ -242,6 +244,7 @@ if [ -f CHANGELOG.md ]; then
             # 在第一个版本条目前插入
             head -n $((first_version - 1)) CHANGELOG.md > CHANGELOG.md.tmp
             echo "$NEW_ENTRY" >> CHANGELOG.md.tmp
+            echo "" >> CHANGELOG.md.tmp
             tail -n +$first_version CHANGELOG.md >> CHANGELOG.md.tmp
             mv CHANGELOG.md.tmp CHANGELOG.md
         else
@@ -332,7 +335,7 @@ TAG_MESSAGE="Release v${NEW_VERSION}
 
 ${TAG_MESSAGE}"
 
-git tag -a "v${NEW_VERSION}" -m "$TAG_MESSAGE"
+git tag --cleanup=verbatim -a "v${NEW_VERSION}" -m "$TAG_MESSAGE"
 
 echo "  ✓ 标签 v${NEW_VERSION} 已创建"
 
