@@ -80,37 +80,188 @@ echo -e "${GREEN}📝 步骤 2/6: 更新 CHANGELOG.md...${NC}"
 # 获取当前日期
 TODAY=$(date +%Y-%m-%d)
 
-# 创建新的 changelog 条目
-NEW_ENTRY="## [${NEW_VERSION}] - ${TODAY}
+# 函数：提取 Unreleased 部分中指定分类下的条目
+extract_section() {
+    local section_name="$1"
+    local changelog_file="$2"
+
+    # 使用 awk 提取指定分类下的条目（直到下一个 ### 或 ##）
+    awk -v section="$section_name" '
+        /^### / { current_section = $0; in_items = 0; next }
+        /^## / { current_section = ""; in_items = 0; next }
+        current_section ~ section && /^- / {
+            print $0
+            in_items = 1
+        }
+        current_section ~ section && /^[[:space:]]+- / {
+            print $0
+        }
+    ' "$changelog_file"
+}
+
+# 函数：检查 Unreleased 部分是否有内容
+has_unreleased_content() {
+    local changelog_file="$1"
+    local unreleased_start=$(grep -n '^## \[Unreleased\]' "$changelog_file" | cut -d: -f1)
+    local next_version_start=$(grep -n '^## \[' "$changelog_file" | grep -v "Unreleased" | head -1 | cut -d: -f1)
+
+    if [ -z "$unreleased_start" ]; then
+        return 1
+    fi
+
+    # 提取 Unreleased 部分的内容
+    if [ -n "$next_version_start" ]; then
+        local content=$(sed -n "$((unreleased_start + 1)),$((next_version_start - 1))p" "$changelog_file" | grep -c '^- ')
+    else
+        local content=$(tail -n "+$((unreleased_start + 1))" "$changelog_file" | grep -c '^- ')
+    fi
+
+    [ "$content" -gt 0 ]
+}
+
+# 函数：构建新版本条目
+build_changelog_entry() {
+    local version="$1"
+    local date="$2"
+    local notes="$3"
+    local changelog_file="$4"
+
+    local added_items=$(extract_section "Added" "$changelog_file")
+    local changed_items=$(extract_section "Changed" "$changelog_file")
+    local fixed_items=$(extract_section "Fixed" "$changelog_file")
+    local removed_items=$(extract_section "Removed" "$changelog_file")
+
+    local entry="## [${version}] - ${date}
+"
+
+    # Added 部分
+    if [ -n "$added_items" ]; then
+        entry+="
+### Added
+$added_items"
+    elif [ -n "$notes" ]; then
+        entry+="
+### Added
+- $notes"
+    fi
+
+    # Changed 部分
+    if [ -n "$changed_items" ]; then
+        entry+="
+
+### Changed
+$changed_items"
+    fi
+
+    # Fixed 部分
+    if [ -n "$fixed_items" ]; then
+        entry+="
+
+### Fixed
+$fixed_items"
+    fi
+
+    # Removed 部分
+    if [ -n "$removed_items" ]; then
+        entry+="
+
+### Removed
+$removed_items"
+    fi
+
+    echo "$entry"
+}
+
+if [ -f CHANGELOG.md ]; then
+    # 检查是否存在 Unreleased 部分
+    unreleased_line=$(grep -n '^## \[Unreleased\]' CHANGELOG.md | cut -d: -f1)
+
+    if [ -n "$unreleased_line" ] && has_unreleased_content CHANGELOG.md; then
+        echo "  从 Unreleased 部分提取内容..."
+
+        # 构建新版本条目（使用 Unreleased 内容）
+        NEW_ENTRY=$(build_changelog_entry "$NEW_VERSION" "$TODAY" "$RELEASE_NOTES" CHANGELOG.md)
+
+        # 找到下一个版本条目的行号
+        next_version_line=$(grep -n '^## \[' CHANGELOG.md | grep -v "Unreleased" | head -1 | cut -d: -f1)
+
+        if [ -n "$next_version_line" ]; then
+            # 创建新的 Unreleased 部分（清空内容）
+            new_unreleased="## [Unreleased]
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+"
+            # 组合新文件：头部 + 新 Unreleased + 新版本条目 + 剩余内容
+            head -n $((unreleased_line - 1)) CHANGELOG.md > CHANGELOG.md.tmp
+            echo "$new_unreleased" >> CHANGELOG.md.tmp
+            echo "" >> CHANGELOG.md.tmp
+            echo "$NEW_ENTRY" >> CHANGELOG.md.tmp
+            tail -n +$next_version_line CHANGELOG.md >> CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
+        fi
+        echo "  ✓ CHANGELOG.md 已更新（从 Unreleased 迁移内容）"
+    else
+        # 没有 Unreleased 内容，使用传统方式
+        NEW_ENTRY="## [${NEW_VERSION}] - ${TODAY}
 
 ### Added
 - ${RELEASE_NOTES}
-
 "
 
-# 插入到 CHANGELOG.md 的顶部（第一个 ## 之前）
-if [ -f CHANGELOG.md ]; then
-    # 创建临时文件存放新条目
-    echo "$NEW_ENTRY" > /tmp/new_entry.tmp
+        # 插入到 Unreleased 部分之后（或第一个版本条目之前）
+        first_version=$(grep -n '^## \[' CHANGELOG.md | grep -v "Unreleased" | head -1 | cut -d: -f1)
 
-    # 找到第一个 ## 的行号，在其前面插入新条目
-    first_section=$(grep -n '^## \[' CHANGELOG.md | head -1 | cut -d: -f1)
-    if [ -n "$first_section" ]; then
-        # 在第一个版本条目前插入新内容
-        head -n $((first_section - 1)) CHANGELOG.md > CHANGELOG.md.tmp
-        cat /tmp/new_entry.tmp >> CHANGELOG.md.tmp
-        tail -n +$first_section CHANGELOG.md >> CHANGELOG.md.tmp
-        mv CHANGELOG.md.tmp CHANGELOG.md
-    else
-        # 没有找到版本条目，追加到文件末尾
-        echo "$NEW_ENTRY" >> CHANGELOG.md
+        if [ -n "$unreleased_line" ]; then
+            # 在 Unreleased 后插入
+            if [ -n "$first_version" ]; then
+                head -n $((first_version - 1)) CHANGELOG.md > CHANGELOG.md.tmp
+                echo "$NEW_ENTRY" >> CHANGELOG.md.tmp
+                tail -n +$first_version CHANGELOG.md >> CHANGELOG.md.tmp
+                mv CHANGELOG.md.tmp CHANGELOG.md
+            fi
+        elif [ -n "$first_version" ]; then
+            # 在第一个版本条目前插入
+            head -n $((first_version - 1)) CHANGELOG.md > CHANGELOG.md.tmp
+            echo "$NEW_ENTRY" >> CHANGELOG.md.tmp
+            tail -n +$first_version CHANGELOG.md >> CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
+        else
+            echo "$NEW_ENTRY" >> CHANGELOG.md
+        fi
+        echo "  ✓ CHANGELOG.md 已更新"
     fi
-    rm -f /tmp/new_entry.tmp
-    echo "  ✓ CHANGELOG.md 已更新"
 else
-    echo "# Changelog" > CHANGELOG.md
+    # 创建新的 CHANGELOG.md
+    cat > CHANGELOG.md << 'EOF'
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+EOF
+    echo "## [Unreleased]" >> CHANGELOG.md
     echo "" >> CHANGELOG.md
-    echo "$NEW_ENTRY" >> CHANGELOG.md
+    echo "### Added" >> CHANGELOG.md
+    echo "" >> CHANGELOG.md
+    echo "### Changed" >> CHANGELOG.md
+    echo "" >> CHANGELOG.md
+    echo "### Fixed" >> CHANGELOG.md
+    echo "" >> CHANGELOG.md
+    echo "### Removed" >> CHANGELOG.md
+    echo "" >> CHANGELOG.md
+    echo "" >> CHANGELOG.md
+    echo "## [${NEW_VERSION}] - ${TODAY}" >> CHANGELOG.md
+    echo "" >> CHANGELOG.md
+    echo "### Added" >> CHANGELOG.md
+    echo "- ${RELEASE_NOTES}" >> CHANGELOG.md
     echo "  ✓ CHANGELOG.md 已创建"
 fi
 
