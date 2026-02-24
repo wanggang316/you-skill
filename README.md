@@ -17,10 +17,10 @@ YouSkill is a desktop [Agent Skills](https://agentskills.io/) manager that helps
 
 ## Features
 
-1. Install skills for 20+ popular developer tools, with support for custom agent apps.
+1. Install skills for 40+ popular developer tools, with support for custom agent apps.
 2. Compatible with Vercel `skill add` conventions and directory structure (`.agents/skills` as a shared standard).
 3. Automatic update checks with one-click skill upgrades.
-4. Built-in dynamic skill marketplace (15,000+ entries) for fast search and install.
+4. Built-in dynamic skill marketplace (15,000+) for fast search and install.
 5. Install from marketplace, GitHub URL, local archives (`.zip` / `.skill`), or local folders.
 6. One-click skill backup.
 7. Two sync modes: Symlink and Copy, so one change can be reflected across multiple apps.
