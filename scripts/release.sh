@@ -307,9 +307,31 @@ echo "  ✓ 版本更新已提交"
 echo ""
 echo -e "${GREEN}🏷️ 步骤 5/6: 创建标签...${NC}"
 
-git tag -a "v${NEW_VERSION}" -m "Release v${NEW_VERSION}
+# 从 CHANGELOG.md 提取指定版本的内容（不包含标题行）
+extract_version_changelog() {
+    local version="$1"
+    local changelog_file="$2"
 
-${RELEASE_NOTES}"
+    # 找到版本条目的起始行和下一个版本条目的起始行
+    local version_line=$(grep -n "^## \[$version\]" "$changelog_file" | cut -d: -f1)
+    local next_version_line=$(grep -n "^## \[" "$changelog_file" | grep -v "$version" | grep -v "Unreleased" | sort -n | head -1 | cut -d: -f1)
+
+    if [ -z "$version_line" ]; then
+        return 1
+    fi
+
+    # 提取版本内容（从标题行下一行开始）
+    if [ -n "$next_version_line" ]; then
+        sed -n "$((version_line + 1)),$((next_version_line - 1))p" "$changelog_file"
+    else
+        tail -n "+$((version_line + 1))" "$changelog_file"
+    fi
+}
+
+# 提取版本变更内容
+TAG_MESSAGE=$(extract_version_changelog "$NEW_VERSION" CHANGELOG.md)
+
+git tag -a "v${NEW_VERSION}" -m "$TAG_MESSAGE"
 
 echo "  ✓ 标签 v${NEW_VERSION} 已创建"
 
