@@ -4,6 +4,7 @@ use serde::Deserialize;
 use std::time::Duration;
 
 const API_KEY: &str = "4586a151c7950fa482a099dfa916ff9d616d02d9f10e710c31819607aabb9fff";
+const API_BASE_URL: &str = "https://api.youskill.cc";
 
 #[derive(Debug, Deserialize)]
 struct SkillsResponse {
@@ -47,7 +48,7 @@ pub async fn fetch_remote_skills(
     .timeout(Duration::from_secs(10))
     .build()
     .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
-  let base_url = "https://you-skills-console.vercel.app/api/skills";
+  let base_url = format!("{}/api/skills", API_BASE_URL);
 
   // Sorting params - default to heat_score desc
   let sort_by = sort_by.unwrap_or_else(|| "heat_score".to_string());
@@ -135,7 +136,7 @@ pub async fn fetch_skills_by_names(names: Vec<String>) -> Result<Vec<RemoteSkill
     .build()
     .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
-  let url = "https://you-skills-console.vercel.app/api/skills/by-names";
+  let url = format!("{}/api/skills/by-names", API_BASE_URL);
   let names_param = names.join(",");
 
   let response: Vec<ApiSkill> = match client
@@ -188,8 +189,8 @@ pub async fn record_skill_install(skill_id: String) -> Result<(), String> {
     .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
   let url = format!(
-    "https://you-skills-console.vercel.app/api/skills/{}/install",
-    skill_id
+    "{}/api/skills/{}/install",
+    API_BASE_URL, skill_id
   );
 
   let response = client.post(&url).header("X-API-Key", API_KEY).send().await;
