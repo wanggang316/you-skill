@@ -303,7 +303,7 @@ echo "  ✓ 版本更新已提交"
 echo ""
 echo -e "${GREEN}🏷️ 步骤 5/6: 创建标签...${NC}"
 
-# 从 CHANGELOG.md 提取指定版本的内容（只保留变更条目）
+# 从 CHANGELOG.md 提取指定版本的内容（包含分类标题和变更条目）
 extract_version_changelog() {
     local version="$1"
     local changelog_file="$2"
@@ -316,11 +316,11 @@ extract_version_changelog() {
         return 1
     fi
 
-    # 提取版本内容并只保留以 `- ` 开头的行
+    # 提取版本完整内容（跳过标题行）
     if [ -n "$next_version_line" ]; then
-        sed -n "$((version_line + 1)),$((next_version_line - 1))p" "$changelog_file" | grep "^- "
+        sed -n "$((version_line + 1)),$((next_version_line - 1))p" "$changelog_file"
     else
-        tail -n "+$((version_line + 1))" "$changelog_file" | grep "^- "
+        tail -n "+$((version_line + 1))" "$changelog_file"
     fi
 }
 
