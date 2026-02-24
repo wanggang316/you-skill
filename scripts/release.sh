@@ -85,18 +85,29 @@ extract_section() {
     local section_name="$1"
     local changelog_file="$2"
 
-    # 使用 awk 提取指定分类下的条目（直到下一个 ### 或 ##）
-    awk -v section="$section_name" '
-        /^### / { current_section = $0; in_items = 0; next }
-        /^## / { current_section = ""; in_items = 0; next }
-        current_section ~ section && /^- / {
-            print $0
-            in_items = 1
-        }
-        current_section ~ section && /^[[:space:]]+- / {
-            print $0
-        }
-    ' "$changelog_file"
+    # 先获取 Unreleased 部分的行号范围
+    local unreleased_start=$(grep -n '^## \[Unreleased\]' "$changelog_file" | cut -d: -f1)
+    local next_version_start=$(grep -n '^## \[' "$changelog_file" | grep -v "Unreleased" | head -1 | cut -d: -f1)
+
+    if [ -z "$unreleased_start" ]; then
+        return
+    fi
+
+    # 提取 Unreleased 部分的文本
+    local unreleased_text
+    if [ -n "$next_version_start" ]; then
+        unreleased_text=$(sed -n "$((unreleased_start + 1)),$((next_version_start - 1))p" "$changelog_file")
+    else
+        unreleased_text=$(tail -n "+$((unreleased_start + 1))" "$changelog_file")
+    fi
+
+    # 使用 awk 从 Unreleased 部分提取指定分类下的条目
+    echo "$unreleased_text" | awk -v section="$section_name" '
+        /^### / { current_section = $0; next }
+        /^## / { current_section = ""; next }
+        current_section ~ section && /^- / { print $0 }
+        current_section ~ section && /^[[:space:]]+- / { print $0 }
+    '
 }
 
 # 函数：检查 Unreleased 部分是否有内容
@@ -168,6 +179,11 @@ $fixed_items"
 ### Removed
 $removed_items"
     fi
+
+    # 末尾添加空行，确保版本之间有分隔
+    entry+="
+
+"
 
     echo "$entry"
 }
