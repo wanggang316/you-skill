@@ -8,6 +8,22 @@ use uuid::Uuid;
 // Global cache for local agent apps
 static LOCAL_AGENT_APPS: RwLock<Option<Vec<AgentApp>>> = RwLock::new(None);
 
+// Check if the app's base directory exists (parent of the last folder in global_path)
+fn check_app_base_exists(global_path: &str) -> bool {
+  let expanded_path = expand_home(global_path);
+  // If the path itself exists, return true
+  if expanded_path.exists() {
+    return true;
+  }
+  // Check if the parent directory exists (the last folder might not be created yet)
+  if let Some(parent) = expanded_path.parent() {
+    if parent.exists() {
+      return true;
+    }
+  }
+  false
+}
+
 // Get local agent apps (actually installed on the system)
 pub fn local_agent_apps() -> Vec<AgentApp> {
   // Check cache first
@@ -22,8 +38,7 @@ pub fn local_agent_apps() -> Vec<AgentApp> {
 
   for app in all_apps {
     if let Some(global_path) = &app.global_path {
-      let expanded_path = expand_home(global_path);
-      if expanded_path.exists() {
+      if check_app_base_exists(global_path) {
         local_apps.push(app);
       }
     }

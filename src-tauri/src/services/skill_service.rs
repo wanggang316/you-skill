@@ -200,6 +200,7 @@ pub fn list_skills() -> Result<Vec<LocalSkill>, String> {
       continue;
     };
     let app_root = expand_home(global_path);
+    // If the path doesn't exist, skip reading (no skills installed yet)
     if !app_root.exists() || !app_root.is_dir() {
       continue;
     }
