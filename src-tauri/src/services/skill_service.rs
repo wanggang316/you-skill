@@ -67,10 +67,10 @@ pub fn detect_zip(zip_path: String) -> Result<Vec<DetectedSkill>, String> {
   detect_folder(temp_extract_dir.to_string_lossy().to_string())
 }
 
-pub fn detect_github_manual(github_path: String) -> Result<Vec<DetectedSkill>, String> {
+pub async fn detect_github_manual(github_path: String) -> Result<Vec<DetectedSkill>, String> {
   let (owner, repo) = GithubHelper::parse_github_url(&github_path)?;
   let clone_dir = create_temp_dir(&format!("detect-github-manual-{}-{}", owner, repo))?;
-  GithubHelper::clone_repo_to(&owner, &repo, &clone_dir)?;
+  GithubHelper::clone_repo_to(&owner, &repo, &clone_dir).await?;
 
   let skill_dirs = FolderHelper::find_dirs_containing_file(&clone_dir, SKILL_MD_FILE_NAME)?;
   if skill_dirs.is_empty() {
@@ -99,13 +99,13 @@ pub fn detect_github_manual(github_path: String) -> Result<Vec<DetectedSkill>, S
   Ok(result)
 }
 
-pub fn detect_github_auto(
+pub async fn detect_github_auto(
   github_path: String,
   skill_name: String,
 ) -> Result<DetectedSkill, String> {
   let (owner, repo) = GithubHelper::parse_github_url(&github_path)?;
   let clone_dir = create_temp_dir(&format!("detect-github-auto-{}-{}", owner, repo))?;
-  GithubHelper::clone_repo_to(&owner, &repo, &clone_dir)?;
+  GithubHelper::clone_repo_to(&owner, &repo, &clone_dir).await?;
 
   let skill_dirs = FolderHelper::find_dirs_containing_file(&clone_dir, SKILL_MD_FILE_NAME)?;
   if skill_dirs.is_empty() {
@@ -277,7 +277,7 @@ pub fn install_from_native(request: InstallNativeRequest) -> Result<InstallResul
   })
 }
 
-pub fn install_from_github(request: InstallGithubRequest) -> Result<InstallResult, String> {
+pub async fn install_from_github(request: InstallGithubRequest) -> Result<InstallResult, String> {
   validate_github_install_request(&request)?;
   let selected_apps = resolve_selected_apps_global_paths(&request.agent_apps)?;
   remove_existing_associations_from_all_apps(&request.name)?;
@@ -290,7 +290,7 @@ pub fn install_from_github(request: InstallGithubRequest) -> Result<InstallResul
 
   let skill_folder_hash = match normalize_optional_string(request.skill_folder_hash.clone()) {
     Some(hash) => hash,
-    None => GithubHelper::get_skill_folder_hash(&request.source_url, &request.skill_path)?,
+    None => GithubHelper::get_skill_folder_hash(&request.source_url, &request.skill_path).await?,
   };
 
   let source = GithubHelper::parse_github_url(&request.source_url)

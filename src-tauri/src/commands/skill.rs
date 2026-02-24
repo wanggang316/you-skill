@@ -26,7 +26,7 @@ pub fn detect_folder(folder_path: String) -> Result<Vec<DetectedSkill>, String> 
 
 #[tauri::command]
 pub async fn detect_github_manual(github_path: String) -> Result<Vec<DetectedSkill>, String> {
-  skill_service::detect_github_manual(github_path)
+  skill_service::detect_github_manual(github_path).await
 }
 
 #[tauri::command]
@@ -34,7 +34,7 @@ pub async fn detect_github_auto(
   github_path: String,
   skill_name: String,
 ) -> Result<DetectedSkill, String> {
-  skill_service::detect_github_auto(github_path, skill_name)
+  skill_service::detect_github_auto(github_path, skill_name).await
 }
 
 #[tauri::command]
@@ -46,9 +46,7 @@ pub async fn install_from_native(request: InstallNativeRequest) -> Result<Instal
 
 #[tauri::command]
 pub async fn install_from_github(request: InstallGithubRequest) -> Result<InstallResult, String> {
-  tauri::async_runtime::spawn_blocking(move || skill_service::install_from_github(request))
-    .await
-    .map_err(|e| format!("install_from_github join error: {}", e))?
+  skill_service::install_from_github(request).await
 }
 
 #[tauri::command]

@@ -1,7 +1,9 @@
+use std::fs::File;
+use std::io::{self, Cursor};
 use std::path::Path;
-use std::process::Command;
-use reqwest::blocking::Client;
+use reqwest::Client;
 use serde::Deserialize;
+use zip::ZipArchive;
 
 pub struct GithubHelper;
 
@@ -30,24 +32,120 @@ impl GithubHelper {
     Err("Unsupported URL format. Use https://github.com/owner/repo or owner/repo".to_string())
   }
 
-  pub fn clone_repo_to(owner: &str, repo: &str, dest: &Path) -> Result<(), String> {
-    let git_url = format!("https://github.com/{}/{}.git", owner, repo);
-    let out = Command::new("git")
-      .args(["clone", "--depth", "1", &git_url, dest.to_str().unwrap_or_default()])
-      .output()
-      .map_err(|e| format!("Failed to execute git clone: {}", e))?;
+  /// Download and extract a GitHub repository as a ZIP archive.
+  /// This approach doesn't require git to be installed on the system.
+  pub async fn clone_repo_to(owner: &str, repo: &str, dest: &Path) -> Result<(), String> {
+    // Try branches in order: main -> master
+    let branches = ["main", "master"];
+    let mut last_error = String::new();
 
-    if !out.status.success() {
-      return Err(format!(
-        "Failed to clone repository: {}",
-        String::from_utf8_lossy(&out.stderr)
-      ));
+    for branch in branches {
+      match Self::download_and_extract(owner, repo, branch, dest).await {
+        Ok(()) => return Ok(()),
+        Err(e) => {
+          last_error = e;
+          // Clean up destination if it was partially created
+          let _ = std::fs::remove_dir_all(dest);
+        }
+      }
+    }
+
+    Err(format!(
+      "Failed to download repository {}/{}: {}",
+      owner, repo, last_error
+    ))
+  }
+
+  async fn download_and_extract(
+    owner: &str,
+    repo: &str,
+    branch: &str,
+    dest: &Path,
+  ) -> Result<(), String> {
+    let url = format!(
+      "https://github.com/{}/{}/archive/refs/heads/{}.zip",
+      owner, repo, branch
+    );
+
+    let client = Client::builder()
+      .timeout(std::time::Duration::from_secs(60))
+      .build()
+      .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+    let response = client
+      .get(&url)
+      .header("User-Agent", "you-skill")
+      .send()
+      .await
+      .map_err(|e| format!("Failed to download repository: {}", e))?;
+
+    if !response.status().is_success() {
+      return Err(format!("HTTP error: {}", response.status()));
+    }
+
+    let bytes = response
+      .bytes()
+      .await
+      .map_err(|e| format!("Failed to read response: {}", e))?;
+
+    // Extract ZIP synchronously (this is CPU-bound, not I/O bound)
+    Self::extract_zip(&bytes, dest)?;
+
+    Ok(())
+  }
+
+  fn extract_zip(bytes: &[u8], dest: &Path) -> Result<(), String> {
+    let reader = Cursor::new(bytes);
+    let mut archive = ZipArchive::new(reader)
+      .map_err(|e| format!("Failed to parse ZIP archive: {}", e))?;
+
+    // Create destination directory
+    std::fs::create_dir_all(dest)
+      .map_err(|e| format!("Failed to create directory: {}", e))?;
+
+    // Extract files, stripping the root folder (e.g., repo-main/)
+    for i in 0..archive.len() {
+      let mut file = archive
+        .by_index(i)
+        .map_err(|e| format!("Failed to read ZIP entry: {}", e))?;
+
+      let path = file
+        .enclosed_name()
+        .ok_or_else(|| "Invalid ZIP entry path".to_string())?;
+
+      // Strip the root folder (first component)
+      let stripped_path = path
+        .components()
+        .skip(1)
+        .collect::<std::path::PathBuf>();
+
+      if stripped_path.components().count() == 0 {
+        continue;
+      }
+
+      let out_path = dest.join(&stripped_path);
+
+      if file.is_dir() {
+        std::fs::create_dir_all(&out_path)
+          .map_err(|e| format!("Failed to create directory: {}", e))?;
+      } else {
+        if let Some(parent) = out_path.parent() {
+          std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create parent directory: {}", e))?;
+        }
+
+        let mut out_file = File::create(&out_path)
+          .map_err(|e| format!("Failed to create file: {}", e))?;
+
+        io::copy(&mut file, &mut out_file)
+          .map_err(|e| format!("Failed to write file: {}", e))?;
+      }
     }
 
     Ok(())
   }
 
-  pub fn get_skill_folder_hash(source_url: &str, skill_path: &str) -> Result<String, String> {
+  pub async fn get_skill_folder_hash(source_url: &str, skill_path: &str) -> Result<String, String> {
     let (owner, repo) = Self::parse_github_url(source_url)?;
     let url = format!(
       "https://api.github.com/repos/{}/{}/git/trees/main?recursive=1",
@@ -59,6 +157,7 @@ impl GithubHelper {
       .get(url)
       .header("User-Agent", "skill-kit")
       .send()
+      .await
       .map_err(|e| format!("Failed to request GitHub tree: {}", e))?;
 
     if !resp.status().is_success() {
@@ -67,6 +166,7 @@ impl GithubHelper {
 
     let tree: GitTreeResponse = resp
       .json()
+      .await
       .map_err(|e| format!("Failed to parse GitHub tree response: {}", e))?;
 
     let normalized = skill_path.trim_start_matches("./");
