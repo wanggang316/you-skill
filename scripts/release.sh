@@ -228,6 +228,7 @@ if [ -f CHANGELOG.md ]; then
 
 ### Added
 - ${RELEASE_NOTES}
+
 "
 
         # 插入到 Unreleased 部分之后（或第一个版本条目之前）
