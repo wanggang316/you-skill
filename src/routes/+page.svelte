@@ -9,6 +9,7 @@
   import LocalSkillsSection from "../lib/components/LocalSkillsSection.svelte";
   import RemoteSkillsSection from "../lib/components/RemoteSkillsSection.svelte";
   import AddSkillModal from "../lib/components/AddSkillModal.svelte";
+  import UserProjectFormModal from "../lib/components/UserProjectFormModal.svelte";
   import { settings, updateSettings as updateAppSettings } from "../lib/stores/settings";
   import { ensureUpdateChecked, installAvailableUpdate, updaterState } from "../lib/stores/updater";
   import {
@@ -47,6 +48,7 @@
 
   // Shared state for modals
   let addSkillModalOpen = $state(false);
+  let userProjectsModalOpen = $state(false);
   let hasUpdate = $state(false);
   let updatingApp = $state(false);
   let mainScrollContainer = $state<HTMLElement | null>(null);
@@ -590,6 +592,7 @@
     onChangeTab={handleTabChange}
     onAddSkill={() => (addSkillModalOpen = true)}
     onOpenUpdate={handleAppUpdate}
+    onOpenProjectManage={() => (userProjectsModalOpen = true)}
     onOpenSettings={navigateToSettings}
     onBack={() => {}}
     onDetailAction={undefined}
@@ -645,6 +648,7 @@
 </div>
 
 <AddSkillModal bind:open={addSkillModalOpen} agents={$agentsStore} onSuccess={refreshLocal} />
+<UserProjectFormModal bind:open={userProjectsModalOpen} />
 
 <!-- Select Agent Modal -->
 {#await import("../lib/components/SelectAgentModal.svelte") then { default: SelectAgentModal }}

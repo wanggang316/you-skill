@@ -7,3 +7,4 @@ pub mod native_skill_lock_service;
 pub mod remote_service;
 pub mod skill_service;
 pub mod skill_lock_service;
+pub mod user_projects_service;

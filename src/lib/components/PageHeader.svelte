@@ -4,6 +4,7 @@
     ChevronLeft,
     Plus,
     Settings,
+    FolderKanban,
     ArrowUpCircle,
     ExternalLink,
     RefreshCw,
@@ -23,6 +24,7 @@
     onChangeTab,
     onAddSkill,
     onOpenUpdate,
+    onOpenProjectManage = undefined,
     onOpenSettings,
     updateLoading = false,
     onBack,
@@ -86,6 +88,14 @@
               {/if}
             </button>
           {/if}
+          <IconButton
+            variant="outline"
+            onclick={onOpenProjectManage}
+            title={$t("projectManage.title")}
+            ariaLabel={$t("projectManage.title")}
+          >
+            <FolderKanban size={16} />
+          </IconButton>
           <IconButton
             variant="outline"
             onclick={onOpenSettings ?? onOpenUpdate}

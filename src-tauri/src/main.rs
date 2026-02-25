@@ -23,6 +23,7 @@ use commands::{
     detect_github_manual, detect_zip, install_from_github, install_from_native,
     install_from_unknown, list_skills, manage_skill_agent_apps, open_in_file_manager, read_skill_file,
   },
+  user_projects::{add_user_project, list_user_projects, remove_user_project, update_user_project},
 };
 use tray::setup_tray;
 
@@ -101,7 +102,11 @@ fn main() {
       backup_skills,
       read_skill_file,
       open_in_file_manager,
-      check_skills_updates
+      check_skills_updates,
+      list_user_projects,
+      add_user_project,
+      update_user_project,
+      remove_user_project
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

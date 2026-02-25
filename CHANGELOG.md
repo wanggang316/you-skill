@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added project management with local `user_projects.json` persistence, duplicate validation (`name`/`path`), and home-header modal CRUD UI.
 
 ### Changed
 
