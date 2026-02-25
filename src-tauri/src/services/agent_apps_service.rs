@@ -151,14 +151,14 @@ fn internal_agent_apps() -> Vec<AgentApp> {
     AgentApp {
       id: "codex".to_string(),
       display_name: "Codex".to_string(),
-      project_path: Some(".codex/skills".to_string()),
+      project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.codex/skills".to_string()),
       is_user_custom: false,
     },
     AgentApp {
       id: "cursor".to_string(),
       display_name: "Cursor".to_string(),
-      project_path: Some(".cursor/skills".to_string()),
+      project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.cursor/skills".to_string()),
       is_user_custom: false,
     },
@@ -172,7 +172,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
     AgentApp {
       id: "opencode".to_string(),
       display_name: "OpenCode".to_string(),
-      project_path: Some(".opencode/skills".to_string()),
+      project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.config/opencode/skills".to_string()),
       is_user_custom: false,
     },
@@ -186,7 +186,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
     AgentApp {
       id: "github-copilot".to_string(),
       display_name: "GitHub Copilot".to_string(),
-      project_path: Some(".github/skills".to_string()),
+      project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.copilot/skills".to_string()),
       is_user_custom: false,
     },
@@ -200,7 +200,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
     AgentApp {
       id: "gemini-cli".to_string(),
       display_name: "Gemini CLI".to_string(),
-      project_path: Some(".gemini/skills".to_string()),
+      project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.gemini/skills".to_string()),
       is_user_custom: false,
     },
@@ -277,7 +277,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
     AgentApp {
       id: "trae-cn".to_string(),
       display_name: "Trae CN".to_string(),
-      project_path: Some(".trae-cn/skills".to_string()),
+      project_path: Some(".trae/skills".to_string()),
       global_path: Some("~/.trae-cn/skills".to_string()),
       is_user_custom: false,
     },

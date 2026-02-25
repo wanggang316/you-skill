@@ -178,7 +178,7 @@
           class="bg-base-200 text-base-content-subtle grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] gap-3 px-3 py-2 text-xs font-medium"
         >
           <div>{$t("projectManage.name")}</div>
-          <div>{$t("projectManage.path")}</div>
+          <div class="-ml-3">{$t("projectManage.path")}</div>
           <div></div>
         </div>
 
