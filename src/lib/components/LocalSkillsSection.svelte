@@ -1,6 +1,7 @@
 <script>
   import { RefreshCw, Search, Blend, ChevronsUpDown, Loader2 } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
+  import SelectField from "./ui/SelectField.svelte";
   import { t } from "../i18n";
 
   let {
@@ -52,21 +53,12 @@
           bind:value={localSearch}
         />
       </div>
-      <div class="relative">
-        <select
-          class="border-base-300 bg-base-100 text-base-content focus:border-base-300 h-9 cursor-pointer appearance-none rounded-xl border pr-8 pl-3 text-sm focus:outline-none"
-          bind:value={localAgent}
-        >
+      <SelectField bind:value={localAgent}>
           <option value="all">{$t("local.agent.all")}</option>
           {#each agents as agent}
             <option value={agent.id}>{agent.display_name}</option>
           {/each}
-        </select>
-        <ChevronsUpDown
-          class="text-base-content-subtle pointer-events-none absolute top-1/2 right-3 -translate-y-1/2"
-          size={14}
-        />
-      </div>
+      </SelectField>
       <IconButton
         variant="outline"
         onclick={onRefresh}

@@ -12,6 +12,7 @@
   import Modal from "./ui/Modal.svelte";
   import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
   import SegmentedTabs from "./ui/SegmentedTabs.svelte";
+  import SelectField from "./ui/SelectField.svelte";
   import AgentSelector from "./AgentSelector.svelte";
   import DetectedSkillList from "./DetectedSkillList.svelte";
   import { settings } from "../stores/settings";
@@ -1046,14 +1047,10 @@
     </div>
   </div>
   {#snippet footer()}
-    <select
-      bind:value={selectedMethod}
-      class="bg-base-100 text-base-content rounded-lg px-3 py-2 text-sm"
-      disabled={isInstalling}
-    >
-      <option value="symlink">{$t("settings.syncMode.symlink")}</option>
-      <option value="copy">{$t("settings.syncMode.copy")}</option>
-    </select>
+    <SelectField bind:value={selectedMethod} disabled={isInstalling}>
+        <option value="symlink">{$t("settings.syncMode.symlink")}</option>
+        <option value="copy">{$t("settings.syncMode.copy")}</option>
+    </SelectField>
     <PrimaryActionButton
       onclick={handleConfirm}
       disabled={!canConfirm() || isInstalling}

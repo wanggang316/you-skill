@@ -4,6 +4,7 @@
   import Modal from "./ui/Modal.svelte";
   import AgentSelector from "./AgentSelector.svelte";
   import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
+  import SelectField from "./ui/SelectField.svelte";
   import { settings } from "../stores/settings";
 
   let {
@@ -69,13 +70,10 @@
     <AgentSelector {agents} bind:selectedIds={selectedAgents} />
   </div>
   {#snippet footer()}
-    <select
-      bind:value={selectedMethod}
-      class="bg-base-100 text-base-content mr-3 rounded-lg px-3 py-2 text-sm"
-    >
-      <option value="symlink">{$t("settings.syncMode.symlink")}</option>
-      <option value="copy">{$t("settings.syncMode.copy")}</option>
-    </select>
+    <SelectField bind:value={selectedMethod} className="mr-3">
+        <option value="symlink">{$t("settings.syncMode.symlink")}</option>
+        <option value="copy">{$t("settings.syncMode.copy")}</option>
+    </SelectField>
     <PrimaryActionButton
       onclick={handleConfirm}
       disabled={!hasSelection || isInstalling}
