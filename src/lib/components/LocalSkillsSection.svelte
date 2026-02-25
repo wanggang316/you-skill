@@ -7,7 +7,9 @@
   let {
     localSearch = $bindable(),
     localAgent = $bindable(),
+    localScopeKey = $bindable(),
     agents,
+    projects = [],
     localLoading,
     localError,
     filteredLocalSkills,
@@ -58,6 +60,16 @@
           {#each agents as agent}
             <option value={agent.id}>{agent.display_name}</option>
           {/each}
+      </SelectField>
+      <SelectField bind:value={localScopeKey}>
+          <optgroup label={$t("installScope.global")}>
+            <option value="global">{$t("installScope.global")}</option>
+          </optgroup>
+          <optgroup label={$t("installScope.project")}>
+            {#each projects as project}
+              <option value={`project:${encodeURIComponent(project.path)}`}>{project.name}</option>
+            {/each}
+          </optgroup>
       </SelectField>
       <IconButton
         variant="outline"

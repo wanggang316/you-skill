@@ -1,17 +1,17 @@
 use crate::models::{
   DetectedSkill, InstallGithubRequest, InstallNativeRequest, InstallResult, InstallUnknownRequest,
-  LocalSkill, ManageSkillAgentAppsRequest, SkillUpdateCheckItem, SourceCheckResult,
+  InstallScope, LocalSkill, ManageSkillAgentAppsRequest, SkillUpdateCheckItem, SourceCheckResult,
 };
 use crate::services::skill_service;
 
 #[tauri::command]
-pub fn list_skills() -> Result<Vec<LocalSkill>, String> {
-  skill_service::list_skills()
+pub fn list_skills(scope: InstallScope, project_path: Option<String>) -> Result<Vec<LocalSkill>, String> {
+  skill_service::list_skills(scope, project_path)
 }
 
 #[tauri::command]
-pub fn delete_skill(name: String) -> Result<(), String> {
-  skill_service::delete_skill(name)
+pub fn delete_skill(name: String, scope: InstallScope, project_path: Option<String>) -> Result<(), String> {
+  skill_service::delete_skill(name, scope, project_path)
 }
 
 #[tauri::command]

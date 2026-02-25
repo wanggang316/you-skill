@@ -9,6 +9,7 @@
     installFromNative,
     installFromGithub,
   } from "../api/skills";
+  import { listUserProjects } from "../api/user-projects";
   import Modal from "./ui/Modal.svelte";
   import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
   import SegmentedTabs from "./ui/SegmentedTabs.svelte";
@@ -57,6 +58,13 @@
   let selectedAgents = $state([]);
   /** @type {"symlink" | "copy"} */
   let selectedMethod = $state("symlink");
+  /** @type {"global" | "project"} */
+  let selectedScope = $state("global");
+  /** @type {import('../api/user-projects').UserProject[]} */
+  let userProjects = $state([]);
+  /** @type {string | null} */
+  let selectedProjectPath = $state(null);
+  let projectsLoading = $state(false);
   let isZipDragOver = $state(false);
   let isFolderDragOver = $state(false);
   let suppressZipClick = $state(false);
@@ -73,6 +81,7 @@
   $effect(() => {
     if (open && !wasOpen) {
       resetState();
+      void loadUserProjects();
     }
     wasOpen = open;
   });
@@ -98,10 +107,30 @@
     githubError = "";
     selectedAgents = agents.map((a) => a.id);
     selectedMethod = get(settings).sync_mode || "symlink";
+    selectedScope = "global";
+    userProjects = [];
+    selectedProjectPath = null;
+    projectsLoading = false;
     suppressZipClick = false;
     suppressFolderClick = false;
     isInstalling = false;
     installError = "";
+  }
+
+  async function loadUserProjects() {
+    projectsLoading = true;
+    try {
+      userProjects = await listUserProjects();
+    } catch {
+      userProjects = [];
+    } finally {
+      projectsLoading = false;
+    }
+  }
+
+  /** @param {string} projectPath */
+  function toggleProject(projectPath) {
+    selectedProjectPath = selectedProjectPath === projectPath ? null : projectPath;
   }
 
   function closeModal() {
@@ -760,6 +789,7 @@
 
   function canConfirm() {
     if (selectedAgents.length === 0) return false;
+    if (selectedScope === "project" && !selectedProjectPath) return false;
     if (activeTab === "zip") {
       return !!selectedZipPath && !!selectedZipSkill;
     } else if (activeTab === "folder") {
@@ -772,6 +802,10 @@
   function validateConfirm() {
     if (selectedAgents.length === 0) {
       installError = $t("addSkill.noAgentsSelected");
+      return false;
+    }
+    if (selectedScope === "project" && !selectedProjectPath) {
+      installError = $t("addSkill.noProjectsSelected");
       return false;
     }
     if (activeTab === "zip") {
@@ -813,6 +847,8 @@
         skill_path: zipSkill.skill_path,
         agent_apps: selectedAgents,
         method: selectedMethod,
+        scope: selectedScope,
+        project_path: selectedProjectPath,
       });
       return;
     }
@@ -826,6 +862,8 @@
         skill_path: folderSkill.skill_path,
         agent_apps: selectedAgents,
         method: selectedMethod,
+        scope: selectedScope,
+        project_path: selectedProjectPath,
       });
       return;
     }
@@ -840,6 +878,8 @@
       skill_folder_hash: null,
       agent_apps: selectedAgents,
       method: selectedMethod,
+      scope: selectedScope,
+      project_path: selectedProjectPath,
     });
   }
 </script>
@@ -1032,6 +1072,37 @@
       {/if}
       <!-- Agent Selection -->
       <div class="mt-6 space-y-3">
+        <SelectField bind:value={selectedScope}>
+          <option value="global">{$t("installScope.global")}</option>
+          <option value="project">{$t("installScope.project")}</option>
+        </SelectField>
+        {#if selectedScope === "project"}
+          <div class="space-y-2">
+            <p class="text-base-content text-sm">
+              {$t("selectAgent.selectProjects")}
+            </p>
+            {#if projectsLoading}
+              <p class="text-base-content-muted text-xs">{$t("projectManage.loading")}</p>
+            {:else if userProjects.length === 0}
+              <p class="text-base-content-muted text-xs">{$t("projectManage.empty")}</p>
+            {:else}
+              <div class="mt-1 flex flex-wrap gap-2">
+                {#each userProjects as project}
+                  <label
+                    class="bg-base-200 text-base-content hover:bg-base-300 inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-[13px] transition"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedProjectPath === project.path}
+                      onchange={() => toggleProject(project.path)}
+                    />
+                    <span>{project.name}</span>
+                  </label>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/if}
         <p class="text-base-content text-sm">
           {$t("addSkill.selectAgents")}
         </p>

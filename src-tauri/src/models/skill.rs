@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LocalSkill {
@@ -74,6 +75,62 @@ pub enum InstallMethod {
   Copy,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum InstallScope {
+  #[default]
+  Global,
+  Project,
+}
+
+#[derive(Clone, Debug)]
+pub enum InstallTarget {
+  Global,
+  Project(PathBuf),
+}
+
+impl InstallTarget {
+  pub fn validate_install_scope(
+    scope: &InstallScope,
+    project_path: &Option<String>,
+  ) -> Result<(), String> {
+    let _ = Self::from_scope(scope, project_path)?;
+    Ok(())
+  }
+
+  pub fn from_scope(scope: &InstallScope, project_path: &Option<String>) -> Result<Self, String> {
+    match scope {
+      InstallScope::Global => Ok(InstallTarget::Global),
+      InstallScope::Project => Ok(InstallTarget::Project(Self::normalize_project_root(project_path)?)),
+    }
+  }
+
+  fn normalize_project_root(project_path: &Option<String>) -> Result<PathBuf, String> {
+    let project_path = project_path
+      .as_ref()
+      .map(|item| item.trim().to_string())
+      .filter(|item| !item.is_empty())
+      .ok_or("project_path is required for project scope".to_string())?;
+
+    let path = PathBuf::from(project_path);
+    if !path.exists() || !path.is_dir() {
+      return Err(format!("Project path does not exist: {}", path.to_string_lossy()));
+    }
+    Ok(path)
+  }
+
+  pub fn root_path(&self) -> Result<PathBuf, String> {
+    match self {
+      InstallTarget::Project(root) => Ok(root.clone()),
+      InstallTarget::Global => dirs_next::home_dir().ok_or("Could not find home directory".to_string()),
+    }
+  }
+
+  pub fn skill_folder_path(&self) -> Result<PathBuf, String> {
+    Ok(self.root_path()?.join(".agents").join("skills"))
+  }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InstallNativeRequest {
   pub name: String,
@@ -81,6 +138,10 @@ pub struct InstallNativeRequest {
   pub skill_path: String,
   pub agent_apps: Vec<String>,
   pub method: InstallMethod,
+  #[serde(default)]
+  pub scope: InstallScope,
+  #[serde(default)]
+  pub project_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -92,6 +153,10 @@ pub struct InstallGithubRequest {
   pub skill_folder_hash: Option<String>,
   pub agent_apps: Vec<String>,
   pub method: InstallMethod,
+  #[serde(default)]
+  pub scope: InstallScope,
+  #[serde(default)]
+  pub project_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -100,6 +165,10 @@ pub struct InstallUnknownRequest {
   pub source_path: String,
   pub agent_apps: Vec<String>,
   pub method: InstallMethod,
+  #[serde(default)]
+  pub scope: InstallScope,
+  #[serde(default)]
+  pub project_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -123,6 +192,16 @@ pub struct ManageSkillAgentAppsRequest {
   pub agent_apps: Vec<String>,
   pub method: InstallMethod,
   pub source_path: String,
+  #[serde(default)]
+  pub scope: InstallScope,
+  #[serde(default)]
+  pub project_path: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SelectedAgentPath {
+  pub display_name: String,
+  pub install_root: PathBuf,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

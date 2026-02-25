@@ -5,6 +5,7 @@ import {
   fetchRemoteSkills,
   fetchSkillsByNames,
   listSkills,
+  type InstallScope,
   type AgentInfo,
   type LocalSkill,
   type RemoteSkill,
@@ -37,11 +38,16 @@ export async function loadAgents(): Promise<void> {
   }
 }
 
-export async function refreshLocal(): Promise<void> {
+export async function refreshLocal(options?: {
+  scope?: InstallScope;
+  project_path?: string | null;
+}): Promise<void> {
   localLoading.set(true);
   localError.set("");
   try {
-    localSkills.set(await listSkills());
+    localSkills.set(
+      await listSkills(options?.scope ?? "global", options?.project_path ?? null)
+    );
   } catch (error) {
     localError.set(String(error));
   } finally {

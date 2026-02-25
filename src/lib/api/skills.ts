@@ -76,6 +76,7 @@ function normalizeDetectedSkills(
 }
 
 export type InstallMethod = "symlink" | "copy";
+export type InstallScope = "global" | "project";
 
 export interface InstallNativeRequest {
   name: string;
@@ -83,6 +84,8 @@ export interface InstallNativeRequest {
   skill_path: string;
   agent_apps: string[];
   method: InstallMethod;
+  scope: InstallScope;
+  project_path?: string | null;
 }
 
 export interface InstallGithubRequest {
@@ -93,6 +96,8 @@ export interface InstallGithubRequest {
   skill_folder_hash?: string | null;
   agent_apps: string[];
   method: InstallMethod;
+  scope: InstallScope;
+  project_path?: string | null;
 }
 
 export interface InstallUnknownRequest {
@@ -100,6 +105,8 @@ export interface InstallUnknownRequest {
   source_path: string;
   agent_apps: string[];
   method: InstallMethod;
+  scope: InstallScope;
+  project_path?: string | null;
 }
 
 export interface SourceCheckResult {
@@ -126,6 +133,8 @@ export interface ManageSkillAgentAppsRequest {
   agent_apps: string[];
   method: InstallMethod;
   source_path: string;
+  scope: InstallScope;
+  project_path?: string | null;
 }
 
 // ============ Local Skills ============
@@ -133,15 +142,22 @@ export interface ManageSkillAgentAppsRequest {
 /**
  * 查询本地技能
  */
-export async function listSkills(): Promise<LocalSkill[]> {
-  return apiCall<LocalSkill[]>("list_skills");
+export async function listSkills(
+  scope: InstallScope,
+  projectPath?: string | null
+): Promise<LocalSkill[]> {
+  return apiCall<LocalSkill[]>("list_skills", { scope, projectPath });
 }
 
 /**
  * 删除技能（按名称自动解析路径并清理关联）
  */
-export async function deleteSkill(name: string): Promise<void> {
-  return apiCall<void>("delete_skill", { name });
+export async function deleteSkill(
+  name: string,
+  scope: InstallScope,
+  projectPath?: string | null
+): Promise<void> {
+  return apiCall<void>("delete_skill", { name, scope, projectPath });
 }
 
 // ============ Remote Skills ============

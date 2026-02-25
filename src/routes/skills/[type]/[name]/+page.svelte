@@ -82,7 +82,7 @@
 
     try {
       if (type === "local") {
-        const localSkills = await listSkills();
+        const localSkills = await listSkills("global", null);
         skill = localSkills.find((item) => item.name === name) ?? null;
       } else {
         const remoteSkills = await fetchSkillsByNames([name]);

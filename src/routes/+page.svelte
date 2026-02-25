@@ -10,6 +10,7 @@
   import RemoteSkillsSection from "../lib/components/RemoteSkillsSection.svelte";
   import AddSkillModal from "../lib/components/AddSkillModal.svelte";
   import UserProjectFormModal from "../lib/components/UserProjectFormModal.svelte";
+  import { listUserProjects, type UserProject } from "../lib/api/user-projects";
   import { settings, updateSettings as updateAppSettings } from "../lib/stores/settings";
   import { ensureUpdateChecked, installAvailableUpdate, updaterState } from "../lib/stores/updater";
   import {
@@ -41,6 +42,7 @@
   } from "../lib/stores/skills";
   import type {
     DetectedSkill,
+    InstallScope,
     LocalSkill,
     RemoteSkill,
     SourceVersionGroup,
@@ -59,6 +61,9 @@
 
   let localSearch = $state("");
   let localAgent = $state("all");
+  let localScopeKey = $state("global");
+  let userProjects = $state<UserProject[]>([]);
+  let userProjectsModalWasOpen = $state(false);
 
   // Remote skills state
   let remoteQuery = $state("");
@@ -77,7 +82,12 @@
   let selectAgentModalConfirmText = $state("");
   let selectAgentModalInitialSelection = $state<string[]>([]);
   let selectAgentModalCallback = $state<
-    ((selectedAgents: string[], method: "symlink" | "copy") => Promise<boolean>) | null
+    ((
+      selectedAgents: string[],
+      method: "symlink" | "copy",
+      scope: InstallScope,
+      projectPath: string | null
+    ) => Promise<boolean>) | null
   >(null);
 
   // Unknown permission modal state
@@ -117,6 +127,13 @@
   const getSkillAgentIds = (skill: LocalSkill): string[] =>
     Array.from(new Set(skill.installed_agent_apps.map((app) => app.id)));
 
+  const localScope = $derived.by(() => (localScopeKey.startsWith("project:") ? "project" : "global"));
+  const localProjectPath = $derived.by(() =>
+    localScopeKey.startsWith("project:")
+      ? decodeURIComponent(localScopeKey.slice("project:".length))
+      : null
+  );
+
   // Initialize and load shared data on mount - 只加载本地数据
   onMount(() => {
     let unlistenOpenInstallModal: UnlistenFn | null = null;
@@ -140,6 +157,7 @@
 
     // 只加载首屏必需的本地数据
     loadAgents().catch(console.error);
+    loadUserProjectOptions().catch(console.error);
     refreshLocal().catch(console.error);
 
     if (activeTab === "remote" && !get(remoteLoadedStore)) {
@@ -175,9 +193,38 @@
     initialScrollTop = null;
   };
 
+  const loadUserProjectOptions = async () => {
+    userProjects = await listUserProjects();
+    if (localScope === "project") {
+      const exists = userProjects.some((item) => item.path === localProjectPath);
+      if (!exists) {
+        localScopeKey = "global";
+      }
+    }
+  };
+
+  $effect(() => {
+    if (userProjectsModalOpen) {
+      userProjectsModalWasOpen = true;
+      return;
+    }
+    if (userProjectsModalWasOpen) {
+      userProjectsModalWasOpen = false;
+      loadUserProjectOptions().catch(console.error);
+      refreshLocal().catch(console.error);
+    }
+  });
+
   const refreshLocal = async () => {
-    await refreshLocalState();
-    checkForSkillUpdates().catch(console.error);
+    await refreshLocalState({
+      scope: localScope,
+      project_path: localProjectPath,
+    });
+    if (localScope === "global") {
+      checkForSkillUpdates().catch(console.error);
+    } else {
+      skillsWithUpdateStore.set([]);
+    }
     if (activeTab === "local") {
       await restoreInitialScroll();
     }
@@ -226,7 +273,7 @@
       selectAgentModalTitle = `${$t("remote.update")} ${skill.name}`;
       selectAgentModalConfirmText = $t("selectAgent.confirm");
       selectAgentModalInitialSelection = currentAgents;
-      selectAgentModalCallback = async (selectedAgents, method) => {
+      selectAgentModalCallback = async (selectedAgents, method, scope, projectPath) => {
         if (!pendingInstallSkill) return false;
         installLog = "";
         installingSkill = pendingInstallSkill.id;
@@ -240,6 +287,8 @@
             skill_folder_hash: skill.skill_path_sha ?? null,
             agent_apps: selectedAgents,
             method,
+            scope,
+            project_path: projectPath,
           });
           if (!result.success) {
             installLog = `${result.message}\n${result.stderr || result.stdout}`;
@@ -294,7 +343,7 @@
       selectAgentModalTitle = `${$t("remote.install")} ${skill.name}`;
       selectAgentModalConfirmText = $t("selectAgent.confirm");
       selectAgentModalInitialSelection = get(agentsStore).map((a) => a.id);
-      selectAgentModalCallback = async (selectedAgents, method) => {
+      selectAgentModalCallback = async (selectedAgents, method, scope, projectPath) => {
         if (!pendingInstallSkill) return false;
         installLog = "";
         installingSkill = pendingInstallSkill.id;
@@ -308,6 +357,8 @@
             skill_folder_hash: pendingInstallSkill.skill_path_sha ?? null,
             agent_apps: selectedAgents,
             method,
+            scope,
+            project_path: projectPath,
           });
           if (!result.success) {
             installLog = `${result.message}\n${result.stderr || result.stdout}`;
@@ -392,8 +443,8 @@
     selectAgentModalTitle = skill.name;
     selectAgentModalConfirmText = $t("remote.update");
     selectAgentModalInitialSelection = getSkillAgentIds(skill);
-    selectAgentModalCallback = async (selectedAgents, method) => {
-      return manageSkillAgentAppsFlow(skill, selectedAgents, method, sourcePath);
+    selectAgentModalCallback = async (selectedAgents, method, scope, projectPath) => {
+      return manageSkillAgentAppsFlow(skill, selectedAgents, method, sourcePath, scope, projectPath);
     };
     selectAgentModalOpen = true;
   };
@@ -402,13 +453,15 @@
     selectAgentModalTitle = skill.name;
     selectAgentModalConfirmText = $t("remote.update");
     selectAgentModalInitialSelection = getSkillAgentIds(skill);
-    selectAgentModalCallback = async (selectedAgents, method) => {
+    selectAgentModalCallback = async (selectedAgents, method, scope, projectPath) => {
       try {
         const result = await installFromUnknown({
           name: skill.name,
           source_path: sourcePath,
           agent_apps: selectedAgents,
           method,
+          scope,
+          project_path: projectPath,
         });
         if (!result.success) {
           throw new Error(`${result.message}\n${result.stderr || result.stdout}`);
@@ -489,7 +542,9 @@
     skill: LocalSkill,
     selectedAgents: string[],
     method: "symlink" | "copy",
-    sourcePath: string
+    sourcePath: string,
+    scope: InstallScope,
+    projectPath: string | null
   ): Promise<boolean> => {
     if (!skill || linkBusy) return false;
     linkBusy = true;
@@ -501,6 +556,8 @@
           agent_apps: selectedAgents,
           method,
           source_path: sourcePath,
+          scope,
+          project_path: projectPath,
         });
         if (!result.success) {
           throw new Error(`${result.message}\n${result.stderr || result.stdout}`);
@@ -525,7 +582,7 @@
         title: $t("confirm.deleteTitle"),
       });
       if (!confirmed) return;
-      await deleteSkill(skill.name);
+      await deleteSkill(skill.name, localScope, localProjectPath);
       await refreshLocal();
     } catch (error) {
       localErrorStore.set(String(error));
@@ -564,6 +621,12 @@
       checkForSkillUpdates().catch(console.error);
     }
   };
+
+  $effect(() => {
+    const _scope = localScope;
+    const _project = localProjectPath;
+    refreshLocal().catch(console.error);
+  });
 
   // Navigation handlers
   const handleAppUpdate = async () => {
@@ -605,7 +668,9 @@
         <LocalSkillsSection
           bind:localSearch
           bind:localAgent
+          bind:localScopeKey
           agents={$agentsStore}
+          projects={userProjects}
           localLoading={$localLoadingStore}
           localError={$localErrorStore}
           {filteredLocalSkills}
@@ -658,9 +723,14 @@
     confirmText={selectAgentModalConfirmText}
     agents={$agentsStore}
     initialSelection={selectAgentModalInitialSelection}
-    onConfirm={async (selectedAgents: string[], method: "symlink" | "copy") => {
+    onConfirm={async (
+      selectedAgents: string[],
+      method: "symlink" | "copy",
+      scope: InstallScope,
+      projectPath: string | null
+    ) => {
       if (selectAgentModalCallback) {
-        return await selectAgentModalCallback(selectedAgents, method);
+        return await selectAgentModalCallback(selectedAgents, method, scope, projectPath);
       }
       return true;
     }}

@@ -1,3 +1,6 @@
+use crate::models::SourceType;
+use crate::services::native_skill_lock_service::NativeSkillLockFile;
+use crate::utils::github::GithubHelper;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -94,7 +97,7 @@ pub fn add_skill_to_lock(skill_name: String, entry: SkillLockEntry) -> Result<()
   write_skill_lock_internal(&lock)
 }
 
-pub fn remove_skill_from_lock(skill_name: String) -> Result<bool, String> {
+pub fn remove_skill_from_global_lock(skill_name: String) -> Result<bool, String> {
   let mut lock = read_skill_lock_internal()?;
   if !lock.skills.contains_key(&skill_name) {
     return Ok(false);
@@ -102,4 +105,41 @@ pub fn remove_skill_from_lock(skill_name: String) -> Result<bool, String> {
   lock.skills.remove(&skill_name);
   write_skill_lock_internal(&lock)?;
   Ok(true)
+}
+
+pub fn lock_source_type(
+  skill_name: &str,
+  github_lock: &SkillLockFile,
+  native_lock: &NativeSkillLockFile,
+) -> SourceType {
+  if github_lock.skills.contains_key(skill_name) {
+    SourceType::Github
+  } else if native_lock.skills.contains_key(skill_name) {
+    SourceType::Native
+  } else {
+    SourceType::Unknown
+  }
+}
+
+pub fn lock_source(
+  skill_name: &str,
+  source_type: &SourceType,
+  github_lock: &SkillLockFile,
+) -> Option<String> {
+  if *source_type != SourceType::Github {
+    return None;
+  }
+
+  let Some(entry) = github_lock.skills.get(skill_name) else {
+    return None;
+  };
+
+  let source = entry.source.trim();
+  if !source.is_empty() {
+    return Some(source.to_string());
+  }
+
+  GithubHelper::parse_github_url(&entry.source_url)
+    .map(|(owner, repo)| format!("{}/{}", owner, repo))
+    .ok()
 }

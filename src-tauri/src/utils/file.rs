@@ -1,6 +1,7 @@
 use serde_yaml::Value;
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 #[derive(Debug, Clone, Default)]
 pub struct SkillFrontmatter {
@@ -46,4 +47,71 @@ impl FileHelper {
       .filter(|s| !s.is_empty());
     Ok(SkillFrontmatter { name })
   }
+}
+
+pub fn open_in_file_manager(file_path: String) -> Result<(), String> {
+  let path = Path::new(&file_path);
+  if !path.exists() {
+    return Err(format!("Path does not exist: {}", file_path));
+  }
+
+  #[cfg(target_os = "macos")]
+  {
+    Command::new("open")
+      .arg("-R")
+      .arg(&file_path)
+      .spawn()
+      .map_err(|e| format!("Failed to open file manager: {}", e))?;
+    Ok(())
+  }
+
+  #[cfg(target_os = "linux")]
+  {
+    let managers = ["nautilus", "dolphin", "thunar", "pcmanfm"];
+    let mut opened = false;
+    for manager in managers {
+      if Command::new(manager)
+        .arg("--select")
+        .arg(&file_path)
+        .spawn()
+        .is_ok()
+      {
+        opened = true;
+        break;
+      }
+    }
+    if !opened {
+      Command::new("xdg-open")
+        .arg(path.parent().unwrap_or(path))
+        .spawn()
+        .map_err(|e| format!("Failed to open file manager: {}", e))?;
+    }
+    Ok(())
+  }
+
+  #[cfg(target_os = "windows")]
+  {
+    Command::new("explorer")
+      .arg("/select,")
+      .arg(&file_path)
+      .spawn()
+      .map_err(|e| format!("Failed to open file manager: {}", e))?;
+    Ok(())
+  }
+}
+
+pub async fn read_skill_file(skill_path: String) -> Result<String, String> {
+  let path = Path::new(&skill_path);
+  if !path.exists() {
+    return Err(format!("Skill directory does not exist: {}", skill_path));
+  }
+
+  let skill_md = path.join("SKILL.md");
+  if skill_md.exists() {
+    return tokio::fs::read_to_string(&skill_md)
+      .await
+      .map_err(|e| format!("Failed to read SKILL.md: {}", e));
+  }
+
+  Err(format!("SKILL.md not found in: {}", skill_path))
 }

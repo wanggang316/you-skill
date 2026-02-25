@@ -1,4 +1,4 @@
-use crate::models::AgentApp;
+use crate::models::{AgentApp, InstallTarget, SelectedAgentPath};
 use crate::utils::path::expand_home;
 use std::fs;
 use std::path::PathBuf;
@@ -60,6 +60,77 @@ pub fn refresh_local_agent_apps() {
   }
   // Trigger recomputation by calling local_agent_apps
   local_agent_apps();
+}
+
+pub fn resolve_selected_apps_paths(
+  agent_apps: &[String],
+  install_target: &InstallTarget,
+) -> Result<Vec<SelectedAgentPath>, String> {
+  let installed_apps = local_agent_apps();
+  let mut selected = Vec::new();
+  let mut errors = Vec::new();
+
+  for app_id in agent_apps {
+    let Some(app) = installed_apps.iter().find(|a| a.id == *app_id) else {
+      errors.push(format!("Unknown app id: {}", app_id));
+      continue;
+    };
+    let install_root = match install_target {
+      InstallTarget::Global => {
+        let Some(global_path) = &app.global_path else {
+          errors.push(format!("{} has no global path", app.display_name));
+          continue;
+        };
+        expand_home(global_path)
+      },
+      InstallTarget::Project(_) => {
+        let project_root = install_target.root_path()?;
+        let Some(project_path) = &app.project_path else {
+          errors.push(format!("{} has no project path", app.display_name));
+          continue;
+        };
+        project_root.join(project_path)
+      },
+    };
+    selected.push(SelectedAgentPath {
+      display_name: app.display_name.clone(),
+      install_root,
+    });
+  }
+
+  if !errors.is_empty() {
+    return Err(errors.join("\n"));
+  }
+  if selected.is_empty() {
+    return Err("No valid agent apps selected".to_string());
+  }
+
+  Ok(selected)
+}
+
+pub fn resolve_all_available_apps_paths(
+  install_target: &InstallTarget,
+) -> Result<Vec<SelectedAgentPath>, String> {
+  let all_apps: Vec<SelectedAgentPath> = match install_target {
+    InstallTarget::Global => local_agent_apps()
+      .into_iter()
+      .filter_map(|app| {
+        app.global_path.map(|global_path| SelectedAgentPath {
+          display_name: app.display_name,
+          install_root: expand_home(&global_path),
+        })
+      })
+      .collect(),
+    InstallTarget::Project(project_root) => local_agent_apps()
+      .into_iter()
+      .filter_map(|app| app.project_path.map(|project_path| (app.display_name, project_path)))
+      .map(|(display_name, project_path)| SelectedAgentPath {
+        display_name,
+        install_root: project_root.join(project_path),
+      })
+      .collect(),
+  };
+  Ok(all_apps)
 }
 
 pub fn create_user_agent_app(
