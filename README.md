@@ -84,6 +84,13 @@ npm run tauri -- build
 
 [AGENTS.md](AGENTS.md)
 
+## Roadmap
+
+- [ ] Project-Level skill management
+- [ ] Backup to GitHub for Multi-Device sync
+- [ ] Skill details with support for viewing all skill files
+- [ ] AI-Powered find skill
+
 ## Contributing
 
 [CONTRIBUTING.md](CONTRIBUTING.md)
