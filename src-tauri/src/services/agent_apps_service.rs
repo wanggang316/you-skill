@@ -75,21 +75,11 @@ pub fn resolve_selected_apps_paths(
       errors.push(format!("Unknown app id: {}", app_id));
       continue;
     };
-    let install_root = match install_target {
-      InstallTarget::Global => {
-        let Some(global_path) = &app.global_path else {
-          errors.push(format!("{} has no global path", app.display_name));
-          continue;
-        };
-        expand_home(global_path)
-      },
-      InstallTarget::Project(_) => {
-        let project_root = install_target.root_path()?;
-        let Some(project_path) = &app.project_path else {
-          errors.push(format!("{} has no project path", app.display_name));
-          continue;
-        };
-        project_root.join(project_path)
+    let install_root = match root_folder_from_install_target(app, install_target) {
+      Ok(path) => path,
+      Err(err) => {
+        errors.push(format!("{}: {}", app.display_name, err));
+        continue;
       },
     };
     selected.push(SelectedAgentPath {
@@ -111,26 +101,40 @@ pub fn resolve_selected_apps_paths(
 pub fn resolve_all_available_apps_paths(
   install_target: &InstallTarget,
 ) -> Result<Vec<SelectedAgentPath>, String> {
-  let all_apps: Vec<SelectedAgentPath> = match install_target {
-    InstallTarget::Global => local_agent_apps()
-      .into_iter()
-      .filter_map(|app| {
-        app.global_path.map(|global_path| SelectedAgentPath {
+  let all_apps: Vec<SelectedAgentPath> = local_agent_apps()
+    .into_iter()
+    .filter_map(|app| {
+      root_folder_from_install_target(&app, install_target)
+        .ok()
+        .map(|install_root| SelectedAgentPath {
           display_name: app.display_name,
-          install_root: expand_home(&global_path),
+          install_root,
         })
-      })
-      .collect(),
-    InstallTarget::Project(project_root) => local_agent_apps()
-      .into_iter()
-      .filter_map(|app| app.project_path.map(|project_path| (app.display_name, project_path)))
-      .map(|(display_name, project_path)| SelectedAgentPath {
-        display_name,
-        install_root: project_root.join(project_path),
-      })
-      .collect(),
-  };
+    })
+    .collect();
   Ok(all_apps)
+}
+
+pub fn root_folder_from_install_target(
+  app: &AgentApp,
+  install_target: &InstallTarget,
+) -> Result<PathBuf, String> {
+  match install_target {
+    InstallTarget::Global => {
+      let global_path = app
+        .global_path
+        .as_deref()
+        .ok_or("has no global path".to_string())?;
+      Ok(expand_home(global_path))
+    },
+    InstallTarget::Project(project_root) => {
+      let project_path = app
+        .project_path
+        .as_deref()
+        .ok_or("has no project path".to_string())?;
+      Ok(project_root.join(project_path))
+    },
+  }
 }
 
 pub fn create_user_agent_app(

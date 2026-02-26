@@ -492,7 +492,7 @@
 
     const unknownCheck = await checkSkillVersion(
       skill.name,
-      skill.global_folder,
+      skill.root_folder,
       skill.installed_agent_apps.map((item) => item.skill_folder)
     );
 
@@ -517,7 +517,7 @@
   const startSourceTypeFlow = async (skill: LocalSkill): Promise<void> => {
     const copyCheck = await checkSkillVersion(
       skill.name,
-      skill.global_folder,
+      skill.root_folder,
       skill.installed_agent_apps.map((item) => item.skill_folder)
     );
     const resolvedSourcePath = copyCheck.source_path ?? null;

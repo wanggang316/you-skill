@@ -110,7 +110,7 @@
 
   const resolveLocalPath = (relativePath: string) => {
     if (!skill || !("installed_agent_apps" in skill)) return null;
-    const dirPath = skill.global_folder || skill.installed_agent_apps[0]?.skill_folder;
+    const dirPath = skill.root_folder || skill.installed_agent_apps[0]?.skill_folder;
     if (!dirPath) return null;
     if (relativePath.startsWith("/")) {
       return dirPath + relativePath;
@@ -137,7 +137,7 @@
         if (!("installed_agent_apps" in skill)) {
           throw new Error("Skill path is missing");
         }
-        const localPath = skill.global_folder || skill.installed_agent_apps[0]?.skill_folder;
+        const localPath = skill.root_folder || skill.installed_agent_apps[0]?.skill_folder;
         if (!localPath) {
           throw new Error("Skill path is missing");
         }
@@ -189,7 +189,7 @@
     }
 
     if (currentType === "local" && "installed_agent_apps" in skill) {
-      const localPath = skill.global_folder || skill.installed_agent_apps[0]?.skill_folder;
+      const localPath = skill.root_folder || skill.installed_agent_apps[0]?.skill_folder;
       if (localPath) {
         await openInFileManager(localPath);
       }

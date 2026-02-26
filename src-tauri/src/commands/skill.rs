@@ -52,10 +52,10 @@ pub async fn install_from_github(request: InstallGithubRequest) -> Result<Instal
 #[tauri::command]
 pub fn check_skill_version(
   name: String,
-  global_folder: Option<String>,
+  root_folder: Option<String>,
   skill_paths: Vec<String>,
 ) -> Result<SourceCheckResult, String> {
-  skill_service::check_skill_version(name, global_folder, skill_paths)
+  skill_service::check_skill_version(name, root_folder, skill_paths)
 }
 
 #[tauri::command]

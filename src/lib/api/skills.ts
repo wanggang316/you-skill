@@ -13,7 +13,7 @@ export type SourceType = "github" | "native" | "unknown";
 export interface LocalSkill {
   name: string;
   source?: string | null;
-  global_folder?: string | null;
+  root_folder?: string | null;
   installed_agent_apps: InstalledAgentApp[];
   source_type: SourceType;
 }
@@ -231,12 +231,12 @@ export async function installFromGithub(request: InstallGithubRequest): Promise<
 
 export async function checkSkillVersion(
   name: string,
-  globalFolder: string | null | undefined,
+  rootFolder: string | null | undefined,
   skillPaths: string[]
 ): Promise<SourceCheckResult> {
   return apiCall<SourceCheckResult>("check_skill_version", {
     name,
-    globalFolder,
+    rootFolder,
     skillPaths,
   });
 }

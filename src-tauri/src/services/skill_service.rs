@@ -6,25 +6,28 @@ use crate::models::{
 };
 use crate::services::agent_apps_service::{
   local_agent_apps, resolve_all_available_apps_paths, resolve_selected_apps_paths,
+  root_folder_from_install_target,
 };
 use crate::services::native_skill_lock_service::{
   add_skill_to_native_lock, read_native_skill_lock_internal, remove_skill_from_native_lock,
 };
 use crate::services::project_skill_lock_service::{
   add_skill_to_project_lock, project_lock_source, project_lock_source_type,
-  remove_skill_from_project_lock,
+  read_project_skill_lock_internal, remove_skill_from_project_lock, ProjectSkillLockFile,
 };
 use crate::services::skill_lock_service::{
   add_skill_to_lock, lock_source, lock_source_type, read_skill_lock_internal,
   remove_skill_from_global_lock,
-  SkillLockEntry,
+  SkillLockEntry, SkillLockFile,
 };
+use crate::services::native_skill_lock_service::NativeSkillLockFile;
 use crate::utils::file::FileHelper;
 use crate::utils::folder::{copy_dir_all_sync, FolderHelper};
 use crate::utils::github::GithubHelper;
 use crate::utils::path::{
-  canonical_skill_folder_by_name, canonical_skills_root, expand_home, remove_path_any,
+  canonical_skill_folder_by_name, canonical_skills_root, remove_path_any,
 };
+use crate::utils::str::normalize_optional_string;
 use crate::utils::time::now_millis;
 use crate::utils::zip::ZipHelper;
 use std::collections::HashMap;
@@ -170,119 +173,28 @@ fn detect_folder_exact(folder: &Path) -> Result<DetectedSkill, String> {
 
 pub fn list_skills(scope: InstallScope, project_path: Option<String>) -> Result<Vec<LocalSkill>, String> {
   let install_target = InstallTarget::from_scope(&scope, &project_path)?;
-  match &install_target {
-    InstallTarget::Global => list_skills_global(),
-    InstallTarget::Project(project_root) => list_skills_project(project_root.as_path()),
-  }
+  list_skills_by_target(&install_target)
 }
 
-fn list_skills_global() -> Result<Vec<LocalSkill>, String> {
-  let github_lock = read_skill_lock_internal().unwrap_or_default();
-  let native_lock = read_native_skill_lock_internal().unwrap_or_default();
-
+fn list_skills_by_target(install_target: &InstallTarget) -> Result<Vec<LocalSkill>, String> {
+  let github_lock = match install_target {
+    InstallTarget::Global => Some(read_skill_lock_internal().unwrap_or_default()),
+    InstallTarget::Project(_) => None,
+  };
+  let native_lock = match install_target {
+    InstallTarget::Global => Some(read_native_skill_lock_internal().unwrap_or_default()),
+    InstallTarget::Project(_) => None,
+  };
+  let project_lock = match install_target {
+    InstallTarget::Global => None,
+    InstallTarget::Project(project_root) => {
+      Some(read_project_skill_lock_internal(project_root).unwrap_or_default())
+    },
+  };
   let mut skills: Vec<LocalSkill> = Vec::new();
   let mut skill_index: HashMap<String, usize> = HashMap::new();
 
-  let global_root = canonical_skills_root()?;
-  if global_root.exists() && global_root.is_dir() {
-    for entry in fs::read_dir(&global_root).map_err(|e| e.to_string())? {
-      let entry = entry.map_err(|e| e.to_string())?;
-      let skill_dir = entry.path();
-      if !is_skill_folder(&skill_dir) {
-        continue;
-      }
-      let Some(skill_name) = read_valid_skill_name(&skill_dir) else {
-        continue;
-      };
-      if skill_index.contains_key(&skill_name) {
-        continue;
-      }
-
-      let source_type = lock_source_type(&skill_name, &github_lock, &native_lock);
-      let source = lock_source(&skill_name, &source_type, &github_lock);
-      let index = skills.len();
-      skills.push(LocalSkill {
-        name: skill_name.clone(),
-        source,
-        global_folder: Some(skill_dir.to_string_lossy().to_string()),
-        installed_agent_apps: Vec::new(),
-        source_type,
-      });
-      skill_index.insert(skill_name, index);
-    }
-  }
-
-  for app in local_agent_apps() {
-    let Some(global_path) = &app.global_path else {
-      continue;
-    };
-    let app_root = expand_home(global_path);
-    // If the path doesn't exist, skip reading (no skills installed yet)
-    if !app_root.exists() || !app_root.is_dir() {
-      continue;
-    }
-
-    tracing::info!("-------------App root: {:?}", app_root);
-
-    let entries = match fs::read_dir(&app_root) {
-      Ok(entries) => entries,
-      Err(_) => continue,
-    };
-    for entry in entries {
-      let Ok(entry) = entry else {
-        continue;
-      };
-      let skill_dir = entry.path();
-      if !is_skill_folder(&skill_dir) {
-        continue;
-      }
-      let Some(skill_name) = read_valid_skill_name(&skill_dir) else {
-        continue;
-      };
-
-      let method = detect_install_method(&skill_dir);
-      let installed_app = InstalledAgentApp {
-        id: app.id.clone(),
-        skill_folder: skill_dir.to_string_lossy().to_string(),
-        method,
-      };
-
-      tracing::info!("path: {:?}, Installed app: {:?}", skill_dir, installed_app);
-      if let Some(index) = skill_index.get(&skill_name).copied() {
-        if !skills[index].installed_agent_apps.iter().any(|item| {
-          item.id == installed_app.id && item.skill_folder == installed_app.skill_folder
-        }) {
-          skills[index].installed_agent_apps.push(installed_app);
-        }
-        continue;
-      }
-
-      let source_type = lock_source_type(&skill_name, &github_lock, &native_lock);
-      let source = lock_source(&skill_name, &source_type, &github_lock);
-      let index = skills.len();
-      skills.push(LocalSkill {
-        name: skill_name.clone(),
-        source,
-        global_folder: None,
-        installed_agent_apps: vec![installed_app],
-        source_type,
-      });
-      skill_index.insert(skill_name, index);
-    }
-  }
-
-  tracing::info!("Local skills: {:?}", skills);
-  Ok(skills)
-}
-
-fn list_skills_project(project_root: &Path) -> Result<Vec<LocalSkill>, String> {
-  let project_lock = crate::services::project_skill_lock_service::read_project_skill_lock_internal(project_root)
-    .unwrap_or_default();
-
-  let mut skills: Vec<LocalSkill> = Vec::new();
-  let mut skill_index: HashMap<String, usize> = HashMap::new();
-
-  let canonical_root = project_root.join(".agents").join("skills");
+  let canonical_root = install_target.skill_folder_path()?;
   if canonical_root.exists() && canonical_root.is_dir() {
     for entry in fs::read_dir(&canonical_root).map_err(|e| e.to_string())? {
       let entry = entry.map_err(|e| e.to_string())?;
@@ -297,13 +209,18 @@ fn list_skills_project(project_root: &Path) -> Result<Vec<LocalSkill>, String> {
         continue;
       }
 
-      let source_type = project_lock_source_type(&skill_name, &project_lock);
-      let source = project_lock_source(&skill_name, &project_lock);
+      let (source_type, source) = resolve_skill_source(
+        &skill_name,
+        install_target,
+        github_lock.as_ref(),
+        native_lock.as_ref(),
+        project_lock.as_ref(),
+      );
       let index = skills.len();
       skills.push(LocalSkill {
         name: skill_name.clone(),
         source,
-        global_folder: Some(skill_dir.to_string_lossy().to_string()),
+        root_folder: Some(skill_dir.to_string_lossy().to_string()),
         installed_agent_apps: Vec::new(),
         source_type,
       });
@@ -312,10 +229,10 @@ fn list_skills_project(project_root: &Path) -> Result<Vec<LocalSkill>, String> {
   }
 
   for app in local_agent_apps() {
-    let Some(project_path) = &app.project_path else {
-      continue;
+    let app_root = match root_folder_from_install_target(&app, install_target) {
+      Ok(path) => path,
+      Err(_) => continue,
     };
-    let app_root = project_root.join(project_path);
     if !app_root.exists() || !app_root.is_dir() {
       continue;
     }
@@ -352,13 +269,18 @@ fn list_skills_project(project_root: &Path) -> Result<Vec<LocalSkill>, String> {
         continue;
       }
 
-      let source_type = project_lock_source_type(&skill_name, &project_lock);
-      let source = project_lock_source(&skill_name, &project_lock);
+      let (source_type, source) = resolve_skill_source(
+        &skill_name,
+        install_target,
+        github_lock.as_ref(),
+        native_lock.as_ref(),
+        project_lock.as_ref(),
+      );
       let index = skills.len();
       skills.push(LocalSkill {
         name: skill_name.clone(),
         source,
-        global_folder: None,
+        root_folder: None,
         installed_agent_apps: vec![installed_app],
         source_type,
       });
@@ -367,6 +289,30 @@ fn list_skills_project(project_root: &Path) -> Result<Vec<LocalSkill>, String> {
   }
 
   Ok(skills)
+}
+
+fn resolve_skill_source(
+  skill_name: &str,
+  install_target: &InstallTarget,
+  github_lock: Option<&SkillLockFile>,
+  native_lock: Option<&NativeSkillLockFile>,
+  project_lock: Option<&ProjectSkillLockFile>,
+) -> (SourceType, Option<String>) {
+  match install_target {
+    InstallTarget::Global => {
+      let github_lock = github_lock.expect("global listing requires github lock");
+      let native_lock = native_lock.expect("global listing requires native lock");
+      let source_type = lock_source_type(skill_name, github_lock, native_lock);
+      let source = lock_source(skill_name, &source_type, github_lock);
+      (source_type, source)
+    },
+    InstallTarget::Project(_) => {
+      let project_lock = project_lock.expect("project listing requires project lock");
+      let source_type = project_lock_source_type(skill_name, project_lock);
+      let source = project_lock_source(skill_name, project_lock);
+      (source_type, source)
+    },
+  }
 }
 
 pub fn install_from_native(request: InstallNativeRequest) -> Result<InstallResult, String> {
@@ -449,14 +395,14 @@ pub async fn install_from_github(request: InstallGithubRequest) -> Result<Instal
 
 pub fn check_skill_version(
   name: String,
-  global_folder: Option<String>,
+  root_folder: Option<String>,
   skill_paths: Vec<String>,
 ) -> Result<SourceCheckResult, String> {
-  if let Some(global_folder) = normalize_optional_string(global_folder) {
-    let global_path = PathBuf::from(&global_folder);
-    if global_path.exists() && global_path.is_dir() {
+  if let Some(root_folder) = normalize_optional_string(root_folder) {
+    let root_path = PathBuf::from(&root_folder);
+    if root_path.exists() && root_path.is_dir() {
       return Ok(SourceCheckResult {
-        source_path: Some(global_folder),
+        source_path: Some(root_folder),
         version_groups: Vec::new(),
         requires_selection: false,
       });
@@ -844,17 +790,6 @@ fn prepare_canonical_skill_dir(
   }
   copy_dir_all_sync(source, &canonical_skill_dir)?;
   Ok(canonical_skill_dir)
-}
-
-fn normalize_optional_string(value: Option<String>) -> Option<String> {
-  value.and_then(|v| {
-    let trimmed = v.trim();
-    if trimmed.is_empty() {
-      None
-    } else {
-      Some(trimmed.to_string())
-    }
-  })
 }
 
 fn skill_path_from_relative_dir(relative_dir: &str) -> String {

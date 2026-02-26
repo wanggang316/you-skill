@@ -5,7 +5,7 @@ use std::path::PathBuf;
 pub struct LocalSkill {
   pub name: String,
   pub source: Option<String>,
-  pub global_folder: Option<String>,
+  pub root_folder: Option<String>,
   pub installed_agent_apps: Vec<InstalledAgentApp>,
   pub source_type: SourceType,
 }
