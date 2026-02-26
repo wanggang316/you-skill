@@ -665,12 +665,29 @@ fn resolve_source_path_by_consistency(
   }
 
   let mut grouped: Vec<(String, Vec<PathBuf>)> = Vec::new();
+  let mut quick_groups: Vec<((usize, u64, u64), Vec<PathBuf>)> = Vec::new();
   for path in &candidates {
-    let digest = FolderHelper::compute_folder_digest(path)?;
-    if let Some((_, paths)) = grouped.iter_mut().find(|(hash, _)| *hash == digest) {
+    let signature = FolderHelper::quick_folder_signature(path)?;
+    if let Some((_, paths)) = quick_groups.iter_mut().find(|(sig, _)| *sig == signature) {
       paths.push(path.clone());
     } else {
-      grouped.push((digest, vec![path.clone()]));
+      quick_groups.push((signature, vec![path.clone()]));
+    }
+  }
+
+  for (_, paths) in quick_groups {
+    if paths.len() == 1 {
+      grouped.push(("__single__".to_string(), paths));
+      continue;
+    }
+
+    for path in paths {
+      let digest = FolderHelper::compute_folder_digest(&path)?;
+      if let Some((_, digest_paths)) = grouped.iter_mut().find(|(hash, _)| *hash == digest) {
+        digest_paths.push(path);
+      } else {
+        grouped.push((digest, vec![path]));
+      }
     }
   }
 

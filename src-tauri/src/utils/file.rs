@@ -15,6 +15,10 @@ impl FileHelper {
     fs::read_to_string(path).map_err(|e| e.to_string())
   }
 
+  pub fn read_bytes(path: &Path) -> Result<Vec<u8>, String> {
+    fs::read(path).map_err(|e| e.to_string())
+  }
+
   pub fn read_skill_frontmatter(skill_md_path: &Path) -> Result<SkillFrontmatter, String> {
     let content = Self::read_to_string(skill_md_path)?;
     let mut lines = content.lines();

@@ -1,8 +1,10 @@
+use crate::utils::file::FileHelper;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 use walkdir::WalkDir;
 
 pub struct FolderHelper;
@@ -69,6 +71,69 @@ impl FolderHelper {
 
     let digest = hasher.finalize();
     Ok(format!("{:x}", digest))
+  }
+
+  pub fn quick_folder_signature(path: &Path) -> Result<(usize, u64, u64), String> {
+    let mut entry_count: usize = 0;
+    let mut total_size: u64 = 0;
+    let mut latest_mtime_secs: u64 = 0;
+
+    for entry in fs::read_dir(path).map_err(|e| e.to_string())? {
+      let entry = entry.map_err(|e| e.to_string())?;
+      entry_count += 1;
+      let metadata = entry.metadata().map_err(|e| e.to_string())?;
+      total_size = total_size.saturating_add(metadata.len());
+      if let Ok(modified) = metadata.modified() {
+        if let Ok(duration) = modified.duration_since(UNIX_EPOCH) {
+          latest_mtime_secs = latest_mtime_secs.max(duration.as_secs());
+        }
+      }
+    }
+
+    Ok((entry_count, total_size, latest_mtime_secs))
+  }
+
+  pub fn compute_skill_folder_hash(skill_dir: &Path) -> Result<String, String> {
+    if !skill_dir.exists() || !skill_dir.is_dir() {
+      return Err(format!(
+        "Skill directory does not exist: {}",
+        skill_dir.to_string_lossy()
+      ));
+    }
+
+    let mut files: Vec<(String, Vec<u8>)> = Vec::new();
+
+    for entry in WalkDir::new(skill_dir).into_iter().filter_map(Result::ok) {
+      let path = entry.path();
+      if path == skill_dir {
+        continue;
+      }
+
+      let relative = path
+        .strip_prefix(skill_dir)
+        .map_err(|e| e.to_string())?
+        .to_string_lossy()
+        .replace('\\', "/");
+
+      if relative.split('/').any(|part| part == ".git" || part == "node_modules") {
+        continue;
+      }
+
+      if entry.file_type().is_file() {
+        let content = FileHelper::read_bytes(path)?;
+        files.push((relative, content));
+      }
+    }
+
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+
+    let mut hasher = Sha256::new();
+    for (relative_path, content) in files {
+      hasher.update(relative_path.as_bytes());
+      hasher.update(&content);
+    }
+
+    Ok(format!("{:x}", hasher.finalize()))
   }
 }
 

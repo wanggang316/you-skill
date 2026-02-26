@@ -1,8 +1,7 @@
 use crate::models::SourceType;
-use sha2::{Digest, Sha256};
+use crate::utils::folder::FolderHelper;
 use std::fs;
 use std::path::Path;
-use walkdir::WalkDir;
 
 const PROJECT_LOCK_FILE: &str = "skills-lock.json";
 const CURRENT_VERSION: i64 = 1;
@@ -75,7 +74,7 @@ pub fn add_skill_to_project_lock(
 ) -> Result<(), String> {
   let mut lock = read_project_skill_lock_internal(project_root)?;
   lock.version = CURRENT_VERSION;
-  let computed_hash = compute_skill_folder_hash(skill_dir)?;
+  let computed_hash = FolderHelper::compute_skill_folder_hash(skill_dir)?;
 
   lock.skills.insert(
     skill_name,
@@ -132,47 +131,4 @@ fn source_type_to_lock_value(source_type: &SourceType) -> &'static str {
     SourceType::Native => "native",
     SourceType::Unknown => "unknown",
   }
-}
-
-pub fn compute_skill_folder_hash(skill_dir: &Path) -> Result<String, String> {
-  if !skill_dir.exists() || !skill_dir.is_dir() {
-    return Err(format!(
-      "Skill directory does not exist: {}",
-      skill_dir.to_string_lossy()
-    ));
-  }
-
-  let mut files: Vec<(String, Vec<u8>)> = Vec::new();
-
-  for entry in WalkDir::new(skill_dir).into_iter().filter_map(Result::ok) {
-    let path = entry.path();
-    if path == skill_dir {
-      continue;
-    }
-
-    let relative = path
-      .strip_prefix(skill_dir)
-      .map_err(|e| e.to_string())?
-      .to_string_lossy()
-      .replace('\\', "/");
-
-    if relative.split('/').any(|part| part == ".git" || part == "node_modules") {
-      continue;
-    }
-
-    if entry.file_type().is_file() {
-      let content = fs::read(path).map_err(|e| e.to_string())?;
-      files.push((relative, content));
-    }
-  }
-
-  files.sort_by(|a, b| a.0.cmp(&b.0));
-
-  let mut hasher = Sha256::new();
-  for (relative_path, content) in files {
-    hasher.update(relative_path.as_bytes());
-    hasher.update(&content);
-  }
-
-  Ok(format!("{:x}", hasher.finalize()))
 }
