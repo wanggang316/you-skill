@@ -81,6 +81,9 @@
   let selectAgentModalTitle = $state("");
   let selectAgentModalConfirmText = $state("");
   let selectAgentModalInitialSelection = $state<string[]>([]);
+  let selectAgentModalAllowScopeChange = $state(true);
+  let selectAgentModalInitialScope = $state<InstallScope>("global");
+  let selectAgentModalInitialProjectPath = $state<string | null>(null);
   let selectAgentModalCallback = $state<
     ((
       selectedAgents: string[],
@@ -249,6 +252,17 @@
 
   const toGitRepoUrl = (url: string) => (url.endsWith(".git") ? url : `${url}.git`);
 
+  const resolveUpdateContext = (skillName: string) => {
+    const localSkill = get(localSkillsStore).find((ls) => ls.name === skillName);
+    const selectedAgents = localSkill
+      ? Array.from(new Set(localSkill.installed_agent_apps.map((app) => app.id)))
+      : get(agentsStore).map((a) => a.id);
+    const method = localSkill?.installed_agent_apps[0]?.method ?? get(settings).sync_mode ?? "symlink";
+    const scope = localScope;
+    const projectPath = scope === "project" ? localProjectPath : null;
+    return { selectedAgents, method, scope, projectPath };
+  };
+
   const handleUpdateSkill = async (skill: RemoteSkill) => {
     if (get(updatingSkillsStore).includes(skill.name)) return;
 
@@ -263,50 +277,26 @@
       installingSkill = skill.id;
 
       const detectedSkill = await detectGithubAuto(skill.url, skill.name);
-      pendingInstallSkill = { ...skill, detectedSkill };
-
-      const localSkill = get(localSkillsStore).find((ls) => ls.name === skill.name);
-      const currentAgents = localSkill
-        ? Array.from(new Set(localSkill.installed_agent_apps.map((app) => app.id)))
-        : get(agentsStore).map((a) => a.id);
-
-      selectAgentModalTitle = `${$t("remote.update")} ${skill.name}`;
-      selectAgentModalConfirmText = $t("selectAgent.confirm");
-      selectAgentModalInitialSelection = currentAgents;
-      selectAgentModalCallback = async (selectedAgents, method, scope, projectPath) => {
-        if (!pendingInstallSkill) return false;
+      const updateContext = resolveUpdateContext(skill.name);
+      installLog = "";
+      const result = await installFromGithub({
+        name: detectedSkill.name,
+        tmp_path: detectedSkill.tmp_path,
+        skill_path: detectedSkill.skill_path,
+        source_url: toGitRepoUrl(skill.url),
+        skill_folder_hash: skill.skill_path_sha ?? null,
+        agent_apps: updateContext.selectedAgents,
+        method: updateContext.method,
+        scope: updateContext.scope,
+        project_path: updateContext.projectPath,
+      });
+      if (!result.success) {
+        installLog = `${result.message}\n${result.stderr || result.stdout}`;
+      } else {
         installLog = "";
-        installingSkill = pendingInstallSkill.id;
-        try {
-          if (!pendingInstallSkill.detectedSkill) return false;
-          const result = await installFromGithub({
-            name: pendingInstallSkill.detectedSkill.name,
-            tmp_path: pendingInstallSkill.detectedSkill.tmp_path,
-            skill_path: pendingInstallSkill.detectedSkill.skill_path,
-            source_url: toGitRepoUrl(skill.url!),
-            skill_folder_hash: skill.skill_path_sha ?? null,
-            agent_apps: selectedAgents,
-            method,
-            scope,
-            project_path: projectPath,
-          });
-          if (!result.success) {
-            installLog = `${result.message}\n${result.stderr || result.stdout}`;
-          } else {
-            installLog = "";
-            await refreshLocal();
-            await checkForSkillUpdates();
-          }
-          return true;
-        } catch (error) {
-          installLog = String(error);
-          return false;
-        } finally {
-          installingSkill = "";
-          pendingInstallSkill = null;
-        }
-      };
-      selectAgentModalOpen = true;
+        await refreshLocal();
+        await checkForSkillUpdates();
+      }
     } catch (error) {
       installLog = String(error);
     } finally {
@@ -343,6 +333,9 @@
       selectAgentModalTitle = `${$t("remote.install")} ${skill.name}`;
       selectAgentModalConfirmText = $t("selectAgent.confirm");
       selectAgentModalInitialSelection = get(agentsStore).map((a) => a.id);
+      selectAgentModalAllowScopeChange = true;
+      selectAgentModalInitialScope = "global";
+      selectAgentModalInitialProjectPath = null;
       selectAgentModalCallback = async (selectedAgents, method, scope, projectPath) => {
         if (!pendingInstallSkill) return false;
         installLog = "";
@@ -443,6 +436,9 @@
     selectAgentModalTitle = skill.name;
     selectAgentModalConfirmText = $t("remote.update");
     selectAgentModalInitialSelection = getSkillAgentIds(skill);
+    selectAgentModalAllowScopeChange = false;
+    selectAgentModalInitialScope = localScope;
+    selectAgentModalInitialProjectPath = localScope === "project" ? localProjectPath : null;
     selectAgentModalCallback = async (selectedAgents, method, scope, projectPath) => {
       return manageSkillAgentAppsFlow(skill, selectedAgents, method, sourcePath, scope, projectPath);
     };
@@ -453,6 +449,9 @@
     selectAgentModalTitle = skill.name;
     selectAgentModalConfirmText = $t("remote.update");
     selectAgentModalInitialSelection = getSkillAgentIds(skill);
+    selectAgentModalAllowScopeChange = false;
+    selectAgentModalInitialScope = localScope;
+    selectAgentModalInitialProjectPath = localScope === "project" ? localProjectPath : null;
     selectAgentModalCallback = async (selectedAgents, method, scope, projectPath) => {
       try {
         const result = await installFromUnknown({
@@ -723,6 +722,9 @@
     confirmText={selectAgentModalConfirmText}
     agents={$agentsStore}
     initialSelection={selectAgentModalInitialSelection}
+    allowScopeChange={selectAgentModalAllowScopeChange}
+    initialScope={selectAgentModalInitialScope}
+    initialProjectPath={selectAgentModalInitialProjectPath}
     onConfirm={async (
       selectedAgents: string[],
       method: "symlink" | "copy",
@@ -737,6 +739,9 @@
     onCancel={() => {
       selectAgentModalCallback = null;
       selectAgentModalConfirmText = "";
+      selectAgentModalAllowScopeChange = true;
+      selectAgentModalInitialScope = "global";
+      selectAgentModalInitialProjectPath = null;
     }}
   />
 {/await}

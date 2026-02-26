@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { get } from "svelte/store";
   import { t } from "../i18n";
   import Modal from "./ui/Modal.svelte";
@@ -7,6 +7,7 @@
   import SelectField from "./ui/SelectField.svelte";
   import { settings } from "../stores/settings";
   import { listUserProjects } from "../api/user-projects";
+  import type { InstallScope } from "../api/skills";
 
   let {
     open = $bindable(false),
@@ -14,20 +15,18 @@
     confirmText = "",
     agents = [],
     initialSelection = [],
+    allowScopeChange = true,
+    initialScope = "global",
+    initialProjectPath = null,
     onConfirm = async () => true,
     onCancel = () => {},
   } = $props();
 
-  /** @type {string[]} */
-  let selectedAgents = $state([]);
-  /** @type {"symlink" | "copy"} */
-  let selectedMethod = $state("symlink");
-  /** @type {"global" | "project"} */
-  let selectedScope = $state("global");
-  /** @type {import('../api/user-projects').UserProject[]} */
-  let userProjects = $state([]);
-  /** @type {string | null} */
-  let selectedProjectPath = $state(null);
+  let selectedAgents = $state<string[]>([]);
+  let selectedMethod = $state<"symlink" | "copy">("symlink");
+  let selectedScope = $state<InstallScope>("global");
+  let userProjects = $state<import("../api/user-projects").UserProject[]>([]);
+  let selectedProjectPath = $state<string | null>(null);
   let projectLoading = $state(false);
   let isInstalling = $state(false);
 
@@ -38,9 +37,11 @@
       selectedAgents =
         initialSelection.length > 0 ? [...initialSelection] : agents.map((a) => a.id);
       selectedMethod = get(settings).sync_mode || "symlink";
-      selectedScope = "global";
-      selectedProjectPath = null;
-      void loadProjects();
+      selectedScope = initialScope;
+      selectedProjectPath = initialScope === "project" ? initialProjectPath : null;
+      if (allowScopeChange || initialScope === "project") {
+        void loadProjects();
+      }
     }
   });
 
@@ -55,8 +56,7 @@
     }
   }
 
-  /** @param {string} projectPath */
-  function toggleProject(projectPath) {
+  function toggleProject(projectPath: string) {
     selectedProjectPath = selectedProjectPath === projectPath ? null : projectPath;
   }
 
@@ -101,12 +101,14 @@
       {$t("selectAgent.description")}
     </p>
     <div class="mb-4 space-y-3">
-      <SelectField bind:value={selectedScope}>
-        <option value="global">{$t("installScope.global")}</option>
-        <option value="project">{$t("installScope.project")}</option>
-      </SelectField>
+      {#if allowScopeChange}
+        <SelectField bind:value={selectedScope}>
+          <option value="global">{$t("installScope.global")}</option>
+          <option value="project">{$t("installScope.project")}</option>
+        </SelectField>
+      {/if}
 
-      {#if selectedScope === "project"}
+      {#if allowScopeChange && selectedScope === "project"}
         <div class="space-y-2">
           <p class="text-base-content text-sm">
             {$t("selectAgent.selectProjects")}
