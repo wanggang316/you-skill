@@ -625,10 +625,14 @@ fn remove_existing_associations(
   install_target: &InstallTarget,
 ) -> Result<(), String> {
   let all_apps = resolve_all_available_apps_paths(install_target)?;
+  let canonical_skill_dir = install_target.skill_folder_path()?.join(skill_name);
 
   let mut errors = Vec::new();
   for app in &all_apps {
     let target = app.install_root.join(skill_name);
+    if target == canonical_skill_dir {
+      continue;
+    }
     if target.exists() || target.is_symlink() {
       if let Err(err) = remove_path_any(&target) {
         errors.push(format!("{}: {}", app.display_name, err));

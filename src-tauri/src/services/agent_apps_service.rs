@@ -359,8 +359,8 @@ fn internal_agent_apps() -> Vec<AgentApp> {
     AgentApp {
       id: "vscode".to_string(),
       display_name: "VSCode".to_string(),
-      project_path: Some(".github/skills".to_string()),
-      global_path: Some("~/.vscode/skills".to_string()),
+      project_path: Some(".agents/skills".to_string()),
+      global_path: Some("~/.github/skills".to_string()),
       is_user_custom: false,
     },
     AgentApp {
