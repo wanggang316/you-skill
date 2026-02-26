@@ -25,7 +25,7 @@ use crate::utils::file::FileHelper;
 use crate::utils::folder::{copy_dir_all_sync, FolderHelper};
 use crate::utils::github::GithubHelper;
 use crate::utils::path::{
-  canonical_skill_folder_by_name, canonical_skills_root, remove_path_any,
+  canonical_skill_folder_by_name, remove_path_any,
 };
 use crate::utils::str::normalize_optional_string;
 use crate::utils::time::now_millis;
@@ -459,11 +459,11 @@ pub fn manage_skill_agent_apps(
     return Err("source_path does not exist".to_string());
   }
 
-  let canonical_root = canonical_skills_root()?;
+  let canonical_root = install_target.skill_folder_path()?;
   let source = if source_path.starts_with(&canonical_root) {
     source_path
   } else {
-    prepare_canonical_skill_dir(&source_path, &request.name, &InstallTarget::Global)?
+    prepare_canonical_skill_dir(&source_path, &request.name, &install_target)?
   };
 
   let selected_apps = resolve_selected_apps_paths(&request.agent_apps, &install_target)?;
