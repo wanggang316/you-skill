@@ -30,7 +30,7 @@ use crate::utils::path::{
 use crate::utils::str::normalize_optional_string;
 use crate::utils::time::now_millis;
 use crate::utils::zip::ZipHelper;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -734,6 +734,7 @@ fn normalized_existing_skill_paths(
   skill_paths: &[String],
 ) -> Result<Vec<PathBuf>, String> {
   let mut out: Vec<PathBuf> = Vec::new();
+  let mut seen: HashSet<PathBuf> = HashSet::new();
   for path in skill_paths {
     let path = PathBuf::from(path);
     if !path.exists() || !path.is_dir() {
@@ -750,7 +751,7 @@ fn normalized_existing_skill_paths(
     if frontmatter.name.as_deref() != Some(skill_name) {
       continue;
     }
-    if !out.iter().any(|existing| existing == &path) {
+    if seen.insert(path.clone()) {
       out.push(path);
     }
   }
