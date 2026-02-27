@@ -8,7 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Added project skill management.
 
 ### Changed
 
@@ -16,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+
+## [0.8.2] - 2026-02-27
+
+### Added
+- Added project skill management.
 
 ## [0.8.1] - 2026-02-24
 
