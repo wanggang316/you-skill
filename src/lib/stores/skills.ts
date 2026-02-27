@@ -62,8 +62,9 @@ export async function loadRemote(options: {
   search: string;
   sortBy: string;
   sortOrder: string;
+  checkUpdates?: boolean;
 }): Promise<void> {
-  const { reset = false, skip, limit, search, sortBy, sortOrder } = options;
+  const { reset = false, skip, limit, search, sortBy, sortOrder, checkUpdates = true } = options;
   remoteLoading.set(true);
   remoteError.set("");
   try {
@@ -84,7 +85,9 @@ export async function loadRemote(options: {
     } else {
       remoteSkills.update((current) => [...current, ...response.skills]);
     }
-    await checkUpdatesFromRemoteList();
+    if (checkUpdates) {
+      await checkUpdatesFromRemoteList();
+    }
   } catch (error) {
     remoteError.set(String(error));
   } finally {

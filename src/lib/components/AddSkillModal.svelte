@@ -14,13 +14,18 @@
   import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
   import SegmentedTabs from "./ui/SegmentedTabs.svelte";
   import SelectField from "./ui/SelectField.svelte";
-  import InstallScopeSelect from "./InstallScopeSelect.svelte";
   import AgentSelector from "./AgentSelector.svelte";
   import DetectedSkillList from "./DetectedSkillList.svelte";
   import { settings } from "../stores/settings";
 
-  /** @type {{ open?: boolean; agents?: import('../api/skills').AgentInfo[]; onSuccess?: () => void }} */
-  let { open = $bindable(false), agents = [], onSuccess = () => {} } = $props();
+  /** @type {{ open?: boolean; agents?: import('../api/skills').AgentInfo[]; initialScope?: "global" | "project"; initialProjectPath?: string | null; onSuccess?: () => void }} */
+  let {
+    open = $bindable(false),
+    agents = [],
+    initialScope = "global",
+    initialProjectPath = null,
+    onSuccess = () => {},
+  } = $props();
 
   // Tab state: 'github' | 'zip' | 'folder'
   let activeTab = $state("github");
@@ -61,7 +66,6 @@
   let selectedMethod = $state("symlink");
   /** @type {"global" | "project"} */
   let selectedScope = $state("global");
-  let selectedScopeKey = $state("global");
   /** @type {import('../api/user-projects').UserProject[]} */
   let userProjects = $state([]);
   /** @type {string | null} */
@@ -108,10 +112,9 @@
     githubError = "";
     selectedAgents = agents.map((a) => a.id);
     selectedMethod = get(settings).sync_mode || "symlink";
-    selectedScope = "global";
-    selectedScopeKey = "global";
+    selectedScope = initialScope;
     userProjects = [];
-    selectedProjectPath = null;
+    selectedProjectPath = initialScope === "project" ? initialProjectPath : null;
     suppressZipClick = false;
     suppressFolderClick = false;
     isInstalling = false;
@@ -126,14 +129,13 @@
     }
   }
 
-  $effect(() => {
-    if (selectedScopeKey.startsWith("project:")) {
-      selectedScope = "project";
-      selectedProjectPath = decodeURIComponent(selectedScopeKey.slice("project:".length));
-      return;
-    }
-    selectedScope = "global";
-    selectedProjectPath = null;
+  const scopeLabel = $derived.by(() => {
+    if (selectedScope !== "project") return $t("installScope.global");
+    if (!selectedProjectPath) return $t("installScope.project");
+    return (
+      userProjects.find((project) => project.path === selectedProjectPath)?.name ??
+      $t("installScope.project")
+    );
   });
 
   function closeModal() {
@@ -1090,13 +1092,8 @@
     </div>
   </div>
   {#snippet footer()}
-    <InstallScopeSelect
-      bind:value={selectedScopeKey}
-      projects={userProjects}
-      disabled={isInstalling}
-      className="mr-3"
-    />
-    <SelectField bind:value={selectedMethod} disabled={isInstalling}>
+    <div class="text-base-content-subtle mr-auto text-xs">{scopeLabel}</div>
+    <SelectField bind:value={selectedMethod} disabled={isInstalling} className="mr-3">
         <option value="symlink">{$t("settings.syncMode.symlink")}</option>
         <option value="copy">{$t("settings.syncMode.copy")}</option>
     </SelectField>

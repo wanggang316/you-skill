@@ -237,6 +237,7 @@
     if (reset) {
       remoteSkip = 0;
     }
+    const shouldCheckUpdates = localScope === "global";
     await loadRemoteState({
       reset,
       skip: remoteSkip,
@@ -244,6 +245,7 @@
       search: remoteQuery,
       sortBy: remoteSortBy,
       sortOrder: remoteSortOrder,
+      checkUpdates: shouldCheckUpdates,
     });
     if (activeTab === "remote") {
       await restoreInitialScroll();
@@ -295,7 +297,11 @@
       } else {
         installLog = "";
         await refreshLocal();
-        await checkForSkillUpdates();
+        if (localScope === "global") {
+          await checkForSkillUpdates();
+        } else {
+          skillsWithUpdateStore.set([]);
+        }
       }
     } catch (error) {
       installLog = String(error);
@@ -616,7 +622,7 @@
     }
 
     // 切换到本地标签时，延迟检查更新（非阻塞）
-    if (tab === "local" && get(localSkillsStore).length > 0) {
+    if (tab === "local" && localScope === "global" && get(localSkillsStore).length > 0) {
       checkForSkillUpdates().catch(console.error);
     }
   };
@@ -711,7 +717,13 @@
   </main>
 </div>
 
-<AddSkillModal bind:open={addSkillModalOpen} agents={$agentsStore} onSuccess={refreshLocal} />
+<AddSkillModal
+  bind:open={addSkillModalOpen}
+  agents={$agentsStore}
+  initialScope={localScope}
+  initialProjectPath={localProjectPath}
+  onSuccess={refreshLocal}
+/>
 <UserProjectFormModal bind:open={userProjectsModalOpen} />
 
 <!-- Select Agent Modal -->
