@@ -340,8 +340,8 @@
       selectAgentModalConfirmText = $t("selectAgent.confirm");
       selectAgentModalInitialSelection = get(agentsStore).map((a) => a.id);
       selectAgentModalAllowScopeChange = true;
-      selectAgentModalInitialScope = "global";
-      selectAgentModalInitialProjectPath = null;
+      selectAgentModalInitialScope = localScope;
+      selectAgentModalInitialProjectPath = localScope === "project" ? localProjectPath : null;
       selectAgentModalCallback = async (selectedAgents, method, scope, projectPath) => {
         if (!pendingInstallSkill) return false;
         installLog = "";
