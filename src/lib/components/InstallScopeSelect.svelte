@@ -16,6 +16,7 @@
 
   let measureEl = $state<HTMLSpanElement | null>(null);
   let selectWidthPx = $state(112);
+  const MAX_WIDTH_PX = 180;
 
   const selectedLabel = $derived.by(() => {
     if (!value.startsWith("project:")) return $t("installScope.global");
@@ -28,13 +29,17 @@
     if (!measureEl) return;
     const textWidth = Math.ceil(measureEl.getBoundingClientRect().width);
     const iconAndPaddingWidth = 44;
-    const width = Math.min(Math.max(textWidth + iconAndPaddingWidth, 96), 360);
+    const width = Math.min(Math.max(textWidth + iconAndPaddingWidth, 96), MAX_WIDTH_PX);
     selectWidthPx = width;
   });
 </script>
 
 <div class={`relative shrink-0 ${className}`.trim()}>
-  <SelectField bind:value {disabled} style={`width: ${selectWidthPx}px; min-width: ${selectWidthPx}px;`}>
+  <SelectField
+    bind:value
+    {disabled}
+    style={`width: ${selectWidthPx}px; min-width: ${selectWidthPx}px; max-width: ${MAX_WIDTH_PX}px;`}
+  >
   <option value="global">{$t("installScope.global")}</option>
   {#if projects.length > 0}
     <option value="" disabled>------</option>

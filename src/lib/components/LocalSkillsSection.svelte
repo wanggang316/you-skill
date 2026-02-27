@@ -1,16 +1,13 @@
 <script>
-  import { RefreshCw, Search, Blend, ChevronsUpDown, Loader2 } from "@lucide/svelte";
+  import { RefreshCw, Search, ChevronsUpDown, Loader2 } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
   import SelectField from "./ui/SelectField.svelte";
-  import InstallScopeSelect from "./InstallScopeSelect.svelte";
   import { t } from "../i18n";
 
   let {
     localSearch = $bindable(),
     localAgent = $bindable(),
-    localScopeKey = $bindable(),
     agents,
-    projects = [],
     localLoading,
     localError,
     filteredLocalSkills,
@@ -62,7 +59,6 @@
             <option value={agent.id}>{agent.display_name}</option>
           {/each}
       </SelectField>
-      <InstallScopeSelect bind:value={localScopeKey} projects={projects} />
       <IconButton
         variant="outline"
         onclick={onRefresh}

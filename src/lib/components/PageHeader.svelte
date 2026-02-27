@@ -4,7 +4,7 @@
     ChevronLeft,
     Plus,
     Settings,
-    FolderKanban,
+    Folders,
     ArrowUpCircle,
     ExternalLink,
     RefreshCw,
@@ -12,9 +12,10 @@
   } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
   import SegmentedTabs from "./ui/SegmentedTabs.svelte";
+  import InstallScopeSelect from "./InstallScopeSelect.svelte";
   import { t } from "../i18n";
 
-  const {
+  let {
     currentView,
     activeTab,
     skillName,
@@ -30,6 +31,8 @@
     onBack,
     onDetailAction,
     onRefreshAgentApps,
+    localScopeKey = $bindable("global"),
+    projects = [],
   } = $props();
 </script>
 
@@ -88,13 +91,14 @@
               {/if}
             </button>
           {/if}
+          <InstallScopeSelect bind:value={localScopeKey} {projects} />
           <IconButton
             variant="outline"
             onclick={onOpenProjectManage}
             title={$t("projectManage.title")}
             ariaLabel={$t("projectManage.title")}
           >
-            <FolderKanban size={16} />
+            <Folders size={16} />
           </IconButton>
           <IconButton
             variant="outline"

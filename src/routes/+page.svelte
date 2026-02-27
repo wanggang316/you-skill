@@ -647,6 +647,8 @@
   <PageHeader
     currentView="list"
     {activeTab}
+    bind:localScopeKey
+    projects={userProjects}
     skillName=""
     {hasUpdate}
     updateLoading={updatingApp}
@@ -667,9 +669,7 @@
         <LocalSkillsSection
           bind:localSearch
           bind:localAgent
-          bind:localScopeKey
           agents={$agentsStore}
-          projects={userProjects}
           localLoading={$localLoadingStore}
           localError={$localErrorStore}
           {filteredLocalSkills}
