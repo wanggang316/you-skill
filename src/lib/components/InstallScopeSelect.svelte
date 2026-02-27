@@ -13,9 +13,28 @@
     disabled?: boolean;
     className?: string;
   }>();
+
+  let measureEl = $state<HTMLSpanElement | null>(null);
+  let selectWidthPx = $state(112);
+
+  const selectedLabel = $derived.by(() => {
+    if (!value.startsWith("project:")) return $t("installScope.global");
+    const selectedPath = decodeURIComponent(value.slice("project:".length));
+    return projects.find((project) => project.path === selectedPath)?.name ?? $t("installScope.global");
+  });
+
+  $effect(() => {
+    const _label = selectedLabel;
+    if (!measureEl) return;
+    const textWidth = Math.ceil(measureEl.getBoundingClientRect().width);
+    const iconAndPaddingWidth = 52;
+    const width = Math.min(Math.max(textWidth + iconAndPaddingWidth, 96), 360);
+    selectWidthPx = width;
+  });
 </script>
 
-<SelectField bind:value {disabled} {className} selectClassName="w-32">
+<div class={`relative shrink-0 ${className}`.trim()}>
+  <SelectField bind:value {disabled} style={`width: ${selectWidthPx}px; min-width: ${selectWidthPx}px;`}>
   <option value="global">{$t("installScope.global")}</option>
   {#if projects.length > 0}
     <option value="" disabled>------</option>
@@ -23,4 +42,8 @@
   {#each projects as project}
     <option value={`project:${encodeURIComponent(project.path)}`}>{project.name}</option>
   {/each}
-</SelectField>
+  </SelectField>
+  <span bind:this={measureEl} class="pointer-events-none absolute invisible text-sm whitespace-nowrap">
+    {selectedLabel}
+  </span>
+</div>
