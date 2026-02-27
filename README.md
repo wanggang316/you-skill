@@ -86,7 +86,7 @@ npm run tauri -- build
 
 ## Roadmap
 
-- [ ] Project-Level skill management
+- [x] Project-Level skill management
 - [ ] Backup to GitHub for Multi-Device sync
 - [ ] Skill details with support for viewing all skill files
 - [ ] AI-Powered find skill

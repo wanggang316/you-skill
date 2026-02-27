@@ -86,7 +86,7 @@ npm run tauri -- build
 
 ## 路线图
 
-- [ ] 项目级的 Skill 管理
+- [x] 项目级的 Skill 管理
 - [ ] 备份到 GitHub，实现多设备同步
 - [ ] Skill 详情，支持快速查看所有 Skill 文件
 - [ ] 基于 AI 的 FindSkill
