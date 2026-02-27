@@ -65,6 +65,8 @@ vite.config.ts.timestamp-*
 .neovate/
 .codebuddy/
 .cortex/
+.agent/
+.myapp/
 
 .agents/
 skills-lock.json
