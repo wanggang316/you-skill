@@ -2,14 +2,16 @@
   import { t } from "../i18n";
   import SelectField from "./ui/SelectField.svelte";
 
+  type ProjectOption = { name: string; path: string };
+
   let {
     value = $bindable("global"),
-    projects = [],
+    projects = [] as ProjectOption[],
     disabled = false,
     className = "",
   } = $props<{
     value?: string;
-    projects?: Array<{ name: string; path: string }>;
+    projects?: ProjectOption[];
     disabled?: boolean;
     className?: string;
   }>();
@@ -21,7 +23,10 @@
   const selectedLabel = $derived.by(() => {
     if (!value.startsWith("project:")) return $t("installScope.global");
     const selectedPath = decodeURIComponent(value.slice("project:".length));
-    return projects.find((project) => project.path === selectedPath)?.name ?? $t("installScope.global");
+    return (
+      projects.find((project: ProjectOption) => project.path === selectedPath)?.name ??
+      $t("installScope.global")
+    );
   });
 
   $effect(() => {

@@ -258,7 +258,7 @@
       ? Array.from(new Set(localSkill.installed_agent_apps.map((app) => app.id)))
       : get(agentsStore).map((a) => a.id);
     const method = localSkill?.installed_agent_apps[0]?.method ?? get(settings).sync_mode ?? "symlink";
-    const scope = localScope;
+    const scope: InstallScope = localScope as InstallScope;
     const projectPath = scope === "project" ? localProjectPath : null;
     return { selectedAgents, method, scope, projectPath };
   };
