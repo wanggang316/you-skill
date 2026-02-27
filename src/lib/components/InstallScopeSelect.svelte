@@ -27,7 +27,7 @@
     const _label = selectedLabel;
     if (!measureEl) return;
     const textWidth = Math.ceil(measureEl.getBoundingClientRect().width);
-    const iconAndPaddingWidth = 52;
+    const iconAndPaddingWidth = 44;
     const width = Math.min(Math.max(textWidth + iconAndPaddingWidth, 96), 360);
     selectWidthPx = width;
   });
