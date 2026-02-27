@@ -5,6 +5,7 @@
   import AgentSelector from "./AgentSelector.svelte";
   import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
   import SelectField from "./ui/SelectField.svelte";
+  import InstallScopeSelect from "./InstallScopeSelect.svelte";
   import { settings } from "../stores/settings";
   import { listUserProjects } from "../api/user-projects";
   import type { InstallScope } from "../api/skills";
@@ -25,9 +26,9 @@
   let selectedAgents = $state<string[]>([]);
   let selectedMethod = $state<"symlink" | "copy">("symlink");
   let selectedScope = $state<InstallScope>("global");
+  let selectedScopeKey = $state("global");
   let userProjects = $state<import("../api/user-projects").UserProject[]>([]);
   let selectedProjectPath = $state<string | null>(null);
-  let projectLoading = $state(false);
   let isInstalling = $state(false);
 
   // Reset state when modal opens
@@ -37,27 +38,33 @@
       selectedAgents =
         initialSelection.length > 0 ? [...initialSelection] : agents.map((a) => a.id);
       selectedMethod = get(settings).sync_mode || "symlink";
-      selectedScope = initialScope;
-      selectedProjectPath = initialScope === "project" ? initialProjectPath : null;
+      if (initialScope === "project" && initialProjectPath) {
+        selectedScopeKey = `project:${encodeURIComponent(initialProjectPath)}`;
+      } else {
+        selectedScopeKey = "global";
+      }
       if (allowScopeChange || initialScope === "project") {
         void loadProjects();
       }
     }
   });
 
+  $effect(() => {
+    if (selectedScopeKey.startsWith("project:")) {
+      selectedScope = "project";
+      selectedProjectPath = decodeURIComponent(selectedScopeKey.slice("project:".length));
+      return;
+    }
+    selectedScope = "global";
+    selectedProjectPath = null;
+  });
+
   async function loadProjects() {
-    projectLoading = true;
     try {
       userProjects = await listUserProjects();
     } catch {
       userProjects = [];
-    } finally {
-      projectLoading = false;
     }
-  }
-
-  function toggleProject(projectPath: string) {
-    selectedProjectPath = selectedProjectPath === projectPath ? null : projectPath;
   }
 
   function closeModal() {
@@ -100,48 +107,14 @@
     <p class="text-base-content-muted mb-4 text-sm">
       {$t("selectAgent.description")}
     </p>
-    <div class="mb-4 space-y-3">
-      {#if allowScopeChange}
-        <SelectField bind:value={selectedScope}>
-          <option value="global">{$t("installScope.global")}</option>
-          <option value="project">{$t("installScope.project")}</option>
-        </SelectField>
-      {/if}
-
-      {#if allowScopeChange && selectedScope === "project"}
-        <div class="space-y-2">
-          <p class="text-base-content text-sm">
-            {$t("selectAgent.selectProjects")}
-          </p>
-          {#if projectLoading}
-            <p class="text-base-content-muted text-xs">{$t("projectManage.loading")}</p>
-          {:else if userProjects.length === 0}
-            <p class="text-base-content-muted text-xs">{$t("projectManage.empty")}</p>
-          {:else}
-            <div class="mt-1 flex flex-wrap gap-2">
-              {#each userProjects as project}
-                <label
-                  class="bg-base-200 text-base-content hover:bg-base-300 inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-[13px] transition"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedProjectPath === project.path}
-                    onchange={() => toggleProject(project.path)}
-                  />
-                  <span>{project.name}</span>
-                </label>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      {/if}
-    </div>
-
     <!-- Agent List -->
     <AgentSelector {agents} bind:selectedIds={selectedAgents} />
   </div>
   {#snippet footer()}
-    <SelectField bind:value={selectedMethod} className="mr-3">
+    {#if allowScopeChange}
+      <InstallScopeSelect bind:value={selectedScopeKey} projects={userProjects} className="mr-3" />
+    {/if}
+    <SelectField bind:value={selectedMethod} className="mr-3" disabled={isInstalling}>
         <option value="symlink">{$t("settings.syncMode.symlink")}</option>
         <option value="copy">{$t("settings.syncMode.copy")}</option>
     </SelectField>

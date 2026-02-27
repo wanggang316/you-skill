@@ -14,6 +14,7 @@
   import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
   import SegmentedTabs from "./ui/SegmentedTabs.svelte";
   import SelectField from "./ui/SelectField.svelte";
+  import InstallScopeSelect from "./InstallScopeSelect.svelte";
   import AgentSelector from "./AgentSelector.svelte";
   import DetectedSkillList from "./DetectedSkillList.svelte";
   import { settings } from "../stores/settings";
@@ -60,11 +61,11 @@
   let selectedMethod = $state("symlink");
   /** @type {"global" | "project"} */
   let selectedScope = $state("global");
+  let selectedScopeKey = $state("global");
   /** @type {import('../api/user-projects').UserProject[]} */
   let userProjects = $state([]);
   /** @type {string | null} */
   let selectedProjectPath = $state(null);
-  let projectsLoading = $state(false);
   let isZipDragOver = $state(false);
   let isFolderDragOver = $state(false);
   let suppressZipClick = $state(false);
@@ -108,9 +109,9 @@
     selectedAgents = agents.map((a) => a.id);
     selectedMethod = get(settings).sync_mode || "symlink";
     selectedScope = "global";
+    selectedScopeKey = "global";
     userProjects = [];
     selectedProjectPath = null;
-    projectsLoading = false;
     suppressZipClick = false;
     suppressFolderClick = false;
     isInstalling = false;
@@ -118,20 +119,22 @@
   }
 
   async function loadUserProjects() {
-    projectsLoading = true;
     try {
       userProjects = await listUserProjects();
     } catch {
       userProjects = [];
-    } finally {
-      projectsLoading = false;
     }
   }
 
-  /** @param {string} projectPath */
-  function toggleProject(projectPath) {
-    selectedProjectPath = selectedProjectPath === projectPath ? null : projectPath;
-  }
+  $effect(() => {
+    if (selectedScopeKey.startsWith("project:")) {
+      selectedScope = "project";
+      selectedProjectPath = decodeURIComponent(selectedScopeKey.slice("project:".length));
+      return;
+    }
+    selectedScope = "global";
+    selectedProjectPath = null;
+  });
 
   function closeModal() {
     open = false;
@@ -1072,37 +1075,6 @@
       {/if}
       <!-- Agent Selection -->
       <div class="mt-6 space-y-3">
-        <SelectField bind:value={selectedScope}>
-          <option value="global">{$t("installScope.global")}</option>
-          <option value="project">{$t("installScope.project")}</option>
-        </SelectField>
-        {#if selectedScope === "project"}
-          <div class="space-y-2">
-            <p class="text-base-content text-sm">
-              {$t("selectAgent.selectProjects")}
-            </p>
-            {#if projectsLoading}
-              <p class="text-base-content-muted text-xs">{$t("projectManage.loading")}</p>
-            {:else if userProjects.length === 0}
-              <p class="text-base-content-muted text-xs">{$t("projectManage.empty")}</p>
-            {:else}
-              <div class="mt-1 flex flex-wrap gap-2">
-                {#each userProjects as project}
-                  <label
-                    class="bg-base-200 text-base-content hover:bg-base-300 inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-[13px] transition"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedProjectPath === project.path}
-                      onchange={() => toggleProject(project.path)}
-                    />
-                    <span>{project.name}</span>
-                  </label>
-                {/each}
-              </div>
-            {/if}
-          </div>
-        {/if}
         <p class="text-base-content text-sm">
           {$t("addSkill.selectAgents")}
         </p>
@@ -1118,6 +1090,12 @@
     </div>
   </div>
   {#snippet footer()}
+    <InstallScopeSelect
+      bind:value={selectedScopeKey}
+      projects={userProjects}
+      disabled={isInstalling}
+      className="mr-3"
+    />
     <SelectField bind:value={selectedMethod} disabled={isInstalling}>
         <option value="symlink">{$t("settings.syncMode.symlink")}</option>
         <option value="copy">{$t("settings.syncMode.copy")}</option>

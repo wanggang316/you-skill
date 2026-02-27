@@ -2,6 +2,7 @@
   import { RefreshCw, Search, Blend, ChevronsUpDown, Loader2 } from "@lucide/svelte";
   import IconButton from "./ui/IconButton.svelte";
   import SelectField from "./ui/SelectField.svelte";
+  import InstallScopeSelect from "./InstallScopeSelect.svelte";
   import { t } from "../i18n";
 
   let {
@@ -61,16 +62,7 @@
             <option value={agent.id}>{agent.display_name}</option>
           {/each}
       </SelectField>
-      <SelectField bind:value={localScopeKey}>
-          <optgroup label={$t("installScope.global")}>
-            <option value="global">{$t("installScope.global")}</option>
-          </optgroup>
-          <optgroup label={$t("installScope.project")}>
-            {#each projects as project}
-              <option value={`project:${encodeURIComponent(project.path)}`}>{project.name}</option>
-            {/each}
-          </optgroup>
-      </SelectField>
+      <InstallScopeSelect bind:value={localScopeKey} projects={projects} />
       <IconButton
         variant="outline"
         onclick={onRefresh}
