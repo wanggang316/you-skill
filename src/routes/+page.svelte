@@ -605,8 +605,15 @@
 
   const handleViewSkill = (skill: LocalSkill | RemoteSkill) => {
     const type = "source_type" in skill ? "local" : "remote";
-    const returnTo = encodeURIComponent(getHomeReturnTo());
-    goto(`/skills/${type}/${encodeURIComponent(skill.name)}?returnTo=${returnTo}`);
+    const query = new URLSearchParams();
+    query.set("returnTo", getHomeReturnTo());
+    if (type === "local") {
+      query.set("scope", localScope);
+      if (localScope === "project" && localProjectPath) {
+        query.set("projectPath", localProjectPath);
+      }
+    }
+    goto(`/skills/${type}/${encodeURIComponent(skill.name)}?${query.toString()}`);
   };
 
   // Handle tab change - 延迟加载非关键数据

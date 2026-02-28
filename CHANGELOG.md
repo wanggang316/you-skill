@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- Fixed project-scoped local skill detail pages showing `Skill not found` by preserving scope and project path in detail navigation.
 
 ### Removed
 

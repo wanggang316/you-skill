@@ -30,6 +30,7 @@
   let parsedFrontmatter = $state<Record<string, string>>({});
 
   const params = $derived($page.params);
+  const query = $derived($page.url.searchParams);
 
   const parseType = (value: string): SkillType | null => {
     if (value === "local" || value === "remote") {
@@ -45,6 +46,9 @@
       return value;
     }
   };
+
+  const parseLocalScope = (value: string | null): "global" | "project" =>
+    value === "project" ? "project" : "global";
 
   const buildGitHubUrl = (url: string, path: string | null | undefined, relativePath?: string) => {
     if (!url || !url.includes("github.com")) return null;
@@ -82,7 +86,9 @@
 
     try {
       if (type === "local") {
-        const localSkills = await listSkills("global", null);
+        const scope = parseLocalScope(query.get("scope"));
+        const projectPath = scope === "project" ? query.get("projectPath") : null;
+        const localSkills = await listSkills(scope, projectPath);
         skill = localSkills.find((item) => item.name === name) ?? null;
       } else {
         const remoteSkills = await fetchSkillsByNames([name]);
@@ -271,6 +277,8 @@
   $effect(() => {
     params.type;
     params.name;
+    query.get("scope");
+    query.get("projectPath");
     loadSkill().catch(console.error);
   });
 
