@@ -4,11 +4,11 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { get } from "svelte/store";
-  import { removeAgentApp, refreshAgentApps, type AgentApp } from "../../lib/api";
-  import { t } from "../../lib/i18n";
+  import { removeAgentApp, refreshAgentApps, type AgentApp } from "$lib/api";
+  import { t } from "$lib/i18n";
   import { Plus, Trash2, Check, Loader2, Pencil, ChevronLeft, RefreshCw } from "@lucide/svelte";
-  import IconButton from "../../lib/components/ui/IconButton.svelte";
-  import AddAgentAppModal from "../../lib/components/AddAgentAppModal.svelte";
+  import IconButton from "$lib/components/ui/IconButton.svelte";
+  import AddAgentAppModal from "$lib/components/AddAgentAppModal.svelte";
 
   // State
   let internalApps = $state<AgentApp[]>([]);

@@ -1,10 +1,10 @@
 <script>
-  import { goto } from "$app/navigation";
   import {
     ChevronLeft,
     Plus,
     Settings,
     Folders,
+    List,
     ArrowUpCircle,
     ExternalLink,
     RefreshCw,
@@ -19,6 +19,8 @@
     currentView,
     activeTab,
     skillName,
+    currentFileName = "",
+    currentFilePath = "",
     hasUpdate,
     agentAppsLoading = false,
     onChangeView = undefined,
@@ -30,6 +32,7 @@
     updateLoading = false,
     onBack,
     onDetailAction,
+    onOpenCatalog = undefined,
     onRefreshAgentApps,
     localScopeKey = $bindable("global"),
     projects = [],
@@ -74,23 +77,6 @@
           </IconButton>
         </div>
         <div class="flex items-center gap-2">
-          {#if hasUpdate}
-            <button
-              class="bg-error/10 text-warning hover:bg-error/25 border-error/20 disabled:bg-error/5 flex items-center rounded-lg border px-2 py-1 text-xs transition"
-              onclick={onOpenUpdate}
-              disabled={updateLoading}
-              title={$t("header.updateAvailable")}
-              type="button"
-            >
-              {#if updateLoading}
-                <Loader2 size={14} class="mr-1 animate-spin" />
-                {$t("settings.installingUpdate")}
-              {:else}
-                <ArrowUpCircle size={14} class="mr-1" />
-                {$t("header.updateAvailable")}
-              {/if}
-            </button>
-          {/if}
           <InstallScopeSelect bind:value={localScopeKey} {projects} />
           <IconButton
             variant="outline"
@@ -108,6 +94,23 @@
           >
             <Settings size={16} />
           </IconButton>
+          {#if hasUpdate}
+            <button
+              class="bg-error/10 text-error/60 hover:text-error/80 hover:bg-error/25 border-error/60 disabled:bg-error/5 flex items-center rounded-xl border p-2 text-xs transition"
+              onclick={onOpenUpdate}
+              disabled={updateLoading}
+              title={$t("header.updateAvailable")}
+              type="button"
+            >
+              {#if updateLoading}
+                <Loader2 size={14} class="mr-1 animate-spin" />
+                Updating...
+              {:else}
+                <ArrowUpCircle size={14} class="mr-1" />
+                Update
+              {/if}
+            </button>
+          {/if}
         </div>
       {:else if currentView === "agentApps"}
         <div class="flex w-full items-center justify-between">
@@ -149,20 +152,38 @@
             >
               <ChevronLeft size={16} />
             </button>
-            <h1 class="text-base-content text-lg font-medium">
-              {skillName}
-            </h1>
+            <div class="min-w-0">
+              <h1 class="text-base-content flex items-center gap-2 text-lg font-medium">
+                <span class="truncate">{skillName}</span>
+                {#if currentFilePath}
+                  <span class="text-base-content-subtle text-sm">/</span>
+                  <span class="text-base-content-subtle truncate text-sm">{currentFilePath}</span>
+                {/if}
+              </h1>
+            </div>
           </div>
-          {#if onDetailAction}
-            <IconButton
-              variant="outline"
-              onclick={onDetailAction}
-              title={$t("detail.openInBrowser")}
-              ariaLabel={$t("detail.openInBrowser")}
-            >
-              <ExternalLink size={16} />
-            </IconButton>
-          {/if}
+          <div class="flex items-center gap-2">
+            {#if onOpenCatalog}
+              <IconButton
+                variant="outline"
+                onclick={onOpenCatalog}
+                title={$t("detail.catalog")}
+                ariaLabel={$t("detail.catalog")}
+              >
+                <List size={16} />
+              </IconButton>
+            {/if}
+            {#if onDetailAction}
+              <IconButton
+                variant="outline"
+                onclick={onDetailAction}
+                title={$t("detail.openInBrowser")}
+                ariaLabel={$t("detail.openInBrowser")}
+              >
+                <ExternalLink size={16} />
+              </IconButton>
+            {/if}
+          </div>
         </div>
       {:else}
         <div class="flex items-center gap-4">
@@ -181,4 +202,5 @@
       {/if}
     </div>
   </div>
+
 </header>

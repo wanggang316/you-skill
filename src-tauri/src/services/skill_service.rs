@@ -1,7 +1,7 @@
 use crate::models::{
   DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallResult,
   InstallScope, InstallTarget, InstallUnknownRequest, InstalledAgentApp, LocalSkill,
-  ManageSkillAgentAppsRequest, SelectedAgentPath,
+  ManageSkillAgentAppsRequest, SelectedAgentPath, SkillDirectoryEntry,
   SourceCheckResult, SourceType,
 };
 use crate::services::agent_apps_service::{
@@ -490,6 +490,24 @@ pub fn open_in_file_manager(file_path: String) -> Result<(), String> {
 
 pub async fn read_skill_file(skill_path: String) -> Result<String, String> {
   crate::utils::file::read_skill_file(skill_path).await
+}
+
+pub fn list_skill_directory(skill_path: String) -> Result<Vec<SkillDirectoryEntry>, String> {
+  GithubHelper::list_skill_directory(&skill_path)
+}
+
+pub async fn read_skill_relative_file(
+  skill_path: String,
+  relative_path: String,
+) -> Result<String, String> {
+  GithubHelper::read_skill_relative_file(&skill_path, &relative_path).await
+}
+
+pub async fn read_skill_relative_file_bytes(
+  skill_path: String,
+  relative_path: String,
+) -> Result<Vec<u8>, String> {
+  GithubHelper::read_skill_relative_file_bytes(&skill_path, &relative_path).await
 }
 
 pub fn check_skills_updates(

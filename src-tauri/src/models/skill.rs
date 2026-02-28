@@ -205,6 +205,12 @@ pub struct SelectedAgentPath {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SkillDirectoryEntry {
+  pub path: String,
+  pub is_directory: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SkillUpdateCheckItem {
   pub name: String,
   pub source: String,
