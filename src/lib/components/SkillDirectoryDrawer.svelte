@@ -26,11 +26,21 @@
 
   const getEntryDepth = (entryPath: string) => entryPath.split("/").length - 1;
   const getEntryName = (entryPath: string) => entryPath.split("/").at(-1) || entryPath;
+
+  const handleWindowKeydown = (event: KeyboardEvent) => {
+    if (!open) return;
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    onClose();
+  };
 </script>
+
+<svelte:window onkeydown={handleWindowKeydown} />
 
 {#if open}
   <button
-    class="bg-overlay fixed inset-0 z-[60] border-0 p-0"
+    class="bg-overlay animate-drawer-backdrop fixed inset-0 z-[60] border-0 p-0"
+    class:animate-drawer-backdrop-close={closing}
     onclick={onClose}
     type="button"
     aria-label={$t("detail.closeCatalog")}
@@ -81,6 +91,14 @@
 {/if}
 
 <style>
+  .animate-drawer-backdrop {
+    animation: drawerBackdropIn 0.2s ease-out;
+  }
+
+  .animate-drawer-backdrop-close {
+    animation: drawerBackdropOut 0.2s ease-out;
+  }
+
   .animate-drawer-panel {
     animation: drawerSlideIn 0.2s ease-out;
   }
@@ -104,6 +122,24 @@
     }
     to {
       transform: translateX(100%);
+    }
+  }
+
+  @keyframes drawerBackdropIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes drawerBackdropOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
     }
   }
 </style>
