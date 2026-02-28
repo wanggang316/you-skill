@@ -19,6 +19,8 @@
     currentView,
     activeTab,
     skillName,
+    currentFileName = "",
+    currentFilePath = "",
     hasUpdate,
     agentAppsLoading = false,
     onChangeView = undefined,
@@ -150,9 +152,15 @@
             >
               <ChevronLeft size={16} />
             </button>
-            <h1 class="text-base-content text-lg font-medium">
-              {skillName}
-            </h1>
+            <div class="min-w-0">
+              <h1 class="text-base-content flex items-center gap-2 text-lg font-medium">
+                <span class="truncate">{skillName}</span>
+                {#if currentFilePath}
+                  <span class="text-base-content-subtle text-sm">/</span>
+                  <span class="text-base-content-subtle truncate text-sm">{currentFilePath}</span>
+                {/if}
+              </h1>
+            </div>
           </div>
           <div class="flex items-center gap-2">
             {#if onOpenCatalog}

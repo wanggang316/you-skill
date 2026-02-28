@@ -194,9 +194,9 @@
       return a.path.localeCompare(b.path, undefined, { sensitivity: "base" });
     });
 
-  const getEntryDepth = (entryPath: string) => entryPath.split("/").length - 1;
   const getEntryName = (entryPath: string) => entryPath.split("/").at(-1) || entryPath;
   const getExtension = (filePath: string) => filePath.split(".").at(-1)?.toLowerCase() || "";
+  const activeFileName = $derived(getEntryName(activeFilePath));
 
   const resolveFileViewMode = (filePath: string): FileViewMode => {
     if (isMarkdownFile(filePath)) return "markdown";
@@ -614,6 +614,8 @@
     currentView="detail"
     activeTab="local"
     skillName={currentName}
+    currentFileName={activeFileName}
+    currentFilePath={activeFilePath}
     hasUpdate={false}
     onChangeTab={() => {}}
     onAddSkill={() => {}}
