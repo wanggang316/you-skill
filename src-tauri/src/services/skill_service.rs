@@ -493,54 +493,21 @@ pub async fn read_skill_file(skill_path: String) -> Result<String, String> {
 }
 
 pub fn list_skill_directory(skill_path: String) -> Result<Vec<SkillDirectoryEntry>, String> {
-  let root = PathBuf::from(&skill_path);
-  if !root.exists() || !root.is_dir() {
-    return Err(format!("Skill directory does not exist: {}", skill_path));
-  }
-
-  let mut out = Vec::new();
-  collect_skill_directory_entries(&root, &root, &mut out)?;
-  Ok(out)
+  GithubHelper::list_skill_directory(&skill_path)
 }
 
 pub async fn read_skill_relative_file(
   skill_path: String,
   relative_path: String,
 ) -> Result<String, String> {
-  let root = PathBuf::from(&skill_path);
-  if !root.exists() || !root.is_dir() {
-    return Err(format!("Skill directory does not exist: {}", skill_path));
-  }
-
-  let relative = sanitize_relative_path(&relative_path)?;
-  let file_path = root.join(&relative);
-  if !file_path.exists() || !file_path.is_file() {
-    return Err(format!("Skill file does not exist: {}", relative_path));
-  }
-
-  tokio::fs::read_to_string(&file_path)
-    .await
-    .map_err(|e| format!("Failed to read file '{}': {}", relative, e))
+  GithubHelper::read_skill_relative_file(&skill_path, &relative_path).await
 }
 
 pub async fn read_skill_relative_file_bytes(
   skill_path: String,
   relative_path: String,
 ) -> Result<Vec<u8>, String> {
-  let root = PathBuf::from(&skill_path);
-  if !root.exists() || !root.is_dir() {
-    return Err(format!("Skill directory does not exist: {}", skill_path));
-  }
-
-  let relative = sanitize_relative_path(&relative_path)?;
-  let file_path = root.join(&relative);
-  if !file_path.exists() || !file_path.is_file() {
-    return Err(format!("Skill file does not exist: {}", relative_path));
-  }
-
-  tokio::fs::read(&file_path)
-    .await
-    .map_err(|e| format!("Failed to read file bytes '{}': {}", relative, e))
+  GithubHelper::read_skill_relative_file_bytes(&skill_path, &relative_path).await
 }
 
 pub fn check_skills_updates(
@@ -971,74 +938,4 @@ fn detect_install_method(skill_dir: &Path) -> InstallMethod {
   } else {
     InstallMethod::Copy
   }
-}
-
-fn sanitize_relative_path(path: &str) -> Result<String, String> {
-  let trimmed = path.trim();
-  if trimmed.is_empty() {
-    return Err("relative_path is required".to_string());
-  }
-
-  let parsed = Path::new(trimmed);
-  let mut components = Vec::new();
-  for component in parsed.components() {
-    match component {
-      std::path::Component::Normal(part) => {
-        components.push(part.to_string_lossy().to_string());
-      },
-      _ => return Err(format!("Invalid relative path: {}", path)),
-    }
-  }
-
-  if components.is_empty() {
-    return Err(format!("Invalid relative path: {}", path));
-  }
-
-  Ok(components.join("/"))
-}
-
-fn collect_skill_directory_entries(
-  root: &Path,
-  current: &Path,
-  out: &mut Vec<SkillDirectoryEntry>,
-) -> Result<(), String> {
-  let mut entries = Vec::new();
-  for entry in fs::read_dir(current).map_err(|e| e.to_string())? {
-    entries.push(entry.map_err(|e| e.to_string())?);
-  }
-
-  entries.sort_by(|a, b| {
-    a.file_name()
-      .to_string_lossy()
-      .to_lowercase()
-      .cmp(&b.file_name().to_string_lossy().to_lowercase())
-  });
-
-  for entry in entries {
-    let path = entry.path();
-    let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
-    let relative = path
-      .strip_prefix(root)
-      .map_err(|e| e.to_string())?
-      .to_string_lossy()
-      .replace('\\', "/");
-
-    if metadata.is_dir() {
-      out.push(SkillDirectoryEntry {
-        path: relative.clone(),
-        is_directory: true,
-      });
-      collect_skill_directory_entries(root, &path, out)?;
-      continue;
-    }
-
-    if metadata.is_file() {
-      out.push(SkillDirectoryEntry {
-        path: relative,
-        is_directory: false,
-      });
-    }
-  }
-
-  Ok(())
 }
