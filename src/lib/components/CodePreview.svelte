@@ -5,7 +5,9 @@
 
 <div class="code-preview-shell">
   <pre class="code-preview-gutter" aria-hidden="true">{lineNumbersText}</pre>
-  <pre class="code-preview-plain"><code class="hljs">{@html renderedCode}</code></pre>
+  <div class="code-preview-scroller">
+    <pre class="code-preview-plain"><code class="hljs">{@html renderedCode}</code></pre>
+  </div>
 </div>
 
 <style>
@@ -14,9 +16,13 @@
     grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
     padding: 0;
+  }
+
+  .code-preview-scroller {
+    min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-gutter: stable;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
 
   .code-preview-gutter {
@@ -43,6 +49,8 @@
     line-height: 1.6;
     color: var(--base-content);
     white-space: pre;
+    width: max-content;
+    min-width: 100%;
   }
 
   .code-preview-plain code {
@@ -56,16 +64,27 @@
     padding: 0;
   }
 
-  .code-preview-shell::-webkit-scrollbar {
+  .code-preview-plain code.hljs {
+    padding: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  .code-preview-scroller::-webkit-scrollbar {
     height: 8px;
   }
 
-  .code-preview-shell::-webkit-scrollbar-track {
-    background: color-mix(in oklch, var(--base-content) 3%, transparent);
+  .code-preview-scroller::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
   }
 
-  .code-preview-shell::-webkit-scrollbar-thumb {
-    background: color-mix(in oklch, var(--base-content) 14%, transparent);
+  .code-preview-scroller::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
     border-radius: 9999px;
   }
+
+  .code-preview-scroller::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+
 </style>

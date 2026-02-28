@@ -7,8 +7,8 @@
   import { Loader2 } from "@lucide/svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
   import SkillDirectoryDrawer from "$lib/components/SkillDirectoryDrawer.svelte";
-  import CodePreview from "$lib/components/CodePreview.svelte";
   import MarkdownPreview from "$lib/components/MarkdownPreview.svelte";
+  import CodePreview from "$lib/components/CodePreview.svelte";
   import ImagePreview from "$lib/components/ImagePreview.svelte";
   import { parseMarkdown, renderMarkdownBody } from "$lib/utils/markdown";
   import { t } from "$lib/i18n";
@@ -555,80 +555,29 @@
     await open(sourceLink);
   };
 
-  function markdownInteractions(node: HTMLElement) {
-    const handleClick = async (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      const button = target.closest(".markdown-code-block__copy") as HTMLElement | null;
-      if (button) {
-        event.preventDefault();
-        event.stopPropagation();
-        const block = button.closest(".markdown-code-block");
-        const codeElement = block?.querySelector("code");
-        const codeContent = codeElement?.textContent ?? "";
-        if (!codeContent) return;
-        try {
-          await navigator.clipboard.writeText(codeContent);
-        } catch {
-          const textarea = document.createElement("textarea");
-          textarea.value = codeContent;
-          textarea.setAttribute("readonly", "");
-          textarea.style.position = "absolute";
-          textarea.style.left = "-9999px";
-          document.body.appendChild(textarea);
-          textarea.select();
-          try {
-            document.execCommand("copy");
-          } catch {
-            // noop
-          }
-          document.body.removeChild(textarea);
-        }
-        button.classList.add("copied");
-        const timerId = button.dataset.copyTimeout;
-        if (timerId) window.clearTimeout(Number(timerId));
-        const timeoutHandle = window.setTimeout(() => {
-          button.classList.remove("copied");
-          delete button.dataset.copyTimeout;
-        }, 1500);
-        button.dataset.copyTimeout = String(timeoutHandle);
-        return;
-      }
+  const handleMarkdownExternalLink = async (href: string) => {
+    await open(href);
+  };
 
-      const link = target.closest("a[href]");
-      if (!link || !skill) return;
-      const href = link.getAttribute("href");
-      if (href?.startsWith("http://") || href?.startsWith("https://")) {
-        event.preventDefault();
-        event.stopPropagation();
-        await open(href);
-        return;
-      }
-      if (!href || href.startsWith("#")) return;
-      event.preventDefault();
-      event.stopPropagation();
+  const handleMarkdownRelativeLink = async (href: string) => {
+    if (!skill) return;
+    const targetPath = normalizeRelativePath(activeFilePath, href);
+    if (targetPath && directoryEntries.some((entry) => !entry.is_directory && entry.path === targetPath)) {
+      await loadContent(targetPath);
+      return;
+    }
 
-      const targetPath = normalizeRelativePath(activeFilePath, href);
-      if (targetPath && directoryEntries.some((entry) => !entry.is_directory && entry.path === targetPath)) {
-        await loadContent(targetPath);
-        return;
-      }
+    if (currentType === "local") {
+      const localPath = resolveLocalPath(href);
+      if (localPath) await openInFileManager(localPath);
+      return;
+    }
 
-      if (currentType === "local") {
-        const localPath = resolveLocalPath(href);
-        if (localPath) await openInFileManager(localPath);
-      } else if ("url" in skill && skill.url) {
-        const fullUrl = buildGitHubUrl(skill.url, skill.path || "", href, skill.branch || "main");
-        if (fullUrl) await open(fullUrl);
-      }
-    };
-
-    node.addEventListener("click", handleClick);
-    return {
-      destroy() {
-        node.removeEventListener("click", handleClick);
-      },
-    };
-  }
+    if ("url" in skill && skill.url) {
+      const fullUrl = buildGitHubUrl(skill.url, skill.path || "", href, skill.branch || "main");
+      if (fullUrl) await open(fullUrl);
+    }
+  };
 
   $effect(() => {
     params.type;
@@ -724,23 +673,12 @@
               </button>
             </div>
           {:else}
-            {#if hasFrontmatter}
-              <div class="border-base-300 bg-base-200 mb-6 overflow-hidden rounded-xl border">
-                <div class="flex flex-col gap-3 p-4">
-                  {#if parsedFrontmatter.description}
-                    <div class="flex flex-col gap-1">
-                      <span class="text-base-content text-sm leading-6"
-                        >{parsedFrontmatter.description}</span
-                      >
-                    </div>
-                  {/if}
-                </div>
-              </div>
-            {/if}
             {#if fileViewMode === "markdown"}
               <MarkdownPreview
                 htmlContent={renderMarkdownBody(content)}
-                interactionAction={markdownInteractions}
+                frontmatterDescription={hasFrontmatter ? (parsedFrontmatter.description ?? "") : ""}
+                onOpenExternalLink={handleMarkdownExternalLink}
+                onOpenRelativeLink={handleMarkdownRelativeLink}
               />
             {:else if fileViewMode === "code"}
               <CodePreview lineNumbersText={codeLineNumbersText} {renderedCode} />
