@@ -77,23 +77,6 @@
           </IconButton>
         </div>
         <div class="flex items-center gap-2">
-          {#if hasUpdate}
-            <button
-              class="bg-error/10 text-warning hover:bg-error/25 border-error/20 disabled:bg-error/5 flex items-center rounded-lg border px-2 py-1 text-xs transition"
-              onclick={onOpenUpdate}
-              disabled={updateLoading}
-              title={$t("header.updateAvailable")}
-              type="button"
-            >
-              {#if updateLoading}
-                <Loader2 size={14} class="mr-1 animate-spin" />
-                {$t("settings.installingUpdate")}
-              {:else}
-                <ArrowUpCircle size={14} class="mr-1" />
-                {$t("header.updateAvailable")}
-              {/if}
-            </button>
-          {/if}
           <InstallScopeSelect bind:value={localScopeKey} {projects} />
           <IconButton
             variant="outline"
@@ -111,6 +94,23 @@
           >
             <Settings size={16} />
           </IconButton>
+          {#if hasUpdate}
+            <button
+              class="bg-error/10 text-error/60 hover:text-error/80 hover:bg-error/25 border-error/60 disabled:bg-error/5 flex items-center rounded-xl border p-2 text-xs transition"
+              onclick={onOpenUpdate}
+              disabled={updateLoading}
+              title={$t("header.updateAvailable")}
+              type="button"
+            >
+              {#if updateLoading}
+                <Loader2 size={14} class="mr-1 animate-spin" />
+                Updating...
+              {:else}
+                <ArrowUpCircle size={14} class="mr-1" />
+                Update
+              {/if}
+            </button>
+          {/if}
         </div>
       {:else if currentView === "agentApps"}
         <div class="flex w-full items-center justify-between">
@@ -202,4 +202,5 @@
       {/if}
     </div>
   </div>
+
 </header>
