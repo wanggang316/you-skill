@@ -99,6 +99,14 @@ pub async fn read_skill_relative_file(
 }
 
 #[tauri::command]
+pub async fn read_skill_relative_file_bytes(
+  skill_path: String,
+  relative_path: String,
+) -> Result<Vec<u8>, String> {
+  skill_service::read_skill_relative_file_bytes(skill_path, relative_path).await
+}
+
+#[tauri::command]
 pub fn check_skills_updates(checks: Vec<SkillUpdateCheckItem>) -> Result<Vec<String>, String> {
   skill_service::check_skills_updates(checks)
 }

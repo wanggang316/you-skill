@@ -523,6 +523,26 @@ pub async fn read_skill_relative_file(
     .map_err(|e| format!("Failed to read file '{}': {}", relative, e))
 }
 
+pub async fn read_skill_relative_file_bytes(
+  skill_path: String,
+  relative_path: String,
+) -> Result<Vec<u8>, String> {
+  let root = PathBuf::from(&skill_path);
+  if !root.exists() || !root.is_dir() {
+    return Err(format!("Skill directory does not exist: {}", skill_path));
+  }
+
+  let relative = sanitize_relative_path(&relative_path)?;
+  let file_path = root.join(&relative);
+  if !file_path.exists() || !file_path.is_file() {
+    return Err(format!("Skill file does not exist: {}", relative_path));
+  }
+
+  tokio::fs::read(&file_path)
+    .await
+    .map_err(|e| format!("Failed to read file bytes '{}': {}", relative, e))
+}
+
 pub fn check_skills_updates(
   checks: Vec<crate::models::SkillUpdateCheckItem>,
 ) -> Result<Vec<String>, String> {

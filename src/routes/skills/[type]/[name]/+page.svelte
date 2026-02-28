@@ -3,8 +3,10 @@
   import { goto } from "$app/navigation";
   import { get } from "svelte/store";
   import { open } from "@tauri-apps/plugin-shell";
+  import hljs from "highlight.js/lib/common";
   import { Loader2 } from "@lucide/svelte";
   import PageHeader from "../../../../lib/components/PageHeader.svelte";
+  import SkillDirectoryDrawer from "../../../../lib/components/SkillDirectoryDrawer.svelte";
   import { parseMarkdown, renderMarkdownBody } from "../../../../lib/utils/markdown";
   import { t } from "../../../../lib/i18n";
   import {
@@ -12,6 +14,7 @@
     listSkillDirectory,
     listSkills,
     openInFileManager,
+    readSkillRelativeFileBytes,
     readSkillRelativeFile,
     readSkillFile,
     type LocalSkill,
@@ -20,6 +23,7 @@
   } from "../../../../lib/api/skills";
 
   type SkillType = "local" | "remote";
+  type FileViewMode = "markdown" | "code" | "image" | "unsupported";
 
   let skillLoading = $state(true);
   let error = $state("");
@@ -32,11 +36,17 @@
   let hasFrontmatter = $state(false);
   let parsedFrontmatter = $state<Record<string, string>>({});
   let directoryOpen = $state(false);
+  let directoryClosing = $state(false);
   let directoryLoading = $state(false);
   let directoryError = $state("");
   let directoryEntries = $state<SkillDirectoryEntry[]>([]);
   let activeFilePath = $state("SKILL.md");
-  let activeFileIsMarkdown = $state(true);
+  let fileViewMode = $state<FileViewMode>("markdown");
+  let renderedCode = $state("");
+  let imagePreviewUrl = $state("");
+  let sourceLink = $state("");
+  let localImageObjectUrl: string | null = null;
+  let directoryCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
   const params = $derived($page.params);
   const query = $derived($page.url.searchParams);
@@ -63,6 +73,89 @@
     value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 
   const isMarkdownFile = (filePath: string) => /\.md$/i.test(filePath);
+  const IMAGE_EXTENSIONS = new Set([
+    "png",
+    "jpg",
+    "jpeg",
+    "gif",
+    "webp",
+    "svg",
+    "bmp",
+    "ico",
+    "avif",
+  ]);
+  const CODE_EXTENSIONS = new Set([
+    "js",
+    "jsx",
+    "ts",
+    "tsx",
+    "json",
+    "py",
+    "rb",
+    "go",
+    "rs",
+    "java",
+    "kt",
+    "swift",
+    "c",
+    "h",
+    "cpp",
+    "hpp",
+    "cs",
+    "php",
+    "sh",
+    "bash",
+    "zsh",
+    "yaml",
+    "yml",
+    "toml",
+    "ini",
+    "xml",
+    "html",
+    "css",
+    "scss",
+    "less",
+    "sql",
+    "lua",
+    "dart",
+    "r",
+    "mdx",
+    "txt",
+    "log",
+    "env",
+  ]);
+  const LANGUAGE_BY_EXT: Record<string, string> = {
+    js: "javascript",
+    jsx: "javascript",
+    ts: "typescript",
+    tsx: "typescript",
+    py: "python",
+    rb: "ruby",
+    rs: "rust",
+    go: "go",
+    kt: "kotlin",
+    c: "c",
+    cpp: "cpp",
+    h: "c",
+    hpp: "cpp",
+    cs: "csharp",
+    sh: "bash",
+    zsh: "bash",
+    yml: "yaml",
+    mdx: "markdown",
+    env: "bash",
+  };
+  const MIME_BY_IMAGE_EXT: Record<string, string> = {
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    webp: "image/webp",
+    svg: "image/svg+xml",
+    bmp: "image/bmp",
+    ico: "image/x-icon",
+    avif: "image/avif",
+  };
 
   const normalizeRelativePath = (baseFile: string, target: string): string | null => {
     const withoutHash = target.split("#")[0]?.split("?")[0] ?? "";
@@ -99,6 +192,56 @@
 
   const getEntryDepth = (entryPath: string) => entryPath.split("/").length - 1;
   const getEntryName = (entryPath: string) => entryPath.split("/").at(-1) || entryPath;
+  const getExtension = (filePath: string) => filePath.split(".").at(-1)?.toLowerCase() || "";
+
+  const resolveFileViewMode = (filePath: string): FileViewMode => {
+    if (isMarkdownFile(filePath)) return "markdown";
+    const ext = getExtension(filePath);
+    if (IMAGE_EXTENSIONS.has(ext)) return "image";
+    if (CODE_EXTENSIONS.has(ext)) return "code";
+    return "unsupported";
+  };
+
+  const resetBinaryPreview = () => {
+    if (localImageObjectUrl) {
+      URL.revokeObjectURL(localImageObjectUrl);
+      localImageObjectUrl = null;
+    }
+    imagePreviewUrl = "";
+  };
+
+  const openDirectoryDrawer = () => {
+    if (directoryCloseTimer) {
+      clearTimeout(directoryCloseTimer);
+      directoryCloseTimer = null;
+    }
+    directoryClosing = false;
+    directoryOpen = true;
+  };
+
+  const closeDirectoryDrawer = () => {
+    if (!directoryOpen || directoryClosing) return;
+    directoryClosing = true;
+    directoryCloseTimer = setTimeout(() => {
+      directoryOpen = false;
+      directoryClosing = false;
+      directoryCloseTimer = null;
+    }, 200);
+  };
+
+  const renderCode = (rawContent: string, filePath: string) => {
+    const ext = getExtension(filePath);
+    const lang = LANGUAGE_BY_EXT[ext] || ext;
+    try {
+      if (lang && hljs.getLanguage(lang)) {
+        renderedCode = hljs.highlight(rawContent, { language: lang }).value;
+        return;
+      }
+      renderedCode = hljs.highlightAuto(rawContent).value;
+    } catch {
+      renderedCode = escapeHtml(rawContent);
+    }
+  };
 
   const getSkillRootPath = () => {
     if (!skill || !("installed_agent_apps" in skill)) return null;
@@ -262,10 +405,55 @@
   const loadContent = async (filePath = "SKILL.md") => {
     if (!skill) return;
     activeFilePath = filePath;
-    activeFileIsMarkdown = isMarkdownFile(filePath);
+    fileViewMode = resolveFileViewMode(filePath);
+    renderedCode = "";
+    sourceLink = "";
+    resetBinaryPreview();
     contentLoading = true;
     contentError = "";
     try {
+      if (currentType === "remote" && "url" in skill && skill.url) {
+        const branch = skill.branch || "main";
+        sourceLink = buildGitHubUrl(skill.url, skill.path || "", filePath, branch) || "";
+      } else if (currentType === "local") {
+        sourceLink = resolveLocalPath(filePath) || "";
+      }
+
+      if (fileViewMode === "unsupported") {
+        content = "";
+        parsedFrontmatter = {};
+        hasFrontmatter = false;
+        return;
+      }
+
+      if (fileViewMode === "image") {
+        if (currentType === "local") {
+          const localPath = getSkillRootPath();
+          if (!localPath) throw new Error("Skill path is missing");
+          const bytes = await readSkillRelativeFileBytes(localPath, filePath);
+          const ext = getExtension(filePath);
+          const blob = new Blob([new Uint8Array(bytes)], {
+            type: MIME_BY_IMAGE_EXT[ext] || "application/octet-stream",
+          });
+          localImageObjectUrl = URL.createObjectURL(blob);
+          imagePreviewUrl = localImageObjectUrl;
+        } else {
+          if (!("url" in skill)) throw new Error("Skill source URL is missing");
+          const repoMatch = skill.url?.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+          if (!repoMatch) throw new Error("Unable to construct raw URL for this skill");
+          const [, owner, repo] = repoMatch;
+          const cleanRepo = repo.replace(/\.git$/, "");
+          const branch = skill.branch || "main";
+          const basePath = (skill.path || "").replace(/^\/+|\/+$/g, "");
+          const fullPath = basePath ? `${basePath}/${filePath}` : filePath;
+          imagePreviewUrl = `https://raw.githubusercontent.com/${owner}/${cleanRepo}/${encodeURIComponent(branch)}/${fullPath}`;
+        }
+        content = "";
+        parsedFrontmatter = {};
+        hasFrontmatter = false;
+        return;
+      }
+
       let rawContent = "";
       if (currentType === "local") {
         const localPath = getSkillRootPath();
@@ -297,21 +485,24 @@
         }
         rawContent = await response.text();
       }
-      if (isMarkdownFile(filePath)) {
+      if (fileViewMode === "markdown") {
         const parsed = parseMarkdown(rawContent);
         parsedFrontmatter = parsed.frontmatter as Record<string, string>;
         hasFrontmatter = parsed.hasFrontmatter;
         content = parsed.content;
-      } else {
+      } else if (fileViewMode === "code") {
         parsedFrontmatter = {};
         hasFrontmatter = false;
         content = rawContent;
+        renderCode(rawContent, filePath);
       }
     } catch (err) {
       contentError = String(err);
       parsedFrontmatter = {};
       hasFrontmatter = false;
       content = "";
+      renderedCode = "";
+      resetBinaryPreview();
     } finally {
       contentLoading = false;
     }
@@ -345,6 +536,15 @@
 
   const retryContent = () => {
     loadContent(activeFilePath).catch(console.error);
+  };
+
+  const handleOpenSource = async () => {
+    if (!sourceLink) return;
+    if (currentType === "local") {
+      await openInFileManager(sourceLink);
+      return;
+    }
+    await open(sourceLink);
   };
 
   function markdownInteractions(node: HTMLElement) {
@@ -443,6 +643,13 @@
         .catch(console.error);
     }
   });
+
+  $effect(() => {
+    return () => {
+      if (directoryCloseTimer) clearTimeout(directoryCloseTimer);
+      resetBinaryPreview();
+    };
+  });
 </script>
 
 <div class="bg-base-100 text-base-content flex h-screen flex-col overflow-hidden">
@@ -458,64 +665,24 @@
     onBack={handleBack}
     onDetailAction={handleDetailAction}
     onOpenCatalog={() => {
-      if (!directoryLoading && !skillLoading) directoryOpen = true;
+      if (!directoryLoading && !skillLoading) openDirectoryDrawer();
     }}
     onRefreshAgentApps={() => {}}
   />
 
-  {#if directoryOpen}
-    <button
-      class="bg-overlay fixed inset-0 z-40 border-0 p-0"
-      onclick={() => {
-        directoryOpen = false;
-      }}
-      type="button"
-      aria-label={$t("detail.closeCatalog")}
-    ></button>
-    <aside class="border-base-300 bg-base-100 fixed right-0 top-0 z-50 h-full w-80 border-l shadow-2xl">
-      <div class="border-base-300 flex items-center justify-between border-b px-4 py-3">
-        <h2 class="text-base-content text-sm font-medium">{$t("detail.catalog")}</h2>
-        <button
-          class="border-base-300 text-base-content hover:bg-base-200 rounded-lg border px-2 py-1 text-xs transition"
-          onclick={() => {
-            directoryOpen = false;
-          }}
-          type="button"
-        >
-          {$t("detail.closeCatalog")}
-        </button>
-      </div>
-      <div class="h-[calc(100%-57px)] overflow-y-auto p-2">
-        {#if directoryLoading}
-          <div class="text-base-content-muted flex items-center justify-center py-8 text-sm">
-            <Loader2 size={18} class="animate-spin" />
-          </div>
-        {:else if directoryError}
-          <p class="text-error px-2 py-3 text-sm">{directoryError}</p>
-        {:else}
-          {#each directoryEntries as entry (entry.path)}
-            <button
-              class="w-full rounded-lg px-2 py-1.5 text-left text-sm transition {entry.is_directory
-                ? 'text-base-content-muted cursor-default'
-                : entry.path === activeFilePath
-                  ? 'bg-base-200 text-base-content'
-                  : 'text-base-content hover:bg-base-200'}"
-              style={`padding-left:${getEntryDepth(entry.path) * 16 + 12}px;`}
-              onclick={() => {
-                if (entry.is_directory) return;
-                directoryOpen = false;
-                loadContent(entry.path).catch(console.error);
-              }}
-              disabled={entry.is_directory}
-              type="button"
-            >
-              {getEntryName(entry.path)}
-            </button>
-          {/each}
-        {/if}
-      </div>
-    </aside>
-  {/if}
+  <SkillDirectoryDrawer
+    open={directoryOpen}
+    closing={directoryClosing}
+    loading={directoryLoading}
+    error={directoryError}
+    entries={directoryEntries}
+    activePath={activeFilePath}
+    onClose={closeDirectoryDrawer}
+    onSelect={(path) => {
+      closeDirectoryDrawer();
+      loadContent(path).catch(console.error);
+    }}
+  />
 
   <main class="flex-1 overflow-y-auto">
     <div class="mx-auto max-w-6xl px-6 py-6">
@@ -557,12 +724,29 @@
                 </div>
               </div>
             {/if}
-            {#if activeFileIsMarkdown}
+            {#if fileViewMode === "markdown"}
               <div class="markdown-content" use:markdownInteractions>
                 {@html renderMarkdownBody(content)}
               </div>
+            {:else if fileViewMode === "code"}
+              <pre class="code-block"><code class="hljs">{@html renderedCode}</code></pre>
+            {:else if fileViewMode === "image"}
+              <div class="border-base-300 bg-base-200 overflow-hidden rounded-xl border p-2">
+                <img src={imagePreviewUrl} alt={activeFilePath} class="h-auto max-h-[70vh] w-full object-contain" />
+              </div>
             {:else}
-              <pre class="code-block"><code>{@html escapeHtml(content)}</code></pre>
+              <div class="border-base-300 bg-base-200 rounded-xl border p-4 text-sm">
+                <p class="text-base-content mb-3">{$t("detail.unsupportedFile")}</p>
+                {#if sourceLink}
+                  <button
+                    class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-2 text-xs transition"
+                    onclick={handleOpenSource}
+                    type="button"
+                  >
+                    {$t(currentType === "local" ? "detail.openInFileManager" : "detail.openSource")}
+                  </button>
+                {/if}
+              </div>
             {/if}
           {/if}
         </div>

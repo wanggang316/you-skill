@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added project skill management.
 - Added a skill detail catalog drawer with full skill file tree navigation and in-page file switching.
+- Added skill detail file preview modes for code and images, with unsupported-format fallback actions.
 
 ### Changed
 

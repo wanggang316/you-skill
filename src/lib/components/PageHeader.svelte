@@ -4,6 +4,7 @@
     Plus,
     Settings,
     Folders,
+    List,
     ArrowUpCircle,
     ExternalLink,
     RefreshCw,
@@ -155,13 +156,14 @@
           </div>
           <div class="flex items-center gap-2">
             {#if onOpenCatalog}
-              <button
-                class="border-base-300 text-base-content hover:bg-base-200 rounded-xl border px-3 py-2 text-sm transition"
+              <IconButton
+                variant="outline"
                 onclick={onOpenCatalog}
-                type="button"
+                title={$t("detail.catalog")}
+                ariaLabel={$t("detail.catalog")}
               >
-                {$t("detail.catalog")}
-              </button>
+                <List size={16} />
+              </IconButton>
             {/if}
             {#if onDetailAction}
               <IconButton

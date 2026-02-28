@@ -273,6 +273,13 @@ export async function readSkillRelativeFile(skillPath: string, relativePath: str
   return apiCall<string>("read_skill_relative_file", { skillPath, relativePath });
 }
 
+export async function readSkillRelativeFileBytes(
+  skillPath: string,
+  relativePath: string
+): Promise<number[]> {
+  return apiCall<number[]>("read_skill_relative_file_bytes", { skillPath, relativePath });
+}
+
 export async function checkSkillsUpdates(checks: SkillUpdateCheckItem[]): Promise<string[]> {
   if (checks.length === 0) return [];
   try {
