@@ -150,6 +150,13 @@
     if (tabParam === "remote" || tabParam === "local") {
       activeTab = tabParam;
     }
+    const scopeParam = searchParams.get("scope");
+    const projectPathParam = searchParams.get("projectPath");
+    if (scopeParam === "project" && projectPathParam) {
+      localScopeKey = `project:${encodeURIComponent(projectPathParam)}`;
+    } else {
+      localScopeKey = "global";
+    }
     const scrollParam = searchParams.get("scroll");
     if (scrollParam) {
       const parsed = Number(scrollParam);
@@ -597,6 +604,10 @@
   const getHomeReturnTo = () => {
     const params = new URLSearchParams();
     params.set("tab", activeTab);
+    params.set("scope", localScope);
+    if (localScope === "project" && localProjectPath) {
+      params.set("projectPath", localProjectPath);
+    }
     if (mainScrollContainer) {
       params.set("scroll", String(mainScrollContainer.scrollTop));
     }
