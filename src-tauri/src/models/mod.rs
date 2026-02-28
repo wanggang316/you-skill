@@ -6,7 +6,7 @@ pub use agent_app::AgentApp;
 pub use skill::{
   DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallScope, InstallTarget,
   InstallUnknownRequest, InstallResult, InstalledAgentApp, LocalSkill, ManageSkillAgentAppsRequest, RemoteSkill,
-  RemoteSkillsResponse, SkillUpdateCheckItem, SourceCheckResult, SourceType, SourceVersionGroup,
-  SelectedAgentPath,
+  RemoteSkillsResponse, SkillDirectoryEntry, SkillUpdateCheckItem, SourceCheckResult, SourceType,
+  SourceVersionGroup, SelectedAgentPath,
 };
 pub use user_project::UserProject;

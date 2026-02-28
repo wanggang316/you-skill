@@ -21,7 +21,8 @@ use commands::{
   skill::{
     check_skill_version, check_skills_updates, delete_skill, detect_folder, detect_github_auto,
     detect_github_manual, detect_zip, install_from_github, install_from_native,
-    install_from_unknown, list_skills, manage_skill_agent_apps, open_in_file_manager, read_skill_file,
+    install_from_unknown, list_skill_directory, list_skills, manage_skill_agent_apps,
+    open_in_file_manager, read_skill_file, read_skill_relative_file,
   },
   user_projects::{add_user_project, list_user_projects, remove_user_project, update_user_project},
 };
@@ -101,6 +102,8 @@ fn main() {
       open_backup_folder,
       backup_skills,
       read_skill_file,
+      list_skill_directory,
+      read_skill_relative_file,
       open_in_file_manager,
       check_skills_updates,
       list_user_projects,

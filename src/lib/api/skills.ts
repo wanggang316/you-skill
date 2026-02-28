@@ -68,6 +68,11 @@ export interface DetectedSkill {
   skill_path: string;
 }
 
+export interface SkillDirectoryEntry {
+  path: string;
+  is_directory: boolean;
+}
+
 function normalizeDetectedSkills(
   value: DetectedSkill | DetectedSkill[] | null | undefined
 ): DetectedSkill[] {
@@ -258,6 +263,14 @@ export async function manageSkillAgentApps(
  */
 export async function readSkillFile(skillPath: string): Promise<string> {
   return apiCall<string>("read_skill_file", { skillPath });
+}
+
+export async function listSkillDirectory(skillPath: string): Promise<SkillDirectoryEntry[]> {
+  return apiCall<SkillDirectoryEntry[]>("list_skill_directory", { skillPath });
+}
+
+export async function readSkillRelativeFile(skillPath: string, relativePath: string): Promise<string> {
+  return apiCall<string>("read_skill_relative_file", { skillPath, relativePath });
 }
 
 export async function checkSkillsUpdates(checks: SkillUpdateCheckItem[]): Promise<string[]> {

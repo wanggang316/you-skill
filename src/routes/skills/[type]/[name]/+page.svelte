@@ -9,11 +9,14 @@
   import { t } from "../../../../lib/i18n";
   import {
     fetchSkillsByNames,
+    listSkillDirectory,
     listSkills,
     openInFileManager,
+    readSkillRelativeFile,
     readSkillFile,
     type LocalSkill,
     type RemoteSkill,
+    type SkillDirectoryEntry,
   } from "../../../../lib/api/skills";
 
   type SkillType = "local" | "remote";
@@ -28,6 +31,12 @@
   let content = $state("");
   let hasFrontmatter = $state(false);
   let parsedFrontmatter = $state<Record<string, string>>({});
+  let directoryOpen = $state(false);
+  let directoryLoading = $state(false);
+  let directoryError = $state("");
+  let directoryEntries = $state<SkillDirectoryEntry[]>([]);
+  let activeFilePath = $state("SKILL.md");
+  let activeFileIsMarkdown = $state(true);
 
   const params = $derived($page.params);
   const query = $derived($page.url.searchParams);
@@ -50,7 +59,58 @@
   const parseLocalScope = (value: string | null): "global" | "project" =>
     value === "project" ? "project" : "global";
 
-  const buildGitHubUrl = (url: string, path: string | null | undefined, relativePath?: string) => {
+  const escapeHtml = (value: string) =>
+    value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+
+  const isMarkdownFile = (filePath: string) => /\.md$/i.test(filePath);
+
+  const normalizeRelativePath = (baseFile: string, target: string): string | null => {
+    const withoutHash = target.split("#")[0]?.split("?")[0] ?? "";
+    if (!withoutHash) return null;
+    if (withoutHash.startsWith("/")) {
+      return withoutHash.replace(/^\/+/, "");
+    }
+
+    const baseSegments = baseFile.split("/").slice(0, -1);
+    const segments = withoutHash.split("/");
+    const resolved = [...baseSegments];
+
+    for (const segment of segments) {
+      if (!segment || segment === ".") continue;
+      if (segment === "..") {
+        if (resolved.length === 0) return null;
+        resolved.pop();
+        continue;
+      }
+      resolved.push(segment);
+    }
+
+    return resolved.join("/");
+  };
+
+  const formatDirectoryEntries = (entries: SkillDirectoryEntry[]): SkillDirectoryEntry[] =>
+    [...entries].sort((a, b) => {
+      if (a.path === b.path) {
+        if (a.is_directory === b.is_directory) return 0;
+        return a.is_directory ? -1 : 1;
+      }
+      return a.path.localeCompare(b.path, undefined, { sensitivity: "base" });
+    });
+
+  const getEntryDepth = (entryPath: string) => entryPath.split("/").length - 1;
+  const getEntryName = (entryPath: string) => entryPath.split("/").at(-1) || entryPath;
+
+  const getSkillRootPath = () => {
+    if (!skill || !("installed_agent_apps" in skill)) return null;
+    return skill.root_folder || skill.installed_agent_apps[0]?.skill_folder || null;
+  };
+
+  const buildGitHubUrl = (
+    url: string,
+    path: string | null | undefined,
+    relativePath?: string,
+    branch = "main"
+  ) => {
     if (!url || !url.includes("github.com")) return null;
     const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
     if (!match) return null;
@@ -59,18 +119,21 @@
     const basePath = (path || "").replace(/^\/+|\/+$/g, "");
     if (!relativePath) {
       return basePath
-        ? `https://github.com/${owner}/${cleanRepo}/tree/main/${basePath}`
+        ? `https://github.com/${owner}/${cleanRepo}/tree/${branch}/${basePath}`
         : `https://github.com/${owner}/${cleanRepo}`;
     }
     const normalizedRelativePath = relativePath.replace(/^\/+/, "");
     const fullPath = basePath ? `${basePath}/${normalizedRelativePath}` : normalizedRelativePath;
-    return `https://github.com/${owner}/${cleanRepo}/tree/main/${fullPath}`;
+    return `https://github.com/${owner}/${cleanRepo}/tree/${branch}/${fullPath}`;
   };
 
   const loadSkill = async () => {
     skillLoading = true;
     error = "";
     skill = null;
+    directoryEntries = [];
+    directoryError = "";
+    directoryOpen = false;
 
     const type = parseType(params.type);
     const name = decodeName(params.name);
@@ -105,15 +168,6 @@
     }
   };
 
-  const convertToRawUrl = (url: string | null | undefined, path: string | null | undefined) => {
-    if (!url || !path || !url.includes("github.com")) return null;
-    const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
-    if (!match) return null;
-    const [, owner, repo] = match;
-    const cleanRepo = repo.replace(/\.git$/, "");
-    return `https://raw.githubusercontent.com/${owner}/${cleanRepo}/refs/heads/main/${path}/SKILL.md`;
-  };
-
   const resolveLocalPath = (relativePath: string) => {
     if (!skill || !("installed_agent_apps" in skill)) return null;
     const dirPath = skill.root_folder || skill.installed_agent_apps[0]?.skill_folder;
@@ -133,39 +187,126 @@
     return parts.join("/");
   };
 
-  const loadContent = async () => {
+  const loadDirectory = async () => {
+    if (!skill) return [];
+    directoryLoading = true;
+    directoryError = "";
+
+    try {
+      if (currentType === "local") {
+        const localPath = getSkillRootPath();
+        if (!localPath) throw new Error("Skill path is missing");
+        const entries = await listSkillDirectory(localPath);
+        const formatted = formatDirectoryEntries(entries);
+        directoryEntries = formatted;
+        return formatted;
+      } else {
+        if (!("url" in skill) || !skill.url) {
+          throw new Error("Skill source URL is missing");
+        }
+        const repoMatch = skill.url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+        if (!repoMatch) {
+          throw new Error("Unable to resolve GitHub repository");
+        }
+        const [, owner, repo] = repoMatch;
+        const cleanRepo = repo.replace(/\.git$/, "");
+        const branch = skill.branch || "main";
+        const response = await fetch(
+          `https://api.github.com/repos/${owner}/${cleanRepo}/git/trees/${encodeURIComponent(branch)}?recursive=1`
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to fetch tree: ${response.status} ${response.statusText}`);
+        }
+        const payload = await response.json();
+        const basePath = (skill.path || "").replace(/^\/+|\/+$/g, "");
+        const prefix = basePath ? `${basePath}/` : "";
+
+        const files: SkillDirectoryEntry[] = Array.isArray(payload.tree)
+          ? payload.tree
+              .filter(
+                (item: { path?: string; type?: string }) =>
+                  item.type === "blob" &&
+                  typeof item.path === "string" &&
+                  (basePath ? item.path.startsWith(prefix) : true)
+              )
+              .map((item: { path: string }) => ({
+                path: basePath ? item.path.slice(prefix.length) : item.path,
+                is_directory: false,
+              }))
+          : [];
+
+        const dirs = new Set<string>();
+        for (const file of files) {
+          const parts = file.path.split("/");
+          for (let i = 1; i < parts.length; i += 1) {
+            dirs.add(parts.slice(0, i).join("/"));
+          }
+        }
+
+        const formatted = formatDirectoryEntries([
+          ...[...dirs].map((path) => ({ path, is_directory: true })),
+          ...files,
+        ]);
+        directoryEntries = formatted;
+        return formatted;
+      }
+    } catch (err) {
+      directoryError = String(err);
+      directoryEntries = [];
+      return [];
+    } finally {
+      directoryLoading = false;
+    }
+  };
+
+  const loadContent = async (filePath = "SKILL.md") => {
     if (!skill) return;
+    activeFilePath = filePath;
+    activeFileIsMarkdown = isMarkdownFile(filePath);
     contentLoading = true;
     contentError = "";
     try {
       let rawContent = "";
       if (currentType === "local") {
-        if (!("installed_agent_apps" in skill)) {
-          throw new Error("Skill path is missing");
-        }
-        const localPath = skill.root_folder || skill.installed_agent_apps[0]?.skill_folder;
+        const localPath = getSkillRootPath();
         if (!localPath) {
           throw new Error("Skill path is missing");
         }
-        rawContent = await readSkillFile(localPath);
+        if (filePath === "SKILL.md") {
+          rawContent = await readSkillFile(localPath);
+        } else {
+          rawContent = await readSkillRelativeFile(localPath, filePath);
+        }
       } else {
         if (!("url" in skill)) {
           throw new Error("Skill source URL is missing");
         }
-        const rawUrl = convertToRawUrl(skill.url, skill.path);
-        if (!rawUrl) {
+        const repoMatch = skill.url?.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+        if (!repoMatch) {
           throw new Error("Unable to construct raw URL for this skill");
         }
+        const [, owner, repo] = repoMatch;
+        const cleanRepo = repo.replace(/\.git$/, "");
+        const branch = skill.branch || "main";
+        const basePath = (skill.path || "").replace(/^\/+|\/+$/g, "");
+        const fullPath = basePath ? `${basePath}/${filePath}` : filePath;
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${cleanRepo}/${encodeURIComponent(branch)}/${fullPath}`;
         const response = await fetch(rawUrl);
         if (!response.ok) {
           throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
         }
         rawContent = await response.text();
       }
-      const parsed = parseMarkdown(rawContent);
-      parsedFrontmatter = parsed.frontmatter as Record<string, string>;
-      hasFrontmatter = parsed.hasFrontmatter;
-      content = parsed.content;
+      if (isMarkdownFile(filePath)) {
+        const parsed = parseMarkdown(rawContent);
+        parsedFrontmatter = parsed.frontmatter as Record<string, string>;
+        hasFrontmatter = parsed.hasFrontmatter;
+        content = parsed.content;
+      } else {
+        parsedFrontmatter = {};
+        hasFrontmatter = false;
+        content = rawContent;
+      }
     } catch (err) {
       contentError = String(err);
       parsedFrontmatter = {};
@@ -189,7 +330,7 @@
     if (!skill) return;
 
     if (currentType === "remote" && "url" in skill && skill.url) {
-      const fullUrl = buildGitHubUrl(skill.url, skill.path || "") || skill.url;
+      const fullUrl = buildGitHubUrl(skill.url, skill.path || "", undefined, skill.branch || "main") || skill.url;
       await open(fullUrl);
       return;
     }
@@ -203,7 +344,7 @@
   };
 
   const retryContent = () => {
-    loadContent().catch(console.error);
+    loadContent(activeFilePath).catch(console.error);
   };
 
   function markdownInteractions(node: HTMLElement) {
@@ -257,11 +398,18 @@
       if (!href || href.startsWith("#")) return;
       event.preventDefault();
       event.stopPropagation();
+
+      const targetPath = normalizeRelativePath(activeFilePath, href);
+      if (targetPath && directoryEntries.some((entry) => !entry.is_directory && entry.path === targetPath)) {
+        await loadContent(targetPath);
+        return;
+      }
+
       if (currentType === "local") {
         const localPath = resolveLocalPath(href);
         if (localPath) await openInFileManager(localPath);
       } else if ("url" in skill && skill.url) {
-        const fullUrl = buildGitHubUrl(skill.url, skill.path || "", href);
+        const fullUrl = buildGitHubUrl(skill.url, skill.path || "", href, skill.branch || "main");
         if (fullUrl) await open(fullUrl);
       }
     };
@@ -284,7 +432,15 @@
 
   $effect(() => {
     if (skill) {
-      loadContent().catch(console.error);
+      loadDirectory()
+        .then((entries) => {
+          if (entries.some((entry) => !entry.is_directory && entry.path === "SKILL.md")) {
+            return loadContent("SKILL.md");
+          }
+          const firstFile = entries.find((entry) => !entry.is_directory)?.path;
+          return loadContent(firstFile || "SKILL.md");
+        })
+        .catch(console.error);
     }
   });
 </script>
@@ -301,8 +457,65 @@
     onOpenSettings={() => {}}
     onBack={handleBack}
     onDetailAction={handleDetailAction}
+    onOpenCatalog={() => {
+      if (!directoryLoading && !skillLoading) directoryOpen = true;
+    }}
     onRefreshAgentApps={() => {}}
   />
+
+  {#if directoryOpen}
+    <button
+      class="bg-overlay fixed inset-0 z-40 border-0 p-0"
+      onclick={() => {
+        directoryOpen = false;
+      }}
+      type="button"
+      aria-label={$t("detail.closeCatalog")}
+    ></button>
+    <aside class="border-base-300 bg-base-100 fixed right-0 top-0 z-50 h-full w-80 border-l shadow-2xl">
+      <div class="border-base-300 flex items-center justify-between border-b px-4 py-3">
+        <h2 class="text-base-content text-sm font-medium">{$t("detail.catalog")}</h2>
+        <button
+          class="border-base-300 text-base-content hover:bg-base-200 rounded-lg border px-2 py-1 text-xs transition"
+          onclick={() => {
+            directoryOpen = false;
+          }}
+          type="button"
+        >
+          {$t("detail.closeCatalog")}
+        </button>
+      </div>
+      <div class="h-[calc(100%-57px)] overflow-y-auto p-2">
+        {#if directoryLoading}
+          <div class="text-base-content-muted flex items-center justify-center py-8 text-sm">
+            <Loader2 size={18} class="animate-spin" />
+          </div>
+        {:else if directoryError}
+          <p class="text-error px-2 py-3 text-sm">{directoryError}</p>
+        {:else}
+          {#each directoryEntries as entry (entry.path)}
+            <button
+              class="w-full rounded-lg px-2 py-1.5 text-left text-sm transition {entry.is_directory
+                ? 'text-base-content-muted cursor-default'
+                : entry.path === activeFilePath
+                  ? 'bg-base-200 text-base-content'
+                  : 'text-base-content hover:bg-base-200'}"
+              style={`padding-left:${getEntryDepth(entry.path) * 16 + 12}px;`}
+              onclick={() => {
+                if (entry.is_directory) return;
+                directoryOpen = false;
+                loadContent(entry.path).catch(console.error);
+              }}
+              disabled={entry.is_directory}
+              type="button"
+            >
+              {getEntryName(entry.path)}
+            </button>
+          {/each}
+        {/if}
+      </div>
+    </aside>
+  {/if}
 
   <main class="flex-1 overflow-y-auto">
     <div class="mx-auto max-w-6xl px-6 py-6">
@@ -344,9 +557,13 @@
                 </div>
               </div>
             {/if}
-            <div class="markdown-content" use:markdownInteractions>
-              {@html renderMarkdownBody(content)}
-            </div>
+            {#if activeFileIsMarkdown}
+              <div class="markdown-content" use:markdownInteractions>
+                {@html renderMarkdownBody(content)}
+              </div>
+            {:else}
+              <pre class="code-block"><code>{@html escapeHtml(content)}</code></pre>
+            {/if}
           {/if}
         </div>
       {/if}

@@ -1,6 +1,7 @@
 use crate::models::{
   DetectedSkill, InstallGithubRequest, InstallNativeRequest, InstallResult, InstallUnknownRequest,
-  InstallScope, LocalSkill, ManageSkillAgentAppsRequest, SkillUpdateCheckItem, SourceCheckResult,
+  InstallScope, LocalSkill, ManageSkillAgentAppsRequest, SkillDirectoryEntry, SkillUpdateCheckItem,
+  SourceCheckResult,
 };
 use crate::services::skill_service;
 
@@ -82,6 +83,19 @@ pub fn open_in_file_manager(file_path: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn read_skill_file(skill_path: String) -> Result<String, String> {
   skill_service::read_skill_file(skill_path).await
+}
+
+#[tauri::command]
+pub fn list_skill_directory(skill_path: String) -> Result<Vec<SkillDirectoryEntry>, String> {
+  skill_service::list_skill_directory(skill_path)
+}
+
+#[tauri::command]
+pub async fn read_skill_relative_file(
+  skill_path: String,
+  relative_path: String,
+) -> Result<String, String> {
+  skill_service::read_skill_relative_file(skill_path, relative_path).await
 }
 
 #[tauri::command]

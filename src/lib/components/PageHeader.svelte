@@ -1,5 +1,4 @@
 <script>
-  import { goto } from "$app/navigation";
   import {
     ChevronLeft,
     Plus,
@@ -30,6 +29,7 @@
     updateLoading = false,
     onBack,
     onDetailAction,
+    onOpenCatalog = undefined,
     onRefreshAgentApps,
     localScopeKey = $bindable("global"),
     projects = [],
@@ -153,16 +153,27 @@
               {skillName}
             </h1>
           </div>
-          {#if onDetailAction}
-            <IconButton
-              variant="outline"
-              onclick={onDetailAction}
-              title={$t("detail.openInBrowser")}
-              ariaLabel={$t("detail.openInBrowser")}
-            >
-              <ExternalLink size={16} />
-            </IconButton>
-          {/if}
+          <div class="flex items-center gap-2">
+            {#if onOpenCatalog}
+              <button
+                class="border-base-300 text-base-content hover:bg-base-200 rounded-xl border px-3 py-2 text-sm transition"
+                onclick={onOpenCatalog}
+                type="button"
+              >
+                {$t("detail.catalog")}
+              </button>
+            {/if}
+            {#if onDetailAction}
+              <IconButton
+                variant="outline"
+                onclick={onDetailAction}
+                title={$t("detail.openInBrowser")}
+                ariaLabel={$t("detail.openInBrowser")}
+              >
+                <ExternalLink size={16} />
+              </IconButton>
+            {/if}
+          </div>
         </div>
       {:else}
         <div class="flex items-center gap-4">
