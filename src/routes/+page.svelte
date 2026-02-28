@@ -4,15 +4,15 @@
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  import PageHeader from "../lib/components/PageHeader.svelte";
-  import { t } from "../lib/i18n";
-  import LocalSkillsSection from "../lib/components/LocalSkillsSection.svelte";
-  import RemoteSkillsSection from "../lib/components/RemoteSkillsSection.svelte";
-  import AddSkillModal from "../lib/components/AddSkillModal.svelte";
-  import UserProjectFormModal from "../lib/components/UserProjectFormModal.svelte";
-  import { listUserProjects, type UserProject } from "../lib/api/user-projects";
-  import { settings, updateSettings as updateAppSettings } from "../lib/stores/settings";
-  import { ensureUpdateChecked, installAvailableUpdate, updaterState } from "../lib/stores/updater";
+  import PageHeader from "$lib/components/PageHeader.svelte";
+  import { t } from "$lib/i18n";
+  import LocalSkillsSection from "$lib/components/LocalSkillsSection.svelte";
+  import RemoteSkillsSection from "$lib/components/RemoteSkillsSection.svelte";
+  import AddSkillModal from "$lib/components/AddSkillModal.svelte";
+  import UserProjectFormModal from "$lib/components/UserProjectFormModal.svelte";
+  import { listUserProjects, type UserProject } from "$lib/api/user-projects";
+  import { settings, updateSettings as updateAppSettings } from "$lib/stores/settings";
+  import { ensureUpdateChecked, installAvailableUpdate, updaterState } from "$lib/stores/updater";
   import {
     detectGithubAuto,
     checkSkillVersion,
@@ -21,7 +21,7 @@
     recordInstall,
     manageSkillAgentApps,
     deleteSkill,
-  } from "../lib/api/skills";
+  } from "$lib/api/skills";
   import {
     agents as agentsStore,
     checkForSkillUpdates,
@@ -39,14 +39,14 @@
     remoteTotal as remoteTotalStore,
     skillsWithUpdate as skillsWithUpdateStore,
     updatingSkills as updatingSkillsStore,
-  } from "../lib/stores/skills";
+  } from "$lib/stores/skills";
   import type {
     DetectedSkill,
     InstallScope,
     LocalSkill,
     RemoteSkill,
     SourceVersionGroup,
-  } from "../lib/api/skills";
+  } from "$lib/api/skills";
 
   // Shared state for modals
   let addSkillModalOpen = $state(false);
@@ -745,7 +745,7 @@
 <UserProjectFormModal bind:open={userProjectsModalOpen} />
 
 <!-- Select Agent Modal -->
-{#await import("../lib/components/SelectAgentModal.svelte") then { default: SelectAgentModal }}
+{#await import("$lib/components/SelectAgentModal.svelte") then { default: SelectAgentModal }}
   <SelectAgentModal
     bind:open={selectAgentModalOpen}
     title={selectAgentModalTitle}
@@ -776,7 +776,7 @@
   />
 {/await}
 
-{#await import("../lib/components/UnknownPermissionModal.svelte") then { default: UnknownPermissionModal }}
+{#await import("$lib/components/UnknownPermissionModal.svelte") then { default: UnknownPermissionModal }}
   <UnknownPermissionModal
     bind:open={unknownPermissionModalOpen}
     skillName={unknownPermissionModalSkillName}
@@ -792,7 +792,7 @@
   />
 {/await}
 
-{#await import("../lib/components/CheckSkillVersionModal.svelte") then { default: CheckSkillVersionModal }}
+{#await import("$lib/components/CheckSkillVersionModal.svelte") then { default: CheckSkillVersionModal }}
   <CheckSkillVersionModal
     bind:open={checkSkillVersionModalOpen}
     title={checkSkillVersionModalTitle}

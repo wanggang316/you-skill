@@ -5,10 +5,10 @@
   import { open } from "@tauri-apps/plugin-shell";
   import hljs from "highlight.js/lib/common";
   import { Loader2 } from "@lucide/svelte";
-  import PageHeader from "../../../../lib/components/PageHeader.svelte";
-  import SkillDirectoryDrawer from "../../../../lib/components/SkillDirectoryDrawer.svelte";
-  import { parseMarkdown, renderMarkdownBody } from "../../../../lib/utils/markdown";
-  import { t } from "../../../../lib/i18n";
+  import PageHeader from "$lib/components/PageHeader.svelte";
+  import SkillDirectoryDrawer from "$lib/components/SkillDirectoryDrawer.svelte";
+  import { parseMarkdown, renderMarkdownBody } from "$lib/utils/markdown";
+  import { t } from "$lib/i18n";
   import {
     fetchSkillsByNames,
     listSkillDirectory,
@@ -20,7 +20,7 @@
     type LocalSkill,
     type RemoteSkill,
     type SkillDirectoryEntry,
-  } from "../../../../lib/api/skills";
+  } from "$lib/api/skills";
 
   type SkillType = "local" | "remote";
   type FileViewMode = "markdown" | "code" | "image" | "unsupported";

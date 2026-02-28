@@ -2,8 +2,8 @@
   import "../app.css";
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
-  import { loadSettings } from "../lib/stores/settings";
-  import { ensureUpdateChecked } from "../lib/stores/updater";
+  import { loadSettings } from "$lib/stores/settings";
+  import { ensureUpdateChecked } from "$lib/stores/updater";
 
   let { children } = $props();
 
