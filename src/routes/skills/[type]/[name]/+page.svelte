@@ -7,6 +7,9 @@
   import { Loader2 } from "@lucide/svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
   import SkillDirectoryDrawer from "$lib/components/SkillDirectoryDrawer.svelte";
+  import CodePreview from "$lib/components/CodePreview.svelte";
+  import MarkdownPreview from "$lib/components/MarkdownPreview.svelte";
+  import ImagePreview from "$lib/components/ImagePreview.svelte";
   import { parseMarkdown, renderMarkdownBody } from "$lib/utils/markdown";
   import { t } from "$lib/i18n";
   import {
@@ -43,6 +46,7 @@
   let activeFilePath = $state("SKILL.md");
   let fileViewMode = $state<FileViewMode>("markdown");
   let renderedCode = $state("");
+  let codeLineNumbersText = $state("");
   let imagePreviewUrl = $state("");
   let sourceLink = $state("");
   let localImageObjectUrl: string | null = null;
@@ -232,6 +236,8 @@
   const renderCode = (rawContent: string, filePath: string) => {
     const ext = getExtension(filePath);
     const lang = LANGUAGE_BY_EXT[ext] || ext;
+    const lineCount = rawContent.split("\n").length;
+    codeLineNumbersText = Array.from({ length: lineCount }, (_, i) => String(i + 1)).join("\n");
     try {
       if (lang && hljs.getLanguage(lang)) {
         renderedCode = hljs.highlight(rawContent, { language: lang }).value;
@@ -407,6 +413,7 @@
     activeFilePath = filePath;
     fileViewMode = resolveFileViewMode(filePath);
     renderedCode = "";
+    codeLineNumbersText = "";
     sourceLink = "";
     resetBinaryPreview();
     contentLoading = true;
@@ -502,6 +509,7 @@
       hasFrontmatter = false;
       content = "";
       renderedCode = "";
+      codeLineNumbersText = "";
       resetBinaryPreview();
     } finally {
       contentLoading = false;
@@ -685,7 +693,12 @@
   />
 
   <main class="flex-1 overflow-y-auto">
-    <div class="mx-auto max-w-6xl px-6 py-6">
+    <div
+      class="mx-auto max-w-6xl px-6"
+      class:py-0={fileViewMode === "code"}
+      class:py-2={fileViewMode === "image"}
+      class:py-6={fileViewMode !== "code" && fileViewMode !== "image"}
+    >
       {#if skillLoading}
         <div class="flex items-center justify-center py-12">
           <Loader2 size={32} class="text-base-content-muted animate-spin" />
@@ -725,17 +738,16 @@
               </div>
             {/if}
             {#if fileViewMode === "markdown"}
-              <div class="markdown-content" use:markdownInteractions>
-                {@html renderMarkdownBody(content)}
-              </div>
+              <MarkdownPreview
+                htmlContent={renderMarkdownBody(content)}
+                interactionAction={markdownInteractions}
+              />
             {:else if fileViewMode === "code"}
-              <pre class="code-block"><code class="hljs">{@html renderedCode}</code></pre>
+              <CodePreview lineNumbersText={codeLineNumbersText} {renderedCode} />
             {:else if fileViewMode === "image"}
-              <div class="border-base-300 bg-base-200 overflow-hidden rounded-xl border p-2">
-                <img src={imagePreviewUrl} alt={activeFilePath} class="h-auto max-h-[70vh] w-full object-contain" />
-              </div>
+              <ImagePreview src={imagePreviewUrl} alt={activeFilePath} />
             {:else}
-              <div class="border-base-300 bg-base-200 rounded-xl border p-4 text-sm">
+              <div class="text-sm">
                 <p class="text-base-content mb-3">{$t("detail.unsupportedFile")}</p>
                 {#if sourceLink}
                   <button
