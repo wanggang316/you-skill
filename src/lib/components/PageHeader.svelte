@@ -178,7 +178,7 @@
           <div class="flex items-center gap-2">
             {#if showTranslate && onTranslate}
               <button
-                class="border-base-300 text-base-content hover:bg-base-200 flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition disabled:opacity-50"
+                class="border-base-300 text-base-content hover:bg-base-200 flex h-[34px] items-center gap-2 rounded-xl border px-3 text-sm transition disabled:opacity-50"
                 onclick={onTranslate}
                 disabled={translating}
                 type="button"
