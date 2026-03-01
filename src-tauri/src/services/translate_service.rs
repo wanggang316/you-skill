@@ -3,7 +3,6 @@ use crate::services::ai_service;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::PathBuf;
-const DEFAULT_MODEL: &str = "openai/gpt-4o-mini";
 
 fn build_translation_system_prompt(target_language: &str) -> String {
   format!(
@@ -83,16 +82,14 @@ pub async fn translate_skill_markdown(markdown: String) -> Result<String, String
   }
 
   let config = load_config()?;
-  let target_language = if config.translate_target_language.trim().is_empty() {
-    "zh-CN".to_string()
-  } else {
-    config.translate_target_language.trim().to_string()
-  };
-  let model = if config.translate_model.trim().is_empty() {
-    DEFAULT_MODEL.to_string()
-  } else {
-    config.translate_model.trim().to_string()
-  };
+  let target_language = config.translate_target_language.trim().to_string();
+  if target_language.is_empty() {
+    return Err("Target language 未配置，请先在设置中填写".to_string());
+  }
+  let model = config.translate_model.trim().to_string();
+  if model.is_empty() {
+    return Err("Model 未配置，请先在设置中填写".to_string());
+  }
   let cache_key = build_translation_cache_key(&model, &target_language, &markdown);
 
   if let Some(cached_markdown) = load_translation_cache_entry(&cache_key) {

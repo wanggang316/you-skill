@@ -21,11 +21,11 @@ pub struct SettingsPayload {
 }
 
 fn default_translate_target_language() -> String {
-  "zh-CN".to_string()
+  String::new()
 }
 
 fn default_translate_model() -> String {
-  "openai/gpt-4o-mini".to_string()
+  String::new()
 }
 
 #[tauri::command]

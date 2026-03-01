@@ -8,8 +8,8 @@
   let {
     open = $bindable(false),
     apiKey = "",
-    targetLanguage = "zh-CN",
-    model = "openai/gpt-4o-mini",
+    targetLanguage = "",
+    model = "",
     saving = false,
     onSave = async () => {},
     onCancel = () => {},
@@ -24,11 +24,17 @@
   }>();
 
   let draftApiKey = $state("");
-  let draftTargetLanguage = $state("zh-CN");
-  let draftModel = $state("openai/gpt-4o-mini");
+  let draftTargetLanguage = $state("");
+  let draftModel = $state("");
   let modelOptions = $state<OpenRouterModelOption[]>([]);
   let loadingModels = $state(false);
   let modelsError = $state("");
+  const isFormValid = $derived.by(
+    () =>
+      draftTargetLanguage.trim().length > 0 &&
+      draftApiKey.trim().length > 0 &&
+      draftModel.trim().length > 0
+  );
 
   const languageOptions = [
     { value: "zh-CN", label: "简体中文 (zh-CN)" },
@@ -40,18 +46,11 @@
     { value: "de", label: "Deutsch (de)" },
   ];
 
-  const fallbackModelOptions: OpenRouterModelOption[] = [
-    { id: "openai/gpt-4o-mini", name: "GPT-4o Mini" },
-    { id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini" },
-    { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet" },
-    { id: "google/gemini-2.0-flash-001", name: "Gemini 2.0 Flash" },
-  ];
-
   $effect(() => {
     if (open) {
       draftApiKey = apiKey || "";
-      draftTargetLanguage = targetLanguage || "zh-CN";
-      draftModel = model || "openai/gpt-4o-mini";
+      draftTargetLanguage = targetLanguage || "";
+      draftModel = model || "";
     }
   });
 
@@ -61,11 +60,11 @@
     modelsError = "";
     listOpenRouterModels()
       .then((models) => {
-        modelOptions = models.length > 0 ? models : fallbackModelOptions;
+        modelOptions = models;
       })
       .catch((error) => {
         modelsError = error instanceof Error ? error.message : String(error);
-        modelOptions = fallbackModelOptions;
+        modelOptions = [];
       })
       .finally(() => {
         loadingModels = false;
@@ -78,10 +77,11 @@
   };
 
   const handleSave = async () => {
+    if (!isFormValid) return;
     await onSave({
       apiKey: draftApiKey.trim(),
-      targetLanguage: draftTargetLanguage || "zh-CN",
-      model: draftModel || "openai/gpt-4o-mini",
+      targetLanguage: draftTargetLanguage.trim(),
+      model: draftModel.trim(),
     });
   };
 </script>
@@ -103,6 +103,7 @@
         className="w-full"
         selectClassName="w-full"
       >
+        <option value="">{$t("settings.selectPlaceholder")}</option>
         {#each languageOptions as option}
           <option value={option.value}>{option.label}</option>
         {/each}
@@ -119,6 +120,7 @@
         bind:value={draftApiKey}
         placeholder="sk-or-v1-..."
         autocomplete="off"
+        required
       />
     </div>
     <div class="space-y-1.5">
@@ -131,8 +133,9 @@
         type="text"
         bind:value={draftModel}
         list="translate-model-options"
-        placeholder="openai/gpt-4o-mini"
+        placeholder="Model ID"
         autocomplete="off"
+        required
       />
       <datalist id="translate-model-options">
         {#each modelOptions as option}
@@ -159,7 +162,7 @@
     >
       {$t("addSkill.cancel")}
     </button>
-    <PrimaryActionButton onclick={handleSave} disabled={saving}>
+    <PrimaryActionButton onclick={handleSave} disabled={saving || !isFormValid}>
       {saving ? $t("settings.translation.saving") : $t("selectAgent.confirm")}
     </PrimaryActionButton>
   {/snippet}

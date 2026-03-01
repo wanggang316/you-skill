@@ -26,8 +26,8 @@ impl Default for AppConfig {
       backup_folder: None,
       last_backup_time: None,
       openrouter_api_key: None,
-      translate_target_language: "zh-CN".to_string(),
-      translate_model: "openai/gpt-4o-mini".to_string(),
+      translate_target_language: String::new(),
+      translate_model: String::new(),
     }
   }
 }

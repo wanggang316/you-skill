@@ -652,8 +652,8 @@
       currentType,
       currentName,
       activeFilePath,
-      $settings.translate_target_language || "zh-CN",
-      $settings.translate_model || "openai/gpt-4o-mini",
+      ($settings.translate_target_language || "").trim(),
+      ($settings.translate_model || "").trim(),
       contentHash(originalMarkdownContent),
     ].join("|");
 
@@ -728,8 +728,8 @@
     try {
       await updateSettings({
         openrouter_api_key: payload.apiKey || null,
-        translate_target_language: payload.targetLanguage || "zh-CN",
-        translate_model: payload.model || "openai/gpt-4o-mini",
+        translate_target_language: payload.targetLanguage.trim(),
+        translate_model: payload.model.trim(),
       });
       translateSettingsOpen = false;
     } finally {
@@ -881,8 +881,8 @@
 <TranslateSettingsModal
   bind:open={translateSettingsOpen}
   apiKey={$settings.openrouter_api_key ?? ""}
-  targetLanguage={$settings.translate_target_language || "zh-CN"}
-  model={$settings.translate_model || "openai/gpt-4o-mini"}
+  targetLanguage={$settings.translate_target_language || ""}
+  model={$settings.translate_model || ""}
   saving={savingTranslateSettings}
   onSave={handleSaveTranslateSettings}
 />

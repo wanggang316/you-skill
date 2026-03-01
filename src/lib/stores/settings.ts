@@ -9,8 +9,8 @@ const defaultSettings: AppSettings = {
   sync_mode: "symlink",
   unknown_skill_install_permission: false,
   openrouter_api_key: null,
-  translate_target_language: "zh-CN",
-  translate_model: "openai/gpt-4o-mini",
+  translate_target_language: "",
+  translate_model: "",
 };
 
 export const settings = writable<AppSettings>({ ...defaultSettings });
@@ -106,8 +106,8 @@ export const loadSettings = async () => {
       sync_mode: remote.sync_mode,
       unknown_skill_install_permission: remote.unknown_skill_install_permission,
       openrouter_api_key: remote.openrouter_api_key ?? null,
-      translate_target_language: remote.translate_target_language || "zh-CN",
-      translate_model: remote.translate_model || "openai/gpt-4o-mini",
+      translate_target_language: remote.translate_target_language ?? "",
+      translate_model: remote.translate_model ?? "",
     };
     settings.set(merged);
     applyTheme(merged.theme);

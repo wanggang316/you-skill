@@ -35,6 +35,18 @@
   let installedAgentAppsCount = $state(0);
   let translateSettingsOpen = $state(false);
   let savingTranslateSettings = $state(false);
+  const translationSummary = $derived.by(() => {
+    const targetLanguage = ($settings.translate_target_language || "").trim();
+    const model = ($settings.translate_model || "").trim();
+    const parts: string[] = [];
+    if (targetLanguage) {
+      parts.push($t("settings.translation.targetLanguageValue", { language: targetLanguage }));
+    }
+    if (model) {
+      parts.push($t("settings.translation.modelValue", { model }));
+    }
+    return parts.join(" · ");
+  });
 
   // Load installed agent apps count on mount
   $effect(() => {
@@ -225,8 +237,8 @@
     try {
       await updateSettings({
         openrouter_api_key: payload.apiKey || null,
-        translate_target_language: payload.targetLanguage || "zh-CN",
-        translate_model: payload.model || "openai/gpt-4o-mini",
+        translate_target_language: payload.targetLanguage.trim(),
+        translate_model: payload.model.trim(),
       });
       translateSettingsOpen = false;
     } finally {
@@ -353,15 +365,9 @@
           <div class="flex items-center justify-between">
             <div class="flex flex-col">
               <span class="text-base-content text-[15px]">{$t("settings.translation.title")}</span>
-              <span class="text-base-content-muted text-xs">
-                {$t("settings.translation.targetLanguageValue", {
-                  language: $settings.translate_target_language || "zh-CN",
-                })}
-                {" · "}
-                {$t("settings.translation.modelValue", {
-                  model: $settings.translate_model || "openai/gpt-4o-mini",
-                })}
-              </span>
+              {#if translationSummary}
+                <span class="text-base-content-muted text-xs">{translationSummary}</span>
+              {/if}
             </div>
             <button
               class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px]"
@@ -475,8 +481,8 @@
 <TranslateSettingsModal
   bind:open={translateSettingsOpen}
   apiKey={$settings.openrouter_api_key ?? ""}
-  targetLanguage={$settings.translate_target_language || "zh-CN"}
-  model={$settings.translate_model || "openai/gpt-4o-mini"}
+  targetLanguage={$settings.translate_target_language || ""}
+  model={$settings.translate_model || ""}
   saving={savingTranslateSettings}
   onSave={handleSaveTranslateSettings}
 />
