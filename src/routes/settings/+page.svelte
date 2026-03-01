@@ -357,8 +357,7 @@
                 {$t("settings.translation.targetLanguageValue", {
                   language: $settings.translate_target_language || "zh-CN",
                 })}
-              </span>
-              <span class="text-base-content-muted text-xs">
+                {" · "}
                 {$t("settings.translation.modelValue", {
                   model: $settings.translate_model || "openai/gpt-4o-mini",
                 })}

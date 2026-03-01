@@ -1,6 +1,7 @@
 <script lang="ts">
   import Modal from "./ui/Modal.svelte";
   import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
+  import SelectField from "./ui/SelectField.svelte";
   import { t } from "$lib/i18n";
   import { listOpenRouterModels, type OpenRouterModelOption } from "$lib/api/settings";
 
@@ -93,6 +94,21 @@
 >
   <div class="space-y-4 px-6 py-6">
     <div class="space-y-1.5">
+      <label class="text-base-content text-sm font-medium" for="translate-target-language">
+        {$t("settings.translation.targetLanguage")}
+      </label>
+      <SelectField
+        id="translate-target-language"
+        bind:value={draftTargetLanguage}
+        className="w-full"
+        selectClassName="w-full"
+      >
+        {#each languageOptions as option}
+          <option value={option.value}>{option.label}</option>
+        {/each}
+      </SelectField>
+    </div>
+    <div class="space-y-1.5">
       <label class="text-base-content text-sm font-medium" for="openrouter-api-key">
         {$t("settings.translation.apiKey")}
       </label>
@@ -131,28 +147,6 @@
         {:else}
           {$t("settings.translation.modelHint")}
         {/if}
-      </p>
-    </div>
-    <div class="space-y-1.5">
-      <label class="text-base-content text-sm font-medium" for="translate-target-language-input">
-        {$t("settings.translation.targetLanguage")}
-      </label>
-      <input
-        id="translate-target-language-input"
-        class="border-base-300 bg-base-100 text-base-content focus:ring-primary w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
-        type="text"
-        bind:value={draftTargetLanguage}
-        list="translate-target-language-options"
-        placeholder="zh-CN"
-        autocomplete="off"
-      />
-      <datalist id="translate-target-language-options">
-        {#each languageOptions as option}
-          <option value={option.value}>{option.label}</option>
-        {/each}
-      </datalist>
-      <p class="text-base-content-muted text-xs">
-        {$t("settings.translation.targetLanguageHint")}
       </p>
     </div>
   </div>
