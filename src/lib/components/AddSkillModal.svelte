@@ -237,10 +237,36 @@
     };
   });
 
-  /** @param {string} url */
-  function toGitRepoUrl(url) {
-    const trimmed = url.trim();
-    return trimmed.endsWith(".git") ? trimmed : `${trimmed}.git`;
+  /** @param {string} value */
+  function isHttpGithubInput(value) {
+    return /^https?:\/\//i.test(value.trim());
+  }
+
+  /** @param {string} value */
+  function isGithubShorthand(value) {
+    return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value.trim());
+  }
+
+  /**
+   * @param {string} value
+   * @returns {{ githubPath: string; sourceUrl: string } | null}
+   */
+  function parseGithubInput(value) {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    if (isHttpGithubInput(trimmed)) {
+      return { githubPath: trimmed, sourceUrl: trimmed };
+    }
+
+    if (isGithubShorthand(trimmed)) {
+      return {
+        githubPath: trimmed,
+        sourceUrl: `https://github.com/${trimmed}`,
+      };
+    }
+
+    return null;
   }
 
   /** @param {string} uri */
@@ -753,7 +779,13 @@
   }
 
   async function handleDetectGithub() {
-    if (!githubUrl.trim()) return;
+    const parsed = parseGithubInput(githubUrl);
+    if (!parsed) {
+      githubError = "Unsupported URL format. Use http(s) URL or owner/repo.";
+      detectedSkills = [];
+      selectedSkill = null;
+      return;
+    }
 
     isDetecting = true;
     githubError = "";
@@ -761,7 +793,7 @@
     selectedSkill = null;
 
     try {
-      const skills = await detectGithubManual(githubUrl.trim());
+      const skills = await detectGithubManual(parsed.githubPath);
       detectedSkills = skills;
       if (skills.length === 0) {
         githubError = $t("addSkill.noSkillsFound");
@@ -875,11 +907,13 @@
 
     const githubSkill = selectedSkill;
     if (!githubSkill) return;
+    const parsed = parseGithubInput(githubUrl);
+    if (!parsed) throw new Error("Unsupported URL format. Use http(s) URL or owner/repo.");
     await installFromGithub({
       name: githubSkill.name,
       tmp_path: githubSkill.tmp_path,
       skill_path: githubSkill.skill_path,
-      source_url: toGitRepoUrl(githubUrl),
+      source_url: parsed.sourceUrl,
       skill_folder_hash: null,
       agent_apps: selectedAgents,
       method: selectedMethod,
