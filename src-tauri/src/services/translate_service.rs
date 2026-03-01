@@ -5,6 +5,22 @@ use std::fs;
 use std::path::PathBuf;
 const DEFAULT_MODEL: &str = "openai/gpt-4o-mini";
 
+fn build_translation_system_prompt(target_language: &str) -> String {
+  format!(
+    concat!(
+      "You are a professional technical translator for Markdown documentation.\n",
+      "Translate the user-provided markdown into {target_language}.\n",
+      "Rules:\n",
+      "1. Keep markdown structure exactly (headings, lists, tables, blockquotes).\n",
+      "2. Keep code fences, inline code, file paths, commands, URLs, env var names unchanged.\n",
+      "3. Keep YAML frontmatter keys unchanged; translate only human-readable values.\n",
+      "4. Do not add explanations, notes, or surrounding markdown/code fences.\n",
+      "5. Return only the translated markdown content."
+    ),
+    target_language = target_language
+  )
+}
+
 fn build_translation_cache_key(model: &str, target_language: &str, markdown: &str) -> String {
   let mut hasher = Sha256::new();
   hasher.update(markdown.as_bytes());
@@ -91,8 +107,17 @@ pub async fn translate_skill_markdown(markdown: String) -> Result<String, String
     .map(str::trim)
     .filter(|value| !value.is_empty())
     .ok_or_else(|| "OpenRouter API Key 未配置，请先在设置中填写".to_string())?;
-  let content =
-    ai_service::translate_markdown_with_openrouter(api_key, &model, &target_language, &markdown).await?;
+  let messages = vec![
+    ai_service::OpenRouterMessage {
+      role: "system".to_string(),
+      content: build_translation_system_prompt(&target_language),
+    },
+    ai_service::OpenRouterMessage {
+      role: "user".to_string(),
+      content: markdown.clone(),
+    },
+  ];
+  let content = ai_service::chat_completion_with_openrouter(api_key, &model, messages, 0.1).await?;
 
   if let Err(error) = save_translation_cache_entry(&cache_key, &content) {
     tracing::warn!("Failed to save translation cache: {}", error);

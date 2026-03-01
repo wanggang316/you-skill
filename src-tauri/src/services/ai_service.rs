@@ -12,6 +12,12 @@ pub struct OpenRouterModelOption {
   pub name: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenRouterMessage {
+  pub role: String,
+  pub content: String,
+}
+
 #[derive(Debug, Deserialize)]
 struct OpenRouterModelsResponse {
   data: Vec<OpenRouterModelItem>,
@@ -42,26 +48,12 @@ fn get_content_text(content: &Value) -> Option<String> {
   }
 }
 
-pub async fn translate_markdown_with_openrouter(
+pub async fn chat_completion_with_openrouter(
   api_key: &str,
   model: &str,
-  target_language: &str,
-  markdown: &str,
+  messages: Vec<OpenRouterMessage>,
+  temperature: f32,
 ) -> Result<String, String> {
-  let system_prompt = format!(
-    concat!(
-      "You are a professional technical translator for Markdown documentation.\n",
-      "Translate the user-provided markdown into {target_language}.\n",
-      "Rules:\n",
-      "1. Keep markdown structure exactly (headings, lists, tables, blockquotes).\n",
-      "2. Keep code fences, inline code, file paths, commands, URLs, env var names unchanged.\n",
-      "3. Keep YAML frontmatter keys unchanged; translate only human-readable values.\n",
-      "4. Do not add explanations, notes, or surrounding markdown/code fences.\n",
-      "5. Return only the translated markdown content."
-    ),
-    target_language = target_language
-  );
-
   let client = Client::builder()
     .timeout(Duration::from_secs(90))
     .build()
@@ -75,17 +67,8 @@ pub async fn translate_markdown_with_openrouter(
     .header("X-Title", "YouSkill")
     .json(&json!({
       "model": model,
-      "temperature": 0.1,
-      "messages": [
-        {
-          "role": "system",
-          "content": system_prompt
-        },
-        {
-          "role": "user",
-          "content": markdown
-        }
-      ]
+      "temperature": temperature,
+      "messages": messages
     }))
     .send()
     .await
