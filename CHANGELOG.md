@@ -8,7 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Added one-click translation for Markdown files in Skill directories.
 
 ### Changed
 
@@ -16,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+
+## [0.8.4] - 2026-03-01
+
+### Added
+- Added one-click translation for Markdown files in Skill directories.
 
 ## [0.8.3] - 2026-02-28
 
