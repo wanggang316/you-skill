@@ -12,6 +12,7 @@
   import ImagePreview from "$lib/components/ImagePreview.svelte";
   import { parseMarkdown, renderMarkdownBody } from "$lib/utils/markdown";
   import { t } from "$lib/i18n";
+  import { settings } from "$lib/stores/settings";
   import {
     fetchSkillsByNames,
     listSkillDirectory,
@@ -38,6 +39,9 @@
   let contentError = $state("");
   let content = $state("");
   let rawContent = $state("");
+  let originalMarkdownContent = $state("");
+  let translatedMarkdownContent = $state<string | null>(null);
+  let showingTranslated = $state(false);
   let hasFrontmatter = $state(false);
   let parsedFrontmatter = $state<Record<string, string>>({});
   let directoryOpen = $state(false);
@@ -54,6 +58,7 @@
   let translating = $state(false);
   let localImageObjectUrl: string | null = null;
   let directoryCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  const translationCache = new Map<string, string>();
 
   const params = $derived($page.params);
   const query = $derived($page.url.searchParams);
@@ -200,7 +205,28 @@
   const getEntryName = (entryPath: string) => entryPath.split("/").at(-1) || entryPath;
   const getExtension = (filePath: string) => filePath.split(".").at(-1)?.toLowerCase() || "";
   const activeFileName = $derived(getEntryName(activeFilePath));
-  const isSkillMarkdown = $derived(activeFileName.toLowerCase() === "skill.md");
+  const isTranslatableMarkdown = $derived(fileViewMode === "markdown");
+  const translateButtonLabel = $derived.by(() => {
+    if (showingTranslated) return $t("detail.showOriginal");
+    if (translatedMarkdownContent) return $t("detail.showTranslated");
+    return $t("detail.translate");
+  });
+
+  const contentHash = (input: string): string => {
+    let hash = 5381;
+    for (let i = 0; i < input.length; i += 1) {
+      hash = (hash * 33) ^ input.charCodeAt(i);
+    }
+    return (hash >>> 0).toString(36);
+  };
+
+  const applyMarkdownContent = (markdown: string) => {
+    rawContent = markdown;
+    const parsed = parseMarkdown(markdown);
+    parsedFrontmatter = parsed.frontmatter as Record<string, string>;
+    hasFrontmatter = parsed.hasFrontmatter;
+    content = parsed.content;
+  };
 
   const resolveFileViewMode = (filePath: string): FileViewMode => {
     if (isMarkdownFile(filePath)) return "markdown";
@@ -420,6 +446,9 @@
     codeLineNumbersText = "";
     sourceLink = "";
     rawContent = "";
+    originalMarkdownContent = "";
+    translatedMarkdownContent = null;
+    showingTranslated = false;
     translating = false;
     resetBinaryPreview();
     contentLoading = true;
@@ -435,6 +464,9 @@
       if (fileViewMode === "unsupported") {
         content = "";
         rawContent = "";
+        originalMarkdownContent = "";
+        translatedMarkdownContent = null;
+        showingTranslated = false;
         parsedFrontmatter = {};
         hasFrontmatter = false;
         return;
@@ -464,6 +496,9 @@
         }
         content = "";
         rawContent = "";
+        originalMarkdownContent = "";
+        translatedMarkdownContent = null;
+        showingTranslated = false;
         parsedFrontmatter = {};
         hasFrontmatter = false;
         return;
@@ -501,11 +536,10 @@
         fetchedContent = await response.text();
       }
       if (fileViewMode === "markdown") {
-        rawContent = fetchedContent;
-        const parsed = parseMarkdown(fetchedContent);
-        parsedFrontmatter = parsed.frontmatter as Record<string, string>;
-        hasFrontmatter = parsed.hasFrontmatter;
-        content = parsed.content;
+        originalMarkdownContent = fetchedContent;
+        translatedMarkdownContent = null;
+        showingTranslated = false;
+        applyMarkdownContent(fetchedContent);
       } else if (fileViewMode === "code") {
         rawContent = fetchedContent;
         parsedFrontmatter = {};
@@ -519,6 +553,9 @@
       hasFrontmatter = false;
       content = "";
       rawContent = "";
+      originalMarkdownContent = "";
+      translatedMarkdownContent = null;
+      showingTranslated = false;
       renderedCode = "";
       codeLineNumbersText = "";
       resetBinaryPreview();
@@ -591,16 +628,45 @@
   };
 
   const handleTranslateSkill = async () => {
-    if (!isSkillMarkdown || fileViewMode !== "markdown" || !rawContent || translating) return;
+    if (!isTranslatableMarkdown || !originalMarkdownContent || translating) return;
+
+    if (showingTranslated) {
+      showingTranslated = false;
+      applyMarkdownContent(originalMarkdownContent);
+      return;
+    }
+
+    if (translatedMarkdownContent) {
+      showingTranslated = true;
+      applyMarkdownContent(translatedMarkdownContent);
+      return;
+    }
+
+    const cacheKey = [
+      currentType,
+      currentName,
+      activeFilePath,
+      $settings.translate_target_language || "zh-CN",
+      $settings.translate_model || "openai/gpt-4o-mini",
+      contentHash(originalMarkdownContent),
+    ].join("|");
+
+    const cached = translationCache.get(cacheKey);
+    if (cached) {
+      translatedMarkdownContent = cached;
+      showingTranslated = true;
+      applyMarkdownContent(cached);
+      return;
+    }
+
     translating = true;
     contentError = "";
     try {
-      const translatedMarkdown = await translateSkillMarkdown(rawContent);
-      rawContent = translatedMarkdown;
-      const parsed = parseMarkdown(translatedMarkdown);
-      parsedFrontmatter = parsed.frontmatter as Record<string, string>;
-      hasFrontmatter = parsed.hasFrontmatter;
-      content = parsed.content;
+      const translatedMarkdown = await translateSkillMarkdown(originalMarkdownContent);
+      translatedMarkdownContent = translatedMarkdown;
+      translationCache.set(cacheKey, translatedMarkdown);
+      showingTranslated = true;
+      applyMarkdownContent(translatedMarkdown);
     } catch (err) {
       contentError = String(err);
     } finally {
@@ -656,8 +722,9 @@
       if (!directoryLoading && !skillLoading) openDirectoryDrawer();
     }}
     onTranslate={handleTranslateSkill}
-    showTranslate={isSkillMarkdown}
+    showTranslate={isTranslatableMarkdown}
     {translating}
+    translateLabel={translateButtonLabel}
     onRefreshAgentApps={() => {}}
   />
 

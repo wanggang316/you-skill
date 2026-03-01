@@ -10,6 +10,7 @@ const defaultSettings: AppSettings = {
   unknown_skill_install_permission: false,
   openrouter_api_key: null,
   translate_target_language: "zh-CN",
+  translate_model: "openai/gpt-4o-mini",
 };
 
 export const settings = writable<AppSettings>({ ...defaultSettings });
@@ -106,6 +107,7 @@ export const loadSettings = async () => {
       unknown_skill_install_permission: remote.unknown_skill_install_permission,
       openrouter_api_key: remote.openrouter_api_key ?? null,
       translate_target_language: remote.translate_target_language || "zh-CN",
+      translate_model: remote.translate_model || "openai/gpt-4o-mini",
     };
     settings.set(merged);
     applyTheme(merged.theme);
@@ -128,6 +130,7 @@ export const updateSettings = async (
       | "unknown_skill_install_permission"
       | "openrouter_api_key"
       | "translate_target_language"
+      | "translate_model"
     >
   >
 ) => {

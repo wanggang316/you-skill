@@ -2,11 +2,13 @@
   import Modal from "./ui/Modal.svelte";
   import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
   import { t } from "$lib/i18n";
+  import { listOpenRouterModels, type OpenRouterModelOption } from "$lib/api/settings";
 
   let {
     open = $bindable(false),
     apiKey = "",
     targetLanguage = "zh-CN",
+    model = "openai/gpt-4o-mini",
     saving = false,
     onSave = async () => {},
     onCancel = () => {},
@@ -14,19 +16,59 @@
     open?: boolean;
     apiKey?: string;
     targetLanguage?: string;
+    model?: string;
     saving?: boolean;
-    onSave?: (payload: { apiKey: string; targetLanguage: string }) => Promise<void> | void;
+    onSave?: (payload: { apiKey: string; targetLanguage: string; model: string }) => Promise<void> | void;
     onCancel?: () => void;
   }>();
 
   let draftApiKey = $state("");
   let draftTargetLanguage = $state("zh-CN");
+  let draftModel = $state("openai/gpt-4o-mini");
+  let modelOptions = $state<OpenRouterModelOption[]>([]);
+  let loadingModels = $state(false);
+  let modelsError = $state("");
+
+  const languageOptions = [
+    { value: "zh-CN", label: "简体中文 (zh-CN)" },
+    { value: "en", label: "English (en)" },
+    { value: "ja", label: "日本語 (ja)" },
+    { value: "ko", label: "한국어 (ko)" },
+    { value: "es", label: "Español (es)" },
+    { value: "fr", label: "Français (fr)" },
+    { value: "de", label: "Deutsch (de)" },
+  ];
+
+  const fallbackModelOptions: OpenRouterModelOption[] = [
+    { id: "openai/gpt-4o-mini", name: "GPT-4o Mini" },
+    { id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini" },
+    { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet" },
+    { id: "google/gemini-2.0-flash-001", name: "Gemini 2.0 Flash" },
+  ];
 
   $effect(() => {
     if (open) {
       draftApiKey = apiKey || "";
       draftTargetLanguage = targetLanguage || "zh-CN";
+      draftModel = model || "openai/gpt-4o-mini";
     }
+  });
+
+  $effect(() => {
+    if (!open) return;
+    loadingModels = true;
+    modelsError = "";
+    listOpenRouterModels()
+      .then((models) => {
+        modelOptions = models.length > 0 ? models : fallbackModelOptions;
+      })
+      .catch((error) => {
+        modelsError = error instanceof Error ? error.message : String(error);
+        modelOptions = fallbackModelOptions;
+      })
+      .finally(() => {
+        loadingModels = false;
+      });
   });
 
   const closeModal = () => {
@@ -37,7 +79,8 @@
   const handleSave = async () => {
     await onSave({
       apiKey: draftApiKey.trim(),
-      targetLanguage: draftTargetLanguage.trim() || "zh-CN",
+      targetLanguage: draftTargetLanguage || "zh-CN",
+      model: draftModel || "openai/gpt-4o-mini",
     });
   };
 </script>
@@ -63,16 +106,51 @@
       />
     </div>
     <div class="space-y-1.5">
-      <label class="text-base-content text-sm font-medium" for="translate-target-language">
+      <label class="text-base-content text-sm font-medium" for="translate-model-input">
+        {$t("settings.translation.model")}
+      </label>
+      <input
+        id="translate-model-input"
+        class="border-base-300 bg-base-100 text-base-content focus:ring-primary w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+        type="text"
+        bind:value={draftModel}
+        list="translate-model-options"
+        placeholder="openai/gpt-4o-mini"
+        autocomplete="off"
+      />
+      <datalist id="translate-model-options">
+        {#each modelOptions as option}
+          <option value={option.id}>{option.name}</option>
+        {/each}
+      </datalist>
+      <p class="text-base-content-muted text-xs">
+        {#if loadingModels}
+          {$t("settings.translation.loadingModels")}
+        {:else if modelsError}
+          {$t("settings.translation.loadModelsFailed")}
+        {:else}
+          {$t("settings.translation.modelHint")}
+        {/if}
+      </p>
+    </div>
+    <div class="space-y-1.5">
+      <label class="text-base-content text-sm font-medium" for="translate-target-language-input">
         {$t("settings.translation.targetLanguage")}
       </label>
       <input
-        id="translate-target-language"
+        id="translate-target-language-input"
         class="border-base-300 bg-base-100 text-base-content focus:ring-primary w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
         type="text"
         bind:value={draftTargetLanguage}
+        list="translate-target-language-options"
         placeholder="zh-CN"
+        autocomplete="off"
       />
+      <datalist id="translate-target-language-options">
+        {#each languageOptions as option}
+          <option value={option.value}>{option.label}</option>
+        {/each}
+      </datalist>
       <p class="text-base-content-muted text-xs">
         {$t("settings.translation.targetLanguageHint")}
       </p>

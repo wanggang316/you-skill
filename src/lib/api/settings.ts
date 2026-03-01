@@ -15,6 +15,7 @@ export interface AppSettings {
   last_backup_time?: string | null;
   openrouter_api_key?: string | null;
   translate_target_language: string;
+  translate_model: string;
 }
 
 /**
@@ -36,6 +37,7 @@ export async function updateSettings(
     | "unknown_skill_install_permission"
     | "openrouter_api_key"
     | "translate_target_language"
+    | "translate_model"
   >
 ): Promise<AppSettings> {
   return apiCall<AppSettings>("update_settings", { settings });
@@ -60,6 +62,17 @@ export async function openBackupFolder(path: string): Promise<void> {
  */
 export async function backupSkills(backupFolder: string): Promise<BackupResult> {
   return apiCall<BackupResult>("backup_skills", { backupFolder });
+}
+
+export interface OpenRouterModelOption {
+  id: string;
+  name: string;
+}
+
+export async function listOpenRouterModels(search?: string): Promise<OpenRouterModelOption[]> {
+  return apiCall<OpenRouterModelOption[]>("list_openrouter_models", {
+    search: search?.trim() || null,
+  });
 }
 
 export interface BackupResult {

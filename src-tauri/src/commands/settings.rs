@@ -1,5 +1,6 @@
 use crate::config::{load_config, save_config};
 use crate::services::backup_service::{self, BackupResult};
+use crate::services::translate_service::{self, OpenRouterModelOption};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -13,12 +14,18 @@ pub struct SettingsPayload {
   pub openrouter_api_key: Option<String>,
   #[serde(default = "default_translate_target_language")]
   pub translate_target_language: String,
+  #[serde(default = "default_translate_model")]
+  pub translate_model: String,
   pub backup_folder: Option<String>,
   pub last_backup_time: Option<String>,
 }
 
 fn default_translate_target_language() -> String {
   "zh-CN".to_string()
+}
+
+fn default_translate_model() -> String {
+  "openai/gpt-4o-mini".to_string()
 }
 
 #[tauri::command]
@@ -31,6 +38,7 @@ pub fn get_settings() -> Result<SettingsPayload, String> {
     unknown_skill_install_permission: config.unknown_skill_install_permission,
     openrouter_api_key: config.openrouter_api_key,
     translate_target_language: config.translate_target_language,
+    translate_model: config.translate_model,
     backup_folder: config.backup_folder,
     last_backup_time: config.last_backup_time,
   })
@@ -53,6 +61,11 @@ pub fn update_settings(settings: SettingsPayload) -> Result<SettingsPayload, Str
   } else {
     settings.translate_target_language.trim().to_string()
   };
+  config.translate_model = if settings.translate_model.trim().is_empty() {
+    default_translate_model()
+  } else {
+    settings.translate_model.trim().to_string()
+  };
   save_config(&config)?;
   Ok(SettingsPayload {
     language: config.language,
@@ -61,6 +74,7 @@ pub fn update_settings(settings: SettingsPayload) -> Result<SettingsPayload, Str
     unknown_skill_install_permission: config.unknown_skill_install_permission,
     openrouter_api_key: config.openrouter_api_key,
     translate_target_language: config.translate_target_language,
+    translate_model: config.translate_model,
     backup_folder: config.backup_folder,
     last_backup_time: config.last_backup_time,
   })
@@ -82,4 +96,9 @@ pub fn open_backup_folder(path: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn backup_skills(backup_folder: String) -> Result<BackupResult, String> {
   backup_service::backup_skills(backup_folder).await
+}
+
+#[tauri::command]
+pub async fn list_openrouter_models(search: Option<String>) -> Result<Vec<OpenRouterModelOption>, String> {
+  translate_service::list_openrouter_models(search).await
 }

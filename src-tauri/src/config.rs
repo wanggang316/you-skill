@@ -13,6 +13,7 @@ pub struct AppConfig {
   pub last_backup_time: Option<String>,
   pub openrouter_api_key: Option<String>,
   pub translate_target_language: String,
+  pub translate_model: String,
 }
 
 impl Default for AppConfig {
@@ -26,6 +27,7 @@ impl Default for AppConfig {
       last_backup_time: None,
       openrouter_api_key: None,
       translate_target_language: "zh-CN".to_string(),
+      translate_model: "openai/gpt-4o-mini".to_string(),
     }
   }
 }

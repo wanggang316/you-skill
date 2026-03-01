@@ -41,6 +41,7 @@
     onTranslate = undefined,
     showTranslate = false,
     translating = false,
+    translateLabel = undefined,
     localScopeKey = $bindable("global"),
     projects = [],
   } = $props();
@@ -185,7 +186,7 @@
                   {$t("detail.translating")}
                 {:else}
                   <Languages size={16} />
-                  {$t("detail.translate")}
+                  {translateLabel || $t("detail.translate")}
                 {/if}
               </button>
             {/if}

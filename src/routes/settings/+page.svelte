@@ -216,12 +216,17 @@
     window.history.back();
   };
 
-  const handleSaveTranslateSettings = async (payload: { apiKey: string; targetLanguage: string }) => {
+  const handleSaveTranslateSettings = async (payload: {
+    apiKey: string;
+    targetLanguage: string;
+    model: string;
+  }) => {
     savingTranslateSettings = true;
     try {
       await updateSettings({
         openrouter_api_key: payload.apiKey || null,
         translate_target_language: payload.targetLanguage || "zh-CN",
+        translate_model: payload.model || "openai/gpt-4o-mini",
       });
       translateSettingsOpen = false;
     } finally {
@@ -353,6 +358,11 @@
                   language: $settings.translate_target_language || "zh-CN",
                 })}
               </span>
+              <span class="text-base-content-muted text-xs">
+                {$t("settings.translation.modelValue", {
+                  model: $settings.translate_model || "openai/gpt-4o-mini",
+                })}
+              </span>
             </div>
             <button
               class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px]"
@@ -467,6 +477,7 @@
   bind:open={translateSettingsOpen}
   apiKey={$settings.openrouter_api_key ?? ""}
   targetLanguage={$settings.translate_target_language || "zh-CN"}
+  model={$settings.translate_model || "openai/gpt-4o-mini"}
   saving={savingTranslateSettings}
   onSave={handleSaveTranslateSettings}
 />

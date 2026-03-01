@@ -16,7 +16,8 @@ use commands::{
   },
   remote::{fetch_remote_skills, fetch_skills_by_names, record_skill_install},
   settings::{
-    backup_skills, get_settings, open_backup_folder, set_backup_folder, update_settings,
+    backup_skills, get_settings, list_openrouter_models, open_backup_folder, set_backup_folder,
+    update_settings,
   },
   skill::{
     check_skill_version, check_skills_updates, delete_skill, detect_folder, detect_github_auto,
@@ -102,6 +103,7 @@ fn main() {
       set_backup_folder,
       open_backup_folder,
       backup_skills,
+      list_openrouter_models,
       read_skill_file,
       list_skill_directory,
       read_skill_relative_file,
