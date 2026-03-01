@@ -13,6 +13,8 @@ export interface AppSettings {
   unknown_skill_install_permission: boolean;
   backup_folder?: string | null;
   last_backup_time?: string | null;
+  openrouter_api_key?: string | null;
+  translate_target_language: string;
 }
 
 /**
@@ -28,7 +30,12 @@ export async function getSettings(): Promise<AppSettings> {
 export async function updateSettings(
   settings: Pick<
     AppSettings,
-    "language" | "theme" | "sync_mode" | "unknown_skill_install_permission"
+    | "language"
+    | "theme"
+    | "sync_mode"
+    | "unknown_skill_install_permission"
+    | "openrouter_api_key"
+    | "translate_target_language"
   >
 ): Promise<AppSettings> {
   return apiCall<AppSettings>("update_settings", { settings });

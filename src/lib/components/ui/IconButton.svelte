@@ -1,13 +1,14 @@
 <script>
-  /** @type {{ onclick?: () => void; title?: string; ariaLabel?: string; variant?: 'primary' | 'outline' | 'ghost'; disabled?: boolean; class?: string; children: import('svelte').Snippet }} */
+  /** @type {{ onclick?: (event: MouseEvent) => void; onClick?: (event: MouseEvent) => void; title?: string; ariaLabel?: string; variant?: 'primary' | 'outline' | 'ghost'; disabled?: boolean; class?: string; children?: import('svelte').Snippet }} */
   let {
     onclick,
+    onClick,
     title,
     ariaLabel,
     variant = "ghost",
     disabled = false,
     class: className = "",
-    children,
+    children = () => null,
   } = $props();
 
   const baseClass = "inline-flex items-center justify-center rounded-xl p-2 transition";
@@ -19,11 +20,12 @@
   };
 
   const resolvedClass = $derived(`${baseClass} ${variants[variant]} ${className}`);
+  const clickHandler = $derived(onClick ?? onclick ?? (() => {}));
 </script>
 
 <button
   class={resolvedClass}
-  {onclick}
+  onclick={clickHandler}
   {title}
   aria-label={ariaLabel ?? title}
   {disabled}

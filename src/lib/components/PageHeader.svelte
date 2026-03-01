@@ -9,11 +9,15 @@
     ExternalLink,
     RefreshCw,
     Loader2,
+    Languages,
   } from "@lucide/svelte";
-  import IconButton from "./ui/IconButton.svelte";
   import SegmentedTabs from "./ui/SegmentedTabs.svelte";
   import InstallScopeSelect from "./InstallScopeSelect.svelte";
   import { t } from "../i18n";
+
+  const noop = () => {};
+  const iconButtonClass =
+    "inline-flex items-center justify-center rounded-xl border border-base-300 bg-base-100 p-2 text-base-content transition hover:bg-base-300";
 
   let {
     currentView,
@@ -24,16 +28,19 @@
     hasUpdate,
     agentAppsLoading = false,
     onChangeView = undefined,
-    onChangeTab,
-    onAddSkill,
-    onOpenUpdate,
-    onOpenProjectManage = undefined,
-    onOpenSettings,
+    onChangeTab = noop,
+    onAddSkill = noop,
+    onOpenUpdate = noop,
+    onOpenProjectManage = noop,
+    onOpenSettings = noop,
     updateLoading = false,
-    onBack,
-    onDetailAction,
+    onBack = noop,
+    onDetailAction = undefined,
     onOpenCatalog = undefined,
-    onRefreshAgentApps,
+    onRefreshAgentApps = noop,
+    onTranslate = undefined,
+    showTranslate = false,
+    translating = false,
     localScopeKey = $bindable("global"),
     projects = [],
   } = $props();
@@ -67,33 +74,36 @@
             value={activeTab}
             onChange={onChangeTab}
           />
-          <IconButton
-            variant="primary"
+          <button
+            class="bg-primary text-primary-content hover:bg-primary/80 inline-flex items-center justify-center rounded-xl p-2 transition"
             onclick={onAddSkill}
             title={$t("header.add")}
-            ariaLabel={$t("header.add")}
+            aria-label={$t("header.add")}
+            type="button"
           >
             <Plus size={16} />
-          </IconButton>
+          </button>
         </div>
         <div class="flex items-center gap-2">
           <InstallScopeSelect bind:value={localScopeKey} {projects} />
-          <IconButton
-            variant="outline"
+          <button
+            class={iconButtonClass}
             onclick={onOpenProjectManage}
             title={$t("projectManage.title")}
-            ariaLabel={$t("projectManage.title")}
+            aria-label={$t("projectManage.title")}
+            type="button"
           >
             <Folders size={16} />
-          </IconButton>
-          <IconButton
-            variant="outline"
+          </button>
+          <button
+            class={iconButtonClass}
             onclick={onOpenSettings ?? onOpenUpdate}
             title={$t("header.settings")}
-            ariaLabel={$t("header.settings")}
+            aria-label={$t("header.settings")}
+            type="button"
           >
             <Settings size={16} />
-          </IconButton>
+          </button>
           {#if hasUpdate}
             <button
               class="bg-error/10 text-error/60 hover:text-error/80 hover:bg-error/25 border-error/60 disabled:bg-error/5 flex items-center rounded-xl border p-2 text-xs transition"
@@ -163,25 +173,43 @@
             </div>
           </div>
           <div class="flex items-center gap-2">
+            {#if showTranslate && onTranslate}
+              <button
+                class="border-base-300 text-base-content hover:bg-base-200 flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition disabled:opacity-50"
+                onclick={onTranslate}
+                disabled={translating}
+                type="button"
+              >
+                {#if translating}
+                  <Loader2 size={16} class="animate-spin" />
+                  {$t("detail.translating")}
+                {:else}
+                  <Languages size={16} />
+                  {$t("detail.translate")}
+                {/if}
+              </button>
+            {/if}
             {#if onOpenCatalog}
-              <IconButton
-                variant="outline"
+              <button
+                class={iconButtonClass}
                 onclick={onOpenCatalog}
                 title={$t("detail.catalog")}
-                ariaLabel={$t("detail.catalog")}
+                aria-label={$t("detail.catalog")}
+                type="button"
               >
                 <List size={16} />
-              </IconButton>
+              </button>
             {/if}
             {#if onDetailAction}
-              <IconButton
-                variant="outline"
+              <button
+                class={iconButtonClass}
                 onclick={onDetailAction}
                 title={$t("detail.openInBrowser")}
-                ariaLabel={$t("detail.openInBrowser")}
+                aria-label={$t("detail.openInBrowser")}
+                type="button"
               >
                 <ExternalLink size={16} />
-              </IconButton>
+              </button>
             {/if}
           </div>
         </div>

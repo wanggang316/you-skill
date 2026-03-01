@@ -11,6 +11,8 @@ pub struct AppConfig {
   pub unknown_skill_install_permission: bool,
   pub backup_folder: Option<String>,
   pub last_backup_time: Option<String>,
+  pub openrouter_api_key: Option<String>,
+  pub translate_target_language: String,
 }
 
 impl Default for AppConfig {
@@ -22,6 +24,8 @@ impl Default for AppConfig {
       unknown_skill_install_permission: false,
       backup_folder: None,
       last_backup_time: None,
+      openrouter_api_key: None,
+      translate_target_language: "zh-CN".to_string(),
     }
   }
 }

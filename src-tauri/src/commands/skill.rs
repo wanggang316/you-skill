@@ -3,7 +3,7 @@ use crate::models::{
   InstallScope, LocalSkill, ManageSkillAgentAppsRequest, SkillDirectoryEntry, SkillUpdateCheckItem,
   SourceCheckResult,
 };
-use crate::services::skill_service;
+use crate::services::{skill_service, translate_service};
 
 #[tauri::command]
 pub fn list_skills(scope: InstallScope, project_path: Option<String>) -> Result<Vec<LocalSkill>, String> {
@@ -109,4 +109,9 @@ pub async fn read_skill_relative_file_bytes(
 #[tauri::command]
 pub fn check_skills_updates(checks: Vec<SkillUpdateCheckItem>) -> Result<Vec<String>, String> {
   skill_service::check_skills_updates(checks)
+}
+
+#[tauri::command]
+pub async fn translate_skill_markdown(markdown: String) -> Result<String, String> {
+  translate_service::translate_skill_markdown(markdown).await
 }

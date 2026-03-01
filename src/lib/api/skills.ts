@@ -296,6 +296,10 @@ export async function openInFileManager(filePath: string): Promise<void> {
   return apiCall<void>("open_in_file_manager", { filePath });
 }
 
+export async function translateSkillMarkdown(markdown: string): Promise<string> {
+  return apiCall<string>("translate_skill_markdown", { markdown });
+}
+
 /**
  * 记录技能安装
  */

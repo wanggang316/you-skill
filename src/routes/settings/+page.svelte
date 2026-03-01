@@ -6,6 +6,7 @@
   import { get } from "svelte/store";
   import { getSettings, setBackupFolder, openBackupFolder, backupSkills } from "$lib/api";
   import IconButton from "$lib/components/ui/IconButton.svelte";
+  import TranslateSettingsModal from "$lib/components/TranslateSettingsModal.svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import { FolderOpen, Loader2, ChevronRight, Download, ChevronLeft } from "@lucide/svelte";
   import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -32,6 +33,8 @@
 
   // Agent apps state
   let installedAgentAppsCount = $state(0);
+  let translateSettingsOpen = $state(false);
+  let savingTranslateSettings = $state(false);
 
   // Load installed agent apps count on mount
   $effect(() => {
@@ -212,6 +215,19 @@
     }
     window.history.back();
   };
+
+  const handleSaveTranslateSettings = async (payload: { apiKey: string; targetLanguage: string }) => {
+    savingTranslateSettings = true;
+    try {
+      await updateSettings({
+        openrouter_api_key: payload.apiKey || null,
+        translate_target_language: payload.targetLanguage || "zh-CN",
+      });
+      translateSettingsOpen = false;
+    } finally {
+      savingTranslateSettings = false;
+    }
+  };
 </script>
 
 <div class="bg-base-100 text-base-content flex h-screen flex-col overflow-hidden">
@@ -327,6 +343,29 @@
           </div>
         </div>
 
+        <!-- Translation -->
+        <div class="bg-base-200 rounded-2xl px-4 py-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex flex-col">
+              <span class="text-base-content text-[15px]">{$t("settings.translation.title")}</span>
+              <span class="text-base-content-muted text-xs">
+                {$t("settings.translation.targetLanguageValue", {
+                  language: $settings.translate_target_language || "zh-CN",
+                })}
+              </span>
+            </div>
+            <button
+              class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px]"
+              onclick={() => {
+                translateSettingsOpen = true;
+              }}
+              type="button"
+            >
+              {$t("agentApps.configButton")}
+            </button>
+          </div>
+        </div>
+
         <!-- Backup -->
         <div class="bg-base-200 rounded-2xl px-4 py-2.5">
           <div class="flex items-center justify-between">
@@ -423,3 +462,11 @@
     </div>
   </main>
 </div>
+
+<TranslateSettingsModal
+  bind:open={translateSettingsOpen}
+  apiKey={$settings.openrouter_api_key ?? ""}
+  targetLanguage={$settings.translate_target_language || "zh-CN"}
+  saving={savingTranslateSettings}
+  onSave={handleSaveTranslateSettings}
+/>

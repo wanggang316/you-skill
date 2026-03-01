@@ -8,6 +8,8 @@ const defaultSettings: AppSettings = {
   theme: "system",
   sync_mode: "symlink",
   unknown_skill_install_permission: false,
+  openrouter_api_key: null,
+  translate_target_language: "zh-CN",
 };
 
 export const settings = writable<AppSettings>({ ...defaultSettings });
@@ -102,6 +104,8 @@ export const loadSettings = async () => {
       theme: remote.theme,
       sync_mode: remote.sync_mode,
       unknown_skill_install_permission: remote.unknown_skill_install_permission,
+      openrouter_api_key: remote.openrouter_api_key ?? null,
+      translate_target_language: remote.translate_target_language || "zh-CN",
     };
     settings.set(merged);
     applyTheme(merged.theme);
@@ -116,7 +120,15 @@ export const loadSettings = async () => {
 
 export const updateSettings = async (
   patch: Partial<
-    Pick<AppSettings, "language" | "theme" | "sync_mode" | "unknown_skill_install_permission">
+    Pick<
+      AppSettings,
+      | "language"
+      | "theme"
+      | "sync_mode"
+      | "unknown_skill_install_permission"
+      | "openrouter_api_key"
+      | "translate_target_language"
+    >
   >
 ) => {
   const current = get(settings);

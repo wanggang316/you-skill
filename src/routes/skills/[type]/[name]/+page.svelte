@@ -20,6 +20,7 @@
     readSkillRelativeFileBytes,
     readSkillRelativeFile,
     readSkillFile,
+    translateSkillMarkdown,
     type LocalSkill,
     type RemoteSkill,
     type SkillDirectoryEntry,
@@ -36,6 +37,7 @@
   let contentLoading = $state(true);
   let contentError = $state("");
   let content = $state("");
+  let rawContent = $state("");
   let hasFrontmatter = $state(false);
   let parsedFrontmatter = $state<Record<string, string>>({});
   let directoryOpen = $state(false);
@@ -49,6 +51,7 @@
   let codeLineNumbersText = $state("");
   let imagePreviewUrl = $state("");
   let sourceLink = $state("");
+  let translating = $state(false);
   let localImageObjectUrl: string | null = null;
   let directoryCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -197,6 +200,7 @@
   const getEntryName = (entryPath: string) => entryPath.split("/").at(-1) || entryPath;
   const getExtension = (filePath: string) => filePath.split(".").at(-1)?.toLowerCase() || "";
   const activeFileName = $derived(getEntryName(activeFilePath));
+  const isSkillMarkdown = $derived(activeFileName.toLowerCase() === "skill.md");
 
   const resolveFileViewMode = (filePath: string): FileViewMode => {
     if (isMarkdownFile(filePath)) return "markdown";
@@ -415,6 +419,8 @@
     renderedCode = "";
     codeLineNumbersText = "";
     sourceLink = "";
+    rawContent = "";
+    translating = false;
     resetBinaryPreview();
     contentLoading = true;
     contentError = "";
@@ -428,6 +434,7 @@
 
       if (fileViewMode === "unsupported") {
         content = "";
+        rawContent = "";
         parsedFrontmatter = {};
         hasFrontmatter = false;
         return;
@@ -456,21 +463,22 @@
           imagePreviewUrl = `https://raw.githubusercontent.com/${owner}/${cleanRepo}/${encodeURIComponent(branch)}/${fullPath}`;
         }
         content = "";
+        rawContent = "";
         parsedFrontmatter = {};
         hasFrontmatter = false;
         return;
       }
 
-      let rawContent = "";
+      let fetchedContent = "";
       if (currentType === "local") {
         const localPath = getSkillRootPath();
         if (!localPath) {
           throw new Error("Skill path is missing");
         }
         if (filePath === "SKILL.md") {
-          rawContent = await readSkillFile(localPath);
+          fetchedContent = await readSkillFile(localPath);
         } else {
-          rawContent = await readSkillRelativeFile(localPath, filePath);
+          fetchedContent = await readSkillRelativeFile(localPath, filePath);
         }
       } else {
         if (!("url" in skill)) {
@@ -490,24 +498,27 @@
         if (!response.ok) {
           throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
         }
-        rawContent = await response.text();
+        fetchedContent = await response.text();
       }
       if (fileViewMode === "markdown") {
-        const parsed = parseMarkdown(rawContent);
+        rawContent = fetchedContent;
+        const parsed = parseMarkdown(fetchedContent);
         parsedFrontmatter = parsed.frontmatter as Record<string, string>;
         hasFrontmatter = parsed.hasFrontmatter;
         content = parsed.content;
       } else if (fileViewMode === "code") {
+        rawContent = fetchedContent;
         parsedFrontmatter = {};
         hasFrontmatter = false;
-        content = rawContent;
-        renderCode(rawContent, filePath);
+        content = fetchedContent;
+        renderCode(fetchedContent, filePath);
       }
     } catch (err) {
       contentError = String(err);
       parsedFrontmatter = {};
       hasFrontmatter = false;
       content = "";
+      rawContent = "";
       renderedCode = "";
       codeLineNumbersText = "";
       resetBinaryPreview();
@@ -579,6 +590,24 @@
     }
   };
 
+  const handleTranslateSkill = async () => {
+    if (!isSkillMarkdown || fileViewMode !== "markdown" || !rawContent || translating) return;
+    translating = true;
+    contentError = "";
+    try {
+      const translatedMarkdown = await translateSkillMarkdown(rawContent);
+      rawContent = translatedMarkdown;
+      const parsed = parseMarkdown(translatedMarkdown);
+      parsedFrontmatter = parsed.frontmatter as Record<string, string>;
+      hasFrontmatter = parsed.hasFrontmatter;
+      content = parsed.content;
+    } catch (err) {
+      contentError = String(err);
+    } finally {
+      translating = false;
+    }
+  };
+
   $effect(() => {
     params.type;
     params.name;
@@ -626,6 +655,9 @@
     onOpenCatalog={() => {
       if (!directoryLoading && !skillLoading) openDirectoryDrawer();
     }}
+    onTranslate={handleTranslateSkill}
+    showTranslate={isSkillMarkdown}
+    {translating}
     onRefreshAgentApps={() => {}}
   />
 
