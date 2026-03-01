@@ -10,9 +10,11 @@
   import MarkdownPreview from "$lib/components/MarkdownPreview.svelte";
   import CodePreview from "$lib/components/CodePreview.svelte";
   import ImagePreview from "$lib/components/ImagePreview.svelte";
+  import TranslateSettingsModal from "$lib/components/TranslateSettingsModal.svelte";
+  import MissingTranslationSettingsModal from "$lib/components/MissingTranslationSettingsModal.svelte";
   import { parseMarkdown, renderMarkdownBody } from "$lib/utils/markdown";
   import { t } from "$lib/i18n";
-  import { settings } from "$lib/stores/settings";
+  import { settings, updateSettings } from "$lib/stores/settings";
   import {
     fetchSkillsByNames,
     listSkillDirectory,
@@ -56,6 +58,10 @@
   let imagePreviewUrl = $state("");
   let sourceLink = $state("");
   let translating = $state(false);
+  let translateSettingsOpen = $state(false);
+  let savingTranslateSettings = $state(false);
+  let missingTranslationSettingsOpen = $state(false);
+  let missingTranslationSettingsFields = $state<string[]>([]);
   let localImageObjectUrl: string | null = null;
   let directoryCloseTimer: ReturnType<typeof setTimeout> | null = null;
   const translationCache = new Map<string, string>();
@@ -659,6 +665,25 @@
       return;
     }
 
+    const missingFields: string[] = [];
+    const targetLanguage = ($settings.translate_target_language || "").trim();
+    const apiKey = ($settings.openrouter_api_key || "").trim();
+    const model = ($settings.translate_model || "").trim();
+    if (!targetLanguage) {
+      missingFields.push($t("settings.translation.targetLanguage"));
+    }
+    if (!apiKey) {
+      missingFields.push($t("settings.translation.apiKey"));
+    }
+    if (!model) {
+      missingFields.push($t("settings.translation.model"));
+    }
+    if (missingFields.length > 0) {
+      missingTranslationSettingsFields = missingFields;
+      missingTranslationSettingsOpen = true;
+      return;
+    }
+
     translating = true;
     contentError = "";
     try {
@@ -668,9 +693,47 @@
       showingTranslated = true;
       applyMarkdownContent(translatedMarkdown);
     } catch (err) {
-      contentError = String(err);
+      const errorText = String(err);
+      const hasMissingConfigError =
+        errorText.includes("未配置") || errorText.toLowerCase().includes("not configured");
+      if (hasMissingConfigError) {
+        const backendMissingFields: string[] = [];
+        if (!(($settings.translate_target_language || "").trim())) {
+          backendMissingFields.push($t("settings.translation.targetLanguage"));
+        }
+        if (!(($settings.openrouter_api_key || "").trim())) {
+          backendMissingFields.push($t("settings.translation.apiKey"));
+        }
+        if (!(($settings.translate_model || "").trim())) {
+          backendMissingFields.push($t("settings.translation.model"));
+        }
+        missingTranslationSettingsFields = backendMissingFields.length
+          ? backendMissingFields
+          : [$t("settings.translation.apiKey")];
+        missingTranslationSettingsOpen = true;
+      } else {
+        contentError = errorText;
+      }
     } finally {
       translating = false;
+    }
+  };
+
+  const handleSaveTranslateSettings = async (payload: {
+    apiKey: string;
+    targetLanguage: string;
+    model: string;
+  }) => {
+    savingTranslateSettings = true;
+    try {
+      await updateSettings({
+        openrouter_api_key: payload.apiKey || null,
+        translate_target_language: payload.targetLanguage || "zh-CN",
+        translate_model: payload.model || "openai/gpt-4o-mini",
+      });
+      translateSettingsOpen = false;
+    } finally {
+      savingTranslateSettings = false;
     }
   };
 
@@ -805,3 +868,21 @@
     </div>
   </main>
 </div>
+
+<MissingTranslationSettingsModal
+  bind:open={missingTranslationSettingsOpen}
+  missingFields={missingTranslationSettingsFields}
+  onSettings={() => {
+    missingTranslationSettingsOpen = false;
+    translateSettingsOpen = true;
+  }}
+/>
+
+<TranslateSettingsModal
+  bind:open={translateSettingsOpen}
+  apiKey={$settings.openrouter_api_key ?? ""}
+  targetLanguage={$settings.translate_target_language || "zh-CN"}
+  model={$settings.translate_model || "openai/gpt-4o-mini"}
+  saving={savingTranslateSettings}
+  onSave={handleSaveTranslateSettings}
+/>

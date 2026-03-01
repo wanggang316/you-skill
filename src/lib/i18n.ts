@@ -70,6 +70,9 @@ const translations: Record<string, Dictionary> = {
     "settings.translation.targetLanguageValue": "Target: {language}",
     "settings.translation.modelValue": "Model: {model}",
     "settings.translation.saving": "Saving...",
+    "settings.translation.missingConfigTitle": "Translation settings required",
+    "settings.translation.missingConfigDescription":
+      "Before translating, please complete the following settings:",
     "confirm.deleteSkill": "Confirm delete {name}? This cannot be undone.",
     "confirm.deleteTitle": "Delete confirmation",
     "addSkill.title": "Add Skill",
@@ -233,6 +236,8 @@ const translations: Record<string, Dictionary> = {
     "settings.translation.targetLanguageValue": "目标语言：{language}",
     "settings.translation.modelValue": "模型：{model}",
     "settings.translation.saving": "保存中...",
+    "settings.translation.missingConfigTitle": "需要完善翻译设置",
+    "settings.translation.missingConfigDescription": "翻译前请先填写以下配置：",
     "confirm.deleteSkill": "确认删除 {name}？此操作不可恢复。",
     "confirm.deleteTitle": "删除确认",
     "addSkill.title": "添加 Skill",
