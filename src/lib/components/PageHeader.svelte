@@ -16,6 +16,8 @@
   import { t } from "../i18n";
 
   const noop = () => {};
+  /** @param {string} _tab */
+  const noopTabChange = (_tab) => {};
   const iconButtonClass =
     "inline-flex items-center justify-center rounded-xl border border-base-300 bg-base-100 p-2 text-base-content transition hover:bg-base-300";
 
@@ -28,7 +30,7 @@
     hasUpdate,
     agentAppsLoading = false,
     onChangeView = undefined,
-    onChangeTab = noop,
+    onChangeTab = noopTabChange,
     onAddSkill = noop,
     onOpenUpdate = noop,
     onOpenProjectManage = noop,

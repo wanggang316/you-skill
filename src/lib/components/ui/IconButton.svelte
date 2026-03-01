@@ -8,7 +8,7 @@
     variant = "ghost",
     disabled = false,
     class: className = "",
-    children = () => null,
+    children,
   } = $props();
 
   const baseClass = "inline-flex items-center justify-center rounded-xl p-2 transition";
@@ -31,5 +31,7 @@
   {disabled}
   type="button"
 >
-  {@render children()}
+  {#if children}
+    {@render children()}
+  {/if}
 </button>
