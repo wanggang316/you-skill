@@ -130,9 +130,7 @@ pub fn lock_source(
     return None;
   }
 
-  let Some(entry) = github_lock.skills.get(skill_name) else {
-    return None;
-  };
+  let entry = github_lock.skills.get(skill_name)?;
 
   let source = entry.source.trim();
   if !source.is_empty() {

@@ -1,17 +1,24 @@
 use crate::models::{
-  DetectedSkill, InstallGithubRequest, InstallNativeRequest, InstallResult, InstallUnknownRequest,
-  InstallScope, LocalSkill, ManageSkillAgentAppsRequest, SkillDirectoryEntry, SkillUpdateCheckItem,
-  SourceCheckResult,
+  DetectedSkill, InstallGithubRequest, InstallNativeRequest, InstallResult, InstallScope,
+  InstallUnknownRequest, LocalSkill, ManageSkillAgentAppsRequest, SkillDirectoryEntry,
+  SkillUpdateCheckItem, SourceCheckResult,
 };
 use crate::services::{skill_service, translate_service};
 
 #[tauri::command]
-pub fn list_skills(scope: InstallScope, project_path: Option<String>) -> Result<Vec<LocalSkill>, String> {
+pub fn list_skills(
+  scope: InstallScope,
+  project_path: Option<String>,
+) -> Result<Vec<LocalSkill>, String> {
   skill_service::list_skills(scope, project_path)
 }
 
 #[tauri::command]
-pub fn delete_skill(name: String, scope: InstallScope, project_path: Option<String>) -> Result<(), String> {
+pub fn delete_skill(
+  name: String,
+  scope: InstallScope,
+  project_path: Option<String>,
+) -> Result<(), String> {
   skill_service::delete_skill(name, scope, project_path)
 }
 

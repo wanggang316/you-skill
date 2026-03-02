@@ -3,5 +3,5 @@
 </script>
 
 <div class="flex justify-center py-2">
-  <img src={src} alt={alt} class="h-auto max-h-[75vh] max-w-full object-contain" />
+  <img {src} {alt} class="h-auto max-h-[75vh] max-w-full object-contain" />
 </div>

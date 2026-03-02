@@ -92,8 +92,7 @@
   }
 
   const hasSelection = $derived(
-    selectedAgents.length > 0 &&
-      (selectedScope === "global" || !!selectedProjectPath)
+    selectedAgents.length > 0 && (selectedScope === "global" || !!selectedProjectPath)
   );
   const finalConfirmText = $derived(confirmText || $t("selectAgent.confirm"));
   const scopeLabel = $derived.by(() => {
@@ -122,8 +121,8 @@
   {#snippet footer()}
     <div class="text-base-content-subtle mr-auto text-xs">{scopeLabel}</div>
     <SelectField bind:value={selectedMethod} className="mr-3" disabled={isInstalling}>
-        <option value="symlink">{$t("settings.syncMode.symlink")}</option>
-        <option value="copy">{$t("settings.syncMode.copy")}</option>
+      <option value="symlink">{$t("settings.syncMode.symlink")}</option>
+      <option value="copy">{$t("settings.syncMode.copy")}</option>
     </SelectField>
     <PrimaryActionButton
       onclick={handleConfirm}

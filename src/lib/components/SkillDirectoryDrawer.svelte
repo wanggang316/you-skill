@@ -46,7 +46,7 @@
     aria-label={$t("detail.closeCatalog")}
   ></button>
   <aside
-    class="border-base-300 bg-base-100 animate-drawer-panel fixed right-0 top-0 z-[65] h-full w-80 border-l shadow-2xl"
+    class="border-base-300 bg-base-100 animate-drawer-panel fixed top-0 right-0 z-[65] h-full w-80 border-l shadow-2xl"
     class:animate-drawer-panel-close={closing}
   >
     <div class="border-base-300 flex items-center justify-between border-b px-4 py-3">

@@ -99,7 +99,9 @@ pub async fn backup_skills(backup_folder: String) -> Result<BackupResult, String
 }
 
 #[tauri::command]
-pub async fn list_openrouter_models(search: Option<String>) -> Result<Vec<OpenRouterModelOption>, String> {
+pub async fn list_openrouter_models(
+  search: Option<String>,
+) -> Result<Vec<OpenRouterModelOption>, String> {
   let config = load_config()?;
   ai_service::list_openrouter_models(config.openrouter_api_key.as_deref(), search).await
 }

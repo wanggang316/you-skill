@@ -4,9 +4,9 @@ pub mod user_project;
 
 pub use agent_app::AgentApp;
 pub use skill::{
-  DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallScope, InstallTarget,
-  InstallUnknownRequest, InstallResult, InstalledAgentApp, LocalSkill, ManageSkillAgentAppsRequest, RemoteSkill,
-  RemoteSkillsResponse, SkillDirectoryEntry, SkillUpdateCheckItem, SourceCheckResult, SourceType,
-  SourceVersionGroup, SelectedAgentPath,
+  DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallResult,
+  InstallScope, InstallTarget, InstallUnknownRequest, InstalledAgentApp, LocalSkill,
+  ManageSkillAgentAppsRequest, RemoteSkill, RemoteSkillsResponse, SelectedAgentPath,
+  SkillDirectoryEntry, SkillUpdateCheckItem, SourceCheckResult, SourceType, SourceVersionGroup,
 };
 pub use user_project::UserProject;

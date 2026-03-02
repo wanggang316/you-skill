@@ -269,7 +269,10 @@ export async function listSkillDirectory(skillPath: string): Promise<SkillDirect
   return apiCall<SkillDirectoryEntry[]>("list_skill_directory", { skillPath });
 }
 
-export async function readSkillRelativeFile(skillPath: string, relativePath: string): Promise<string> {
+export async function readSkillRelativeFile(
+  skillPath: string,
+  relativePath: string
+): Promise<string> {
   return apiCall<string>("read_skill_relative_file", { skillPath, relativePath });
 }
 

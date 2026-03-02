@@ -54,10 +54,10 @@
         />
       </div>
       <SelectField bind:value={localAgent}>
-          <option value="all">{$t("local.agent.all")}</option>
-          {#each agents as agent}
-            <option value={agent.id}>{agent.display_name}</option>
-          {/each}
+        <option value="all">{$t("local.agent.all")}</option>
+        {#each agents as agent}
+          <option value={agent.id}>{agent.display_name}</option>
+        {/each}
       </SelectField>
       <IconButton
         variant="outline"

@@ -583,7 +583,8 @@
     if (!skill) return;
 
     if (currentType === "remote" && "url" in skill && skill.url) {
-      const fullUrl = buildGitHubUrl(skill.url, skill.path || "", undefined, skill.branch || "main") || skill.url;
+      const fullUrl =
+        buildGitHubUrl(skill.url, skill.path || "", undefined, skill.branch || "main") || skill.url;
       await open(fullUrl);
       return;
     }
@@ -616,7 +617,10 @@
   const handleMarkdownRelativeLink = async (href: string) => {
     if (!skill) return;
     const targetPath = normalizeRelativePath(activeFilePath, href);
-    if (targetPath && directoryEntries.some((entry) => !entry.is_directory && entry.path === targetPath)) {
+    if (
+      targetPath &&
+      directoryEntries.some((entry) => !entry.is_directory && entry.path === targetPath)
+    ) {
       await loadContent(targetPath);
       return;
     }
@@ -698,13 +702,13 @@
         errorText.includes("未配置") || errorText.toLowerCase().includes("not configured");
       if (hasMissingConfigError) {
         const backendMissingFields: string[] = [];
-        if (!(($settings.translate_target_language || "").trim())) {
+        if (!($settings.translate_target_language || "").trim()) {
           backendMissingFields.push($t("settings.translation.targetLanguage"));
         }
-        if (!(($settings.openrouter_api_key || "").trim())) {
+        if (!($settings.openrouter_api_key || "").trim()) {
           backendMissingFields.push($t("settings.translation.apiKey"));
         }
-        if (!(($settings.translate_model || "").trim())) {
+        if (!($settings.translate_model || "").trim()) {
           backendMissingFields.push($t("settings.translation.model"));
         }
         missingTranslationSettingsFields = backendMissingFields.length
@@ -836,32 +840,30 @@
                 {$t("detail.retry")}
               </button>
             </div>
+          {:else if fileViewMode === "markdown"}
+            <MarkdownPreview
+              htmlContent={renderMarkdownBody(content)}
+              frontmatterDescription={hasFrontmatter ? (parsedFrontmatter.description ?? "") : ""}
+              onOpenExternalLink={handleMarkdownExternalLink}
+              onOpenRelativeLink={handleMarkdownRelativeLink}
+            />
+          {:else if fileViewMode === "code"}
+            <CodePreview lineNumbersText={codeLineNumbersText} {renderedCode} />
+          {:else if fileViewMode === "image"}
+            <ImagePreview src={imagePreviewUrl} alt={activeFilePath} />
           {:else}
-            {#if fileViewMode === "markdown"}
-              <MarkdownPreview
-                htmlContent={renderMarkdownBody(content)}
-                frontmatterDescription={hasFrontmatter ? (parsedFrontmatter.description ?? "") : ""}
-                onOpenExternalLink={handleMarkdownExternalLink}
-                onOpenRelativeLink={handleMarkdownRelativeLink}
-              />
-            {:else if fileViewMode === "code"}
-              <CodePreview lineNumbersText={codeLineNumbersText} {renderedCode} />
-            {:else if fileViewMode === "image"}
-              <ImagePreview src={imagePreviewUrl} alt={activeFilePath} />
-            {:else}
-              <div class="text-sm">
-                <p class="text-base-content mb-3">{$t("detail.unsupportedFile")}</p>
-                {#if sourceLink}
-                  <button
-                    class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-2 text-xs transition"
-                    onclick={handleOpenSource}
-                    type="button"
-                  >
-                    {$t(currentType === "local" ? "detail.openInFileManager" : "detail.openSource")}
-                  </button>
-                {/if}
-              </div>
-            {/if}
+            <div class="text-sm">
+              <p class="text-base-content mb-3">{$t("detail.unsupportedFile")}</p>
+              {#if sourceLink}
+                <button
+                  class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-2 text-xs transition"
+                  onclick={handleOpenSource}
+                  type="button"
+                >
+                  {$t(currentType === "local" ? "detail.openInFileManager" : "detail.openSource")}
+                </button>
+              {/if}
+            </div>
           {/if}
         </div>
       {/if}

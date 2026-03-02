@@ -24,7 +24,12 @@ fn build_translation_cache_key(model: &str, target_language: &str, markdown: &st
   let mut hasher = Sha256::new();
   hasher.update(markdown.as_bytes());
   let markdown_hash = format!("{:x}", hasher.finalize());
-  let raw = format!("v1|model={}|lang={}|hash={}", model.trim(), target_language.trim(), markdown_hash);
+  let raw = format!(
+    "v1|model={}|lang={}|hash={}",
+    model.trim(),
+    target_language.trim(),
+    markdown_hash
+  );
   let mut key_hasher = Sha256::new();
   key_hasher.update(raw.as_bytes());
   format!("{:x}", key_hasher.finalize())
@@ -58,7 +63,11 @@ fn load_translation_cache_entry(cache_key: &str) -> Option<String> {
   let content = match fs::read_to_string(&path) {
     Ok(content) => content,
     Err(error) => {
-      tracing::warn!("Failed to read translation cache file {}: {}", path.display(), error);
+      tracing::warn!(
+        "Failed to read translation cache file {}: {}",
+        path.display(),
+        error
+      );
       return None;
     },
   };

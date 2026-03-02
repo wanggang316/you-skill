@@ -1,6 +1,8 @@
 <script lang="ts">
-  let { renderedCode = "", lineNumbersText = "" }: { renderedCode?: string; lineNumbersText?: string } =
-    $props();
+  let {
+    renderedCode = "",
+    lineNumbersText = "",
+  }: { renderedCode?: string; lineNumbersText?: string } = $props();
 </script>
 
 <div class="code-preview-shell">
@@ -86,5 +88,4 @@
   .code-preview-scroller::-webkit-scrollbar-thumb:hover {
     background: var(--scrollbar-thumb-hover);
   }
-
 </style>

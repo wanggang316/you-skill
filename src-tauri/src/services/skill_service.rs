@@ -1,13 +1,14 @@
 use crate::models::{
   DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallResult,
   InstallScope, InstallTarget, InstallUnknownRequest, InstalledAgentApp, LocalSkill,
-  ManageSkillAgentAppsRequest, SelectedAgentPath, SkillDirectoryEntry,
-  SourceCheckResult, SourceType,
+  ManageSkillAgentAppsRequest, SelectedAgentPath, SkillDirectoryEntry, SourceCheckResult,
+  SourceType,
 };
 use crate::services::agent_apps_service::{
   local_agent_apps, resolve_all_available_apps_paths, resolve_selected_apps_paths,
   root_folder_from_install_target,
 };
+use crate::services::native_skill_lock_service::NativeSkillLockFile;
 use crate::services::native_skill_lock_service::{
   add_skill_to_native_lock, read_native_skill_lock_internal, remove_skill_from_native_lock,
 };
@@ -17,16 +18,12 @@ use crate::services::project_skill_lock_service::{
 };
 use crate::services::skill_lock_service::{
   add_skill_to_lock, lock_source, lock_source_type, read_skill_lock_internal,
-  remove_skill_from_global_lock,
-  SkillLockEntry, SkillLockFile,
+  remove_skill_from_global_lock, SkillLockEntry, SkillLockFile,
 };
-use crate::services::native_skill_lock_service::NativeSkillLockFile;
 use crate::utils::file::FileHelper;
 use crate::utils::folder::{copy_dir_all_sync, FolderHelper};
 use crate::utils::github::GithubHelper;
-use crate::utils::path::{
-  canonical_skill_folder_by_name, remove_path_any,
-};
+use crate::utils::path::{canonical_skill_folder_by_name, remove_path_any};
 use crate::utils::str::normalize_optional_string;
 use crate::utils::time::now_millis;
 use crate::utils::zip::ZipHelper;
@@ -171,7 +168,10 @@ fn detect_folder_exact(folder: &Path) -> Result<DetectedSkill, String> {
   })
 }
 
-pub fn list_skills(scope: InstallScope, project_path: Option<String>) -> Result<Vec<LocalSkill>, String> {
+pub fn list_skills(
+  scope: InstallScope,
+  project_path: Option<String>,
+) -> Result<Vec<LocalSkill>, String> {
   let install_target = InstallTarget::from_scope(&scope, &project_path)?;
   list_skills_by_target(&install_target)
 }
@@ -377,12 +377,9 @@ pub async fn install_from_github(request: InstallGithubRequest) -> Result<Instal
 
   match &install_target {
     InstallTarget::Global => sync_lock_for_github_install(request.name.clone(), lock_entry)?,
-    InstallTarget::Project(_) => sync_project_lock_for_install(
-      &request.name,
-      &source,
-      SourceType::Github,
-      &install_target,
-    )?,
+    InstallTarget::Project(_) => {
+      sync_project_lock_for_install(&request.name, &source, SourceType::Github, &install_target)?
+    },
   }
 
   Ok(InstallResult {
@@ -536,7 +533,11 @@ pub fn check_skills_updates(
   Ok(updated)
 }
 
-pub fn delete_skill(name: String, scope: InstallScope, project_path: Option<String>) -> Result<(), String> {
+pub fn delete_skill(
+  name: String,
+  scope: InstallScope,
+  project_path: Option<String>,
+) -> Result<(), String> {
   let install_target = InstallTarget::from_scope(&scope, &project_path)?;
   let skill_path = canonical_skill_folder_by_name(&name, &install_target)?;
   if skill_path.exists() || skill_path.is_symlink() {
@@ -873,13 +874,7 @@ fn sync_project_lock_for_install(
   let source = source.to_string();
   let project_root = install_target.root_path()?;
   let skill_dir = install_target.skill_folder_path()?.join(&skill_name);
-  add_skill_to_project_lock(
-    &project_root,
-    skill_name,
-    source,
-    source_type,
-    &skill_dir,
-  )?;
+  add_skill_to_project_lock(&project_root, skill_name, source, source_type, &skill_dir)?;
   Ok(())
 }
 

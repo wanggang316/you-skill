@@ -32,7 +32,6 @@ impl Default for AppConfig {
   }
 }
 
-
 pub fn config_path() -> Result<PathBuf, String> {
   let config_dir = dirs_next::config_dir().ok_or("无法获取配置目录")?;
   Ok(config_dir.join("youskill").join("youskill.config"))

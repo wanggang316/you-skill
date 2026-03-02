@@ -45,15 +45,18 @@
     {disabled}
     style={`width: ${selectWidthPx}px; min-width: ${selectWidthPx}px; max-width: ${MAX_WIDTH_PX}px;`}
   >
-  <option value="global">{$t("installScope.global")}</option>
-  {#if projects.length > 0}
-    <option value="" disabled>------</option>
-  {/if}
-  {#each projects as project}
-    <option value={`project:${encodeURIComponent(project.path)}`}>{project.name}</option>
-  {/each}
+    <option value="global">{$t("installScope.global")}</option>
+    {#if projects.length > 0}
+      <option value="" disabled>------</option>
+    {/if}
+    {#each projects as project}
+      <option value={`project:${encodeURIComponent(project.path)}`}>{project.name}</option>
+    {/each}
   </SelectField>
-  <span bind:this={measureEl} class="pointer-events-none absolute invisible text-sm whitespace-nowrap">
+  <span
+    bind:this={measureEl}
+    class="pointer-events-none invisible absolute text-sm whitespace-nowrap"
+  >
     {selectedLabel}
   </span>
 </div>

@@ -1128,8 +1128,8 @@
   {#snippet footer()}
     <div class="text-base-content-subtle mr-auto text-xs">{scopeLabel}</div>
     <SelectField bind:value={selectedMethod} disabled={isInstalling} className="mr-3">
-        <option value="symlink">{$t("settings.syncMode.symlink")}</option>
-        <option value="copy">{$t("settings.syncMode.copy")}</option>
+      <option value="symlink">{$t("settings.syncMode.symlink")}</option>
+      <option value="copy">{$t("settings.syncMode.copy")}</option>
     </SelectField>
     <PrimaryActionButton
       onclick={handleConfirm}

@@ -171,7 +171,9 @@
 <Modal bind:open title={modalTitle} containerClass="max-w-2xl">
   <div class="mx-auto min-h-[420px] w-full px-5 py-3">
     {#if loading}
-      <div class="text-base-content-muted py-10 text-center text-sm">{$t("projectManage.loading")}</div>
+      <div class="text-base-content-muted py-10 text-center text-sm">
+        {$t("projectManage.loading")}
+      </div>
     {:else}
       <div class="border-base-300 overflow-hidden rounded-xl border">
         <div
@@ -183,7 +185,9 @@
         </div>
 
         {#if projects.length === 0}
-          <div class="text-base-content-muted border-base-300 border-t px-3 py-6 text-center text-sm">
+          <div
+            class="text-base-content-muted border-base-300 border-t px-3 py-6 text-center text-sm"
+          >
             {$t("projectManage.empty")}
           </div>
         {:else}

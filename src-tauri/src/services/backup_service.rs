@@ -123,7 +123,7 @@ fn add_dir_to_zip<P: AsRef<Path>>(
     let path = entry.path();
     let name = path
       .strip_prefix(base_path)
-      .map_err(|_| format!("路径处理失败"))?
+      .map_err(|_| "路径处理失败".to_string())?
       .to_string_lossy()
       .to_string();
 

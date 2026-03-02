@@ -68,7 +68,8 @@ const translations: Record<string, Dictionary> = {
     "settings.translation.loadingModels": "Loading models...",
     "settings.translation.loadModelsFailed": "Failed to load model list.",
     "settings.translation.targetLanguage": "Target language",
-    "settings.translation.targetLanguageHint": "Use language code or name, for example zh-CN, Japanese.",
+    "settings.translation.targetLanguageHint":
+      "Use language code or name, for example zh-CN, Japanese.",
     "settings.translation.targetLanguageValue": "Target: {language}",
     "settings.translation.modelValue": "Model: {model}",
     "settings.translation.saving": "Saving...",

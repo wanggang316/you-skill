@@ -101,7 +101,9 @@ impl InstallTarget {
   pub fn from_scope(scope: &InstallScope, project_path: &Option<String>) -> Result<Self, String> {
     match scope {
       InstallScope::Global => Ok(InstallTarget::Global),
-      InstallScope::Project => Ok(InstallTarget::Project(Self::normalize_project_root(project_path)?)),
+      InstallScope::Project => Ok(InstallTarget::Project(Self::normalize_project_root(
+        project_path,
+      )?)),
     }
   }
 
@@ -114,7 +116,10 @@ impl InstallTarget {
 
     let path = PathBuf::from(project_path);
     if !path.exists() || !path.is_dir() {
-      return Err(format!("Project path does not exist: {}", path.to_string_lossy()));
+      return Err(format!(
+        "Project path does not exist: {}",
+        path.to_string_lossy()
+      ));
     }
     Ok(path)
   }
@@ -122,7 +127,9 @@ impl InstallTarget {
   pub fn root_path(&self) -> Result<PathBuf, String> {
     match self {
       InstallTarget::Project(root) => Ok(root.clone()),
-      InstallTarget::Global => dirs_next::home_dir().ok_or("Could not find home directory".to_string()),
+      InstallTarget::Global => {
+        dirs_next::home_dir().ok_or("Could not find home directory".to_string())
+      },
     }
   }
 

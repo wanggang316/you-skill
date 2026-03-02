@@ -1,9 +1,9 @@
 use crate::models::SkillDirectoryEntry;
+use reqwest::Client;
+use serde::Deserialize;
 use std::fs::{self, File};
 use std::io::{self, Cursor};
 use std::path::{Path, PathBuf};
-use reqwest::Client;
-use serde::Deserialize;
 use zip::ZipArchive;
 
 pub struct GithubHelper;
@@ -47,7 +47,7 @@ impl GithubHelper {
           last_error = e;
           // Clean up destination if it was partially created
           let _ = std::fs::remove_dir_all(dest);
-        }
+        },
       }
     }
 
@@ -97,12 +97,11 @@ impl GithubHelper {
 
   fn extract_zip(bytes: &[u8], dest: &Path) -> Result<(), String> {
     let reader = Cursor::new(bytes);
-    let mut archive = ZipArchive::new(reader)
-      .map_err(|e| format!("Failed to parse ZIP archive: {}", e))?;
+    let mut archive =
+      ZipArchive::new(reader).map_err(|e| format!("Failed to parse ZIP archive: {}", e))?;
 
     // Create destination directory
-    std::fs::create_dir_all(dest)
-      .map_err(|e| format!("Failed to create directory: {}", e))?;
+    std::fs::create_dir_all(dest).map_err(|e| format!("Failed to create directory: {}", e))?;
 
     // Extract files, stripping the root folder (e.g., repo-main/)
     for i in 0..archive.len() {
@@ -115,10 +114,7 @@ impl GithubHelper {
         .ok_or_else(|| "Invalid ZIP entry path".to_string())?;
 
       // Strip the root folder (first component)
-      let stripped_path = path
-        .components()
-        .skip(1)
-        .collect::<std::path::PathBuf>();
+      let stripped_path = path.components().skip(1).collect::<std::path::PathBuf>();
 
       if stripped_path.components().count() == 0 {
         continue;
@@ -135,11 +131,10 @@ impl GithubHelper {
             .map_err(|e| format!("Failed to create parent directory: {}", e))?;
         }
 
-        let mut out_file = File::create(&out_path)
-          .map_err(|e| format!("Failed to create file: {}", e))?;
+        let mut out_file =
+          File::create(&out_path).map_err(|e| format!("Failed to create file: {}", e))?;
 
-        io::copy(&mut file, &mut out_file)
-          .map_err(|e| format!("Failed to write file: {}", e))?;
+        io::copy(&mut file, &mut out_file).map_err(|e| format!("Failed to write file: {}", e))?;
       }
     }
 
@@ -187,7 +182,10 @@ impl GithubHelper {
       .tree
       .into_iter()
       .find(|item| item.kind == "tree" && item.path == skill_folder)
-      .ok_or(format!("Skill folder not found in GitHub tree: {}", skill_folder))?;
+      .ok_or(format!(
+        "Skill folder not found in GitHub tree: {}",
+        skill_folder
+      ))?;
 
     Ok(entry.sha)
   }

@@ -123,7 +123,10 @@ pub async fn list_openrouter_models(
   if !response.status().is_success() {
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
-    return Err(format!("OpenRouter 模型列表请求失败 ({}): {}", status, body));
+    return Err(format!(
+      "OpenRouter 模型列表请求失败 ({}): {}",
+      status, body
+    ));
   }
 
   let payload: OpenRouterModelsResponse = response

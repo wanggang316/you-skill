@@ -45,9 +45,7 @@ export async function refreshLocal(options?: {
   localLoading.set(true);
   localError.set("");
   try {
-    localSkills.set(
-      await listSkills(options?.scope ?? "global", options?.project_path ?? null)
-    );
+    localSkills.set(await listSkills(options?.scope ?? "global", options?.project_path ?? null));
   } catch (error) {
     localError.set(String(error));
   } finally {

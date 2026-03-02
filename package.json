@@ -7,10 +7,16 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check": "npm run check:frontend && npm run check:backend",
+    "check:frontend": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:backend": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "test": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "release": "bash ./scripts/release.sh",
     "tauri": "tauri",
-    "format": "prettier --write \"**/*.{svelte,js,ts,css,scss,json}\"",
+    "format": "npm run format:frontend && npm run format:backend",
+    "format:frontend": "prettier --write \"**/*.{svelte,js,ts,css,scss,json}\"",
+    "format:backend": "cargo fmt --manifest-path src-tauri/Cargo.toml",
     "format:check": "prettier --check \"**/*.{svelte,js,ts,css,scss,json}\""
   },
   "dependencies": {

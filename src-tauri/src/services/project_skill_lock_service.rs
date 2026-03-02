@@ -39,7 +39,9 @@ fn project_lock_path(project_root: &Path) -> std::path::PathBuf {
   project_root.join(PROJECT_LOCK_FILE)
 }
 
-pub fn read_project_skill_lock_internal(project_root: &Path) -> Result<ProjectSkillLockFile, String> {
+pub fn read_project_skill_lock_internal(
+  project_root: &Path,
+) -> Result<ProjectSkillLockFile, String> {
   let lock_path = project_lock_path(project_root);
   if !lock_path.exists() {
     return Ok(ProjectSkillLockFile::default());
@@ -87,7 +89,10 @@ pub fn add_skill_to_project_lock(
   write_project_skill_lock_internal(project_root, &lock)
 }
 
-pub fn remove_skill_from_project_lock(project_root: &Path, skill_name: String) -> Result<bool, String> {
+pub fn remove_skill_from_project_lock(
+  project_root: &Path,
+  skill_name: String,
+) -> Result<bool, String> {
   let mut lock = read_project_skill_lock_internal(project_root)?;
   if !lock.skills.contains_key(&skill_name) {
     return Ok(false);
@@ -111,10 +116,11 @@ pub fn project_lock_source_type(
   }
 }
 
-pub fn project_lock_source(skill_name: &str, project_lock: &ProjectSkillLockFile) -> Option<String> {
-  let Some(entry) = project_lock.skills.get(skill_name) else {
-    return None;
-  };
+pub fn project_lock_source(
+  skill_name: &str,
+  project_lock: &ProjectSkillLockFile,
+) -> Option<String> {
+  let entry = project_lock.skills.get(skill_name)?;
   if entry.source_type != "github" {
     return None;
   }

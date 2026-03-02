@@ -20,7 +20,7 @@ fn load_tray_icon() -> tauri::image::Image<'static> {
 
   {
     let decoder = image::codecs::png::PngDecoder::new(std::io::Cursor::new(png_data)).unwrap();
-    ImageDecoder::read_image(decoder, &mut rgba_vec.as_mut_slice()).unwrap();
+    ImageDecoder::read_image(decoder, rgba_vec.as_mut_slice()).unwrap();
   }
 
   tauri::image::Image::new_owned(rgba_vec, width, height)
@@ -57,16 +57,16 @@ fn build_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
       },
       _ => {},
     })
-    .on_tray_icon_event(|tray, event| match event {
-      TrayIconEvent::Click {
+    .on_tray_icon_event(|tray, event| {
+      if let TrayIconEvent::Click {
         button: MouseButton::Left,
         button_state: MouseButtonState::Up,
         ..
-      } => {
+      } = event
+      {
         let app = tray.app_handle();
         show_main_window(app);
-      },
-      _ => {},
+      }
     })
     .build(app)?;
 

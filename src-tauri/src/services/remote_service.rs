@@ -188,10 +188,7 @@ pub async fn record_skill_install(skill_id: String) -> Result<(), String> {
     .build()
     .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
-  let url = format!(
-    "{}/api/skills/{}/install",
-    API_BASE_URL, skill_id
-  );
+  let url = format!("{}/api/skills/{}/install", API_BASE_URL, skill_id);
 
   let response = client.post(&url).header("X-API-Key", API_KEY).send().await;
 

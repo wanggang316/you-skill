@@ -85,12 +85,13 @@
   let selectAgentModalInitialScope = $state<InstallScope>("global");
   let selectAgentModalInitialProjectPath = $state<string | null>(null);
   let selectAgentModalCallback = $state<
-    ((
-      selectedAgents: string[],
-      method: "symlink" | "copy",
-      scope: InstallScope,
-      projectPath: string | null
-    ) => Promise<boolean>) | null
+    | ((
+        selectedAgents: string[],
+        method: "symlink" | "copy",
+        scope: InstallScope,
+        projectPath: string | null
+      ) => Promise<boolean>)
+    | null
   >(null);
 
   // Unknown permission modal state
@@ -130,7 +131,9 @@
   const getSkillAgentIds = (skill: LocalSkill): string[] =>
     Array.from(new Set(skill.installed_agent_apps.map((app) => app.id)));
 
-  const localScope = $derived.by(() => (localScopeKey.startsWith("project:") ? "project" : "global"));
+  const localScope = $derived.by(() =>
+    localScopeKey.startsWith("project:") ? "project" : "global"
+  );
   const localProjectPath = $derived.by(() =>
     localScopeKey.startsWith("project:")
       ? decodeURIComponent(localScopeKey.slice("project:".length))
@@ -266,7 +269,8 @@
     const selectedAgents = localSkill
       ? Array.from(new Set(localSkill.installed_agent_apps.map((app) => app.id)))
       : get(agentsStore).map((a) => a.id);
-    const method = localSkill?.installed_agent_apps[0]?.method ?? get(settings).sync_mode ?? "symlink";
+    const method =
+      localSkill?.installed_agent_apps[0]?.method ?? get(settings).sync_mode ?? "symlink";
     const scope: InstallScope = localScope as InstallScope;
     const projectPath = scope === "project" ? localProjectPath : null;
     return { selectedAgents, method, scope, projectPath };
@@ -453,7 +457,14 @@
     selectAgentModalInitialScope = localScope;
     selectAgentModalInitialProjectPath = localScope === "project" ? localProjectPath : null;
     selectAgentModalCallback = async (selectedAgents, method, scope, projectPath) => {
-      return manageSkillAgentAppsFlow(skill, selectedAgents, method, sourcePath, scope, projectPath);
+      return manageSkillAgentAppsFlow(
+        skill,
+        selectedAgents,
+        method,
+        sourcePath,
+        scope,
+        projectPath
+      );
     };
     selectAgentModalOpen = true;
   };

@@ -19,7 +19,11 @@
     targetLanguage?: string;
     model?: string;
     saving?: boolean;
-    onSave?: (payload: { apiKey: string; targetLanguage: string; model: string }) => Promise<void> | void;
+    onSave?: (payload: {
+      apiKey: string;
+      targetLanguage: string;
+      model: string;
+    }) => Promise<void> | void;
     onCancel?: () => void;
   }>();
 
