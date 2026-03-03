@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Loader2, X } from "@lucide/svelte";
+  import { Folder, Loader2, X } from "@lucide/svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "../i18n";
   import type { SkillDirectoryEntry } from "../api/skills";
@@ -69,7 +69,7 @@
       {:else}
         {#each entries as entry (entry.path)}
           <button
-            class="w-full rounded-lg px-2 py-1.5 text-left text-sm transition {entry.is_directory
+            class="flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm transition {entry.is_directory
               ? 'text-base-content-muted cursor-default'
               : entry.path === activePath
                 ? 'bg-base-200 text-base-content'
@@ -82,6 +82,9 @@
             disabled={entry.is_directory}
             type="button"
           >
+            {#if entry.is_directory}
+              <Folder size={14} class="shrink-0" />
+            {/if}
             {getEntryName(entry.path)}
           </button>
         {/each}
