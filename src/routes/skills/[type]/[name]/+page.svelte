@@ -201,11 +201,16 @@
 
   const formatDirectoryEntries = (entries: SkillDirectoryEntry[]): SkillDirectoryEntry[] =>
     [...entries].sort((a, b) => {
-      if (a.path === b.path) {
-        if (a.is_directory === b.is_directory) return 0;
-        return a.is_directory ? -1 : 1;
+      const aParts = a.path.split("/");
+      const bParts = b.path.split("/");
+      const minLen = Math.min(aParts.length, bParts.length);
+      for (let i = 0; i < minLen; i++) {
+        const cmp = aParts[i].localeCompare(bParts[i], undefined, { sensitivity: "base" });
+        if (cmp !== 0) return cmp;
       }
-      return a.path.localeCompare(b.path, undefined, { sensitivity: "base" });
+      if (aParts.length !== bParts.length) return aParts.length - bParts.length;
+      if (a.is_directory !== b.is_directory) return a.is_directory ? -1 : 1;
+      return 0;
     });
 
   const getEntryName = (entryPath: string) => entryPath.split("/").at(-1) || entryPath;
