@@ -1,7 +1,7 @@
 <script>
   import { RefreshCw, Search, ChevronsUpDown, Loader2 } from "@lucide/svelte";
-  import IconButton from "./ui/IconButton.svelte";
-  import SelectField from "./ui/SelectField.svelte";
+  import IconButton from "$lib/components/ui/IconButton.svelte";
+  import SelectField from "$lib/components/ui/SelectField.svelte";
   import { t } from "../i18n";
 
   let {

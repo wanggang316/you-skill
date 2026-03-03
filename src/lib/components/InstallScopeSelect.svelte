@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from "../i18n";
-  import SelectField from "./ui/SelectField.svelte";
+  import SelectField from "$lib/components/ui/SelectField.svelte";
 
   type ProjectOption = { name: string; path: string };
 

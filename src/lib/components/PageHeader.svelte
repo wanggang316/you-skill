@@ -11,7 +11,7 @@
     Loader2,
     Languages,
   } from "@lucide/svelte";
-  import SegmentedTabs from "./ui/SegmentedTabs.svelte";
+  import SegmentedTabs from "$lib/components/ui/SegmentedTabs.svelte";
   import InstallScopeSelect from "./InstallScopeSelect.svelte";
   import { t } from "../i18n";
 

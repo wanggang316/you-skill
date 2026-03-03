@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from "../i18n";
   import { addAgentApp, updateAgentApp, type AgentApp } from "../api";
-  import Modal from "./ui/Modal.svelte";
+  import Modal from "$lib/components/ui/Modal.svelte";
   import { Folder, Loader2 } from "@lucide/svelte";
 
   interface Props {

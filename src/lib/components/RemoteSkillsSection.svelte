@@ -9,7 +9,7 @@
     Star,
     DownloadCloud,
   } from "@lucide/svelte";
-  import IconButton from "./ui/IconButton.svelte";
+  import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "../i18n";
 
   let {

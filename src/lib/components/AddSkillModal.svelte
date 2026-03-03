@@ -10,10 +10,10 @@
     installFromGithub,
   } from "../api/skills";
   import { listUserProjects } from "../api/user-projects";
-  import Modal from "./ui/Modal.svelte";
-  import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
-  import SegmentedTabs from "./ui/SegmentedTabs.svelte";
-  import SelectField from "./ui/SelectField.svelte";
+  import Modal from "$lib/components/ui/Modal.svelte";
+  import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
+  import SegmentedTabs from "$lib/components/ui/SegmentedTabs.svelte";
+  import SelectField from "$lib/components/ui/SelectField.svelte";
   import AgentSelector from "./AgentSelector.svelte";
   import DetectedSkillList from "./DetectedSkillList.svelte";
   import { settings } from "../stores/settings";

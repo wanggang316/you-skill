@@ -1,7 +1,7 @@
 <script lang="ts">
-  import Modal from "./ui/Modal.svelte";
-  import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
-  import SelectField from "./ui/SelectField.svelte";
+  import Modal from "$lib/components/ui/Modal.svelte";
+  import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
+  import SelectField from "$lib/components/ui/SelectField.svelte";
   import { t } from "$lib/i18n";
   import { listOpenRouterModels, type OpenRouterModelOption } from "$lib/api/settings";
 

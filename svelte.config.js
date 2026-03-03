@@ -11,7 +11,6 @@ const config = {
   kit: {
     alias: {
       "@": "src",
-      "@lib": "src/lib",
     },
     adapter: adapter({
       pages: "dist",

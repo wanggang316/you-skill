@@ -1,7 +1,7 @@
 <script lang="ts">
   import { confirm } from "@tauri-apps/plugin-dialog";
   import { Check, Folder, Loader2, Pencil, Plus, Trash2, X } from "@lucide/svelte";
-  import Modal from "./ui/Modal.svelte";
+  import Modal from "$lib/components/ui/Modal.svelte";
   import { t } from "../i18n";
   import {
     addUserProject,

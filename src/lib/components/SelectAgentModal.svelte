@@ -1,10 +1,10 @@
 <script lang="ts">
   import { get } from "svelte/store";
   import { t } from "../i18n";
-  import Modal from "./ui/Modal.svelte";
+  import Modal from "$lib/components/ui/Modal.svelte";
   import AgentSelector from "./AgentSelector.svelte";
-  import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
-  import SelectField from "./ui/SelectField.svelte";
+  import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
+  import SelectField from "$lib/components/ui/SelectField.svelte";
   import { settings } from "../stores/settings";
   import { listUserProjects } from "../api/user-projects";
   import type { InstallScope } from "../api/skills";

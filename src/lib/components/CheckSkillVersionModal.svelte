@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Modal from "./ui/Modal.svelte";
-  import PrimaryActionButton from "./ui/PrimaryActionButton.svelte";
+  import Modal from "$lib/components/ui/Modal.svelte";
+  import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import { t } from "../i18n";
   import type { SourceVersionGroup } from "../api/skills";
 

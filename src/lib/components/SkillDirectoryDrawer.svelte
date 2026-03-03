@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Loader2, X } from "@lucide/svelte";
-  import IconButton from "./ui/IconButton.svelte";
+  import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "../i18n";
   import type { SkillDirectoryEntry } from "../api/skills";
 
