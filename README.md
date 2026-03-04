@@ -80,6 +80,15 @@ npm run build
 npm run tauri -- build
 ```
 
+### Release
+
+1. Edit the `[Unreleased]` section in [CHANGELOG.md](CHANGELOG.md) with the changes for this release
+2. Run the release script:
+   ```bash
+   npm run release <version>
+   ```
+   Example: `npm run release 0.9.0`
+
 ### Development Rules
 
 [AGENTS.md](AGENTS.md)

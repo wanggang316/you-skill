@@ -80,6 +80,15 @@ npm run build
 npm run tauri -- build
 ```
 
+### 发布
+
+1. 在 [CHANGELOG.md](CHANGELOG.md) 的 `[Unreleased]` 部分填写本次更新内容
+2. 执行发布脚本：
+   ```bash
+   npm run release <version>
+   ```
+   示例：`npm run release 0.9.0`
+
 ### 开发规则
 
 [AGENTS.md](AGENTS.md)
