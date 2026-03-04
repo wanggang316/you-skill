@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "highlight.js/styles/github.css";
-@import "./lib/styles/highlight-dark.css";
+@import "$lib/styles/highlight-dark.css";
 
 /* 使用 Tailwind @theme 指令定义主题变量 */
 @theme {
