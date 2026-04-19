@@ -869,6 +869,20 @@
     }
   }
 
+  /**
+   * @param {import('../api/skills').DetectedSkill[]} skills
+   * @returns {string[]}
+   */
+  function findDuplicateNames(skills) {
+    const seen = new Set();
+    const dupes = new Set();
+    for (const s of skills) {
+      if (seen.has(s.name)) dupes.add(s.name);
+      else seen.add(s.name);
+    }
+    return [...dupes];
+  }
+
   function validateConfirm() {
     if (selectedAgents.length === 0) {
       installError = $t("addSkill.noAgentsSelected");
@@ -878,6 +892,8 @@
       installError = $t("addSkill.noProjectsSelected");
       return false;
     }
+    /** @type {import('../api/skills').DetectedSkill[]} */
+    let selected = [];
     if (activeTab === "zip") {
       if (!selectedZipPath) {
         installError = $t("addSkill.noZipSelected");
@@ -887,9 +903,8 @@
         installError = $t("addSkill.noSkillSelected");
         return false;
       }
-      return true;
-    }
-    if (activeTab === "folder") {
+      selected = selectedZipSkills;
+    } else if (activeTab === "folder") {
       if (!selectedFolderPath) {
         installError = $t("addSkill.noFolderSelected");
         return false;
@@ -898,22 +913,41 @@
         installError = $t("addSkill.noSkillSelected");
         return false;
       }
-      return true;
+      selected = selectedFolderSkills;
+    } else {
+      if (selectedGithubSkills.length === 0) {
+        installError = $t("addSkill.noSkillSelected");
+        return false;
+      }
+      selected = selectedGithubSkills;
     }
-    if (selectedGithubSkills.length === 0) {
-      installError = $t("addSkill.noSkillSelected");
+
+    const duplicates = findDuplicateNames(selected);
+    if (duplicates.length > 0) {
+      installError = $t("addSkill.duplicateNames").replace("{names}", duplicates.join(", "));
       return false;
     }
     return true;
   }
 
   async function installCurrentSelection() {
+    const tabAtStart = activeTab;
     const skills =
-      activeTab === "zip"
-        ? selectedZipSkills
-        : activeTab === "folder"
-          ? selectedFolderSkills
-          : selectedGithubSkills;
+      tabAtStart === "zip"
+        ? [...selectedZipSkills]
+        : tabAtStart === "folder"
+          ? [...selectedFolderSkills]
+          : [...selectedGithubSkills];
+    const agentsAtStart = [...selectedAgents];
+    const methodAtStart = selectedMethod;
+    const scopeAtStart = selectedScope;
+    const projectPathAtStart = selectedProjectPath;
+
+    let parsedGithub = null;
+    if (tabAtStart === "github") {
+      parsedGithub = parseGithubInput(githubUrl);
+      if (!parsedGithub) throw new Error("Unsupported URL format. Use http(s) URL or owner/repo.");
+    }
 
     installProgress = { current: 0, total: skills.length };
     installFailures = [];
@@ -921,29 +955,27 @@
     for (const skill of skills) {
       installProgress = { current: installProgress.current + 1, total: skills.length };
       try {
-        if (activeTab === "github") {
-          const parsed = parseGithubInput(githubUrl);
-          if (!parsed) throw new Error("Unsupported URL format. Use http(s) URL or owner/repo.");
+        if (tabAtStart === "github" && parsedGithub) {
           await installFromGithub({
             name: skill.name,
             tmp_path: skill.tmp_path,
             skill_path: skill.skill_path,
-            source_url: parsed.sourceUrl,
+            source_url: parsedGithub.sourceUrl,
             skill_folder_hash: null,
-            agent_apps: selectedAgents,
-            method: selectedMethod,
-            scope: selectedScope,
-            project_path: selectedProjectPath,
+            agent_apps: agentsAtStart,
+            method: methodAtStart,
+            scope: scopeAtStart,
+            project_path: projectPathAtStart,
           });
         } else {
           await installFromNative({
             name: skill.name,
             tmp_path: skill.tmp_path,
             skill_path: skill.skill_path,
-            agent_apps: selectedAgents,
-            method: selectedMethod,
-            scope: selectedScope,
-            project_path: selectedProjectPath,
+            agent_apps: agentsAtStart,
+            method: methodAtStart,
+            scope: scopeAtStart,
+            project_path: projectPathAtStart,
           });
         }
       } catch (error) {

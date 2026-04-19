@@ -110,6 +110,8 @@ const translations: Record<string, Dictionary> = {
     "addSkill.noZipSelected": "Please select a compressed file.",
     "addSkill.noFolderSelected": "Please select a folder.",
     "addSkill.noSkillSelected": "Please select at least one skill.",
+    "addSkill.duplicateNames":
+      "Selected skills have duplicate names: {names}. Please uncheck duplicates before installing.",
     "addSkill.selectAll": "Select all",
     "addSkill.cancel": "Cancel",
     "addSkill.installing": "Installing...",
@@ -275,6 +277,7 @@ const translations: Record<string, Dictionary> = {
     "addSkill.noZipSelected": "请选择一个压缩文件。",
     "addSkill.noFolderSelected": "请选择一个文件夹。",
     "addSkill.noSkillSelected": "请至少选择一个 skill。",
+    "addSkill.duplicateNames": "选中的 skill 存在重名：{names}。请先取消重复项再安装。",
     "addSkill.selectAll": "全选",
     "addSkill.cancel": "取消",
     "addSkill.installing": "安装中...",
