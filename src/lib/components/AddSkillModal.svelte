@@ -36,8 +36,8 @@
   let isDetectingZip = $state(false);
   /** @type {import('../api/skills').DetectedSkill[]} */
   let detectedZipSkills = $state([]);
-  /** @type {import('../api/skills').DetectedSkill | null} */
-  let selectedZipSkill = $state(null);
+  /** @type {import('../api/skills').DetectedSkill[]} */
+  let selectedZipSkills = $state([]);
   let zipError = $state("");
 
   // Folder state
@@ -46,8 +46,8 @@
   let isDetectingFolder = $state(false);
   /** @type {import('../api/skills').DetectedSkill[]} */
   let detectedFolderSkills = $state([]);
-  /** @type {import('../api/skills').DetectedSkill | null} */
-  let selectedFolderSkill = $state(null);
+  /** @type {import('../api/skills').DetectedSkill[]} */
+  let selectedFolderSkills = $state([]);
   let folderError = $state("");
 
   // Github state
@@ -55,8 +55,8 @@
   let isDetecting = $state(false);
   /** @type {import('../api/skills').DetectedSkill[]} */
   let detectedSkills = $state([]);
-  /** @type {import('../api/skills').DetectedSkill | null} */
-  let selectedSkill = $state(null);
+  /** @type {import('../api/skills').DetectedSkill[]} */
+  let selectedGithubSkills = $state([]);
   let githubError = $state("");
 
   // Agent selection state
@@ -80,6 +80,9 @@
   // Global loading state
   let isInstalling = $state(false);
   let installError = $state("");
+  let installProgress = $state({ current: 0, total: 0 });
+  /** @type {{ skill: import('../api/skills').DetectedSkill; error: string }[]} */
+  let installFailures = $state([]);
   let wasOpen = $state(false);
 
   // Reset state when modal opens
@@ -97,18 +100,18 @@
     zipFileName = "";
     isDetectingZip = false;
     detectedZipSkills = [];
-    selectedZipSkill = null;
+    selectedZipSkills = [];
     zipError = "";
     selectedFolderPath = "";
     folderName = "";
     isDetectingFolder = false;
     detectedFolderSkills = [];
-    selectedFolderSkill = null;
+    selectedFolderSkills = [];
     folderError = "";
     githubUrl = "";
     isDetecting = false;
     detectedSkills = [];
-    selectedSkill = null;
+    selectedGithubSkills = [];
     githubError = "";
     selectedAgents = agents.map((a) => a.id);
     selectedMethod = get(settings).sync_mode || "symlink";
@@ -119,6 +122,8 @@
     suppressFolderClick = false;
     isInstalling = false;
     installError = "";
+    installProgress = { current: 0, total: 0 };
+    installFailures = [];
   }
 
   async function loadUserProjects() {
@@ -724,12 +729,12 @@
     isDetectingZip = true;
     zipError = "";
     detectedZipSkills = [];
-    selectedZipSkill = null;
+    selectedZipSkills = [];
 
     try {
       const skills = await detectZip(selectedZipPath);
       detectedZipSkills = skills;
-      selectedZipSkill = skills.length === 1 ? skills[0] : null;
+      selectedZipSkills = [...skills];
       if (skills.length === 0) {
         zipError = $t("addSkill.noSkillsFound");
       }
@@ -762,12 +767,12 @@
     isDetectingFolder = true;
     folderError = "";
     detectedFolderSkills = [];
-    selectedFolderSkill = null;
+    selectedFolderSkills = [];
 
     try {
       const skills = await detectFolder(selectedFolderPath);
       detectedFolderSkills = skills;
-      selectedFolderSkill = skills.length === 1 ? skills[0] : null;
+      selectedFolderSkills = [...skills];
       if (skills.length === 0) {
         folderError = $t("addSkill.noSkillsFound");
       }
@@ -783,22 +788,22 @@
     if (!parsed) {
       githubError = "Unsupported URL format. Use http(s) URL or owner/repo.";
       detectedSkills = [];
-      selectedSkill = null;
+      selectedGithubSkills = [];
       return;
     }
 
     isDetecting = true;
     githubError = "";
     detectedSkills = [];
-    selectedSkill = null;
+    selectedGithubSkills = [];
 
     try {
       const skills = await detectGithubManual(parsed.githubPath);
       detectedSkills = skills;
       if (skills.length === 0) {
         githubError = $t("addSkill.noSkillsFound");
-      } else if (skills.length === 1) {
-        selectedSkill = skills[0];
+      } else {
+        selectedGithubSkills = [...skills];
       }
     } catch (error) {
       githubError = String(error);
@@ -807,18 +812,46 @@
     }
   }
 
+  /**
+   * @param {import('../api/skills').DetectedSkill[]} list
+   * @param {import('../api/skills').DetectedSkill} skill
+   * @returns {import('../api/skills').DetectedSkill[]}
+   */
+  function toggleSkill(list, skill) {
+    const exists = list.some((s) => s.skill_path === skill.skill_path);
+    return exists
+      ? list.filter((s) => s.skill_path !== skill.skill_path)
+      : [...list, skill];
+  }
+
+  /**
+   * @param {import('../api/skills').DetectedSkill[]} current
+   * @param {import('../api/skills').DetectedSkill[]} all
+   * @returns {import('../api/skills').DetectedSkill[]}
+   */
+  function toggleAllSkills(current, all) {
+    return current.length === all.length ? [] : [...all];
+  }
+
   async function handleConfirm() {
     if (!validateConfirm()) return;
 
     isInstalling = true;
     installError = "";
+    installFailures = [];
 
     try {
       await installCurrentSelection();
       onSuccess();
       closeModal();
     } catch (error) {
-      installError = String(error);
+      const succeeded = installProgress.total - installFailures.length;
+      if (succeeded > 0 && installFailures.length > 0) {
+        installError = `${succeeded} installed, ${installFailures.length} failed: ${installFailures.map((f) => f.skill.name).join(", ")}`;
+        onSuccess();
+      } else {
+        installError = String(error);
+      }
     } finally {
       isInstalling = false;
     }
@@ -828,12 +861,26 @@
     if (selectedAgents.length === 0) return false;
     if (selectedScope === "project" && !selectedProjectPath) return false;
     if (activeTab === "zip") {
-      return !!selectedZipPath && !!selectedZipSkill;
+      return !!selectedZipPath && selectedZipSkills.length > 0;
     } else if (activeTab === "folder") {
-      return !!selectedFolderPath && !!selectedFolderSkill;
+      return !!selectedFolderPath && selectedFolderSkills.length > 0;
     } else {
-      return !!selectedSkill;
+      return selectedGithubSkills.length > 0;
     }
+  }
+
+  /**
+   * @param {import('../api/skills').DetectedSkill[]} skills
+   * @returns {string[]}
+   */
+  function findDuplicateNames(skills) {
+    const seen = new Set();
+    const dupes = new Set();
+    for (const s of skills) {
+      if (seen.has(s.name)) dupes.add(s.name);
+      else seen.add(s.name);
+    }
+    return [...dupes];
   }
 
   function validateConfirm() {
@@ -845,81 +892,102 @@
       installError = $t("addSkill.noProjectsSelected");
       return false;
     }
+    /** @type {import('../api/skills').DetectedSkill[]} */
+    let selected = [];
     if (activeTab === "zip") {
       if (!selectedZipPath) {
         installError = $t("addSkill.noZipSelected");
         return false;
       }
-      if (!selectedZipSkill) {
+      if (selectedZipSkills.length === 0) {
         installError = $t("addSkill.noSkillSelected");
         return false;
       }
-      return true;
-    }
-    if (activeTab === "folder") {
+      selected = selectedZipSkills;
+    } else if (activeTab === "folder") {
       if (!selectedFolderPath) {
         installError = $t("addSkill.noFolderSelected");
         return false;
       }
-      if (!selectedFolderSkill) {
+      if (selectedFolderSkills.length === 0) {
         installError = $t("addSkill.noSkillSelected");
         return false;
       }
-      return true;
+      selected = selectedFolderSkills;
+    } else {
+      if (selectedGithubSkills.length === 0) {
+        installError = $t("addSkill.noSkillSelected");
+        return false;
+      }
+      selected = selectedGithubSkills;
     }
-    if (!selectedSkill) {
-      installError = $t("addSkill.noSkillSelected");
+
+    const duplicates = findDuplicateNames(selected);
+    if (duplicates.length > 0) {
+      installError = $t("addSkill.duplicateNames").replace("{names}", duplicates.join(", "));
       return false;
     }
     return true;
   }
 
   async function installCurrentSelection() {
-    if (activeTab === "zip") {
-      const zipSkill = selectedZipSkill;
-      if (!zipSkill) return;
-      await installFromNative({
-        name: zipSkill.name,
-        tmp_path: zipSkill.tmp_path,
-        skill_path: zipSkill.skill_path,
-        agent_apps: selectedAgents,
-        method: selectedMethod,
-        scope: selectedScope,
-        project_path: selectedProjectPath,
-      });
-      return;
+    const tabAtStart = activeTab;
+    const skills =
+      tabAtStart === "zip"
+        ? [...selectedZipSkills]
+        : tabAtStart === "folder"
+          ? [...selectedFolderSkills]
+          : [...selectedGithubSkills];
+    const agentsAtStart = [...selectedAgents];
+    const methodAtStart = selectedMethod;
+    const scopeAtStart = selectedScope;
+    const projectPathAtStart = selectedProjectPath;
+
+    let parsedGithub = null;
+    if (tabAtStart === "github") {
+      parsedGithub = parseGithubInput(githubUrl);
+      if (!parsedGithub) throw new Error("Unsupported URL format. Use http(s) URL or owner/repo.");
     }
 
-    if (activeTab === "folder") {
-      const folderSkill = selectedFolderSkill;
-      if (!folderSkill) return;
-      await installFromNative({
-        name: folderSkill.name,
-        tmp_path: folderSkill.tmp_path,
-        skill_path: folderSkill.skill_path,
-        agent_apps: selectedAgents,
-        method: selectedMethod,
-        scope: selectedScope,
-        project_path: selectedProjectPath,
-      });
-      return;
+    installProgress = { current: 0, total: skills.length };
+    installFailures = [];
+
+    for (const skill of skills) {
+      installProgress = { current: installProgress.current + 1, total: skills.length };
+      try {
+        if (tabAtStart === "github" && parsedGithub) {
+          await installFromGithub({
+            name: skill.name,
+            tmp_path: skill.tmp_path,
+            skill_path: skill.skill_path,
+            source_url: parsedGithub.sourceUrl,
+            skill_folder_hash: null,
+            agent_apps: agentsAtStart,
+            method: methodAtStart,
+            scope: scopeAtStart,
+            project_path: projectPathAtStart,
+          });
+        } else {
+          await installFromNative({
+            name: skill.name,
+            tmp_path: skill.tmp_path,
+            skill_path: skill.skill_path,
+            agent_apps: agentsAtStart,
+            method: methodAtStart,
+            scope: scopeAtStart,
+            project_path: projectPathAtStart,
+          });
+        }
+      } catch (error) {
+        installFailures = [...installFailures, { skill, error: String(error) }];
+      }
     }
 
-    const githubSkill = selectedSkill;
-    if (!githubSkill) return;
-    const parsed = parseGithubInput(githubUrl);
-    if (!parsed) throw new Error("Unsupported URL format. Use http(s) URL or owner/repo.");
-    await installFromGithub({
-      name: githubSkill.name,
-      tmp_path: githubSkill.tmp_path,
-      skill_path: githubSkill.skill_path,
-      source_url: parsed.sourceUrl,
-      skill_folder_hash: null,
-      agent_apps: selectedAgents,
-      method: selectedMethod,
-      scope: selectedScope,
-      project_path: selectedProjectPath,
-    });
+    if (installFailures.length > 0) {
+      throw new Error(
+        `${installFailures.length} of ${skills.length} skills failed to install`
+      );
+    }
   }
 </script>
 
@@ -972,16 +1040,14 @@
           {/if}
 
           {#if detectedSkills.length > 0}
-            <div class="space-y-2">
-              <p class="text-base-content text-sm">
-                {$t("addSkill.github.selectSkill")}
-              </p>
-              <DetectedSkillList
-                skills={detectedSkills}
-                {selectedSkill}
-                onSelect={(skill) => (selectedSkill = skill)}
-              />
-            </div>
+            <DetectedSkillList
+              skills={detectedSkills}
+              selectedSkills={selectedGithubSkills}
+              onToggle={(skill) => (selectedGithubSkills = toggleSkill(selectedGithubSkills, skill))}
+              onToggleAll={() => (selectedGithubSkills = toggleAllSkills(selectedGithubSkills, detectedSkills))}
+              showHeader={true}
+              headerLabel={$t("addSkill.github.selectSkill")}
+            />
           {/if}
         </div>
       {:else if activeTab === "zip"}
@@ -1034,16 +1100,14 @@
           {/if}
 
           {#if detectedZipSkills.length > 0}
-            <div class="space-y-2">
-              <p class="text-base-content text-sm">
-                {$t("addSkill.zip.selectSkill")}
-              </p>
-              <DetectedSkillList
-                skills={detectedZipSkills}
-                selectedSkill={selectedZipSkill}
-                onSelect={(skill) => (selectedZipSkill = skill)}
-              />
-            </div>
+            <DetectedSkillList
+              skills={detectedZipSkills}
+              selectedSkills={selectedZipSkills}
+              onToggle={(skill) => (selectedZipSkills = toggleSkill(selectedZipSkills, skill))}
+              onToggleAll={() => (selectedZipSkills = toggleAllSkills(selectedZipSkills, detectedZipSkills))}
+              showHeader={true}
+              headerLabel={$t("addSkill.zip.selectSkill")}
+            />
           {/if}
         </div>
       {:else}
@@ -1096,16 +1160,14 @@
           {/if}
 
           {#if detectedFolderSkills.length > 0}
-            <div class="space-y-2">
-              <p class="text-base-content text-sm">
-                {$t("addSkill.folder.selectSkill")}
-              </p>
-              <DetectedSkillList
-                skills={detectedFolderSkills}
-                selectedSkill={selectedFolderSkill}
-                onSelect={(skill) => (selectedFolderSkill = skill)}
-              />
-            </div>
+            <DetectedSkillList
+              skills={detectedFolderSkills}
+              selectedSkills={selectedFolderSkills}
+              onToggle={(skill) => (selectedFolderSkills = toggleSkill(selectedFolderSkills, skill))}
+              onToggleAll={() => (selectedFolderSkills = toggleAllSkills(selectedFolderSkills, detectedFolderSkills))}
+              showHeader={true}
+              headerLabel={$t("addSkill.folder.selectSkill")}
+            />
           {/if}
         </div>
       {/if}
@@ -1135,7 +1197,9 @@
       onclick={handleConfirm}
       disabled={!canConfirm() || isInstalling}
       loading={isInstalling}
-      loadingText={$t("addSkill.installing")}
+      loadingText={installProgress.total > 1
+        ? `${$t("addSkill.installing")} (${installProgress.current}/${installProgress.total})`
+        : $t("addSkill.installing")}
       className="select-none"
     >
       {$t("addSkill.confirm")}
