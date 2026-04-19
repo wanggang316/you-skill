@@ -2,8 +2,8 @@
   import { Check } from "@lucide/svelte";
   import { t } from "../i18n";
 
-  /** @type {{ skills?: import('../api/skills').DetectedSkill[]; selectedSkills?: import('../api/skills').DetectedSkill[]; onToggle?: (skill: import('../api/skills').DetectedSkill) => void; onToggleAll?: () => void }} */
-  let { skills = [], selectedSkills = [], onToggle = () => {}, onToggleAll = () => {} } = $props();
+  /** @type {{ skills?: import('../api/skills').DetectedSkill[]; selectedSkills?: import('../api/skills').DetectedSkill[]; onToggle?: (skill: import('../api/skills').DetectedSkill) => void; onToggleAll?: () => void; showHeader?: boolean; headerLabel?: string }} */
+  let { skills = [], selectedSkills = [], onToggle = () => {}, onToggleAll = () => {}, showHeader = false, headerLabel = "" } = $props();
 
   const allSelected = $derived(selectedSkills.length === skills.length && skills.length > 0);
   const isMulti = $derived(skills.length > 1);
@@ -14,16 +14,22 @@
   }
 </script>
 
-<div class="border-base-300 bg-base-200 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-2">
-  {#if isMulti}
-    <div class="text-base-content-muted flex items-center gap-2 px-3 py-1 text-[13px]">
-      <label class="inline-flex items-center gap-2">
-        <input type="checkbox" checked={allSelected} onchange={onToggleAll} />
-        {$t("addSkill.selectAll")}
-      </label>
+<div class="space-y-2">
+  {#if showHeader}
+    <div class="flex items-center justify-between">
+      <p class="text-base-content text-sm">
+        {headerLabel}
+      </p>
+      {#if isMulti}
+        <label class="text-base-content-muted inline-flex items-center gap-2 text-[13px]">
+          <input type="checkbox" checked={allSelected} onchange={onToggleAll} />
+          {$t("addSkill.selectAll")}
+        </label>
+      {/if}
     </div>
   {/if}
-  {#each skills as skill}
+  <div class="border-base-300 bg-base-200 max-h-48 space-y-2 overflow-y-auto rounded-xl border p-2">
+    {#each skills as skill}
     <button
       class={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition ${isSelected(skill) ? "bg-primary text-primary-content" : "bg-base-100 text-base-content hover:bg-base-300"}`}
       onclick={() => onToggle(skill)}
@@ -50,4 +56,5 @@
       {/if}
     </button>
   {/each}
+  </div>
 </div>

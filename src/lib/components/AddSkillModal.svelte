@@ -1008,17 +1008,14 @@
           {/if}
 
           {#if detectedSkills.length > 0}
-            <div class="space-y-2">
-              <p class="text-base-content text-sm">
-                {$t("addSkill.github.selectSkill")}
-              </p>
-              <DetectedSkillList
-                skills={detectedSkills}
-                selectedSkills={selectedGithubSkills}
-                onToggle={(skill) => (selectedGithubSkills = toggleSkill(selectedGithubSkills, skill))}
-                onToggleAll={() => (selectedGithubSkills = toggleAllSkills(selectedGithubSkills, detectedSkills))}
-              />
-            </div>
+            <DetectedSkillList
+              skills={detectedSkills}
+              selectedSkills={selectedGithubSkills}
+              onToggle={(skill) => (selectedGithubSkills = toggleSkill(selectedGithubSkills, skill))}
+              onToggleAll={() => (selectedGithubSkills = toggleAllSkills(selectedGithubSkills, detectedSkills))}
+              showHeader={true}
+              headerLabel={$t("addSkill.github.selectSkill")}
+            />
           {/if}
         </div>
       {:else if activeTab === "zip"}
@@ -1071,17 +1068,14 @@
           {/if}
 
           {#if detectedZipSkills.length > 0}
-            <div class="space-y-2">
-              <p class="text-base-content text-sm">
-                {$t("addSkill.zip.selectSkill")}
-              </p>
-              <DetectedSkillList
-                skills={detectedZipSkills}
-                selectedSkills={selectedZipSkills}
-                onToggle={(skill) => (selectedZipSkills = toggleSkill(selectedZipSkills, skill))}
-                onToggleAll={() => (selectedZipSkills = toggleAllSkills(selectedZipSkills, detectedZipSkills))}
-              />
-            </div>
+            <DetectedSkillList
+              skills={detectedZipSkills}
+              selectedSkills={selectedZipSkills}
+              onToggle={(skill) => (selectedZipSkills = toggleSkill(selectedZipSkills, skill))}
+              onToggleAll={() => (selectedZipSkills = toggleAllSkills(selectedZipSkills, detectedZipSkills))}
+              showHeader={true}
+              headerLabel={$t("addSkill.zip.selectSkill")}
+            />
           {/if}
         </div>
       {:else}
@@ -1134,17 +1128,14 @@
           {/if}
 
           {#if detectedFolderSkills.length > 0}
-            <div class="space-y-2">
-              <p class="text-base-content text-sm">
-                {$t("addSkill.folder.selectSkill")}
-              </p>
-              <DetectedSkillList
-                skills={detectedFolderSkills}
-                selectedSkills={selectedFolderSkills}
-                onToggle={(skill) => (selectedFolderSkills = toggleSkill(selectedFolderSkills, skill))}
-                onToggleAll={() => (selectedFolderSkills = toggleAllSkills(selectedFolderSkills, detectedFolderSkills))}
-              />
-            </div>
+            <DetectedSkillList
+              skills={detectedFolderSkills}
+              selectedSkills={selectedFolderSkills}
+              onToggle={(skill) => (selectedFolderSkills = toggleSkill(selectedFolderSkills, skill))}
+              onToggleAll={() => (selectedFolderSkills = toggleAllSkills(selectedFolderSkills, detectedFolderSkills))}
+              showHeader={true}
+              headerLabel={$t("addSkill.folder.selectSkill")}
+            />
           {/if}
         </div>
       {/if}
