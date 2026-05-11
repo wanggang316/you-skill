@@ -14,11 +14,16 @@
     agentMap,
     skillsWithUpdate = [],
     updatingSkills = [],
+    updateAllCount = 0,
+    batchUpdating = false,
+    batchUpdateCompleted = 0,
+    batchUpdateTotal = 0,
     onRefresh,
     onDeleteSkill,
     onViewSkill,
     onOpenSelectAgentModal,
     onUpdateSkill,
+    onUpdateAllSkills,
   } = $props();
 
   // Check if a skill has an update available
@@ -59,6 +64,24 @@
           <option value={agent.id}>{agent.display_name}</option>
         {/each}
       </SelectField>
+      {#if updateAllCount > 0 && onUpdateAllSkills}
+        <button
+          class="border-base-300 bg-base-300 text-primary hover:bg-primary hover:text-primary-content inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-sm transition disabled:cursor-not-allowed disabled:opacity-50"
+          onclick={onUpdateAllSkills}
+          disabled={localLoading || batchUpdating || updatingSkills.length > 0}
+          type="button"
+        >
+          {#if batchUpdating}
+            <Loader2 size={14} class="animate-spin" />
+            {$t("local.updateAllRunning", {
+              completed: batchUpdateCompleted,
+              total: batchUpdateTotal,
+            })}
+          {:else}
+            {$t("local.updateAll", { count: updateAllCount })}
+          {/if}
+        </button>
+      {/if}
       <IconButton
         variant="outline"
         onclick={onRefresh}
@@ -116,7 +139,7 @@
                       e?.stopPropagation();
                       onUpdateSkill(skill);
                     }}
-                    disabled={isUpdating(skill)}
+                    disabled={batchUpdating || updatingSkills.length > 0}
                     type="button"
                   >
                     {#if isUpdating(skill)}

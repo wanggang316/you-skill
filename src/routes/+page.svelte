@@ -112,6 +112,9 @@
   let installLog = $state("");
   let installingSkill = $state("");
   let linkBusy = $state(false);
+  let batchUpdating = $state(false);
+  let batchUpdateCompleted = $state(0);
+  let batchUpdateTotal = $state(0);
 
   const agentMap = $derived.by(
     () => new Map($agentsStore.map((agent) => [agent.id, agent.display_name]))
@@ -127,7 +130,6 @@
       return matchesSearch && matchesAgent;
     });
   });
-
   const getSkillAgentIds = (skill: LocalSkill): string[] =>
     Array.from(new Set(skill.installed_agent_apps.map((app) => app.id)));
 
@@ -135,10 +137,15 @@
     localScopeKey.startsWith("project:") ? "project" : "global"
   );
   const localProjectPath = $derived.by(() =>
-    localScopeKey.startsWith("project:")
-      ? decodeURIComponent(localScopeKey.slice("project:".length))
-      : null
+      localScopeKey.startsWith("project:")
+        ? decodeURIComponent(localScopeKey.slice("project:".length))
+        : null
   );
+  const updatableLocalSkills = $derived.by(() => {
+    if (localScope !== "global") return [];
+    const localNames = new Set($localSkillsStore.map((skill) => skill.name));
+    return $skillsWithUpdateStore.filter((skill) => localNames.has(skill.name));
+  });
 
   // Initialize and load shared data on mount - 只加载本地数据
   onMount(() => {
@@ -228,13 +235,17 @@
     }
   });
 
-  const refreshLocal = async () => {
+  const refreshLocal = async (options?: { awaitUpdateCheck?: boolean }) => {
     await refreshLocalState({
       scope: localScope,
       project_path: localProjectPath,
     });
     if (localScope === "global") {
-      checkForSkillUpdates().catch(console.error);
+      if (options?.awaitUpdateCheck) {
+        await checkForSkillUpdates();
+      } else {
+        checkForSkillUpdates().catch(console.error);
+      }
     } else {
       skillsWithUpdateStore.set([]);
     }
@@ -276,14 +287,21 @@
     return { selectedAgents, method, scope, projectPath };
   };
 
-  const handleUpdateSkill = async (skill: RemoteSkill) => {
-    if (get(updatingSkillsStore).includes(skill.name)) return;
+  const runSkillUpdate = async (
+    skill: RemoteSkill,
+    options?: { refreshAfterSuccess?: boolean }
+  ): Promise<{ success: boolean; error?: string }> => {
+    const refreshAfterSuccess = options?.refreshAfterSuccess ?? true;
+    if (get(updatingSkillsStore).includes(skill.name)) {
+      return { success: false, error: `Skill ${skill.name} is already updating` };
+    }
 
     updatingSkillsStore.update((names) => [...names, skill.name]);
     try {
       if (!skill.url) {
-        localErrorStore.set(`Skill ${skill.name} has no source URL`);
-        return;
+        const error = `Skill ${skill.name} has no source URL`;
+        localErrorStore.set(error);
+        return { success: false, error };
       }
 
       isDownloading = true;
@@ -304,22 +322,80 @@
         project_path: updateContext.projectPath,
       });
       if (!result.success) {
-        installLog = `${result.message}\n${result.stderr || result.stdout}`;
+        const error = `${result.message}\n${result.stderr || result.stdout}`;
+        installLog = error;
+        return { success: false, error };
       } else {
         installLog = "";
-        await refreshLocal();
-        if (localScope === "global") {
-          await checkForSkillUpdates();
-        } else {
-          skillsWithUpdateStore.set([]);
+        if (refreshAfterSuccess) {
+          await refreshLocal({ awaitUpdateCheck: true });
         }
+        return { success: true };
       }
     } catch (error) {
-      installLog = String(error);
+      const message = String(error);
+      installLog = message;
+      return { success: false, error: message };
     } finally {
       isDownloading = false;
       installingSkill = "";
       updatingSkillsStore.update((names) => names.filter((name) => name !== skill.name));
+    }
+  };
+
+  const handleUpdateSkill = async (skill: RemoteSkill) => {
+    await runSkillUpdate(skill);
+  };
+
+  const handleUpdateAllSkills = async () => {
+    if (batchUpdating) return;
+
+    const skillsToUpdate = [...updatableLocalSkills];
+    if (skillsToUpdate.length === 0) return;
+
+    batchUpdating = true;
+    batchUpdateCompleted = 0;
+    batchUpdateTotal = skillsToUpdate.length;
+    localErrorStore.set("");
+    installLog = "";
+
+    const failedSkills: string[] = [];
+    const failureLogs: string[] = [];
+
+    try {
+      for (const skill of skillsToUpdate) {
+        const latestSkill =
+          get(skillsWithUpdateStore).find((item) => item.name === skill.name) ?? skill;
+        const result = await runSkillUpdate(latestSkill, { refreshAfterSuccess: false });
+        if (!result.success) {
+          failedSkills.push(skill.name);
+          if (result.error) {
+            failureLogs.push(`[${skill.name}] ${result.error}`);
+          }
+        }
+        batchUpdateCompleted += 1;
+      }
+
+      await refreshLocal({ awaitUpdateCheck: true });
+
+      if (failedSkills.length > 0) {
+        localErrorStore.set(
+          $t("local.updateAllFailed", {
+            count: failedSkills.length,
+            names: failedSkills.join(", "),
+          })
+        );
+        installLog = failureLogs.join("\n\n");
+      } else {
+        localErrorStore.set("");
+        installLog = "";
+      }
+    } catch (error) {
+      localErrorStore.set(String(error));
+    } finally {
+      batchUpdating = false;
+      batchUpdateCompleted = 0;
+      batchUpdateTotal = 0;
     }
   };
 
@@ -711,11 +787,16 @@
           {agentMap}
           skillsWithUpdate={$skillsWithUpdateStore}
           updatingSkills={$updatingSkillsStore}
+          updateAllCount={updatableLocalSkills.length}
+          {batchUpdating}
+          {batchUpdateCompleted}
+          {batchUpdateTotal}
           onRefresh={refreshLocal}
           onDeleteSkill={handleDeleteSkill}
           onViewSkill={handleViewSkill}
           onOpenSelectAgentModal={openSelectAgentModal}
           onUpdateSkill={handleLocalUpdateSkill}
+          onUpdateAllSkills={handleUpdateAllSkills}
         />
       {:else}
         <RemoteSkillsSection
