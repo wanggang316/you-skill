@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8.5] - 2026-05-11
 
 ### Added
+- Release v0.8.5
+
+
+
+## [0.8.5] - 2026-05-11
+
+### Added
 - Added a one-click bulk update action for all local skills with available updates.
 
 ## [0.8.4] - 2026-03-01
