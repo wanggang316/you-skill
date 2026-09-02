@@ -282,7 +282,7 @@
   <section class="flex min-w-0 flex-col overflow-hidden">
     <header
       class="border-base-300 flex min-h-18 items-end border-b px-7 pt-5 pb-3.5"
-      data-tauri-drag-region
+      data-tauri-drag-region="deep"
     >
       <h1 class="text-base-content text-[1.05rem] font-semibold tracking-[-0.02em]">
         {$t("header.settings")}

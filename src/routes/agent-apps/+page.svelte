@@ -6,7 +6,8 @@
   import { get } from "svelte/store";
   import { removeAgentApp, refreshAgentApps, type AgentApp } from "$lib/api";
   import { t } from "$lib/i18n";
-  import { Plus, Trash2, Check, Loader2, Pencil, ChevronLeft, RefreshCw } from "@lucide/svelte";
+  import { Plus, Trash2, Loader2, Pencil, ChevronLeft, RefreshCw } from "@lucide/svelte";
+  import AgentAppIcon from "$lib/components/AgentAppIcon.svelte";
   import SecondaryPageShell from "$lib/components/SecondaryPageShell.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import AddAgentAppModal from "$lib/components/AddAgentAppModal.svelte";
@@ -79,7 +80,10 @@
 
 <SecondaryPageShell activeTab="local" currentSection="settings">
   <!-- Header -->
-  <header class="border-base-300 bg-base-100 sticky top-0 z-50 border-b" data-tauri-drag-region>
+  <header
+    class="border-base-300 bg-base-100 sticky top-0 z-50 border-b"
+    data-tauri-drag-region="deep"
+  >
     <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
       <div class="flex w-full items-center justify-between">
         <div class="flex items-center gap-4">
@@ -127,13 +131,18 @@
             <div class="bg-base-100">
               <div class="grid grid-cols-2 gap-2">
                 {#each internalApps.filter((app) => isInstalled(app.id)) as app}
-                  <div class="bg-base-200 hover:bg-base-300 flex flex-col rounded-xl px-3 py-2">
-                    <span class="text-base-content text-xs font-medium">{app.display_name}</span>
-                    {#if app.global_path}
-                      <span class="text-base-content/50 mt-0.5 truncate text-[10px]"
-                        >{app.global_path}</span
-                      >
-                    {/if}
+                  <div
+                    class="bg-base-200 hover:bg-base-300 flex items-center gap-3 rounded-xl px-3 py-2"
+                  >
+                    <AgentAppIcon agentId={app.id} name={app.display_name} />
+                    <div class="flex min-w-0 flex-col">
+                      <span class="text-base-content text-xs font-medium">{app.display_name}</span>
+                      {#if app.global_path}
+                        <span class="text-base-content/50 mt-0.5 truncate text-[10px]"
+                          >{app.global_path}</span
+                        >
+                      {/if}
+                    </div>
                   </div>
                 {/each}
               </div>
@@ -153,13 +162,17 @@
                   <div
                     class="bg-base-200 hover:bg-base-300 flex items-center justify-between rounded-xl px-3 py-2"
                   >
-                    <div class="flex min-w-0 flex-col">
-                      <span class="text-base-content text-xs font-medium">{app.display_name}</span>
-                      {#if app.global_path}
-                        <span class="text-base-content/50 mt-0.5 truncate text-[10px]"
-                          >{app.global_path}</span
+                    <div class="flex min-w-0 items-center gap-3">
+                      <AgentAppIcon agentId={app.id} name={app.display_name} />
+                      <div class="flex min-w-0 flex-col">
+                        <span class="text-base-content text-xs font-medium">{app.display_name}</span
                         >
-                      {/if}
+                        {#if app.global_path}
+                          <span class="text-base-content/50 mt-0.5 truncate text-[10px]"
+                            >{app.global_path}</span
+                          >
+                        {/if}
+                      </div>
                     </div>
                     <div class="flex shrink-0 gap-1">
                       <button

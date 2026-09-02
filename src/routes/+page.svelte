@@ -792,7 +792,7 @@
   <section class="flex min-w-0 flex-col overflow-hidden">
     <header
       class="border-base-300 flex min-h-18 items-end border-b px-7 pt-5 pb-3.5"
-      data-tauri-drag-region
+      data-tauri-drag-region="deep"
     >
       <div class="min-w-0">
         <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">

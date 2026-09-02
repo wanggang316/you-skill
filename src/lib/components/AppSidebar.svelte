@@ -53,14 +53,7 @@
 </script>
 
 <aside class="sidebar-shell" aria-label={$t("sidebar.navigation")}>
-  <div class="sidebar-brand" data-tauri-drag-region>
-    <span class="brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 433 455" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M0 263.506L265.588 0L205.547 180.705H433L153.889 455L217.987 263.506H0Z" />
-      </svg>
-    </span>
-    <span class="brand-name">YouSkill</span>
-  </div>
+  <div class="sidebar-drag-region" data-tauri-drag-region="deep"></div>
 
   <nav class="sidebar-nav">
     <button class="nav-item add-item" type="button" onclick={onAddSkill}>
@@ -174,35 +167,10 @@
     background: color-mix(in oklch, var(--base-200) 82%, var(--base-100));
   }
 
-  .sidebar-brand {
-    display: flex;
+  .sidebar-drag-region {
     min-height: 4.5rem;
-    align-items: flex-end;
-    gap: 0.625rem;
-    padding: 1rem 1rem 0.8rem;
-    color: var(--base-content);
-    font-size: 1rem;
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    flex: none;
     user-select: none;
-  }
-
-  .brand-mark {
-    display: inline-flex;
-    width: 1rem;
-    height: 1.1rem;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .brand-mark svg {
-    width: 100%;
-    height: 100%;
-    fill: currentColor;
-  }
-
-  .brand-name {
-    font-style: italic;
   }
 
   .sidebar-nav {
@@ -355,10 +323,6 @@
   }
 
   @media (max-width: 52rem) {
-    .sidebar-brand {
-      padding-inline: 0.75rem;
-    }
-
     .sidebar-nav,
     .sidebar-footer {
       padding-inline: 0.45rem;
