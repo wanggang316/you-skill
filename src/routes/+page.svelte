@@ -4,7 +4,7 @@
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  import PageHeader from "$lib/components/PageHeader.svelte";
+  import AppSidebar from "$lib/components/AppSidebar.svelte";
   import { t } from "$lib/i18n";
   import LocalSkillsSection from "$lib/components/LocalSkillsSection.svelte";
   import RemoteSkillsSection from "$lib/components/RemoteSkillsSection.svelte";
@@ -137,10 +137,23 @@
     localScopeKey.startsWith("project:") ? "project" : "global"
   );
   const localProjectPath = $derived.by(() =>
-      localScopeKey.startsWith("project:")
-        ? decodeURIComponent(localScopeKey.slice("project:".length))
-        : null
+    localScopeKey.startsWith("project:")
+      ? decodeURIComponent(localScopeKey.slice("project:".length))
+      : null
   );
+  const selectedProject = $derived.by(() =>
+    userProjects.find((project) => project.path === localProjectPath)
+  );
+  const contentTitle = $derived.by(() => {
+    if (activeTab === "remote") return $t("sidebar.library");
+    if (localScope === "global") return $t("sidebar.global");
+    return selectedProject?.name ?? $t("header.localTab");
+  });
+  const contentDescription = $derived.by(() => {
+    if (activeTab === "remote") return $t("header.remoteTab");
+    if (localScope === "project") return selectedProject?.path ?? "";
+    return $t("header.localTab");
+  });
   const updatableLocalSkills = $derived.by(() => {
     if (localScope !== "global") return [];
     const localNames = new Set($localSkillsStore.map((skill) => skill.name));
@@ -156,6 +169,12 @@
     });
 
     const searchParams = get(page).url.searchParams;
+    const actionParam = searchParams.get("action");
+    if (actionParam === "add") {
+      addSkillModalOpen = true;
+    } else if (actionParam === "manage-projects") {
+      userProjectsModalOpen = true;
+    }
     const tabParam = searchParams.get("tab");
     if (tabParam === "remote" || tabParam === "local") {
       activeTab = tabParam;
@@ -754,77 +773,87 @@
   };
 </script>
 
-<div class="bg-base-100 text-base-content flex h-screen flex-col overflow-hidden">
-  <PageHeader
-    currentView="list"
+<div
+  class="bg-base-100 text-base-content grid h-screen grid-cols-[15.5rem_minmax(0,1fr)] overflow-hidden max-[832px]:grid-cols-[13.5rem_minmax(0,1fr)]"
+>
+  <AppSidebar
     {activeTab}
-    bind:localScopeKey
+    bind:scopeKey={localScopeKey}
     projects={userProjects}
-    skillName=""
     {hasUpdate}
     updateLoading={updatingApp}
-    agentAppsLoading={false}
-    onChangeTab={handleTabChange}
+    onSelectTab={handleTabChange}
     onAddSkill={() => (addSkillModalOpen = true)}
     onOpenUpdate={handleAppUpdate}
     onOpenProjectManage={() => (userProjectsModalOpen = true)}
     onOpenSettings={navigateToSettings}
-    onBack={() => {}}
-    onDetailAction={undefined}
-    onRefreshAgentApps={() => {}}
   />
 
-  <main bind:this={mainScrollContainer} class="flex-1 overflow-y-auto">
-    <div class="mx-auto max-w-6xl px-6 py-6">
-      {#if activeTab === "local"}
-        <LocalSkillsSection
-          bind:localSearch
-          bind:localAgent
-          agents={$agentsStore}
-          localLoading={$localLoadingStore}
-          localError={$localErrorStore}
-          {filteredLocalSkills}
-          {agentMap}
-          skillsWithUpdate={$skillsWithUpdateStore}
-          updatingSkills={$updatingSkillsStore}
-          updateAllCount={updatableLocalSkills.length}
-          {batchUpdating}
-          {batchUpdateCompleted}
-          {batchUpdateTotal}
-          onRefresh={refreshLocal}
-          onDeleteSkill={handleDeleteSkill}
-          onViewSkill={handleViewSkill}
-          onOpenSelectAgentModal={openSelectAgentModal}
-          onUpdateSkill={handleLocalUpdateSkill}
-          onUpdateAllSkills={handleUpdateAllSkills}
-        />
-      {:else}
-        <RemoteSkillsSection
-          bind:remoteQuery
-          bind:remoteSortBy
-          bind:remoteSortOrder
-          localSkills={$localSkillsStore}
-          remoteLoading={$remoteLoadingStore}
-          remoteSkills={$remoteSkillsStore}
-          remoteError={$remoteErrorStore}
-          {installLog}
-          {installingSkill}
-          {isDownloading}
-          remoteHasMore={$remoteHasMoreStore}
-          remoteTotal={$remoteTotalStore}
-          skillsWithUpdate={$skillsWithUpdateStore}
-          updatingSkills={$updatingSkillsStore}
-          onSearch={handleSearchRemote}
-          onLoadMore={loadMoreRemote}
-          onInstall={handleInstall}
-          onUpdateSkill={handleUpdateSkill}
-          onViewSkill={handleViewSkill}
-          onSortChange={handleSortChange}
-          onRefresh={handleSearchRemote}
-        />
-      {/if}
-    </div>
-  </main>
+  <section class="flex min-w-0 flex-col overflow-hidden">
+    <header
+      class="border-base-300 flex min-h-18 items-end border-b px-7 pt-5 pb-3.5"
+      data-tauri-drag-region
+    >
+      <div class="min-w-0">
+        <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
+          {contentTitle}
+        </h1>
+        <p class="text-base-content-subtle mt-0.5 truncate text-xs">{contentDescription}</p>
+      </div>
+    </header>
+
+    <main bind:this={mainScrollContainer} class="flex-1 overflow-y-auto">
+      <div class="mx-auto max-w-6xl px-7 py-6">
+        {#if activeTab === "local"}
+          <LocalSkillsSection
+            bind:localSearch
+            bind:localAgent
+            agents={$agentsStore}
+            localLoading={$localLoadingStore}
+            localError={$localErrorStore}
+            {filteredLocalSkills}
+            {agentMap}
+            skillsWithUpdate={$skillsWithUpdateStore}
+            updatingSkills={$updatingSkillsStore}
+            updateAllCount={updatableLocalSkills.length}
+            {batchUpdating}
+            {batchUpdateCompleted}
+            {batchUpdateTotal}
+            onRefresh={refreshLocal}
+            onDeleteSkill={handleDeleteSkill}
+            onViewSkill={handleViewSkill}
+            onOpenSelectAgentModal={openSelectAgentModal}
+            onUpdateSkill={handleLocalUpdateSkill}
+            onUpdateAllSkills={handleUpdateAllSkills}
+          />
+        {:else}
+          <RemoteSkillsSection
+            bind:remoteQuery
+            bind:remoteSortBy
+            bind:remoteSortOrder
+            localSkills={$localSkillsStore}
+            remoteLoading={$remoteLoadingStore}
+            remoteSkills={$remoteSkillsStore}
+            remoteError={$remoteErrorStore}
+            {installLog}
+            {installingSkill}
+            {isDownloading}
+            remoteHasMore={$remoteHasMoreStore}
+            remoteTotal={$remoteTotalStore}
+            skillsWithUpdate={$skillsWithUpdateStore}
+            updatingSkills={$updatingSkillsStore}
+            onSearch={handleSearchRemote}
+            onLoadMore={loadMoreRemote}
+            onInstall={handleInstall}
+            onUpdateSkill={handleUpdateSkill}
+            onViewSkill={handleViewSkill}
+            onSortChange={handleSortChange}
+            onRefresh={handleSearchRemote}
+          />
+        {/if}
+      </div>
+    </main>
+  </section>
 </div>
 
 <AddSkillModal

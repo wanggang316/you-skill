@@ -1,14 +1,16 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
+  import { onMount } from "svelte";
   import { t } from "$lib/i18n";
   import { settings, updateSettings } from "$lib/stores/settings";
   import { get } from "svelte/store";
   import { getSettings, setBackupFolder, openBackupFolder, backupSkills } from "$lib/api";
-  import IconButton from "$lib/components/ui/IconButton.svelte";
+  import AppSidebar from "$lib/components/AppSidebar.svelte";
   import TranslateSettingsModal from "$lib/components/TranslateSettingsModal.svelte";
+  import { listUserProjects, type UserProject } from "$lib/api/user-projects";
   import { open } from "@tauri-apps/plugin-dialog";
-  import { FolderOpen, Loader2, ChevronRight, Download, ChevronLeft } from "@lucide/svelte";
+  import { FolderOpen, Loader2, ChevronRight, Download } from "@lucide/svelte";
   import { check, type Update } from "@tauri-apps/plugin-updater";
   import { relaunch } from "@tauri-apps/plugin-process";
   import { getVersion } from "@tauri-apps/api/app";
@@ -24,6 +26,8 @@
   let downloadProgress = $state(0);
   let downloadTotalBytes = $state(0);
   let downloadedBytes = $state(0);
+  let localScopeKey = $state("global");
+  let userProjects = $state<UserProject[]>([]);
 
   // Backup state
   let backupFolder = $state("");
@@ -46,6 +50,14 @@
       parts.push($t("settings.translation.modelValue", { model }));
     }
     return parts.join(" · ");
+  });
+
+  onMount(() => {
+    listUserProjects()
+      .then((projects) => {
+        userProjects = projects;
+      })
+      .catch(console.error);
   });
 
   // Load installed agent apps count on mount
@@ -219,13 +231,16 @@
     goto(`/agent-apps?returnTo=${returnTo}`);
   };
 
-  const goBack = () => {
-    const returnTo = get(page).url.searchParams.get("returnTo");
-    if (returnTo) {
-      goto(decodeURIComponent(returnTo));
-      return;
+  const navigateToSkills = (tab: "local" | "remote", scopeKey = "global") => {
+    const params = new URLSearchParams();
+    params.set("tab", tab);
+    if (tab === "local" && scopeKey.startsWith("project:")) {
+      params.set("scope", "project");
+      params.set("projectPath", decodeURIComponent(scopeKey.slice("project:".length)));
+    } else {
+      params.set("scope", "global");
     }
-    window.history.back();
+    goto(`/?${params.toString()}`);
   };
 
   const handleSaveTranslateSettings = async (payload: {
@@ -247,235 +262,243 @@
   };
 </script>
 
-<div class="bg-base-100 text-base-content flex h-screen flex-col overflow-hidden">
-  <!-- Header -->
-  <header class="border-base-300 bg-base-100 sticky top-0 z-50 border-b">
-    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-      <div class="flex items-center gap-4">
-        <IconButton
-          variant="outline"
-          onclick={goBack}
-          title={$t("header.back")}
-          ariaLabel={$t("header.back")}
-        >
-          <ChevronLeft size={16} />
-        </IconButton>
-        <h1 class="text-base-content text-lg font-medium">
-          {$t("header.settings")}
-        </h1>
-      </div>
-    </div>
-  </header>
+<div
+  class="bg-base-100 text-base-content grid h-screen grid-cols-[15.5rem_minmax(0,1fr)] overflow-hidden max-[832px]:grid-cols-[13.5rem_minmax(0,1fr)]"
+>
+  <AppSidebar
+    activeTab="local"
+    currentSection="settings"
+    bind:scopeKey={localScopeKey}
+    projects={userProjects}
+    {hasUpdate}
+    updateLoading={isInstalling}
+    onAddSkill={() => goto("/?action=add")}
+    onSelectTab={navigateToSkills}
+    onOpenUpdate={hasUpdate ? handleInstallUpdate : handleCheckUpdate}
+    onOpenProjectManage={() => goto("/?action=manage-projects")}
+    onOpenSettings={() => {}}
+  />
 
-  <!-- Content -->
-  <main class="flex-1 overflow-y-auto">
-    <div class="mx-auto max-w-4xl px-6 py-6">
-      <section class="space-y-4">
-        <!-- Language & Theme-->
-        <div class="bg-base-200 flex flex-col gap-4 rounded-2xl px-4 py-2.5">
-          <div class="flex items-center justify-between">
-            <span class="text-base-content text-[15px]">{$t("settings.language")}</span>
-            <div class="relative">
-              <select
-                class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
-                value={$settings.language}
-                onchange={(event) =>
-                  updateSettings({
-                    language: event.currentTarget
-                      .value as import("$lib/api/settings").AppSettings["language"],
-                  })}
-              >
-                <option value="en">English</option>
-                <option value="zh">中文</option>
-              </select>
-              <ChevronRight
-                class="text-base-content-muted pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rotate-90"
-                size={14}
-              />
+  <section class="flex min-w-0 flex-col overflow-hidden">
+    <header
+      class="border-base-300 flex min-h-18 items-end border-b px-7 pt-5 pb-3.5"
+      data-tauri-drag-region
+    >
+      <h1 class="text-base-content text-[1.05rem] font-semibold tracking-[-0.02em]">
+        {$t("header.settings")}
+      </h1>
+    </header>
+
+    <main class="flex-1 overflow-y-auto">
+      <div class="mx-auto max-w-4xl px-7 py-6">
+        <section class="space-y-4">
+          <!-- Language & Theme-->
+          <div class="bg-base-200 flex flex-col gap-4 rounded-2xl px-4 py-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-base-content text-[15px]">{$t("settings.language")}</span>
+              <div class="relative">
+                <select
+                  class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
+                  value={$settings.language}
+                  onchange={(event) =>
+                    updateSettings({
+                      language: event.currentTarget
+                        .value as import("$lib/api/settings").AppSettings["language"],
+                    })}
+                >
+                  <option value="en">English</option>
+                  <option value="zh">中文</option>
+                </select>
+                <ChevronRight
+                  class="text-base-content-muted pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rotate-90"
+                  size={14}
+                />
+              </div>
+            </div>
+
+            <div class="bg-base-300 h-px"></div>
+
+            <div class="flex items-center justify-between">
+              <span class="text-base-content text-[15px]">{$t("settings.theme")}</span>
+              <div class="relative">
+                <select
+                  class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
+                  value={$settings.theme}
+                  onchange={(event) =>
+                    updateSettings({
+                      theme: event.currentTarget
+                        .value as import("$lib/api/settings").AppSettings["theme"],
+                    })}
+                >
+                  <option value="system">{$t("settings.theme.system")}</option>
+                  <option value="light">{$t("settings.theme.light")}</option>
+                  <option value="dark">{$t("settings.theme.dark")}</option>
+                </select>
+                <ChevronRight
+                  class="text-base-content-muted pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rotate-90"
+                  size={14}
+                />
+              </div>
             </div>
           </div>
 
-          <div class="bg-base-300 h-px"></div>
-
-          <div class="flex items-center justify-between">
-            <span class="text-base-content text-[15px]">{$t("settings.theme")}</span>
-            <div class="relative">
-              <select
-                class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
-                value={$settings.theme}
-                onchange={(event) =>
-                  updateSettings({
-                    theme: event.currentTarget
-                      .value as import("$lib/api/settings").AppSettings["theme"],
-                  })}
-              >
-                <option value="system">{$t("settings.theme.system")}</option>
-                <option value="light">{$t("settings.theme.light")}</option>
-                <option value="dark">{$t("settings.theme.dark")}</option>
-              </select>
-              <ChevronRight
-                class="text-base-content-muted pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rotate-90"
-                size={14}
-              />
+          <!-- Skill Sync Mode -->
+          <div class="bg-base-200 rounded-2xl px-4 py-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-base-content text-[15px]">{$t("settings.syncMode")}</span>
+              <div class="relative">
+                <select
+                  class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
+                  value={$settings.sync_mode}
+                  onchange={(event) =>
+                    updateSettings({
+                      sync_mode: event.currentTarget
+                        .value as import("$lib/api/settings").AppSettings["sync_mode"],
+                    })}
+                >
+                  <option value="symlink">{$t("settings.syncMode.symlink")}</option>
+                  <option value="copy">{$t("settings.syncMode.copy")}</option>
+                </select>
+                <ChevronRight
+                  class="text-base-content-muted pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rotate-90"
+                  size={14}
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Skill Sync Mode -->
-        <div class="bg-base-200 rounded-2xl px-4 py-2.5">
-          <div class="flex items-center justify-between">
-            <span class="text-base-content text-[15px]">{$t("settings.syncMode")}</span>
-            <div class="relative">
-              <select
-                class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
-                value={$settings.sync_mode}
-                onchange={(event) =>
-                  updateSettings({
-                    sync_mode: event.currentTarget
-                      .value as import("$lib/api/settings").AppSettings["sync_mode"],
-                  })}
-              >
-                <option value="symlink">{$t("settings.syncMode.symlink")}</option>
-                <option value="copy">{$t("settings.syncMode.copy")}</option>
-              </select>
-              <ChevronRight
-                class="text-base-content-muted pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rotate-90"
-                size={14}
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- Agent Apps -->
-        <div class="bg-base-200 rounded-2xl px-4 py-2.5">
-          <div class="flex items-center justify-between">
-            <span class="text-base-content text-[15px]">{$t("agentApps.title")}</span>
-            <button
-              class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px]"
-              onclick={navigateToAgentApps}
-              type="button"
-            >
-              {$t("agentApps.configButton")}
-            </button>
-          </div>
-        </div>
-
-        <!-- Translation -->
-        <div class="bg-base-200 rounded-2xl px-4 py-2.5">
-          <div class="flex items-center justify-between">
-            <div class="flex flex-col">
-              <span class="text-base-content text-[15px]">{$t("settings.translation.title")}</span>
-              {#if translationSummary}
-                <span class="text-base-content-muted text-xs">{translationSummary}</span>
-              {/if}
-            </div>
-            <button
-              class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px]"
-              onclick={() => {
-                translateSettingsOpen = true;
-              }}
-              type="button"
-            >
-              {$t("agentApps.configButton")}
-            </button>
-          </div>
-        </div>
-
-        <!-- Backup -->
-        <div class="bg-base-200 rounded-2xl px-4 py-2.5">
-          <div class="flex items-center justify-between">
-            <span class="text-base-content text-[15px]">{$t("settings.backup")}</span>
-            <div class="flex items-center gap-3">
-              {#if backupFolder}
-                <span class="text-base-content-muted text-xs">
-                  {#if lastBackupTime}
-                    {$t("settings.backup.lastBackup", { time: lastBackupTime })}
-                  {:else}
-                    {$t("settings.backup.noBackupYet")}
-                  {/if}
-                </span>
-              {/if}
+          <!-- Agent Apps -->
+          <div class="bg-base-200 rounded-2xl px-4 py-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-base-content text-[15px]">{$t("agentApps.title")}</span>
               <button
-                class="bg-primary text-primary-content hover:bg-primary-hover flex items-center rounded-lg px-3 py-1.5 text-[13px] disabled:opacity-50"
-                onclick={handleBackup}
-                disabled={isBackingUp}
+                class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px]"
+                onclick={navigateToAgentApps}
                 type="button"
               >
-                {#if isBackingUp}
-                  <Loader2 size={13} class="mr-1.5 animate-spin" />
+                {$t("agentApps.configButton")}
+              </button>
+            </div>
+          </div>
+
+          <!-- Translation -->
+          <div class="bg-base-200 rounded-2xl px-4 py-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col">
+                <span class="text-base-content text-[15px]">{$t("settings.translation.title")}</span
+                >
+                {#if translationSummary}
+                  <span class="text-base-content-muted text-xs">{translationSummary}</span>
                 {/if}
-                {isBackingUp ? $t("settings.backup.backingUp") : $t("settings.backup.backupNow")}
+              </div>
+              <button
+                class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px]"
+                onclick={() => {
+                  translateSettingsOpen = true;
+                }}
+                type="button"
+              >
+                {$t("agentApps.configButton")}
               </button>
             </div>
           </div>
-          {#if backupFolder}
-            <div class="mt-1.5 flex items-center gap-2">
-              <span class="text-base-content-muted text-xs break-all">{backupFolder}</span>
-              <button
-                class="text-base-content-muted hover:bg-base-300 hover:text-base-content rounded p-1"
-                onclick={handleOpenBackupFolder}
-                title={$t("settings.backup.openFolder")}
-                type="button"
-              >
-                <FolderOpen size={13} />
-              </button>
-            </div>
-          {/if}
-          {#if backupMessage}
-            <span class="mt-1.5 block text-xs text-red-500">
-              {backupMessage}
-            </span>
-          {/if}
-        </div>
 
-        <!-- Updates -->
-        <div class="bg-base-200 rounded-2xl px-4 py-2.5">
-          <div class="flex items-center justify-between">
-            <div class="flex flex-col">
-              <span class="text-base-content text-[15px]">{$t("settings.about")}</span>
-              {#if currentVersion}
-                <span class="text-base-content-muted text-xs">
-                  {$t("settings.currentVersion", { version: currentVersion })}
-                </span>
-              {/if}
-            </div>
-            {#if hasUpdate}
-              <div class="flex items-center gap-2">
-                <span class="text-success text-xs font-medium">
-                  {$t("settings.newVersionAvailable", { version: latestVersion })}
-                </span>
+          <!-- Backup -->
+          <div class="bg-base-200 rounded-2xl px-4 py-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-base-content text-[15px]">{$t("settings.backup")}</span>
+              <div class="flex items-center gap-3">
+                {#if backupFolder}
+                  <span class="text-base-content-muted text-xs">
+                    {#if lastBackupTime}
+                      {$t("settings.backup.lastBackup", { time: lastBackupTime })}
+                    {:else}
+                      {$t("settings.backup.noBackupYet")}
+                    {/if}
+                  </span>
+                {/if}
                 <button
-                  class="bg-success text-success-content hover:bg-primary-hover flex items-center rounded-lg px-3 py-1.5 text-[13px] disabled:opacity-50"
-                  onclick={handleInstallUpdate}
-                  disabled={isInstalling}
+                  class="bg-primary text-primary-content hover:bg-primary-hover flex items-center rounded-lg px-3 py-1.5 text-[13px] disabled:opacity-50"
+                  onclick={handleBackup}
+                  disabled={isBackingUp}
                   type="button"
                 >
-                  {#if isInstalling}
+                  {#if isBackingUp}
                     <Loader2 size={13} class="mr-1.5 animate-spin" />
-                  {:else}
-                    <Download size={13} class="mr-1.5" />
                   {/if}
-                  {isInstalling ? $t("settings.installingUpdate") : $t("settings.installUpdate")}
+                  {isBackingUp ? $t("settings.backup.backingUp") : $t("settings.backup.backupNow")}
                 </button>
               </div>
-            {:else}
-              <button
-                class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px] disabled:opacity-50"
-                onclick={handleCheckUpdate}
-                disabled={checkingUpdate}
-                type="button"
-              >
-                {checkingUpdate ? $t("settings.checkingUpdate") : $t("settings.checkUpdateBtn")}
-              </button>
+            </div>
+            {#if backupFolder}
+              <div class="mt-1.5 flex items-center gap-2">
+                <span class="text-base-content-muted text-xs break-all">{backupFolder}</span>
+                <button
+                  class="text-base-content-muted hover:bg-base-300 hover:text-base-content rounded p-1"
+                  onclick={handleOpenBackupFolder}
+                  title={$t("settings.backup.openFolder")}
+                  type="button"
+                >
+                  <FolderOpen size={13} />
+                </button>
+              </div>
+            {/if}
+            {#if backupMessage}
+              <span class="mt-1.5 block text-xs text-red-500">
+                {backupMessage}
+              </span>
             {/if}
           </div>
-          {#if updateMessage}
-            <span class="text-base-content-muted mt-1.5 block text-xs">{updateMessage}</span>
-          {/if}
-        </div>
-      </section>
-    </div>
-  </main>
+
+          <!-- Updates -->
+          <div class="bg-base-200 rounded-2xl px-4 py-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col">
+                <span class="text-base-content text-[15px]">{$t("settings.about")}</span>
+                {#if currentVersion}
+                  <span class="text-base-content-muted text-xs">
+                    {$t("settings.currentVersion", { version: currentVersion })}
+                  </span>
+                {/if}
+              </div>
+              {#if hasUpdate}
+                <div class="flex items-center gap-2">
+                  <span class="text-success text-xs font-medium">
+                    {$t("settings.newVersionAvailable", { version: latestVersion })}
+                  </span>
+                  <button
+                    class="bg-success text-success-content hover:bg-primary-hover flex items-center rounded-lg px-3 py-1.5 text-[13px] disabled:opacity-50"
+                    onclick={handleInstallUpdate}
+                    disabled={isInstalling}
+                    type="button"
+                  >
+                    {#if isInstalling}
+                      <Loader2 size={13} class="mr-1.5 animate-spin" />
+                    {:else}
+                      <Download size={13} class="mr-1.5" />
+                    {/if}
+                    {isInstalling ? $t("settings.installingUpdate") : $t("settings.installUpdate")}
+                  </button>
+                </div>
+              {:else}
+                <button
+                  class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px] disabled:opacity-50"
+                  onclick={handleCheckUpdate}
+                  disabled={checkingUpdate}
+                  type="button"
+                >
+                  {checkingUpdate ? $t("settings.checkingUpdate") : $t("settings.checkUpdateBtn")}
+                </button>
+              {/if}
+            </div>
+            {#if updateMessage}
+              <span class="text-base-content-muted mt-1.5 block text-xs">{updateMessage}</span>
+            {/if}
+          </div>
+        </section>
+      </div>
+    </main>
+  </section>
 </div>
 
 <TranslateSettingsModal
