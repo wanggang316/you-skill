@@ -7,6 +7,7 @@
   import { removeAgentApp, refreshAgentApps, type AgentApp } from "$lib/api";
   import { t } from "$lib/i18n";
   import { Plus, Trash2, Check, Loader2, Pencil, ChevronLeft, RefreshCw } from "@lucide/svelte";
+  import SecondaryPageShell from "$lib/components/SecondaryPageShell.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import AddAgentAppModal from "$lib/components/AddAgentAppModal.svelte";
 
@@ -76,9 +77,9 @@
   }
 </script>
 
-<div class="bg-base-100 text-base-content flex h-screen flex-col overflow-hidden">
+<SecondaryPageShell activeTab="local" currentSection="settings">
   <!-- Header -->
-  <header class="border-base-300 bg-base-100 sticky top-0 z-50 border-b">
+  <header class="border-base-300 bg-base-100 sticky top-0 z-50 border-b" data-tauri-drag-region>
     <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
       <div class="flex w-full items-center justify-between">
         <div class="flex items-center gap-4">
@@ -202,7 +203,7 @@
       {/if}
     </section>
   </main>
-</div>
+</SecondaryPageShell>
 
 <!-- Add Agent App Modal -->
 <AddAgentAppModal bind:open={showAddModal} appToEdit={editingApp} onAppsChange={loadAgentApps} />

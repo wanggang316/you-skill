@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed Agent Apps and Skill detail routes replacing the app shell instead of rendering in the right content pane.
+
 ### Removed
 
 
