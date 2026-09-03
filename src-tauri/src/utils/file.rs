@@ -6,6 +6,7 @@ use std::process::Command;
 #[derive(Debug, Clone, Default)]
 pub struct SkillFrontmatter {
   pub name: Option<String>,
+  pub description: Option<String>,
 }
 
 pub struct FileHelper;
@@ -13,10 +14,6 @@ pub struct FileHelper;
 impl FileHelper {
   pub fn read_to_string(path: &Path) -> Result<String, String> {
     fs::read_to_string(path).map_err(|e| e.to_string())
-  }
-
-  pub fn read_bytes(path: &Path) -> Result<Vec<u8>, String> {
-    fs::read(path).map_err(|e| e.to_string())
   }
 
   pub fn read_skill_frontmatter(skill_md_path: &Path) -> Result<SkillFrontmatter, String> {
@@ -44,12 +41,17 @@ impl FileHelper {
 
     let yaml: Value = serde_yaml::from_str(&frontmatter)
       .map_err(|e| format!("Failed to parse SKILL.md frontmatter: {}", e))?;
-    let name = yaml
-      .get("name")
-      .and_then(|v| v.as_str())
-      .map(|s| s.trim().to_string())
-      .filter(|s| !s.is_empty());
-    Ok(SkillFrontmatter { name })
+    let read_field = |key: &str| {
+      yaml
+        .get(key)
+        .and_then(|v| v.as_str())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+    };
+    Ok(SkillFrontmatter {
+      name: read_field("name"),
+      description: read_field("description"),
+    })
   }
 }
 

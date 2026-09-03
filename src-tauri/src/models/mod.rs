@@ -4,9 +4,10 @@ pub mod user_project;
 
 pub use agent_app::AgentApp;
 pub use skill::{
-  DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallResult,
-  InstallScope, InstallTarget, InstallUnknownRequest, InstalledAgentApp, LocalSkill,
-  ManageSkillAgentAppsRequest, RemoteSkill, RemoteSkillsResponse, SelectedAgentPath,
-  SkillDirectoryEntry, SkillUpdateCheckItem, SourceCheckResult, SourceType, SourceVersionGroup,
+  ActionResult, AgentRootMatch, DetectedSkill, HubSkillView, HubState, ImportItem, ImportOutcome,
+  InstallMode, InstallRecord, InstallRequest, InstallScope, InstallTargetSpec, InstallView,
+  LockFile, MigrationReport, RemoteSkill, RemoteSkillsResponse, ScanDecision, ScanItem,
+  ScanResolution, ScanStatus, SkillDirectoryEntry, SkillRecord, SkillSource, SourceState,
+  SourceUpdate, SyncAction, TargetState, UninstallRequest, LOCK_VERSION,
 };
 pub use user_project::UserProject;

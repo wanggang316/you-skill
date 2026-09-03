@@ -1,52 +1,93 @@
 use crate::models::SkillDirectoryEntry;
 use reqwest::Client;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, Cursor};
 use std::path::{Path, PathBuf};
 use zip::ZipArchive;
 
+const USER_AGENT: &str = "you-skill";
+const DEFAULT_BRANCHES: [&str; 2] = ["main", "master"];
+
+/// Parsed GitHub reference: `owner/repo`, optionally with `/tree/<branch>[/<path>]`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GithubRef {
+  pub owner: String,
+  pub repo: String,
+  pub branch: Option<String>,
+  pub subpath: Option<String>,
+}
+
 pub struct GithubHelper;
 
 impl GithubHelper {
-  pub fn parse_github_url(url: &str) -> Result<(String, String), String> {
+  pub fn parse_github_ref(url: &str) -> Result<GithubRef, String> {
     let url = url.trim();
-
-    if url.contains("github.com") {
-      let parts: Vec<&str> = url.split("github.com/").collect();
-      if parts.len() < 2 {
-        return Err("Invalid GitHub URL".to_string());
-      }
-      let path = parts[1].trim_end_matches(".git");
-      let segments: Vec<&str> = path.split('/').collect();
-      if segments.len() < 2 {
-        return Err("Invalid GitHub URL format".to_string());
-      }
-      return Ok((segments[0].to_string(), segments[1].to_string()));
+    let path = if let Some(index) = url.find("github.com") {
+      let rest = &url[index + "github.com".len()..];
+      rest.trim_start_matches(':').trim_start_matches('/')
+    } else {
+      url
+    };
+    let path = path.trim_end_matches('/');
+    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+    if segments.len() < 2 {
+      return Err(
+        "Unsupported URL format. Use https://github.com/owner/repo or owner/repo".to_string(),
+      );
     }
-
-    let parts: Vec<&str> = url.split('/').collect();
-    if parts.len() == 2 {
-      return Ok((parts[0].to_string(), parts[1].to_string()));
+    let owner = segments[0].to_string();
+    let repo = segments[1].trim_end_matches(".git").to_string();
+    if owner.is_empty() || repo.is_empty() {
+      return Err("Invalid GitHub URL format".to_string());
     }
-
-    Err("Unsupported URL format. Use https://github.com/owner/repo or owner/repo".to_string())
+    let mut branch = None;
+    let mut subpath = None;
+    if segments.len() >= 4 && segments[2] == "tree" {
+      branch = Some(segments[3].to_string());
+      if segments.len() > 4 {
+        subpath = Some(segments[4..].join("/"));
+      }
+    }
+    Ok(GithubRef {
+      owner,
+      repo,
+      branch,
+      subpath,
+    })
   }
 
-  /// Download and extract a GitHub repository as a ZIP archive.
-  /// This approach doesn't require git to be installed on the system.
-  pub async fn clone_repo_to(owner: &str, repo: &str, dest: &Path) -> Result<(), String> {
-    // Try branches in order: main -> master
-    let branches = ["main", "master"];
-    let mut last_error = String::new();
+  pub fn parse_github_url(url: &str) -> Result<(String, String), String> {
+    let parsed = Self::parse_github_ref(url)?;
+    Ok((parsed.owner, parsed.repo))
+  }
 
-    for branch in branches {
+  /// Download and extract a repository archive (no git binary needed). Returns the branch
+  /// that was actually downloaded.
+  pub async fn clone_repo_to(
+    owner: &str,
+    repo: &str,
+    preferred_branch: Option<&str>,
+    dest: &Path,
+  ) -> Result<String, String> {
+    let mut branches: Vec<String> = Vec::new();
+    if let Some(branch) = preferred_branch.map(str::trim).filter(|b| !b.is_empty()) {
+      branches.push(branch.to_string());
+    }
+    for branch in DEFAULT_BRANCHES {
+      if !branches.iter().any(|b| b == branch) {
+        branches.push(branch.to_string());
+      }
+    }
+
+    let mut last_error = String::new();
+    for branch in &branches {
       match Self::download_and_extract(owner, repo, branch, dest).await {
-        Ok(()) => return Ok(()),
+        Ok(()) => return Ok(branch.clone()),
         Err(e) => {
           last_error = e;
-          // Clean up destination if it was partially created
-          let _ = std::fs::remove_dir_all(dest);
+          let _ = fs::remove_dir_all(dest);
         },
       }
     }
@@ -75,7 +116,7 @@ impl GithubHelper {
 
     let response = client
       .get(&url)
-      .header("User-Agent", "you-skill")
+      .header("User-Agent", USER_AGENT)
       .send()
       .await
       .map_err(|e| format!("Failed to download repository: {}", e))?;
@@ -89,9 +130,7 @@ impl GithubHelper {
       .await
       .map_err(|e| format!("Failed to read response: {}", e))?;
 
-    // Extract ZIP synchronously (this is CPU-bound, not I/O bound)
     Self::extract_zip(&bytes, dest)?;
-
     Ok(())
   }
 
@@ -100,8 +139,7 @@ impl GithubHelper {
     let mut archive =
       ZipArchive::new(reader).map_err(|e| format!("Failed to parse ZIP archive: {}", e))?;
 
-    // Create destination directory
-    std::fs::create_dir_all(dest).map_err(|e| format!("Failed to create directory: {}", e))?;
+    fs::create_dir_all(dest).map_err(|e| format!("Failed to create directory: {}", e))?;
 
     // Extract files, stripping the root folder (e.g., repo-main/)
     for i in 0..archive.len() {
@@ -113,9 +151,7 @@ impl GithubHelper {
         .enclosed_name()
         .ok_or_else(|| "Invalid ZIP entry path".to_string())?;
 
-      // Strip the root folder (first component)
-      let stripped_path = path.components().skip(1).collect::<std::path::PathBuf>();
-
+      let stripped_path = path.components().skip(1).collect::<PathBuf>();
       if stripped_path.components().count() == 0 {
         continue;
       }
@@ -123,17 +159,14 @@ impl GithubHelper {
       let out_path = dest.join(&stripped_path);
 
       if file.is_dir() {
-        std::fs::create_dir_all(&out_path)
-          .map_err(|e| format!("Failed to create directory: {}", e))?;
+        fs::create_dir_all(&out_path).map_err(|e| format!("Failed to create directory: {}", e))?;
       } else {
         if let Some(parent) = out_path.parent() {
-          std::fs::create_dir_all(parent)
+          fs::create_dir_all(parent)
             .map_err(|e| format!("Failed to create parent directory: {}", e))?;
         }
-
         let mut out_file =
           File::create(&out_path).map_err(|e| format!("Failed to create file: {}", e))?;
-
         io::copy(&mut file, &mut out_file).map_err(|e| format!("Failed to write file: {}", e))?;
       }
     }
@@ -141,17 +174,37 @@ impl GithubHelper {
     Ok(())
   }
 
-  pub async fn get_skill_folder_hash(source_url: &str, skill_path: &str) -> Result<String, String> {
-    let (owner, repo) = Self::parse_github_url(source_url)?;
-    let url = format!(
-      "https://api.github.com/repos/{}/{}/git/trees/main?recursive=1",
-      owner, repo
-    );
+  /// Folder part of a `skill_path` (`skills/foo/SKILL.md` -> `skills/foo`, `SKILL.md` -> ``).
+  pub fn skill_folder_of(skill_path: &str) -> Result<String, String> {
+    let normalized = skill_path.trim().trim_start_matches("./");
+    if normalized == "SKILL.md" {
+      return Ok(String::new());
+    }
+    if let Some(folder) = normalized.strip_suffix("/SKILL.md") {
+      return Ok(folder.to_string());
+    }
+    Err(format!("Invalid skill_path: {}", skill_path))
+  }
 
-    let client = Client::new();
+  /// Tree SHAs for several skill folders of one repository/branch in a single request.
+  /// Keys of the returned map are the `skill_path` values that were found.
+  pub async fn get_tree_shas(
+    owner: &str,
+    repo: &str,
+    branch: &str,
+    skill_paths: &[String],
+  ) -> Result<HashMap<String, String>, String> {
+    let url = format!(
+      "https://api.github.com/repos/{}/{}/git/trees/{}?recursive=1",
+      owner, repo, branch
+    );
+    let client = Client::builder()
+      .timeout(std::time::Duration::from_secs(30))
+      .build()
+      .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
     let resp = client
       .get(url)
-      .header("User-Agent", "skill-kit")
+      .header("User-Agent", USER_AGENT)
       .send()
       .await
       .map_err(|e| format!("Failed to request GitHub tree: {}", e))?;
@@ -165,29 +218,38 @@ impl GithubHelper {
       .await
       .map_err(|e| format!("Failed to parse GitHub tree response: {}", e))?;
 
-    let normalized = skill_path.trim_start_matches("./");
-    let skill_folder = if normalized == "SKILL.md" {
-      String::new()
-    } else if normalized.ends_with("/SKILL.md") {
-      normalized.trim_end_matches("/SKILL.md").to_string()
-    } else {
-      return Err(format!("Invalid skill_path: {}", skill_path));
-    };
-
-    if skill_folder.is_empty() {
-      return Ok(tree.sha);
+    let mut result = HashMap::new();
+    for skill_path in skill_paths {
+      let Ok(folder) = Self::skill_folder_of(skill_path) else {
+        continue;
+      };
+      if folder.is_empty() {
+        result.insert(skill_path.clone(), tree.sha.clone());
+        continue;
+      }
+      if let Some(entry) = tree
+        .tree
+        .iter()
+        .find(|item| item.kind == "tree" && item.path == folder)
+      {
+        result.insert(skill_path.clone(), entry.sha.clone());
+      }
     }
+    Ok(result)
+  }
 
-    let entry = tree
-      .tree
-      .into_iter()
-      .find(|item| item.kind == "tree" && item.path == skill_folder)
-      .ok_or(format!(
-        "Skill folder not found in GitHub tree: {}",
-        skill_folder
-      ))?;
-
-    Ok(entry.sha)
+  pub async fn get_skill_folder_hash(
+    source_url: &str,
+    skill_path: &str,
+    branch: Option<&str>,
+  ) -> Result<String, String> {
+    let (owner, repo) = Self::parse_github_url(source_url)?;
+    let branch = branch.unwrap_or("main");
+    let shas = Self::get_tree_shas(&owner, &repo, branch, &[skill_path.to_string()]).await?;
+    shas.get(skill_path).cloned().ok_or(format!(
+      "Skill folder not found in GitHub tree: {}",
+      skill_path
+    ))
   }
 
   pub fn list_skill_directory(skill_path: &str) -> Result<Vec<SkillDirectoryEntry>, String> {
@@ -324,4 +386,39 @@ struct GitTreeItem {
   #[serde(rename = "type")]
   kind: String,
   sha: String,
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn parses_plain_and_full_refs() {
+    let r = GithubHelper::parse_github_ref("owner/repo").unwrap();
+    assert_eq!((r.owner.as_str(), r.repo.as_str()), ("owner", "repo"));
+    assert!(r.branch.is_none());
+
+    let r = GithubHelper::parse_github_ref("https://github.com/owner/repo.git").unwrap();
+    assert_eq!(r.repo, "repo");
+
+    let r =
+      GithubHelper::parse_github_ref("https://github.com/owner/repo/tree/dev/skills/foo").unwrap();
+    assert_eq!(r.branch.as_deref(), Some("dev"));
+    assert_eq!(r.subpath.as_deref(), Some("skills/foo"));
+
+    let r = GithubHelper::parse_github_ref("git@github.com:owner/repo.git").unwrap();
+    assert_eq!((r.owner.as_str(), r.repo.as_str()), ("owner", "repo"));
+
+    assert!(GithubHelper::parse_github_ref("nonsense").is_err());
+  }
+
+  #[test]
+  fn skill_folder_extraction() {
+    assert_eq!(GithubHelper::skill_folder_of("SKILL.md").unwrap(), "");
+    assert_eq!(
+      GithubHelper::skill_folder_of("skills/foo/SKILL.md").unwrap(),
+      "skills/foo"
+    );
+    assert!(GithubHelper::skill_folder_of("skills/foo").is_err());
+  }
 }

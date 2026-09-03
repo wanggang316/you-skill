@@ -1,9 +1,12 @@
-use crate::models::{AgentApp, InstallTarget, SelectedAgentPath};
-use crate::utils::path::expand_home;
+use crate::models::AgentApp;
+use crate::utils::path::{expand_home, is_within, youskill_root};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::RwLock;
 use uuid::Uuid;
+
+/// Id of the built-in shared `.agents/skills` target (the Vercel `skills` CLI convention).
+pub const SHARED_AGENTS_APP_ID: &str = "agents";
 
 // Global cache for local agent apps
 static LOCAL_AGENT_APPS: RwLock<Option<Vec<AgentApp>>> = RwLock::new(None);
@@ -60,81 +63,6 @@ pub fn refresh_local_agent_apps() {
   }
   // Trigger recomputation by calling local_agent_apps
   local_agent_apps();
-}
-
-pub fn resolve_selected_apps_paths(
-  agent_apps: &[String],
-  install_target: &InstallTarget,
-) -> Result<Vec<SelectedAgentPath>, String> {
-  let installed_apps = local_agent_apps();
-  let mut selected = Vec::new();
-  let mut errors = Vec::new();
-
-  for app_id in agent_apps {
-    let Some(app) = installed_apps.iter().find(|a| a.id == *app_id) else {
-      errors.push(format!("Unknown app id: {}", app_id));
-      continue;
-    };
-    let install_root = match root_folder_from_install_target(app, install_target) {
-      Ok(path) => path,
-      Err(err) => {
-        errors.push(format!("{}: {}", app.display_name, err));
-        continue;
-      },
-    };
-    selected.push(SelectedAgentPath {
-      display_name: app.display_name.clone(),
-      install_root,
-    });
-  }
-
-  if !errors.is_empty() {
-    return Err(errors.join("\n"));
-  }
-  if selected.is_empty() {
-    return Err("No valid agent apps selected".to_string());
-  }
-
-  Ok(selected)
-}
-
-pub fn resolve_all_available_apps_paths(
-  install_target: &InstallTarget,
-) -> Result<Vec<SelectedAgentPath>, String> {
-  let all_apps: Vec<SelectedAgentPath> = local_agent_apps()
-    .into_iter()
-    .filter_map(|app| {
-      root_folder_from_install_target(&app, install_target)
-        .ok()
-        .map(|install_root| SelectedAgentPath {
-          display_name: app.display_name,
-          install_root,
-        })
-    })
-    .collect();
-  Ok(all_apps)
-}
-
-pub fn root_folder_from_install_target(
-  app: &AgentApp,
-  install_target: &InstallTarget,
-) -> Result<PathBuf, String> {
-  match install_target {
-    InstallTarget::Global => {
-      let global_path = app
-        .global_path
-        .as_deref()
-        .ok_or("has no global path".to_string())?;
-      Ok(expand_home(global_path))
-    },
-    InstallTarget::Project(project_root) => {
-      let project_path = app
-        .project_path
-        .as_deref()
-        .ok_or("has no project path".to_string())?;
-      Ok(project_root.join(project_path))
-    },
-  }
 }
 
 pub fn create_user_agent_app(
@@ -216,6 +144,13 @@ pub fn update_user_agent_app_detail(
 
 fn internal_agent_apps() -> Vec<AgentApp> {
   vec![
+    AgentApp {
+      id: SHARED_AGENTS_APP_ID.to_string(),
+      display_name: "Agents (shared)".to_string(),
+      project_path: Some(".agents/skills".to_string()),
+      global_path: Some("~/.agents/skills".to_string()),
+      is_user_custom: false,
+    },
     AgentApp {
       id: "claude-code".to_string(),
       display_name: "Claude Code".to_string(),
@@ -551,26 +486,16 @@ fn update_user_agent_app(id: &str, app: AgentApp) -> Result<(), String> {
   save_user_agent_apps(&apps)
 }
 
-fn all_agent_apps() -> Vec<AgentApp> {
-  let internal = internal_agent_apps();
+/// Built-in apps followed by user-defined ones. A user app overrides a built-in app that
+/// has the same id or the same user-level path.
+pub fn all_agent_apps() -> Vec<AgentApp> {
+  let mut result = internal_agent_apps();
   let user_apps = load_user_agent_apps().unwrap_or_default();
 
-  let internal_global_paths: std::collections::HashSet<String> = internal
-    .iter()
-    .filter_map(|app| app.global_path.clone())
-    .collect();
-  let mut result: Vec<AgentApp> = internal;
-
   for mut user_app in user_apps {
-    let user_global_path = user_app.global_path.clone();
     result.retain(|app| {
       app.id != user_app.id
-        && match &user_global_path {
-          Some(path) => {
-            !internal_global_paths.contains(path) || app.global_path.as_ref() != Some(path)
-          },
-          None => true,
-        }
+        && !(user_app.global_path.is_some() && app.global_path == user_app.global_path)
     });
     user_app.is_user_custom = true;
     result.push(user_app);
@@ -644,6 +569,13 @@ fn validate_user_agent_app(
       "Global path folder does not exist: {}",
       global_path
     ));
+  }
+
+  if let Some(home) = dirs_next::home_dir() {
+    let hub = youskill_root(&home);
+    if is_within(&expand_home(global_path), &hub) {
+      return Err("Global path must not be inside the YouSkill hub directory".to_string());
+    }
   }
 
   Ok(())

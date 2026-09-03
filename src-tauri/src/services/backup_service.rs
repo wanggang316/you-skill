@@ -1,5 +1,5 @@
 use crate::config::{load_config, save_config};
-use crate::utils::path::canonical_skills_root;
+use crate::utils::path::{youskill_root, TRASH_DIR};
 use chrono::Local;
 use std::fs;
 use std::path::Path;
@@ -12,9 +12,10 @@ pub struct BackupResult {
   pub backup_time: Option<String>,
 }
 
-/// Backup skills directory to a ZIP file
+/// Backup the hub (`~/.youskill`: skills plus lock file) to a ZIP file
 pub fn backup_skills_sync(backup_folder: String) -> Result<BackupResult, String> {
-  let skills_path = canonical_skills_root()?;
+  let home = dirs_next::home_dir().ok_or("Could not find home directory")?;
+  let skills_path = youskill_root(&home);
 
   if !skills_path.exists() {
     return Ok(BackupResult {
@@ -126,6 +127,10 @@ fn add_dir_to_zip<P: AsRef<Path>>(
       .map_err(|_| "路径处理失败".to_string())?
       .to_string_lossy()
       .to_string();
+
+    if current_path == base_path && entry.file_name() == TRASH_DIR {
+      continue;
+    }
 
     if path.is_file() {
       let mut file = fs::File::open(&path).map_err(|e| format!("打开文件失败: {}", e))?;
