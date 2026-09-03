@@ -4,8 +4,8 @@
   import { get } from "svelte/store";
   import { open } from "@tauri-apps/plugin-shell";
   import hljs from "highlight.js/lib/common";
-  import { Loader2 } from "@lucide/svelte";
-  import PageHeader from "$lib/components/PageHeader.svelte";
+  import { ChevronLeft, ExternalLink, Languages, List, Loader2 } from "@lucide/svelte";
+  import IconButton from "$lib/components/ui/IconButton.svelte";
   import SkillDirectoryDrawer from "$lib/components/SkillDirectoryDrawer.svelte";
   import MarkdownPreview from "$lib/components/MarkdownPreview.svelte";
   import CodePreview from "$lib/components/CodePreview.svelte";
@@ -18,24 +18,23 @@
   import {
     fetchSkillsByNames,
     listSkillDirectory,
-    listSkills,
     openInFileManager,
     readSkillRelativeFileBytes,
     readSkillRelativeFile,
     readSkillFile,
     translateSkillMarkdown,
-    type LocalSkill,
     type RemoteSkill,
     type SkillDirectoryEntry,
   } from "$lib/api/skills";
+  import { getHubSkill, type HubSkillView } from "$lib/api/hub";
 
-  type SkillType = "local" | "remote";
+  type SkillType = "hub" | "remote";
   type FileViewMode = "markdown" | "code" | "image" | "unsupported";
 
   let skillLoading = $state(true);
   let error = $state("");
-  let skill = $state<LocalSkill | RemoteSkill | null>(null);
-  let currentType = $state<SkillType>("local");
+  let skill = $state<HubSkillView | RemoteSkill | null>(null);
+  let currentType = $state<SkillType>("hub");
   let currentName = $state("");
   let contentLoading = $state(true);
   let contentError = $state("");
@@ -67,12 +66,10 @@
   const translationCache = new Map<string, string>();
 
   const params = $derived($page.params);
-  const query = $derived($page.url.searchParams);
 
   const parseType = (value: string): SkillType | null => {
-    if (value === "local" || value === "remote") {
-      return value;
-    }
+    if (value === "hub" || value === "local") return "hub";
+    if (value === "remote") return "remote";
     return null;
   };
 
@@ -83,9 +80,6 @@
       return value;
     }
   };
-
-  const parseLocalScope = (value: string | null): "global" | "project" =>
-    value === "project" ? "project" : "global";
 
   const escapeHtml = (value: string) =>
     value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -290,10 +284,10 @@
     }
   };
 
-  const getSkillRootPath = () => {
-    if (!skill || !("installed_agent_apps" in skill)) return null;
-    return skill.root_folder || skill.installed_agent_apps[0]?.skill_folder || null;
-  };
+  const isHubSkill = (value: HubSkillView | RemoteSkill | null): value is HubSkillView =>
+    Boolean(value) && "hubPath" in (value as object);
+
+  const getSkillRootPath = () => (isHubSkill(skill) ? skill.hubPath : null);
 
   const buildGitHubUrl = (
     url: string,
@@ -338,18 +332,15 @@
     currentName = name;
 
     try {
-      if (type === "local") {
-        const scope = parseLocalScope(query.get("scope"));
-        const projectPath = scope === "project" ? query.get("projectPath") : null;
-        const localSkills = await listSkills(scope, projectPath);
-        skill = localSkills.find((item) => item.name === name) ?? null;
+      if (type === "hub") {
+        skill = await getHubSkill(name);
       } else {
         const remoteSkills = await fetchSkillsByNames([name]);
         skill = remoteSkills.find((item) => item.name === name) ?? remoteSkills[0] ?? null;
       }
 
       if (!skill) {
-        error = "Skill not found";
+        error = $t("detail.notFound");
       }
     } catch (err) {
       error = String(err);
@@ -359,22 +350,21 @@
   };
 
   const resolveLocalPath = (relativePath: string) => {
-    if (!skill || !("installed_agent_apps" in skill)) return null;
-    const dirPath = skill.root_folder || skill.installed_agent_apps[0]?.skill_folder;
+    const dirPath = getSkillRootPath();
     if (!dirPath) return null;
+    const separator = dirPath.includes("\\") && !dirPath.includes("/") ? "\\" : "/";
     if (relativePath.startsWith("/")) {
-      return dirPath + relativePath;
+      return dirPath + relativePath.split("/").join(separator);
     }
-    const parts = dirPath.split("/");
-    const relParts = relativePath.split("/");
-    for (const part of relParts) {
+    const parts = dirPath.split(/[/\\]/);
+    for (const part of relativePath.split("/")) {
       if (part === "..") {
         parts.pop();
-      } else if (part !== ".") {
+      } else if (part && part !== ".") {
         parts.push(part);
       }
     }
-    return parts.join("/");
+    return parts.join(separator);
   };
 
   const loadDirectory = async () => {
@@ -383,7 +373,7 @@
     directoryError = "";
 
     try {
-      if (currentType === "local") {
+      if (currentType === "hub") {
         const localPath = getSkillRootPath();
         if (!localPath) throw new Error("Skill path is missing");
         const entries = await listSkillDirectory(localPath);
@@ -468,7 +458,7 @@
       if (currentType === "remote" && "url" in skill && skill.url) {
         const branch = skill.branch || "main";
         sourceLink = buildGitHubUrl(skill.url, skill.path || "", filePath, branch) || "";
-      } else if (currentType === "local") {
+      } else if (currentType === "hub") {
         sourceLink = resolveLocalPath(filePath) || "";
       }
 
@@ -484,7 +474,7 @@
       }
 
       if (fileViewMode === "image") {
-        if (currentType === "local") {
+        if (currentType === "hub") {
           const localPath = getSkillRootPath();
           if (!localPath) throw new Error("Skill path is missing");
           const bytes = await readSkillRelativeFileBytes(localPath, filePath);
@@ -516,7 +506,7 @@
       }
 
       let fetchedContent = "";
-      if (currentType === "local") {
+      if (currentType === "hub") {
         const localPath = getSkillRootPath();
         if (!localPath) {
           throw new Error("Skill path is missing");
@@ -594,11 +584,8 @@
       return;
     }
 
-    if (currentType === "local" && "installed_agent_apps" in skill) {
-      const localPath = skill.root_folder || skill.installed_agent_apps[0]?.skill_folder;
-      if (localPath) {
-        await openInFileManager(localPath);
-      }
+    if (currentType === "hub" && isHubSkill(skill)) {
+      await openInFileManager(skill.hubPath);
     }
   };
 
@@ -608,7 +595,7 @@
 
   const handleOpenSource = async () => {
     if (!sourceLink) return;
-    if (currentType === "local") {
+    if (currentType === "hub") {
       await openInFileManager(sourceLink);
       return;
     }
@@ -630,7 +617,7 @@
       return;
     }
 
-    if (currentType === "local") {
+    if (currentType === "hub") {
       const localPath = resolveLocalPath(href);
       if (localPath) await openInFileManager(localPath);
       return;
@@ -749,8 +736,6 @@
   $effect(() => {
     params.type;
     params.name;
-    query.get("scope");
-    query.get("projectPath");
     loadSkill().catch(console.error);
   });
 
@@ -777,28 +762,67 @@
 </script>
 
 <section class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-  <PageHeader
-    currentView="detail"
-    activeTab="local"
-    skillName={currentName}
-    currentFileName={activeFileName}
-    currentFilePath={activeFilePath}
-    hasUpdate={false}
-    onChangeTab={() => {}}
-    onAddSkill={() => {}}
-    onOpenUpdate={() => {}}
-    onOpenSettings={() => {}}
-    onBack={handleBack}
-    onDetailAction={handleDetailAction}
-    onOpenCatalog={() => {
-      if (!directoryLoading && !skillLoading) openDirectoryDrawer();
-    }}
-    onTranslate={handleTranslateSkill}
-    showTranslate={isTranslatableMarkdown}
-    {translating}
-    translateLabel={translateButtonLabel}
-    onRefreshAgentApps={() => {}}
-  />
+  <header
+    class="border-base-300 flex h-12 flex-none items-center justify-between gap-3 border-b px-6"
+    data-window-drag-region
+  >
+    <div class="flex min-w-0 items-center gap-3">
+      <IconButton
+        variant="outline"
+        onclick={handleBack}
+        title={$t("header.back")}
+        class="h-8 w-8 p-0"
+      >
+        <ChevronLeft size={16} />
+      </IconButton>
+      <h1
+        class="text-base-content flex min-w-0 items-center gap-2 text-[1.05rem] font-semibold tracking-[-0.02em]"
+      >
+        <span class="truncate">{currentName}</span>
+        {#if activeFilePath}
+          <span class="text-base-content-subtle text-sm font-normal">/</span>
+          <span class="text-base-content-subtle truncate text-sm font-normal">{activeFilePath}</span
+          >
+        {/if}
+      </h1>
+    </div>
+    <div class="flex shrink-0 items-center gap-1.5">
+      {#if isTranslatableMarkdown}
+        <button
+          class="border-base-300 text-base-content hover:bg-base-200 flex h-8 items-center gap-2 rounded-xl border px-3 text-sm transition disabled:opacity-50"
+          onclick={handleTranslateSkill}
+          disabled={translating}
+          type="button"
+        >
+          {#if translating}
+            <Loader2 size={15} class="animate-spin" />
+            {$t("detail.translating")}
+          {:else}
+            <Languages size={15} />
+            {translateButtonLabel}
+          {/if}
+        </button>
+      {/if}
+      <IconButton
+        variant="outline"
+        onclick={() => {
+          if (!directoryLoading && !skillLoading) openDirectoryDrawer();
+        }}
+        title={$t("detail.catalog")}
+        class="h-8 w-8 p-0"
+      >
+        <List size={15} />
+      </IconButton>
+      <IconButton
+        variant="outline"
+        onclick={handleDetailAction}
+        title={currentType === "hub" ? $t("detail.openInFileManager") : $t("detail.openInBrowser")}
+        class="h-8 w-8 p-0"
+      >
+        <ExternalLink size={15} />
+      </IconButton>
+    </div>
+  </header>
 
   <SkillDirectoryDrawer
     open={directoryOpen}
@@ -865,7 +889,7 @@
                   onclick={handleOpenSource}
                   type="button"
                 >
-                  {$t(currentType === "local" ? "detail.openInFileManager" : "detail.openSource")}
+                  {$t(currentType === "hub" ? "detail.openInFileManager" : "detail.openSource")}
                 </button>
               {/if}
             </div>

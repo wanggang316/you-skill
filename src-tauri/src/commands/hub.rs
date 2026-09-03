@@ -1,7 +1,7 @@
 use crate::config::load_config;
 use crate::models::{
   ActionResult, HubSkillView, ImportItem, ImportOutcome, InstallMode, InstallRequest,
-  MigrationReport, ScanDecision, ScanItem, SourceUpdate, SyncAction, UninstallRequest,
+  MigrationReport, ScanDecision, ScanItem, SkillSource, SourceUpdate, SyncAction, UninstallRequest,
 };
 use crate::services::env::Env;
 use crate::services::scan_service::DEFAULT_SCAN_DEPTH;
@@ -9,6 +9,7 @@ use crate::services::{
   hub_service, install_service, migration_service, scan_service, source_service,
 };
 use crate::utils::folder::sweep_temp_dirs;
+use crate::utils::github::GithubHelper;
 use std::time::Duration;
 
 async fn blocking<T, F>(label: &'static str, f: F) -> Result<T, String>
@@ -48,10 +49,37 @@ pub async fn import_skills(
   overwrite: Option<bool>,
 ) -> Result<Vec<ImportOutcome>, String> {
   let env = Env::current()?;
+  let items = fill_remote_shas(items).await;
   blocking("import_skills", move || {
     hub_service::import_skills(&env, items, overwrite.unwrap_or(false))
   })
   .await
+}
+
+/// GitHub sources imported without a tree sha (manual URL import) get one now so that
+/// later update checks have a baseline. Best effort: network failures leave it empty.
+async fn fill_remote_shas(items: Vec<ImportItem>) -> Vec<ImportItem> {
+  let mut filled = Vec::with_capacity(items.len());
+  for mut item in items {
+    if let SkillSource::Github {
+      url,
+      skill_path,
+      branch,
+      remote_sha,
+      ..
+    } = &mut item.source
+    {
+      if remote_sha.as_deref().unwrap_or_default().is_empty() && !skill_path.is_empty() {
+        if let Ok(sha) =
+          GithubHelper::get_skill_folder_hash(url, skill_path, branch.as_deref()).await
+        {
+          *remote_sha = Some(sha);
+        }
+      }
+    }
+    filled.push(item);
+  }
+  filled
 }
 
 #[tauri::command]

@@ -633,4 +633,35 @@ pre.code-block--compact {
     background-color: var(--tag-neutral-bg);
     color: var(--tag-neutral-text);
   }
+
+  .tag-success {
+    background-color: color-mix(in oklch, var(--success) 22%, transparent);
+    color: var(--success-content);
+  }
+
+  .tag-info {
+    background-color: color-mix(in oklch, var(--info) 22%, transparent);
+    color: var(--info-content);
+  }
+
+  /* Drift state dot shown on install target icons */
+  .state-dot {
+    @apply inline-block size-2 rounded-full;
+  }
+
+  .state-in_sync {
+    background-color: var(--success);
+  }
+
+  .state-outdated,
+  .state-modified,
+  .state-relocated {
+    background-color: var(--warning);
+  }
+
+  .state-conflict,
+  .state-missing,
+  .state-broken_link {
+    background-color: var(--error);
+  }
 }

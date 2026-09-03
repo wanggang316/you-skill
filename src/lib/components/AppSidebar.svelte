@@ -4,16 +4,17 @@
     Folder,
     FolderOpen,
     FolderPlus,
-    Globe2,
     LibraryBig,
     Loader2,
     Plus,
     Settings,
+    Store,
   } from "@lucide/svelte";
   import type { UserProject } from "$lib/api/user-projects";
   import { t } from "$lib/i18n";
   import {
-    buildSkillsHref,
+    buildLibraryHref,
+    buildMarketHref,
     projectScopeKey,
     type SidebarActiveKey,
   } from "$lib/navigation/app-shell";
@@ -23,7 +24,7 @@
     projects,
     hasUpdate,
     updateLoading,
-    onAddSkill,
+    onImportSkill,
     onOpenUpdate,
     onOpenProjectManage,
   }: {
@@ -31,10 +32,13 @@
     projects: UserProject[];
     hasUpdate: boolean;
     updateLoading: boolean;
-    onAddSkill: () => void;
+    onImportSkill: () => void;
     onOpenUpdate: () => void;
     onOpenProjectManage: () => void;
   } = $props();
+
+  const itemClass =
+    "text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px";
 </script>
 
 <aside
@@ -44,35 +48,31 @@
 >
   <nav class="flex min-h-0 flex-1 flex-col px-2.5 pt-10 pb-4 max-[832px]:px-[0.45rem]">
     <div class="grid gap-0.5" aria-label={$t("sidebar.skills")}>
-      <button
-        class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
-        type="button"
-        onclick={onAddSkill}
-      >
+      <button class={itemClass} type="button" onclick={onImportSkill}>
         <Plus size={17} strokeWidth={1.8} />
-        <span class="min-w-0 truncate">{$t("addSkill.title")}</span>
+        <span class="min-w-0 truncate">{$t("import.title")}</span>
       </button>
       <a
-        class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
+        class={itemClass}
         class:bg-base-300={activeKey === "library"}
         class:text-base-content={activeKey === "library"}
         class:font-medium={activeKey === "library"}
-        href={buildSkillsHref("remote")}
+        href={buildLibraryHref()}
         aria-current={activeKey === "library" ? "page" : undefined}
       >
         <LibraryBig size={17} strokeWidth={1.8} />
         <span class="min-w-0 truncate">{$t("sidebar.library")}</span>
       </a>
       <a
-        class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
-        class:bg-base-300={activeKey === "global"}
-        class:text-base-content={activeKey === "global"}
-        class:font-medium={activeKey === "global"}
-        href={buildSkillsHref("local")}
-        aria-current={activeKey === "global" ? "page" : undefined}
+        class={itemClass}
+        class:bg-base-300={activeKey === "market"}
+        class:text-base-content={activeKey === "market"}
+        class:font-medium={activeKey === "market"}
+        href={buildMarketHref()}
+        aria-current={activeKey === "market" ? "page" : undefined}
       >
-        <Globe2 size={17} strokeWidth={1.8} />
-        <span class="min-w-0 truncate">{$t("sidebar.global")}</span>
+        <Store size={17} strokeWidth={1.8} />
+        <span class="min-w-0 truncate">{$t("sidebar.market")}</span>
       </a>
     </div>
 
@@ -98,11 +98,11 @@
         {#each projects as project (project.path)}
           {@const key = projectScopeKey(project.path)}
           <a
-            class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 mb-0.5 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
+            class={`${itemClass} mb-0.5`}
             class:bg-base-300={activeKey === key}
             class:text-base-content={activeKey === key}
             class:font-medium={activeKey === key}
-            href={buildSkillsHref("local", project.path)}
+            href={buildLibraryHref({ projectPath: project.path })}
             aria-current={activeKey === key ? "page" : undefined}
             title={project.path}
           >
@@ -143,7 +143,7 @@
       </button>
     {/if}
     <a
-      class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
+      class={itemClass}
       class:bg-base-300={activeKey === "settings"}
       class:text-base-content={activeKey === "settings"}
       class:font-medium={activeKey === "settings"}

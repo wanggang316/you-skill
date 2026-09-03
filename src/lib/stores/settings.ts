@@ -1,13 +1,12 @@
 import { derived, get, writable } from "svelte/store";
 import { getSettings as fetchSettings, updateSettings as persistSettings } from "../api";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { AppSettings } from "../api/settings";
+import type { AppSettings, EditableSettings } from "../api/settings";
 
 const defaultSettings: AppSettings = {
   language: "en",
   theme: "system",
-  sync_mode: "symlink",
-  unknown_skill_install_permission: false,
+  sync_mode: "copy",
   openrouter_api_key: null,
   translate_target_language: "",
   translate_model: "",
@@ -104,7 +103,6 @@ export const loadSettings = async () => {
       language: remote.language,
       theme: remote.theme,
       sync_mode: remote.sync_mode,
-      unknown_skill_install_permission: remote.unknown_skill_install_permission,
       openrouter_api_key: remote.openrouter_api_key ?? null,
       translate_target_language: remote.translate_target_language ?? "",
       translate_model: remote.translate_model ?? "",
@@ -120,20 +118,7 @@ export const loadSettings = async () => {
   }
 };
 
-export const updateSettings = async (
-  patch: Partial<
-    Pick<
-      AppSettings,
-      | "language"
-      | "theme"
-      | "sync_mode"
-      | "unknown_skill_install_permission"
-      | "openrouter_api_key"
-      | "translate_target_language"
-      | "translate_model"
-    >
-  >
-) => {
+export const updateSettings = async (patch: Partial<EditableSettings>) => {
   const current = get(settings);
   const next = { ...current, ...patch };
   settings.set(next);

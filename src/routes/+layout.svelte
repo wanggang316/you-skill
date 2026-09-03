@@ -5,25 +5,23 @@
   import { page } from "$app/state";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import AddSkillModal from "$lib/components/AddSkillModal.svelte";
   import AppSidebar from "$lib/components/AppSidebar.svelte";
+  import ForceConfirmModal from "$lib/components/ForceConfirmModal.svelte";
+  import ImportSkillModal from "$lib/components/ImportSkillModal.svelte";
+  import InstallSkillModal from "$lib/components/InstallSkillModal.svelte";
   import UserProjectFormModal from "$lib/components/UserProjectFormModal.svelte";
-  import { getSkillsLocation } from "$lib/navigation/app-shell";
+  import { getAppLocation } from "$lib/navigation/app-shell";
+  import { loadAgents, loadMigrationReport, refreshHub } from "$lib/stores/hub";
+  import { openImportModal } from "$lib/stores/modals";
   import { loadSettings } from "$lib/stores/settings";
-  import {
-    agents as agentsStore,
-    loadAgents,
-    refreshLocal as refreshLocalSkills,
-  } from "$lib/stores/skills";
   import { ensureUpdateChecked, installAvailableUpdate, updaterState } from "$lib/stores/updater";
   import { refreshUserProjects, userProjects } from "$lib/stores/user-projects";
 
   let { children } = $props();
-  let addSkillModalOpen = $state(false);
   let userProjectsModalOpen = $state(false);
   let userProjectsModalWasOpen = $state(false);
 
-  const skillsLocation = $derived(getSkillsLocation(page.url));
+  const location = $derived(getAppLocation(page.url));
   const dragExcludedSelector = [
     "a",
     "button",
@@ -49,16 +47,10 @@
       });
   };
 
-  const refreshCurrentSkills = () =>
-    refreshLocalSkills({
-      scope: skillsLocation.scope,
-      project_path: skillsLocation.projectPath,
-    });
-
   $effect(() => {
     const action = page.url.searchParams.get("action");
     if (action === "add") {
-      addSkillModalOpen = true;
+      openImportModal();
     } else if (action === "manage-projects") {
       userProjectsModalOpen = true;
     }
@@ -71,7 +63,9 @@
     }
     if (userProjectsModalWasOpen) {
       userProjectsModalWasOpen = false;
-      refreshUserProjects().catch(console.error);
+      refreshUserProjects()
+        .then(() => refreshHub())
+        .catch(console.error);
     }
   });
 
@@ -80,24 +74,18 @@
       return () => {};
     }
 
-    const allowedThemes = new Set<string>(["light", "dark", "system"]);
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme && allowedThemes.has(savedTheme)) {
-      // You can set theme via store or CSS variables
-      // For now, we'll use the existing settings store
-    } else {
-      localStorage.setItem("theme", "system");
-    }
-
     let unlistenOpenInstallModal: UnlistenFn | null = null;
 
     // Load shared application state without blocking the first render.
     loadSettings().catch(console.error);
     loadAgents().catch(console.error);
     refreshUserProjects().catch(console.error);
+    refreshHub()
+      .then(() => loadMigrationReport())
+      .catch(console.error);
     ensureUpdateChecked().catch(console.error);
     listen("open-install-modal", () => {
-      addSkillModalOpen = true;
+      openImportModal();
     })
       .then((unlisten) => {
         unlistenOpenInstallModal = unlisten;
@@ -116,11 +104,11 @@
   class="bg-base-100 text-base-content grid h-dvh min-h-0 grid-cols-[15.5rem_minmax(0,1fr)] overflow-hidden max-[832px]:grid-cols-[13.5rem_minmax(0,1fr)]"
 >
   <AppSidebar
-    activeKey={skillsLocation.activeKey}
+    activeKey={location.activeKey}
     projects={$userProjects}
     hasUpdate={$updaterState.hasUpdate}
     updateLoading={$updaterState.installing}
-    onAddSkill={() => (addSkillModalOpen = true)}
+    onImportSkill={() => openImportModal()}
     onOpenUpdate={() => installAvailableUpdate().catch(console.error)}
     onOpenProjectManage={() => (userProjectsModalOpen = true)}
   />
@@ -130,11 +118,7 @@
   </section>
 </div>
 
-<AddSkillModal
-  bind:open={addSkillModalOpen}
-  agents={$agentsStore}
-  initialScope={skillsLocation.scope}
-  initialProjectPath={skillsLocation.projectPath}
-  onSuccess={refreshCurrentSkills}
-/>
+<ImportSkillModal />
+<InstallSkillModal />
+<ForceConfirmModal />
 <UserProjectFormModal bind:open={userProjectsModalOpen} />
