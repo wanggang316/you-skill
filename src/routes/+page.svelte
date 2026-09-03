@@ -149,11 +149,6 @@
     if (localScope === "global") return $t("sidebar.global");
     return selectedProject?.name ?? $t("header.localTab");
   });
-  const contentDescription = $derived.by(() => {
-    if (activeTab === "remote") return $t("header.remoteTab");
-    if (localScope === "project") return selectedProject?.path ?? "";
-    return $t("header.localTab");
-  });
   const updatableLocalSkills = $derived.by(() => {
     if (localScope !== "global") return [];
     const localNames = new Set($localSkillsStore.map((skill) => skill.name));
@@ -791,15 +786,12 @@
 
   <section class="flex min-w-0 flex-col overflow-hidden">
     <header
-      class="border-base-300 flex min-h-18 items-end border-b px-7 pt-5 pb-3.5"
+      class="border-base-300 flex min-h-18 items-center border-b px-7"
       data-window-drag-region
     >
-      <div class="min-w-0">
-        <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
-          {contentTitle}
-        </h1>
-        <p class="text-base-content-subtle mt-0.5 truncate text-xs">{contentDescription}</p>
-      </div>
+      <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
+        {contentTitle}
+      </h1>
     </header>
 
     <main bind:this={mainScrollContainer} class="flex-1 overflow-y-auto">

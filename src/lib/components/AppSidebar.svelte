@@ -168,7 +168,7 @@
   }
 
   .sidebar-drag-region {
-    min-height: 4.5rem;
+    min-height: 3rem;
     flex: none;
     user-select: none;
   }
