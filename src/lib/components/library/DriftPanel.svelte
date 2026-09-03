@@ -3,18 +3,18 @@
   import { t } from "$lib/i18n";
   import type { HubSkillView, InstallView, SyncAction } from "$lib/api/hub";
 
+  export type TargetAction = "push" | "adopt" | "reinstall";
+
   let {
     skill,
     busy = false,
     onSync,
-    onTargetPush,
-    onTargetAdopt,
+    onTargetAction,
   }: {
     skill: HubSkillView;
     busy?: boolean;
     onSync: (action: SyncAction) => void;
-    onTargetPush: (install: InstallView) => void;
-    onTargetAdopt: (install: InstallView) => void;
+    onTargetAction: (install: InstallView, action: TargetAction) => void;
   } = $props();
 
   const driftedTargets = $derived(skill.installs.filter((install) => install.state !== "in_sync"));
@@ -31,6 +31,9 @@
 
   const buttonClass =
     "border-base-300 text-base-content hover:bg-base-200 rounded-lg border px-2.5 py-1 text-xs transition disabled:opacity-50";
+
+  const needsReinstall = (install: InstallView) =>
+    install.state === "missing" || install.state === "broken_link";
 </script>
 
 <div class="border-warning/40 bg-warning/5 space-y-3 rounded-2xl border p-4 text-sm">
@@ -111,21 +114,20 @@
                 class={buttonClass}
                 type="button"
                 disabled={busy}
-                onclick={() => onTargetAdopt(install)}
+                onclick={() => onTargetAction(install, "adopt")}
               >
                 {$t("target.adopt")}
               </button>
             {/if}
-            {#if install.mode === "copy" || install.state === "broken_link" || install.state === "missing"}
+            {#if install.mode === "copy" || needsReinstall(install)}
               <button
                 class={buttonClass}
                 type="button"
                 disabled={busy}
-                onclick={() => onTargetPush(install)}
+                onclick={() =>
+                  onTargetAction(install, needsReinstall(install) ? "reinstall" : "push")}
               >
-                {install.state === "missing" || install.state === "broken_link"
-                  ? $t("target.reinstall")
-                  : $t("target.push")}
+                {needsReinstall(install) ? $t("target.reinstall") : $t("target.push")}
               </button>
             {/if}
           </div>

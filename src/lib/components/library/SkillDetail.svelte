@@ -5,8 +5,8 @@
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import SegmentedTabs from "$lib/components/ui/SegmentedTabs.svelte";
   import SkillFileViewer from "$lib/components/SkillFileViewer.svelte";
-  import InstallTargets, { type TargetAction } from "./InstallTargets.svelte";
-  import DriftPanel from "./DriftPanel.svelte";
+  import InstallTargets from "./InstallTargets.svelte";
+  import DriftPanel, { type TargetAction } from "./DriftPanel.svelte";
   import { t } from "$lib/i18n";
   import type { AgentInfo } from "$lib/api/skills";
   import {
@@ -42,7 +42,7 @@
     checkingSource?: boolean;
     actionError?: string;
     onInstall: (scope: InstallScope, projectPath: string | null) => void;
-    onTargetAction: (install: InstallView, action: TargetAction, agentId: string) => void;
+    onTargetAction: (install: InstallView, action: TargetAction) => void;
     onSync: (action: SyncAction) => void;
     onRemove: () => void;
     onOpenDir: () => void;
@@ -57,14 +57,6 @@
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
   };
-
-  function handleTargetPush(install: InstallView) {
-    onTargetAction(install, "push", install.agentIds[0] ?? "");
-  }
-
-  function handleTargetAdopt(install: InstallView) {
-    onTargetAction(install, "adopt", install.agentIds[0] ?? "");
-  }
 </script>
 
 <div class="flex min-h-0 min-w-0 flex-col">
@@ -181,19 +173,13 @@
         {#if skill.hasDrift}
           <section class="space-y-2">
             <h3 class="text-base-content text-sm font-medium">{$t("detail.drift")}</h3>
-            <DriftPanel
-              {skill}
-              {busy}
-              {onSync}
-              onTargetPush={handleTargetPush}
-              onTargetAdopt={handleTargetAdopt}
-            />
+            <DriftPanel {skill} {busy} {onSync} {onTargetAction} />
           </section>
         {/if}
 
         <section class="space-y-2">
           <h3 class="text-base-content text-sm font-medium">{$t("detail.installs")}</h3>
-          <InstallTargets {skill} {projects} {agents} {busy} onAdd={onInstall} {onTargetAction} />
+          <InstallTargets {skill} {projects} {agents} {busy} onAdd={onInstall} />
           {#if skill.installs.length === 0}
             <p class="text-base-content-faint text-xs">{$t("detail.installs.empty")}</p>
           {/if}

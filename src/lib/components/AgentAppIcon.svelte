@@ -65,18 +65,27 @@
 
   import { Layers } from "@lucide/svelte";
 
-  let { agentId, name }: { agentId: string; name: string } = $props();
+  let {
+    agentId,
+    name,
+    size = "md",
+  }: { agentId: string; name: string; size?: "sm" | "md" } = $props();
 
   const icon = $derived(icons[agentId]);
   const isSharedTarget = $derived(agentId === "agents");
   const fallback = $derived(name.trim().charAt(0).toUpperCase() || "?");
 </script>
 
-<span class:monochrome={icon?.monochrome} class="agent-app-icon" aria-hidden="true">
+<span
+  class:monochrome={icon?.monochrome}
+  class:small={size === "sm"}
+  class="agent-app-icon"
+  aria-hidden="true"
+>
   {#if icon}
     <img src={icon.src} alt="" />
   {:else if isSharedTarget}
-    <Layers size={16} class="text-base-content-muted" />
+    <Layers size={size === "sm" ? 13 : 16} class="text-base-content-muted" />
   {:else}
     <span class="fallback">{fallback}</span>
   {/if}
@@ -95,10 +104,25 @@
     background: var(--base-100);
   }
 
+  .agent-app-icon.small {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.5rem;
+  }
+
   .agent-app-icon img {
     width: 1.15rem;
     height: 1.15rem;
     object-fit: contain;
+  }
+
+  .agent-app-icon.small img {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
+  .agent-app-icon.small .fallback {
+    font-size: 0.65rem;
   }
 
   .fallback {

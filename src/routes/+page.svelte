@@ -4,7 +4,7 @@
   import { page } from "$app/state";
   import SkillList from "$lib/components/library/SkillList.svelte";
   import SkillDetail from "$lib/components/library/SkillDetail.svelte";
-  import type { TargetAction } from "$lib/components/library/InstallTargets.svelte";
+  import type { TargetAction } from "$lib/components/library/DriftPanel.svelte";
   import RemoveSkillModal from "$lib/components/RemoveSkillModal.svelte";
   import { t } from "$lib/i18n";
   import { buildLibraryHref, getAppLocation, type LibraryFilter } from "$lib/navigation/app-shell";
@@ -12,7 +12,6 @@
     installSkill,
     openInFileManager,
     syncSkill,
-    uninstallSkill,
     type HubSkillView,
     type InstallScope,
     type InstallView,
@@ -134,33 +133,38 @@
     openInstallModal([selectedSkill.name], { scope, projectPath });
   }
 
-  function handleTargetAction(install: InstallView, action: TargetAction, agentId: string) {
+  function handleTargetAction(install: InstallView, action: TargetAction) {
     const skill = selectedSkill;
     if (!skill) return;
     const name = skill.name;
-    const spec = { scope: install.scope, projectPath: install.projectPath ?? null, agentId };
     void runAction(async () => {
       let result;
       switch (action) {
-        case "push":
         case "reinstall":
-          if (install.mode === "symlink" && action === "reinstall") {
+          if (install.mode === "symlink") {
+            const targets = install.agentIds.map((agentId) => ({
+              scope: install.scope,
+              projectPath: install.projectPath ?? null,
+              agentId,
+            }));
             result = await performAction((force) =>
-              installSkill({ name, targets: [spec], mode: "symlink", force })
+              installSkill({ name, targets, mode: "symlink", force })
             );
-          } else {
-            result = await performAction((force) =>
-              syncSkill(name, { kind: "push_targets", targets: [install.path], force })
-            );
+            break;
           }
+          result = await performAction((force) =>
+            syncSkill(name, { kind: "push_targets", targets: [install.path], force })
+          );
+          break;
+        case "push":
+          result = await performAction((force) =>
+            syncSkill(name, { kind: "push_targets", targets: [install.path], force })
+          );
           break;
         case "adopt":
           result = await performAction((force) =>
             syncSkill(name, { kind: "adopt_target", path: install.path, force })
           );
-          break;
-        case "uninstall":
-          result = await performAction((force) => uninstallSkill({ name, targets: [spec], force }));
           break;
       }
       if (result && !result.applied && result.blockers.length > 0) {
