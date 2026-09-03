@@ -1,18 +1,14 @@
 <script lang="ts">
-  import { onMount, tick } from "svelte";
+  import { tick } from "svelte";
   import { get } from "svelte/store";
-  import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  import PageHeader from "$lib/components/PageHeader.svelte";
   import { t } from "$lib/i18n";
   import LocalSkillsSection from "$lib/components/LocalSkillsSection.svelte";
   import RemoteSkillsSection from "$lib/components/RemoteSkillsSection.svelte";
-  import AddSkillModal from "$lib/components/AddSkillModal.svelte";
-  import UserProjectFormModal from "$lib/components/UserProjectFormModal.svelte";
-  import { listUserProjects, type UserProject } from "$lib/api/user-projects";
+  import { getSkillsLocation, projectScopeKey } from "$lib/navigation/app-shell";
   import { settings, updateSettings as updateAppSettings } from "$lib/stores/settings";
-  import { ensureUpdateChecked, installAvailableUpdate, updaterState } from "$lib/stores/updater";
+  import { userProjects } from "$lib/stores/user-projects";
   import {
     detectGithubAuto,
     checkSkillVersion,
@@ -25,7 +21,6 @@
   import {
     agents as agentsStore,
     checkForSkillUpdates,
-    loadAgents,
     loadRemote as loadRemoteState,
     localError as localErrorStore,
     localLoading as localLoadingStore,
@@ -48,22 +43,12 @@
     SourceVersionGroup,
   } from "$lib/api/skills";
 
-  // Shared state for modals
-  let addSkillModalOpen = $state(false);
-  let userProjectsModalOpen = $state(false);
-  let hasUpdate = $state(false);
-  let updatingApp = $state(false);
   let mainScrollContainer = $state<HTMLElement | null>(null);
   let initialScrollTop = $state<number | null>(null);
-
-  // Active tab
-  let activeTab = $state("local");
+  let restoredScrollKey = $state("");
 
   let localSearch = $state("");
   let localAgent = $state("all");
-  let localScopeKey = $state("global");
-  let userProjects = $state<UserProject[]>([]);
-  let userProjectsModalWasOpen = $state(false);
 
   // Remote skills state
   let remoteQuery = $state("");
@@ -133,77 +118,31 @@
   const getSkillAgentIds = (skill: LocalSkill): string[] =>
     Array.from(new Set(skill.installed_agent_apps.map((app) => app.id)));
 
+  const routeLocation = $derived(getSkillsLocation($page.url));
+  const activeTab = $derived(routeLocation.tab);
+  const localScopeKey = $derived(
+    routeLocation.projectPath ? projectScopeKey(routeLocation.projectPath) : "global"
+  );
   const localScope = $derived.by(() =>
     localScopeKey.startsWith("project:") ? "project" : "global"
   );
   const localProjectPath = $derived.by(() =>
-      localScopeKey.startsWith("project:")
-        ? decodeURIComponent(localScopeKey.slice("project:".length))
-        : null
+    localScopeKey.startsWith("project:")
+      ? decodeURIComponent(localScopeKey.slice("project:".length))
+      : null
   );
+  const selectedProject = $derived.by(() =>
+    $userProjects.find((project) => project.path === localProjectPath)
+  );
+  const contentTitle = $derived.by(() => {
+    if (activeTab === "remote") return $t("sidebar.library");
+    if (localScope === "global") return $t("sidebar.global");
+    return selectedProject?.name ?? $t("header.localTab");
+  });
   const updatableLocalSkills = $derived.by(() => {
     if (localScope !== "global") return [];
     const localNames = new Set($localSkillsStore.map((skill) => skill.name));
     return $skillsWithUpdateStore.filter((skill) => localNames.has(skill.name));
-  });
-
-  // Initialize and load shared data on mount - 只加载本地数据
-  onMount(() => {
-    let unlistenOpenInstallModal: UnlistenFn | null = null;
-    const unsubscribeUpdater = updaterState.subscribe((state) => {
-      hasUpdate = state.hasUpdate;
-      updatingApp = state.installing;
-    });
-
-    const searchParams = get(page).url.searchParams;
-    const tabParam = searchParams.get("tab");
-    if (tabParam === "remote" || tabParam === "local") {
-      activeTab = tabParam;
-    }
-    const scopeParam = searchParams.get("scope");
-    const projectPathParam = searchParams.get("projectPath");
-    if (scopeParam === "project" && projectPathParam) {
-      localScopeKey = `project:${encodeURIComponent(projectPathParam)}`;
-    } else {
-      localScopeKey = "global";
-    }
-    const scrollParam = searchParams.get("scroll");
-    if (scrollParam) {
-      const parsed = Number(scrollParam);
-      if (Number.isFinite(parsed) && parsed >= 0) {
-        initialScrollTop = parsed;
-      }
-    }
-
-    // 只加载首屏必需的本地数据
-    loadAgents().catch(console.error);
-    loadUserProjectOptions().catch(console.error);
-    refreshLocal().catch(console.error);
-
-    if (activeTab === "remote" && !get(remoteLoadedStore)) {
-      remoteLoadedStore.set(true);
-      loadRemote(true).catch(console.error);
-    }
-
-    // 如果数据已在 store 中（不触发加载），也要尝试恢复一次滚动位置
-    restoreInitialScroll().catch(console.error);
-
-    // Listen for tray menu events
-    listen("open-install-modal", () => {
-      addSkillModalOpen = true;
-    })
-      .then((unlisten) => {
-        unlistenOpenInstallModal = unlisten;
-      })
-      .catch(console.error);
-    ensureUpdateChecked().catch(console.error);
-
-    return () => {
-      unsubscribeUpdater();
-      if (unlistenOpenInstallModal) {
-        unlistenOpenInstallModal();
-      }
-    };
   });
 
   const restoreInitialScroll = async () => {
@@ -213,25 +152,22 @@
     initialScrollTop = null;
   };
 
-  const loadUserProjectOptions = async () => {
-    userProjects = await listUserProjects();
-    if (localScope === "project") {
-      const exists = userProjects.some((item) => item.path === localProjectPath);
-      if (!exists) {
-        localScopeKey = "global";
+  $effect(() => {
+    const scrollParam = $page.url.searchParams.get("scroll");
+    const scrollKey = `${$page.url.pathname}${$page.url.search}`;
+    if (scrollParam && restoredScrollKey !== scrollKey) {
+      const parsed = Number(scrollParam);
+      if (Number.isFinite(parsed) && parsed >= 0) {
+        initialScrollTop = parsed;
+        restoredScrollKey = scrollKey;
       }
     }
-  };
 
-  $effect(() => {
-    if (userProjectsModalOpen) {
-      userProjectsModalWasOpen = true;
-      return;
-    }
-    if (userProjectsModalWasOpen) {
-      userProjectsModalWasOpen = false;
-      loadUserProjectOptions().catch(console.error);
-      refreshLocal().catch(console.error);
+    if (activeTab === "remote" && !get(remoteLoadedStore)) {
+      remoteLoadedStore.set(true);
+      loadRemote(true).catch(console.error);
+    } else {
+      restoreInitialScroll().catch(console.error);
     }
   });
 
@@ -714,68 +650,22 @@
     goto(`/skills/${type}/${encodeURIComponent(skill.name)}?${query.toString()}`);
   };
 
-  // Handle tab change - 延迟加载非关键数据
-  const handleTabChange = (tab: string) => {
-    activeTab = tab;
-
-    // 切换到远程标签时，首次加载远程数据
-    if (tab === "remote" && !get(remoteLoadedStore)) {
-      remoteLoadedStore.set(true);
-      loadRemote(true).catch(console.error);
-    } else {
-      restoreInitialScroll().catch(console.error);
-    }
-
-    // 切换到本地标签时，延迟检查更新（非阻塞）
-    if (tab === "local" && localScope === "global" && get(localSkillsStore).length > 0) {
-      checkForSkillUpdates().catch(console.error);
-    }
-  };
-
   $effect(() => {
     const _scope = localScope;
     const _project = localProjectPath;
     refreshLocal().catch(console.error);
   });
-
-  // Navigation handlers
-  const handleAppUpdate = async () => {
-    if (updatingApp) return;
-    try {
-      await installAvailableUpdate();
-    } catch (error) {
-      console.error("Failed to install update:", error);
-    }
-  };
-
-  const navigateToSettings = () => {
-    const returnTo = encodeURIComponent(getHomeReturnTo());
-    goto(`/settings?returnTo=${returnTo}`);
-  };
 </script>
 
-<div class="bg-base-100 text-base-content flex h-screen flex-col overflow-hidden">
-  <PageHeader
-    currentView="list"
-    {activeTab}
-    bind:localScopeKey
-    projects={userProjects}
-    skillName=""
-    {hasUpdate}
-    updateLoading={updatingApp}
-    agentAppsLoading={false}
-    onChangeTab={handleTabChange}
-    onAddSkill={() => (addSkillModalOpen = true)}
-    onOpenUpdate={handleAppUpdate}
-    onOpenProjectManage={() => (userProjectsModalOpen = true)}
-    onOpenSettings={navigateToSettings}
-    onBack={() => {}}
-    onDetailAction={undefined}
-    onRefreshAgentApps={() => {}}
-  />
+<section class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+  <header class="border-base-300 flex min-h-12 items-center border-b px-7" data-window-drag-region>
+    <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
+      {contentTitle}
+    </h1>
+  </header>
 
   <main bind:this={mainScrollContainer} class="flex-1 overflow-y-auto">
-    <div class="mx-auto max-w-6xl px-6 py-6">
+    <div class="mx-auto max-w-6xl px-7 py-6">
       {#if activeTab === "local"}
         <LocalSkillsSection
           bind:localSearch
@@ -825,16 +715,7 @@
       {/if}
     </div>
   </main>
-</div>
-
-<AddSkillModal
-  bind:open={addSkillModalOpen}
-  agents={$agentsStore}
-  initialScope={localScope}
-  initialProjectPath={localProjectPath}
-  onSuccess={refreshLocal}
-/>
-<UserProjectFormModal bind:open={userProjectsModalOpen} />
+</section>
 
 <!-- Select Agent Modal -->
 {#await import("$lib/components/SelectAgentModal.svelte") then { default: SelectAgentModal }}

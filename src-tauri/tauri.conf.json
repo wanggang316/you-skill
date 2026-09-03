@@ -14,9 +14,10 @@
       {
         "title": "YouSkill",
         "hiddenTitle": true,
-        "width": 720,
+        "titleBarStyle": "Overlay",
+        "width": 1120,
         "height": 800,
-        "minWidth": 600,
+        "minWidth": 900,
         "minHeight": 600,
         "dragDropEnabled": false,
         "resizable": true,

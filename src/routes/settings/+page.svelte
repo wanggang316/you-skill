@@ -5,10 +5,9 @@
   import { settings, updateSettings } from "$lib/stores/settings";
   import { get } from "svelte/store";
   import { getSettings, setBackupFolder, openBackupFolder, backupSkills } from "$lib/api";
-  import IconButton from "$lib/components/ui/IconButton.svelte";
   import TranslateSettingsModal from "$lib/components/TranslateSettingsModal.svelte";
   import { open } from "@tauri-apps/plugin-dialog";
-  import { FolderOpen, Loader2, ChevronRight, Download, ChevronLeft } from "@lucide/svelte";
+  import { FolderOpen, Loader2, ChevronRight, Download } from "@lucide/svelte";
   import { check, type Update } from "@tauri-apps/plugin-updater";
   import { relaunch } from "@tauri-apps/plugin-process";
   import { getVersion } from "@tauri-apps/api/app";
@@ -24,7 +23,6 @@
   let downloadProgress = $state(0);
   let downloadTotalBytes = $state(0);
   let downloadedBytes = $state(0);
-
   // Backup state
   let backupFolder = $state("");
   let isBackingUp = $state(false);
@@ -219,15 +217,6 @@
     goto(`/agent-apps?returnTo=${returnTo}`);
   };
 
-  const goBack = () => {
-    const returnTo = get(page).url.searchParams.get("returnTo");
-    if (returnTo) {
-      goto(decodeURIComponent(returnTo));
-      return;
-    }
-    window.history.back();
-  };
-
   const handleSaveTranslateSettings = async (payload: {
     apiKey: string;
     targetLanguage: string;
@@ -247,29 +236,18 @@
   };
 </script>
 
-<div class="bg-base-100 text-base-content flex h-screen flex-col overflow-hidden">
-  <!-- Header -->
-  <header class="border-base-300 bg-base-100 sticky top-0 z-50 border-b">
-    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-      <div class="flex items-center gap-4">
-        <IconButton
-          variant="outline"
-          onclick={goBack}
-          title={$t("header.back")}
-          ariaLabel={$t("header.back")}
-        >
-          <ChevronLeft size={16} />
-        </IconButton>
-        <h1 class="text-base-content text-lg font-medium">
-          {$t("header.settings")}
-        </h1>
-      </div>
-    </div>
+<section class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+  <header
+    class="border-base-300 flex h-12 flex-none items-center border-b px-7"
+    data-window-drag-region
+  >
+    <h1 class="text-base-content text-[1.05rem] font-semibold tracking-[-0.02em]">
+      {$t("header.settings")}
+    </h1>
   </header>
 
-  <!-- Content -->
-  <main class="flex-1 overflow-y-auto">
-    <div class="mx-auto max-w-4xl px-6 py-6">
+  <main class="min-h-0 flex-1 overflow-y-auto">
+    <div class="mx-auto max-w-4xl px-7 py-6">
       <section class="space-y-4">
         <!-- Language & Theme-->
         <div class="bg-base-200 flex flex-col gap-4 rounded-2xl px-4 py-2.5">
@@ -476,7 +454,7 @@
       </section>
     </div>
   </main>
-</div>
+</section>
 
 <TranslateSettingsModal
   bind:open={translateSettingsOpen}

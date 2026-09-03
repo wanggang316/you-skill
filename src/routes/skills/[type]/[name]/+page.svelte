@@ -776,7 +776,7 @@
   });
 </script>
 
-<div class="bg-base-100 text-base-content flex h-screen flex-col overflow-hidden">
+<section class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
   <PageHeader
     currentView="detail"
     activeTab="local"
@@ -814,7 +814,7 @@
     }}
   />
 
-  <main class="flex-1 overflow-y-auto">
+  <main class="min-h-0 flex-1 overflow-y-auto">
     <div
       class="mx-auto max-w-6xl px-6"
       class:py-0={fileViewMode === "code"}
@@ -874,7 +874,7 @@
       {/if}
     </div>
   </main>
-</div>
+</section>
 
 <MissingTranslationSettingsModal
   bind:open={missingTranslationSettingsOpen}
