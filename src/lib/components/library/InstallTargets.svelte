@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AlertTriangle, Link2, Plus } from "@lucide/svelte";
+  import { AlertTriangle, Plus } from "@lucide/svelte";
   import AgentAppIcon from "$lib/components/AgentAppIcon.svelte";
   import { t } from "$lib/i18n";
   import type { HubSkillView, InstallScope, InstallView } from "$lib/api/hub";
@@ -88,8 +88,9 @@
     return agents.get(id)?.display_name ?? id;
   }
 
-  function chipTitle(install: InstallView): string {
-    return `${install.path}\n${$t(`target.mode.${install.mode}`)} · ${$t(`target.state.${install.state}`)}`;
+  function chipTitle(install: InstallView, agentId: string): string {
+    const detail = `${$t(`target.mode.${install.mode}`)} · ${$t(`target.state.${install.state}`)}`;
+    return `${agentName(agentId)}\n${install.path}\n${detail}`;
   }
 </script>
 
@@ -98,7 +99,10 @@
     <div class="px-4 py-2.5">
       <div class="flex items-center justify-between gap-3">
         <div class="min-w-0">
-          <p class="text-base-content flex items-center gap-1.5 text-sm font-medium">
+          <p
+            class="text-base-content flex items-center gap-1.5 text-sm font-medium"
+            title={group.subtitle ?? undefined}
+          >
             <span class="truncate">{group.label}</span>
             {#if group.missing}
               <span class="text-error shrink-0" title={$t("detail.installs.projectMissing")}>
@@ -109,11 +113,6 @@
               <span class="tag tag-neutral shrink-0">{$t("detail.installs.unregistered")}</span>
             {/if}
           </p>
-          {#if group.subtitle}
-            <p class="text-base-content-faint truncate text-[11px]" title={group.subtitle}>
-              {group.subtitle}
-            </p>
-          {/if}
         </div>
         <button
           class="border-base-300 text-base-content-muted hover:border-primary hover:text-primary flex h-7 shrink-0 items-center gap-1 rounded-lg border border-dashed px-2 text-[12px] transition disabled:opacity-50"
@@ -128,21 +127,11 @@
       </div>
 
       {#if group.installs.length > 0}
-        <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <div class="mt-2 flex flex-wrap items-center gap-1.5">
           {#each group.installs as install (install.path)}
             {#each install.agentIds as agentId (agentId)}
-              <span
-                class="text-base-content-muted inline-flex max-w-full items-center gap-1.5 text-xs"
-                title={chipTitle(install)}
-              >
+              <span title={chipTitle(install, agentId)}>
                 <AgentAppIcon {agentId} name={agentName(agentId)} size="sm" />
-                <span class="truncate">{agentName(agentId)}</span>
-                {#if install.mode === "symlink"}
-                  <Link2 size={11} class="text-base-content-subtle shrink-0" />
-                {/if}
-                {#if install.state !== "in_sync"}
-                  <span class={`state-dot state-${install.state} shrink-0`}></span>
-                {/if}
               </span>
             {/each}
           {/each}
