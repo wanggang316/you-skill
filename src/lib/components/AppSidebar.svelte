@@ -54,12 +54,11 @@
 
 <aside class="sidebar-shell" aria-label={$t("sidebar.navigation")} data-window-drag-region>
   <nav class="sidebar-nav">
-    <button class="nav-item add-item" type="button" onclick={onAddSkill}>
-      <Plus size={17} strokeWidth={1.8} />
-      <span>{$t("addSkill.title")}</span>
-    </button>
-
     <div class="nav-group" aria-label={$t("sidebar.skills")}>
+      <button class="nav-item" type="button" onclick={onAddSkill}>
+        <Plus size={17} strokeWidth={1.8} />
+        <span>{$t("addSkill.title")}</span>
+      </button>
       <button
         class:active={currentSection === "skills" && activeTab === "remote"}
         class="nav-item"
@@ -171,7 +170,7 @@
     flex: 1;
     flex-direction: column;
     gap: 0;
-    padding: 0.4rem 0.625rem 1rem;
+    padding: 2.5rem 0.625rem 1rem;
   }
 
   .nav-group {
@@ -229,11 +228,6 @@
     background: var(--base-300);
     color: var(--base-content);
     font-weight: 520;
-  }
-
-  .add-item {
-    width: calc(100% - 4.25rem);
-    margin-left: 4.25rem;
   }
 
   .project-section {
