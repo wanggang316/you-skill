@@ -12,82 +12,77 @@
   } from "@lucide/svelte";
   import type { UserProject } from "$lib/api/user-projects";
   import { t } from "$lib/i18n";
+  import {
+    buildSkillsHref,
+    projectScopeKey,
+    type SidebarActiveKey,
+  } from "$lib/navigation/app-shell";
 
   let {
-    activeTab,
-    currentSection = "skills",
-    scopeKey = $bindable("global"),
+    activeKey,
     projects,
     hasUpdate,
     updateLoading,
     onAddSkill,
-    onSelectTab,
     onOpenUpdate,
     onOpenProjectManage,
-    onOpenSettings,
   }: {
-    activeTab: string;
-    currentSection?: "skills" | "settings";
-    scopeKey: string;
+    activeKey: SidebarActiveKey;
     projects: UserProject[];
     hasUpdate: boolean;
     updateLoading: boolean;
     onAddSkill: () => void;
-    onSelectTab: (tab: "local" | "remote", scopeKey?: string) => void;
     onOpenUpdate: () => void;
     onOpenProjectManage: () => void;
-    onOpenSettings: () => void;
   } = $props();
-
-  const projectScopeKey = (path: string) => `project:${encodeURIComponent(path)}`;
-
-  const selectGlobal = () => {
-    scopeKey = "global";
-    onSelectTab("local", scopeKey);
-  };
-
-  const selectProject = (path: string) => {
-    scopeKey = projectScopeKey(path);
-    onSelectTab("local", scopeKey);
-  };
 </script>
 
-<aside class="sidebar-shell" aria-label={$t("sidebar.navigation")} data-window-drag-region>
-  <nav class="sidebar-nav">
-    <div class="nav-group" aria-label={$t("sidebar.skills")}>
-      <button class="nav-item" type="button" onclick={onAddSkill}>
-        <Plus size={17} strokeWidth={1.8} />
-        <span>{$t("addSkill.title")}</span>
-      </button>
+<aside
+  class="bg-base-200 border-base-300 flex min-w-0 flex-col border-r"
+  aria-label={$t("sidebar.navigation")}
+  data-window-drag-region
+>
+  <nav class="flex min-h-0 flex-1 flex-col px-2.5 pt-10 pb-4 max-[832px]:px-[0.45rem]">
+    <div class="grid gap-0.5" aria-label={$t("sidebar.skills")}>
       <button
-        class:active={currentSection === "skills" && activeTab === "remote"}
-        class="nav-item"
+        class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
         type="button"
-        onclick={() => onSelectTab("remote")}
-        aria-current={currentSection === "skills" && activeTab === "remote" ? "page" : undefined}
+        onclick={onAddSkill}
+      >
+        <Plus size={17} strokeWidth={1.8} />
+        <span class="min-w-0 truncate">{$t("addSkill.title")}</span>
+      </button>
+      <a
+        class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
+        class:bg-base-300={activeKey === "library"}
+        class:text-base-content={activeKey === "library"}
+        class:font-medium={activeKey === "library"}
+        href={buildSkillsHref("remote")}
+        aria-current={activeKey === "library" ? "page" : undefined}
       >
         <LibraryBig size={17} strokeWidth={1.8} />
-        <span>{$t("sidebar.library")}</span>
-      </button>
-      <button
-        class:active={currentSection === "skills" && activeTab === "local" && scopeKey === "global"}
-        class="nav-item"
-        type="button"
-        onclick={selectGlobal}
-        aria-current={currentSection === "skills" && activeTab === "local" && scopeKey === "global"
-          ? "page"
-          : undefined}
+        <span class="min-w-0 truncate">{$t("sidebar.library")}</span>
+      </a>
+      <a
+        class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
+        class:bg-base-300={activeKey === "global"}
+        class:text-base-content={activeKey === "global"}
+        class:font-medium={activeKey === "global"}
+        href={buildSkillsHref("local")}
+        aria-current={activeKey === "global" ? "page" : undefined}
       >
         <Globe2 size={17} strokeWidth={1.8} />
-        <span>{$t("sidebar.global")}</span>
-      </button>
+        <span class="min-w-0 truncate">{$t("sidebar.global")}</span>
+      </a>
     </div>
 
-    <section class="project-section" aria-labelledby="project-heading">
-      <div class="section-heading">
+    <section class="mt-3.5 flex min-h-0 flex-1 flex-col" aria-labelledby="project-heading">
+      <div
+        class="text-base-content-subtle flex items-center justify-between pt-1 pr-2 pb-1.5 pl-2.5 text-xs font-medium"
+      >
         <span id="project-heading">{$t("sidebar.projects")}</span>
         <button
-          class="section-action"
+          class="hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 inline-flex size-7 items-center justify-center rounded-md bg-transparent focus-visible:outline-2 focus-visible:outline-offset-1"
           type="button"
           onclick={onOpenProjectManage}
           title={$t("projectManage.title")}
@@ -97,28 +92,33 @@
         </button>
       </div>
 
-      <div class="project-list">
+      <div
+        class="min-h-0 overflow-y-auto [scrollbar-color:var(--scrollbar-thumb)_transparent] [scrollbar-width:thin]"
+      >
         {#each projects as project (project.path)}
           {@const key = projectScopeKey(project.path)}
-          <button
-            class:active={currentSection === "skills" && activeTab === "local" && scopeKey === key}
-            class="nav-item project-item"
-            type="button"
-            onclick={() => selectProject(project.path)}
-            aria-current={currentSection === "skills" && activeTab === "local" && scopeKey === key
-              ? "page"
-              : undefined}
+          <a
+            class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 mb-0.5 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
+            class:bg-base-300={activeKey === key}
+            class:text-base-content={activeKey === key}
+            class:font-medium={activeKey === key}
+            href={buildSkillsHref("local", project.path)}
+            aria-current={activeKey === key ? "page" : undefined}
             title={project.path}
           >
-            {#if currentSection === "skills" && activeTab === "local" && scopeKey === key}
+            {#if activeKey === key}
               <FolderOpen size={17} strokeWidth={1.8} />
             {:else}
               <Folder size={17} strokeWidth={1.8} />
             {/if}
-            <span>{project.name}</span>
-          </button>
+            <span class="min-w-0 truncate">{project.name}</span>
+          </a>
         {:else}
-          <button class="empty-projects" type="button" onclick={onOpenProjectManage}>
+          <button
+            class="text-base-content-faint hover:text-base-content-subtle focus-visible:outline-primary/60 w-full rounded-lg bg-transparent p-2.5 text-left text-xs focus-visible:outline-2 focus-visible:outline-offset-1"
+            type="button"
+            onclick={onOpenProjectManage}
+          >
             {$t("projectManage.empty")}
           </button>
         {/each}
@@ -126,10 +126,10 @@
     </section>
   </nav>
 
-  <div class="sidebar-footer">
+  <div class="border-base-300 grid gap-0.5 border-t p-2.5 max-[832px]:px-[0.45rem]">
     {#if hasUpdate}
       <button
-        class="nav-item update-item"
+        class="text-error hover:bg-base-300 focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px disabled:cursor-default disabled:opacity-55"
         type="button"
         onclick={onOpenUpdate}
         disabled={updateLoading}
@@ -139,181 +139,19 @@
         {:else}
           <ArrowUpCircle size={17} strokeWidth={1.8} />
         {/if}
-        <span>{$t("header.updateAvailable")}</span>
+        <span class="min-w-0 truncate">{$t("header.updateAvailable")}</span>
       </button>
     {/if}
-    <button
-      class:active={currentSection === "settings"}
-      class="nav-item"
-      type="button"
-      onclick={onOpenSettings}
-      aria-current={currentSection === "settings" ? "page" : undefined}
+    <a
+      class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
+      class:bg-base-300={activeKey === "settings"}
+      class:text-base-content={activeKey === "settings"}
+      class:font-medium={activeKey === "settings"}
+      href="/settings"
+      aria-current={activeKey === "settings" ? "page" : undefined}
     >
       <Settings size={17} strokeWidth={1.8} />
-      <span>{$t("header.settings")}</span>
-    </button>
+      <span class="min-w-0 truncate">{$t("header.settings")}</span>
+    </a>
   </div>
 </aside>
-
-<style>
-  .sidebar-shell {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    border-right: 1px solid var(--base-300);
-    background: color-mix(in oklch, var(--base-200) 82%, var(--base-100));
-  }
-
-  .sidebar-nav {
-    display: flex;
-    min-height: 0;
-    flex: 1;
-    flex-direction: column;
-    gap: 0;
-    padding: 2.5rem 0.625rem 1rem;
-  }
-
-  .nav-group {
-    display: grid;
-    gap: 0.125rem;
-  }
-
-  .nav-item {
-    display: flex;
-    width: 100%;
-    min-width: 0;
-    align-items: center;
-    gap: 0.65rem;
-    border: 0;
-    border-radius: 0.55rem;
-    background: transparent;
-    padding: 0.55rem 0.625rem;
-    color: color-mix(in oklch, var(--base-content) 84%, transparent);
-    font: inherit;
-    font-size: 0.875rem;
-    font-weight: 450;
-    line-height: 1.25;
-    text-align: left;
-    cursor: pointer;
-    transition:
-      background-color 160ms ease,
-      color 160ms ease,
-      transform 160ms ease;
-  }
-
-  .nav-item span {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .nav-item:hover {
-    background: color-mix(in oklch, var(--base-300) 72%, transparent);
-    color: var(--base-content);
-  }
-
-  .nav-item:active {
-    transform: translateY(1px);
-  }
-
-  .nav-item:focus-visible,
-  .section-action:focus-visible,
-  .empty-projects:focus-visible {
-    outline: 2px solid color-mix(in oklch, var(--primary) 58%, transparent);
-    outline-offset: 1px;
-  }
-
-  .nav-item.active {
-    background: var(--base-300);
-    color: var(--base-content);
-    font-weight: 520;
-  }
-
-  .project-section {
-    display: flex;
-    min-height: 0;
-    flex: 1;
-    flex-direction: column;
-    margin-top: 0.85rem;
-  }
-
-  .section-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.25rem 0.5rem 0.35rem 0.625rem;
-    color: var(--base-content-subtle);
-    font-size: 0.75rem;
-    font-weight: 520;
-  }
-
-  .section-action {
-    display: inline-flex;
-    width: 1.7rem;
-    height: 1.7rem;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: 0.45rem;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-  }
-
-  .section-action:hover {
-    background: var(--base-300);
-    color: var(--base-content);
-  }
-
-  .project-list {
-    min-height: 0;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--scrollbar-thumb) transparent;
-  }
-
-  .project-item {
-    margin-bottom: 0.125rem;
-  }
-
-  .empty-projects {
-    width: 100%;
-    border: 0;
-    border-radius: 0.5rem;
-    background: transparent;
-    padding: 0.6rem;
-    color: var(--base-content-faint);
-    font: inherit;
-    font-size: 0.78rem;
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .empty-projects:hover {
-    color: var(--base-content-subtle);
-  }
-
-  .sidebar-footer {
-    display: grid;
-    gap: 0.125rem;
-    border-top: 1px solid var(--base-300);
-    padding: 0.65rem;
-  }
-
-  .update-item {
-    color: var(--error);
-  }
-
-  .update-item:disabled {
-    cursor: default;
-    opacity: 0.55;
-  }
-
-  @media (max-width: 52rem) {
-    .sidebar-nav,
-    .sidebar-footer {
-      padding-inline: 0.45rem;
-    }
-  }
-</style>

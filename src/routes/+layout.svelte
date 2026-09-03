@@ -2,14 +2,13 @@
   import "../app.css";
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
-  import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import AddSkillModal from "$lib/components/AddSkillModal.svelte";
   import AppSidebar from "$lib/components/AppSidebar.svelte";
   import UserProjectFormModal from "$lib/components/UserProjectFormModal.svelte";
-  import { buildSkillsHref, getSkillsLocation } from "$lib/navigation/app-shell";
+  import { getSkillsLocation } from "$lib/navigation/app-shell";
   import { loadSettings } from "$lib/stores/settings";
   import {
     agents as agentsStore,
@@ -25,13 +24,6 @@
   let userProjectsModalWasOpen = $state(false);
 
   const skillsLocation = $derived(getSkillsLocation(page.url));
-  const currentSection = $derived<"skills" | "settings">(
-    skillsLocation.activeKey === "settings" ? "settings" : "skills"
-  );
-  const scopeKey = $derived(
-    skillsLocation.activeKey.startsWith("project:") ? skillsLocation.activeKey : "global"
-  );
-
   const dragExcludedSelector = [
     "a",
     "button",
@@ -55,18 +47,6 @@
       .catch((error) => {
         console.error("Failed to start window dragging:", error);
       });
-  };
-
-  const navigateToSkills = (tab: "local" | "remote", selectedScopeKey = "global") => {
-    let projectPath: string | null = null;
-    if (tab === "local" && selectedScopeKey.startsWith("project:")) {
-      try {
-        projectPath = decodeURIComponent(selectedScopeKey.slice("project:".length));
-      } catch {
-        projectPath = null;
-      }
-    }
-    goto(buildSkillsHref(tab, projectPath));
   };
 
   const refreshCurrentSkills = () =>
@@ -136,17 +116,13 @@
   class="bg-base-100 text-base-content grid h-dvh min-h-0 grid-cols-[15.5rem_minmax(0,1fr)] overflow-hidden max-[832px]:grid-cols-[13.5rem_minmax(0,1fr)]"
 >
   <AppSidebar
-    activeTab={skillsLocation.tab}
-    {currentSection}
-    {scopeKey}
+    activeKey={skillsLocation.activeKey}
     projects={$userProjects}
     hasUpdate={$updaterState.hasUpdate}
     updateLoading={$updaterState.installing}
     onAddSkill={() => (addSkillModalOpen = true)}
-    onSelectTab={navigateToSkills}
     onOpenUpdate={() => installAvailableUpdate().catch(console.error)}
     onOpenProjectManage={() => (userProjectsModalOpen = true)}
-    onOpenSettings={() => goto("/settings")}
   />
 
   <section class="flex min-h-0 min-w-0 flex-col overflow-hidden">

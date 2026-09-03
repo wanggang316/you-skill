@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Changed the app to a wider two-column window with persistent navigation for adding skills, browsing the library, switching scopes, selecting projects, and viewing settings alongside the sidebar.
+- Consolidated the two-column frame into the root Svelte layout so every route renders only its right-side page content and preserves shared sidebar state.
 - Removed the brand logo from the sidebar while preserving the window drag area.
 - Grouped the add action with the primary navigation below compact titlebar clearance and reduced single-line content header height.
 
