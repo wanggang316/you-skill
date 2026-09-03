@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added automatic, idempotent migration of the previous layout on first launch, with a one-time report in the library.
 - Added a Marketplace page; importing from it goes through the hub and then offers to install.
 - Added Warp and Zed as built-in agent apps.
-- Added a user-level entry and per-project views: the sidebar narrows the library to one install scope, listing the skills installed there; the detail pane then shows only that scope's agents, with a picker to add library skills and an uninstall-from-here action.
+- Added a Projects page for install scopes: the user scope and every project are listed on their own, and selecting one shows that location's status, the agents installed there (add an agent to install every skill of the location into it, remove one to uninstall them) and its skills, each with manage, diff, push, adopt and uninstall actions.
 - Added a diff viewer for changed skills: compare the library copy file by file with an install target, with the source folder, or with the latest GitHub version.
 
 ### Changed
@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Removed the Global / project scope switcher; the library shows every hub skill and the sidebar narrows it to the user level or one project.
+- Removed the Global / project scope switcher; the library shows every hub skill, and install locations live on the Projects page.
 - Removed the "take over unmanaged skill" permission setting and the version-pick dialog; scanning replaces both.
 
 ## [0.8.5] - 2026-05-11

@@ -115,6 +115,7 @@ under `migration` in the lock and shown once in the library.
 - `src/lib/stores/hub.ts` holds the skill list and agent apps; `stores/modals.ts` holds the
   import / install / force-confirm / diff modals and `performAction`, the helper that turns a
   blocked `ActionResult` into a confirmation.
-- Routes: `/` library (two columns; `?scope=user` or `?project=<path>` narrow it to one
-  install scope, listing only the skills installed there), `/market`,
-  `/skills/hub/<name>` and `/skills/remote/<name>` file viewers, `/settings`, `/agent-apps`.
+- Routes: `/` library (skill list plus skill detail), `/projects` install scopes (scope list
+  plus a scope detail with its agents and skills; `?scope=user` or `?project=<path>` selects
+  one), `/market`, `/skills/hub/<name>` and `/skills/remote/<name>` file viewers,
+  `/settings`, `/agent-apps`.

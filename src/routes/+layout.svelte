@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import { page } from "$app/state";
+  import { get } from "svelte/store";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import AppSidebar from "$lib/components/AppSidebar.svelte";
@@ -10,14 +11,20 @@
   import ForceConfirmModal from "$lib/components/ForceConfirmModal.svelte";
   import ImportSkillModal from "$lib/components/ImportSkillModal.svelte";
   import InstallSkillModal from "$lib/components/InstallSkillModal.svelte";
+  import ScopeAgentModal from "$lib/components/ScopeAgentModal.svelte";
   import SkillPickerModal from "$lib/components/SkillPickerModal.svelte";
   import UserProjectFormModal from "$lib/components/UserProjectFormModal.svelte";
   import { getAppLocation } from "$lib/navigation/app-shell";
   import { loadAgents, loadMigrationReport, refreshHub } from "$lib/stores/hub";
-  import { openImportModal } from "$lib/stores/modals";
+  import {
+    closeProjectFormModal,
+    openImportModal,
+    openProjectFormModal,
+    projectFormModal,
+  } from "$lib/stores/modals";
   import { loadSettings } from "$lib/stores/settings";
   import { ensureUpdateChecked, installAvailableUpdate, updaterState } from "$lib/stores/updater";
-  import { refreshUserProjects, userProjects } from "$lib/stores/user-projects";
+  import { refreshUserProjects } from "$lib/stores/user-projects";
 
   let { children } = $props();
   let userProjectsModalOpen = $state(false);
@@ -54,8 +61,17 @@
     if (action === "add") {
       openImportModal();
     } else if (action === "manage-projects") {
-      userProjectsModalOpen = true;
+      openProjectFormModal();
     }
+  });
+
+  // The dialog owns its own open flag, so mirror it against the store both ways.
+  $effect(() => {
+    if ($projectFormModal.open) userProjectsModalOpen = true;
+  });
+
+  $effect(() => {
+    if (!userProjectsModalOpen && get(projectFormModal).open) closeProjectFormModal();
   });
 
   $effect(() => {
@@ -107,12 +123,10 @@
 >
   <AppSidebar
     activeKey={location.activeKey}
-    projects={$userProjects}
     hasUpdate={$updaterState.hasUpdate}
     updateLoading={$updaterState.installing}
     onImportSkill={() => openImportModal()}
     onOpenUpdate={() => installAvailableUpdate().catch(console.error)}
-    onOpenProjectManage={() => (userProjectsModalOpen = true)}
   />
 
   <section class="flex min-h-0 min-w-0 flex-col overflow-hidden">
@@ -123,6 +137,7 @@
 <ImportSkillModal />
 <InstallSkillModal />
 <SkillPickerModal />
+<ScopeAgentModal />
 <ForceConfirmModal />
 <DiffModal />
 <UserProjectFormModal bind:open={userProjectsModalOpen} />

@@ -1,12 +1,5 @@
 <script lang="ts">
-  import {
-    ExternalLink,
-    FolderOpen,
-    Loader2,
-    PackageMinus,
-    RefreshCw,
-    Trash2,
-  } from "@lucide/svelte";
+  import { ExternalLink, FolderOpen, Loader2, RefreshCw, Trash2 } from "@lucide/svelte";
   import { open as openExternal } from "@tauri-apps/plugin-shell";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
@@ -17,14 +10,11 @@
   import { t } from "$lib/i18n";
   import type { AgentInfo } from "$lib/api/skills";
   import {
-    scopedHasDrift,
-    scopedInstalls,
     sourceLabel,
     sourceRepoUrl,
     type HubSkillView,
     type InstallScope,
     type InstallView,
-    type ScopeRef,
     type SyncAction,
   } from "$lib/api/hub";
   import type { UserProject } from "$lib/api/user-projects";
@@ -38,12 +28,10 @@
     busy = false,
     checkingSource = false,
     actionError = "",
-    scope = null,
     onInstall,
     onTargetAction,
     onSync,
     onRemove,
-    onUninstallScope,
     onOpenDir,
     onCheckSource,
   }: {
@@ -53,23 +41,16 @@
     busy?: boolean;
     checkingSource?: boolean;
     actionError?: string;
-    /** When set, only this scope's installs are shown and actions target it. */
-    scope?: ScopeRef | null;
     onInstall: (scope: InstallScope, projectPath: string | null) => void;
     onTargetAction: (install: InstallView, action: TargetAction) => void;
     onSync: (action: SyncAction) => void;
     onRemove: () => void;
-    /** Uninstall from the current scope (scoped view only). */
-    onUninstallScope?: () => void;
     onOpenDir: () => void;
     onCheckSource: () => void;
   } = $props();
 
   let tab = $state<DetailTab>("general");
 
-  const scopeInstalls = $derived(scope ? scopedInstalls(skill, scope) : skill.installs);
-  const panelSkill = $derived<HubSkillView>(scope ? { ...skill, installs: scopeInstalls } : skill);
-  const hasDrift = $derived(scope ? scopedHasDrift(skill, scope) : skill.hasDrift);
   const repoUrl = $derived(sourceRepoUrl(skill.source));
   const shortHash = $derived(skill.hash.slice(0, 10));
   const formatDate = (value: string) => {
@@ -87,7 +68,7 @@
       <h2 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
         {skill.name}
       </h2>
-      {#if hasDrift}
+      {#if skill.hasDrift}
         <span class="tag tag-warning">{$t("library.tag.changed")}</span>
       {/if}
     </div>
@@ -100,30 +81,17 @@
       >
         <FolderOpen size={15} />
       </IconButton>
-      {#if scope}
-        <IconButton
-          variant="outline"
-          onclick={() => onUninstallScope?.()}
-          title={$t("scope.uninstall")}
-          class="text-error h-8 w-8 p-0"
-          disabled={busy || scopeInstalls.length === 0}
-        >
-          <PackageMinus size={15} />
-        </IconButton>
-      {:else}
-        <IconButton
-          variant="outline"
-          onclick={onRemove}
-          title={$t("detail.remove")}
-          class="text-error h-8 w-8 p-0"
-          disabled={busy}
-        >
-          <Trash2 size={15} />
-        </IconButton>
-      {/if}
+      <IconButton
+        variant="outline"
+        onclick={onRemove}
+        title={$t("detail.remove")}
+        class="text-error h-8 w-8 p-0"
+        disabled={busy}
+      >
+        <Trash2 size={15} />
+      </IconButton>
       <PrimaryActionButton
-        onclick={() =>
-          scope ? onInstall(scope.scope, scope.projectPath) : onInstall("user", null)}
+        onclick={() => onInstall("user", null)}
         className="h-8 px-3 py-0 text-[13px]"
         disabled={busy}
       >
@@ -202,26 +170,17 @@
           <p class="text-error text-sm whitespace-pre-wrap">{actionError}</p>
         {/if}
 
-        {#if hasDrift}
+        {#if skill.hasDrift}
           <section class="space-y-2">
             <h3 class="text-base-content text-sm font-medium">{$t("detail.drift")}</h3>
-            <DriftPanel skill={panelSkill} {busy} {onSync} {onTargetAction} />
+            <DriftPanel {skill} {busy} {onSync} {onTargetAction} />
           </section>
         {/if}
 
         <section class="space-y-2">
-          <h3 class="text-base-content text-sm font-medium">
-            {scope ? $t("scope.agents") : $t("detail.installs")}
-          </h3>
-          <InstallTargets
-            skill={panelSkill}
-            {projects}
-            {agents}
-            {busy}
-            only={scope}
-            onAdd={onInstall}
-          />
-          {#if !scope && skill.installs.length === 0}
+          <h3 class="text-base-content text-sm font-medium">{$t("detail.installs")}</h3>
+          <InstallTargets {skill} {projects} {agents} {busy} onAdd={onInstall} />
+          {#if skill.installs.length === 0}
             <p class="text-base-content-faint text-xs">{$t("detail.installs.empty")}</p>
           {/if}
         </section>

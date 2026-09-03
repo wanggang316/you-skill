@@ -1,9 +1,7 @@
 <script lang="ts">
   import {
     ArrowUpCircle,
-    Folder,
-    FolderOpen,
-    FolderPlus,
+    FolderTree,
     LibraryBig,
     Loader2,
     Plus,
@@ -11,31 +9,26 @@
     Store,
     UserRound,
   } from "@lucide/svelte";
-  import type { UserProject } from "$lib/api/user-projects";
   import { t } from "$lib/i18n";
   import {
     buildLibraryHref,
     buildMarketHref,
-    projectScopeKey,
+    buildScopeHref,
     type SidebarActiveKey,
   } from "$lib/navigation/app-shell";
 
   let {
     activeKey,
-    projects,
     hasUpdate,
     updateLoading,
     onImportSkill,
     onOpenUpdate,
-    onOpenProjectManage,
   }: {
     activeKey: SidebarActiveKey;
-    projects: UserProject[];
     hasUpdate: boolean;
     updateLoading: boolean;
     onImportSkill: () => void;
     onOpenUpdate: () => void;
-    onOpenProjectManage: () => void;
   } = $props();
 
   const itemClass =
@@ -69,11 +62,22 @@
         class:bg-base-300={activeKey === "user"}
         class:text-base-content={activeKey === "user"}
         class:font-medium={activeKey === "user"}
-        href={buildLibraryHref({ scope: { kind: "user" } })}
+        href={buildScopeHref({ scope: "user", projectPath: null })}
         aria-current={activeKey === "user" ? "page" : undefined}
       >
         <UserRound size={17} strokeWidth={1.8} />
         <span class="min-w-0 truncate">{$t("scope.user")}</span>
+      </a>
+      <a
+        class={itemClass}
+        class:bg-base-300={activeKey === "projects"}
+        class:text-base-content={activeKey === "projects"}
+        class:font-medium={activeKey === "projects"}
+        href={buildScopeHref()}
+        aria-current={activeKey === "projects" ? "page" : undefined}
+      >
+        <FolderTree size={17} strokeWidth={1.8} />
+        <span class="min-w-0 truncate">{$t("sidebar.projects")}</span>
       </a>
       <a
         class={itemClass}
@@ -87,55 +91,6 @@
         <span class="min-w-0 truncate">{$t("sidebar.market")}</span>
       </a>
     </div>
-
-    <section class="mt-3.5 flex min-h-0 flex-1 flex-col" aria-labelledby="project-heading">
-      <div
-        class="text-base-content-subtle flex items-center justify-between pt-1 pr-2 pb-1.5 pl-2.5 text-xs font-medium"
-      >
-        <span id="project-heading">{$t("sidebar.projects")}</span>
-        <button
-          class="hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 inline-flex size-7 items-center justify-center rounded-md bg-transparent focus-visible:outline-2 focus-visible:outline-offset-1"
-          type="button"
-          onclick={onOpenProjectManage}
-          title={$t("projectManage.title")}
-          aria-label={$t("projectManage.title")}
-        >
-          <FolderPlus size={15} strokeWidth={1.8} />
-        </button>
-      </div>
-
-      <div
-        class="min-h-0 overflow-y-auto [scrollbar-color:var(--scrollbar-thumb)_transparent] [scrollbar-width:thin]"
-      >
-        {#each projects as project (project.path)}
-          {@const key = projectScopeKey(project.path)}
-          <a
-            class={`${itemClass} mb-0.5`}
-            class:bg-base-300={activeKey === key}
-            class:text-base-content={activeKey === key}
-            class:font-medium={activeKey === key}
-            href={buildLibraryHref({ scope: { kind: "project", projectPath: project.path } })}
-            aria-current={activeKey === key ? "page" : undefined}
-            title={project.path}
-          >
-            {#if activeKey === key}
-              <FolderOpen size={17} strokeWidth={1.8} />
-            {:else}
-              <Folder size={17} strokeWidth={1.8} />
-            {/if}
-            <span class="min-w-0 truncate">{project.name}</span>
-          </a>
-        {:else}
-          <button
-            class="text-base-content-faint hover:text-base-content-subtle focus-visible:outline-primary/60 w-full rounded-lg bg-transparent p-2.5 text-left text-xs focus-visible:outline-2 focus-visible:outline-offset-1"
-            type="button"
-            onclick={onOpenProjectManage}
-          >
-            {$t("projectManage.empty")}
-          </button>
-        {/each}
-      </div>
-    </section>
   </nav>
 
   <div class="border-base-300 grid gap-0.5 border-t p-2.5 max-[832px]:px-[0.45rem]">

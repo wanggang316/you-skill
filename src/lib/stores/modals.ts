@@ -30,6 +30,15 @@ export interface SkillPickerModalState {
   scope: ScopeRef | null;
 }
 
+export interface ScopeAgentModalState {
+  open: boolean;
+  scope: ScopeRef | null;
+  scopeName: string;
+  /** Skills of the scope; each is installed into the agents that get added. */
+  skillNames: string[];
+  existingIds: string[];
+}
+
 export interface DiffModalState {
   open: boolean;
   name: string;
@@ -50,6 +59,17 @@ export const installModal = writable<InstallModalState>({
 });
 
 export const skillPickerModal = writable<SkillPickerModalState>({ open: false, scope: null });
+
+export const scopeAgentModal = writable<ScopeAgentModalState>({
+  open: false,
+  scope: null,
+  scopeName: "",
+  skillNames: [],
+  existingIds: [],
+});
+
+/** The project list dialog, opened from the projects page and the tray. */
+export const projectFormModal = writable<{ open: boolean }>({ open: false });
 
 export const diffModal = writable<DiffModalState>({
   open: false,
@@ -143,4 +163,25 @@ export function openSkillPickerModal(scope: ScopeRef): void {
 
 export function closeSkillPickerModal(): void {
   skillPickerModal.update((state) => ({ ...state, open: false }));
+}
+
+export function openScopeAgentModal(options: {
+  scope: ScopeRef;
+  scopeName: string;
+  skillNames: string[];
+  existingIds: string[];
+}): void {
+  scopeAgentModal.set({ open: true, ...options });
+}
+
+export function closeScopeAgentModal(): void {
+  scopeAgentModal.update((state) => ({ ...state, open: false }));
+}
+
+export function openProjectFormModal(): void {
+  projectFormModal.set({ open: true });
+}
+
+export function closeProjectFormModal(): void {
+  projectFormModal.set({ open: false });
 }

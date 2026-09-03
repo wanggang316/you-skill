@@ -2,7 +2,7 @@
   import { AlertTriangle, Plus } from "@lucide/svelte";
   import AgentAppIcon from "$lib/components/AgentAppIcon.svelte";
   import { t } from "$lib/i18n";
-  import type { HubSkillView, InstallScope, InstallView, ScopeRef } from "$lib/api/hub";
+  import type { HubSkillView, InstallScope, InstallView } from "$lib/api/hub";
   import type { AgentInfo } from "$lib/api/skills";
   import type { UserProject } from "$lib/api/user-projects";
 
@@ -11,15 +11,12 @@
     projects = [],
     agents,
     busy = false,
-    only = null,
     onAdd,
   }: {
     skill: HubSkillView;
     projects?: UserProject[];
     agents: Map<string, AgentInfo>;
     busy?: boolean;
-    /** Show a single scope as one compact row instead of every location. */
-    only?: ScopeRef | null;
     onAdd: (scope: InstallScope, projectPath: string | null) => void;
   } = $props();
 
@@ -47,26 +44,6 @@
       unregistered: false,
       installs: skill.installs.filter((install) => install.scope === "user"),
     };
-    if (only) {
-      if (only.scope === "user") return [userGroup];
-      const path = only.projectPath ?? "";
-      const project = projects.find((item) => item.path === path) ?? null;
-      const installs = skill.installs.filter(
-        (install) => install.scope === "project" && install.projectPath === path
-      );
-      return [
-        {
-          key: `project:${path}`,
-          label: project?.name ?? baseName(path),
-          scope: "project",
-          projectPath: path,
-          subtitle: path,
-          missing: installs.some((install) => install.projectMissing),
-          unregistered: !project,
-          installs,
-        },
-      ];
-    }
     const result: Group[] = [userGroup];
     const seen = new Set<string>();
     for (const project of projects) {
@@ -139,55 +116,34 @@
   </button>
 {/snippet}
 
-{#if only}
-  {@const group = groups[0]}
-  <div
-    class="border-base-300 flex items-center justify-between gap-3 rounded-2xl border px-4 py-2.5"
-  >
-    <div class="flex min-w-0 flex-wrap items-center gap-1.5">
-      {#if group.missing}
-        <span class="text-error shrink-0" title={$t("detail.installs.projectMissing")}>
-          <AlertTriangle size={13} />
-        </span>
-      {/if}
-      {#if group.installs.length === 0}
-        <span class="text-base-content-faint text-xs">{$t("scope.notInstalled")}</span>
-      {:else}
-        {@render agentChips(group.installs)}
+<div class="border-base-300 divide-base-300 divide-y rounded-2xl border">
+  {#each groups as group (group.key)}
+    <div class="px-4 py-2.5">
+      <div class="flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <p
+            class="text-base-content flex items-center gap-1.5 text-sm font-medium"
+            title={group.subtitle ?? undefined}
+          >
+            <span class="truncate">{group.label}</span>
+            {#if group.missing}
+              <span class="text-error shrink-0" title={$t("detail.installs.projectMissing")}>
+                <AlertTriangle size={13} />
+              </span>
+            {/if}
+            {#if group.unregistered}
+              <span class="tag tag-neutral shrink-0">{$t("detail.installs.unregistered")}</span>
+            {/if}
+          </p>
+        </div>
+        {@render addButton(group)}
+      </div>
+
+      {#if group.installs.length > 0}
+        <div class="mt-2 flex flex-wrap items-center gap-1.5">
+          {@render agentChips(group.installs)}
+        </div>
       {/if}
     </div>
-    {@render addButton(group)}
-  </div>
-{:else}
-  <div class="border-base-300 divide-base-300 divide-y rounded-2xl border">
-    {#each groups as group (group.key)}
-      <div class="px-4 py-2.5">
-        <div class="flex items-center justify-between gap-3">
-          <div class="min-w-0">
-            <p
-              class="text-base-content flex items-center gap-1.5 text-sm font-medium"
-              title={group.subtitle ?? undefined}
-            >
-              <span class="truncate">{group.label}</span>
-              {#if group.missing}
-                <span class="text-error shrink-0" title={$t("detail.installs.projectMissing")}>
-                  <AlertTriangle size={13} />
-                </span>
-              {/if}
-              {#if group.unregistered}
-                <span class="tag tag-neutral shrink-0">{$t("detail.installs.unregistered")}</span>
-              {/if}
-            </p>
-          </div>
-          {@render addButton(group)}
-        </div>
-
-        {#if group.installs.length > 0}
-          <div class="mt-2 flex flex-wrap items-center gap-1.5">
-            {@render agentChips(group.installs)}
-          </div>
-        {/if}
-      </div>
-    {/each}
-  </div>
-{/if}
+  {/each}
+</div>

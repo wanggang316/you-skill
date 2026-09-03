@@ -1,18 +1,15 @@
-export type SidebarActiveKey = "library" | "user" | "market" | "settings" | `project:${string}`;
+import type { ScopeRef } from "$lib/api/hub";
+
+export type SidebarActiveKey = "library" | "user" | "projects" | "market" | "settings";
 
 export type LibraryFilter = "all" | "changed" | "uninstalled";
-
-/** Which slice of the hub the library shows: everything, or one install scope. */
-export type LibraryScope =
-  | { kind: "library" }
-  | { kind: "user" }
-  | { kind: "project"; projectPath: string };
 
 export type AppLocation = {
   activeKey: SidebarActiveKey;
   /** Selected skill in the library (`?skill=`). */
   skill: string | null;
-  scope: LibraryScope;
+  /** Selected install scope on the projects page (`?scope=user` or `?project=<path>`). */
+  scope: ScopeRef | null;
   filter: LibraryFilter;
 };
 
@@ -24,22 +21,19 @@ const isSettingsPath = (pathname: string) =>
 const isMarketPath = (pathname: string) =>
   pathname === "/market" || pathname.startsWith("/skills/remote/");
 
-export const projectScopeKey = (projectPath: string): `project:${string}` =>
-  `project:${encodeURIComponent(projectPath)}`;
+const isProjectsPath = (pathname: string) => pathname.startsWith("/projects");
 
 export const parseLibraryFilter = (value: string | null): LibraryFilter =>
   LIBRARY_FILTERS.includes(value as LibraryFilter) ? (value as LibraryFilter) : "all";
 
-const parseScope = (url: URL): LibraryScope => {
+const parseScope = (url: URL): ScopeRef | null => {
   const projectPath = url.searchParams.get("project");
-  if (projectPath) return { kind: "project", projectPath };
-  if (url.searchParams.get("scope") === "user") return { kind: "user" };
-  return { kind: "library" };
+  if (projectPath) return { scope: "project", projectPath };
+  if (url.searchParams.get("scope") === "user") return { scope: "user", projectPath: null };
+  return null;
 };
 
 export const getAppLocation = (url: URL): AppLocation => {
-  const skill = url.searchParams.get("skill");
-  const filter = parseLibraryFilter(url.searchParams.get("filter"));
   const scope = parseScope(url);
 
   let activeKey: SidebarActiveKey = "library";
@@ -47,26 +41,33 @@ export const getAppLocation = (url: URL): AppLocation => {
     activeKey = "settings";
   } else if (isMarketPath(url.pathname)) {
     activeKey = "market";
-  } else if (scope.kind === "project") {
-    activeKey = projectScopeKey(scope.projectPath);
-  } else if (scope.kind === "user") {
-    activeKey = "user";
+  } else if (isProjectsPath(url.pathname)) {
+    activeKey = scope?.scope === "user" ? "user" : "projects";
   }
 
-  return { activeKey, skill: skill || null, scope, filter };
+  return {
+    activeKey,
+    skill: url.searchParams.get("skill") || null,
+    scope,
+    filter: parseLibraryFilter(url.searchParams.get("filter")),
+  };
 };
 
 export const buildLibraryHref = (
-  options: { skill?: string | null; scope?: LibraryScope; filter?: LibraryFilter } = {}
+  options: { skill?: string | null; filter?: LibraryFilter } = {}
 ): string => {
   const params = new URLSearchParams();
-  const scope = options.scope ?? { kind: "library" };
-  if (scope.kind === "project") params.set("project", scope.projectPath);
-  if (scope.kind === "user") params.set("scope", "user");
   if (options.filter && options.filter !== "all") params.set("filter", options.filter);
   if (options.skill) params.set("skill", options.skill);
   const query = params.toString();
   return query ? `/?${query}` : "/";
+};
+
+/** The projects page, optionally with one scope selected. */
+export const buildScopeHref = (scope?: ScopeRef | null): string => {
+  if (!scope) return "/projects";
+  if (scope.scope === "user") return "/projects?scope=user";
+  return `/projects?project=${encodeURIComponent(scope.projectPath ?? "")}`;
 };
 
 export const buildMarketHref = (): string => "/market";
