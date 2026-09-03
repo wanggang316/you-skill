@@ -53,7 +53,7 @@
 </script>
 
 <aside class="sidebar-shell" aria-label={$t("sidebar.navigation")}>
-  <div class="sidebar-drag-region" data-tauri-drag-region="deep"></div>
+  <div class="sidebar-drag-region" data-window-drag-region></div>
 
   <nav class="sidebar-nav">
     <button class="nav-item add-item" type="button" onclick={onAddSkill}>

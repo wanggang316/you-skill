@@ -49,10 +49,7 @@
   } = $props();
 </script>
 
-<header
-  class="border-base-300 bg-base-100 sticky top-0 z-50 border-b"
-  data-tauri-drag-region="deep"
->
+<header class="border-base-300 bg-base-100 sticky top-0 z-50 border-b" data-window-drag-region>
   <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
     {#if currentView === "list"}
       <div class="text-base-content flex items-center gap-2">

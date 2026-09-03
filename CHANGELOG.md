@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed Agent Apps and Skill detail routes replacing the app shell instead of rendering in the right content pane.
-- Fixed window dragging from sidebar and content headers by enabling deep drag-region hit testing.
+- Fixed window dragging from sidebar and content headers by manually invoking Tauri window dragging from non-interactive header regions.
 
 ### Removed
 
