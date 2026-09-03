@@ -7,6 +7,7 @@ read `README.md`, then ask which area to work on. Based on the answer, read
 the relevant docs in parallel.
 
 - README.md
+- docs/ARCHITECTURE.md (storage layout, lock file, drift model, command surface)
 
 ## Code Quality
 

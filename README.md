@@ -17,14 +17,16 @@ YouSkill is a desktop [Agent Skills](https://agentskills.io/) manager that helps
 
 ## Features
 
-1. Install skills for 40+ popular developer tools, with support for custom agent apps.
-2. Compatible with Vercel `skill add` conventions and directory structure (`.agents/skills` as a shared standard).
-3. Automatic update checks with one-click skill upgrades.
-4. Built-in dynamic skill marketplace (15,000+) for fast search and install.
-5. Install from marketplace, GitHub URL, local archives (`.zip` / `.skill`), or local folders.
-6. One-click skill backup.
-7. Two sync modes: Symlink and Copy, so one change can be reflected across multiple apps.
-8. Multi-theme and multilingual UI.
+1. A central skill library at `~/.youskill/skills`: every skill is imported once and tracked by a single lock file (`~/.youskill/.skill-lock.json`).
+2. Two-step workflow: import (marketplace, GitHub URL, `.zip` / `.skill` archives, local folders) and install (to user-level or project-level directories of 40+ developer tools, plus custom agent apps), by copy or symlink.
+3. Install matrix per skill: see at a glance which projects and which agents a skill is installed to.
+4. Change tracking: each install keeps the hub version it was written from, so the app can tell outdated, locally modified and conflicting copies apart and lets you choose the sync direction (update from source, push to targets, adopt a local copy).
+5. Folder scanning: scan a project or an agent's skills directory and sync what it finds into the library.
+6. Built-in dynamic skill marketplace (15,000+) with update checks against the source repository.
+7. Compatible with the `.agents/skills` shared directory convention (the "Agents (shared)" target).
+8. One-click backup of the whole library, multi-theme and multilingual UI.
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the storage layout, lock file and drift model.
 
 ## Preview
 
@@ -96,8 +98,9 @@ npm run tauri -- build
 ## Roadmap
 
 - [x] Project-Level skill management
+- [x] Central skill library with change tracking and folder scanning
+- [x] Skill details with support for viewing all skill files
 - [ ] Backup to GitHub for Multi-Device sync
-- [ ] Skill details with support for viewing all skill files
 - [ ] AI-Powered find skill
 
 ## Contributing
