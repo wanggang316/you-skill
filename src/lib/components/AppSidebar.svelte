@@ -52,9 +52,7 @@
   };
 </script>
 
-<aside class="sidebar-shell" aria-label={$t("sidebar.navigation")}>
-  <div class="sidebar-drag-region" data-window-drag-region></div>
-
+<aside class="sidebar-shell" aria-label={$t("sidebar.navigation")} data-window-drag-region>
   <nav class="sidebar-nav">
     <button class="nav-item add-item" type="button" onclick={onAddSkill}>
       <Plus size={17} strokeWidth={1.8} />
@@ -167,18 +165,12 @@
     background: color-mix(in oklch, var(--base-200) 82%, var(--base-100));
   }
 
-  .sidebar-drag-region {
-    min-height: 3rem;
-    flex: none;
-    user-select: none;
-  }
-
   .sidebar-nav {
     display: flex;
     min-height: 0;
     flex: 1;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: 0;
     padding: 0.4rem 0.625rem 1rem;
   }
 
@@ -240,7 +232,8 @@
   }
 
   .add-item {
-    margin-bottom: 0.1rem;
+    width: calc(100% - 4.25rem);
+    margin-left: 4.25rem;
   }
 
   .project-section {
@@ -248,6 +241,7 @@
     min-height: 0;
     flex: 1;
     flex-direction: column;
+    margin-top: 0.85rem;
   }
 
   .section-heading {

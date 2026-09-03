@@ -786,7 +786,7 @@
 
   <section class="flex min-w-0 flex-col overflow-hidden">
     <header
-      class="border-base-300 flex min-h-18 items-center border-b px-7"
+      class="border-base-300 flex min-h-12 items-center border-b px-7"
       data-window-drag-region
     >
       <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">

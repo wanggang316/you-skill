@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed the app to a wider two-column window with persistent navigation for adding skills, browsing the library, switching scopes, selecting projects, and viewing settings alongside the sidebar.
 - Removed the brand logo from the sidebar while preserving the window drag area.
-- Reduced the sidebar titlebar spacing and simplified content headers to a single title.
+- Removed the dedicated sidebar titlebar spacer, tightened the primary navigation, and compacted single-line content headers.
 
 ### Fixed
 
