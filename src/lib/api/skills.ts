@@ -39,6 +39,8 @@ export interface AgentInfo {
   global_path?: string | null;
   /** Directory whose presence marks the app as installed (when global_path is shared). */
   detect_path?: string | null;
+  /** Instruction file read inside a project (AGENTS.md, CLAUDE.md). */
+  profile_path?: string | null;
   is_user_custom: boolean;
 }
 

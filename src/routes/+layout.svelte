@@ -14,6 +14,7 @@
   import ScopeAgentModal from "$lib/components/ScopeAgentModal.svelte";
   import SkillPickerModal from "$lib/components/SkillPickerModal.svelte";
   import UserProjectFormModal from "$lib/components/UserProjectFormModal.svelte";
+  import WorkspaceModal from "$lib/components/WorkspaceModal.svelte";
   import { getAppLocation } from "$lib/navigation/app-shell";
   import { loadAgents, loadMigrationReport, refreshHub } from "$lib/stores/hub";
   import {
@@ -24,7 +25,7 @@
   } from "$lib/stores/modals";
   import { loadSettings } from "$lib/stores/settings";
   import { ensureUpdateChecked, installAvailableUpdate, updaterState } from "$lib/stores/updater";
-  import { refreshUserProjects } from "$lib/stores/user-projects";
+  import { refreshUserProjects, refreshWorkspaces } from "$lib/stores/user-projects";
 
   let { children } = $props();
   let userProjectsModalOpen = $state(false);
@@ -98,6 +99,7 @@
     loadSettings().catch(console.error);
     loadAgents().catch(console.error);
     refreshUserProjects().catch(console.error);
+    refreshWorkspaces().catch(console.error);
     refreshHub()
       .then(() => loadMigrationReport())
       .catch(console.error);
@@ -141,3 +143,4 @@
 <ForceConfirmModal />
 <DiffModal />
 <UserProjectFormModal bind:open={userProjectsModalOpen} />
+<WorkspaceModal />

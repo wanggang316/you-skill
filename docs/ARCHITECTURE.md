@@ -24,7 +24,18 @@ serves every such app; `detect_path` (e.g. `~/.cursor`) decides whether the app 
 installed. Apps with their own directories (Claude Code, Cline, Windsurf, ...) keep them.
 `LEGACY_USER_ROOTS` lists the app-specific directories those apps used before adopting the
 shared one; migration and scanning still recognise skills there as targets of that app.
-The built-in `agents` app is the shared directory itself as an explicit target.
+The built-in `agents` app is the shared directory itself as an explicit target. Each app
+also carries `profile_path`, the instruction file it reads inside a project (`CLAUDE.md`
+for Claude Code, `AGENTS.md` elsewhere).
+
+## Workspaces and projects
+
+A workspace is a folder that holds projects, stored in `<config_dir>/youskill/user_workspaces.json`.
+Scanning one walks up to four levels deep and reports a folder as a project when it has an
+agent's project skills directory (`project_path`) or an agent instruction file
+(`profile_path`); the walk stops at each project and skips hidden and excluded folders.
+Registered projects (`user_projects.json`) keep the `workspacePath` they were found in, so
+the projects page can group them; projects added by hand have none.
 
 ## Lock file (`~/.youskill/.skill-lock.json`)
 
@@ -72,12 +83,12 @@ A stat-only signature caches results in memory so listing stays cheap.
 Three nodes per skill: source S, hub H, targets T. `list_hub_skills` computes everything
 offline; `check_source_updates` is the only network call and stores its result in the lock.
 
-| Node | States | Rule |
-|---|---|---|
-| Hub | `ok`, `modified`, `missing`, `invalid`, `name_mismatch` | `hash(H) != record.hash` is `modified` |
-| Target (copy) | `in_sync`, `outdated`, `modified`, `conflict`, `missing` | three-way against `install.hash` as base: T==H in sync; T==base, H!=base outdated; T!=base, H==base modified; all differ conflict |
-| Target (symlink) | `in_sync`, `broken_link` | link into the hub is always in sync |
-| Source | `in_sync`, `update_available`, `source_modified`, `source_missing`, `not_checkable`, `unchecked` | github compares `remoteSha` with `latestRemoteSha`; folder hashes the folder |
+| Node             | States                                                                                           | Rule                                                                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Hub              | `ok`, `modified`, `missing`, `invalid`, `name_mismatch`                                          | `hash(H) != record.hash` is `modified`                                                                                            |
+| Target (copy)    | `in_sync`, `outdated`, `modified`, `conflict`, `missing`                                         | three-way against `install.hash` as base: T==H in sync; T==base, H!=base outdated; T!=base, H==base modified; all differ conflict |
+| Target (symlink) | `in_sync`, `broken_link`                                                                         | link into the hub is always in sync                                                                                               |
+| Source           | `in_sync`, `update_available`, `source_modified`, `source_missing`, `not_checkable`, `unchecked` | github compares `remoteSha` with `latestRemoteSha`; folder hashes the folder                                                      |
 
 Sync actions (`sync_skill`): `pull_source`, `push_targets`, `adopt_target`, `accept_hub`,
 `push_source`. Any action that would discard local edits returns `applied: false` with
@@ -86,13 +97,14 @@ Sync actions (`sync_skill`): `pull_source`, `push_targets`, `adopt_target`, `acc
 
 ## Command surface
 
-| Area | Commands |
-|---|---|
-| Hub | `list_hub_skills`, `get_hub_skill`, `import_skills`, `remove_hub_skill`, `sync_skill`, `diff_skill`, `check_source_updates`, `migrate_legacy`, `migration_status` |
-| Install | `install_skill`, `uninstall_skill` |
-| Scan | `scan_folder`, `import_scanned` |
-| Detection | `detect_github_manual`, `detect_github_auto`, `detect_zip`, `detect_folder` (stage into a temp dir) |
-| Other | marketplace, agent apps, projects, settings, backup, file readers, translation |
+| Area      | Commands                                                                                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hub       | `list_hub_skills`, `get_hub_skill`, `import_skills`, `remove_hub_skill`, `sync_skill`, `diff_skill`, `check_source_updates`, `migrate_legacy`, `migration_status`                     |
+| Install   | `install_skill`, `uninstall_skill`                                                                                                                                                    |
+| Scan      | `scan_folder`, `import_scanned`                                                                                                                                                       |
+| Projects  | `list_user_projects`, `add_user_project`, `update_user_project`, `remove_user_project`, `list_workspaces`, `add_workspace`, `remove_workspace`, `scan_workspace`, `register_projects` |
+| Detection | `detect_github_manual`, `detect_github_auto`, `detect_zip`, `detect_folder` (stage into a temp dir)                                                                                   |
+| Other     | marketplace, agent apps, projects, settings, backup, file readers, translation                                                                                                        |
 
 Services: `hub_service` (hub + lock records), `install_service` (targets), `drift_service`
 (pure state computation), `diff_service` (file-level diff of the hub against a target or

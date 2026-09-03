@@ -1,29 +1,76 @@
 <script lang="ts">
-  import { Folder, FolderOpen, FolderPlus, Loader2, RefreshCw, UserRound } from "@lucide/svelte";
+  import {
+    Folder,
+    FolderOpen,
+    FolderPlus,
+    ListPlus,
+    Loader2,
+    RefreshCw,
+    UserRound,
+  } from "@lucide/svelte";
+  import DropdownMenu from "$lib/components/ui/DropdownMenu.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "$lib/i18n";
+  import type { UserWorkspace } from "$lib/api/user-projects";
   import type { ScopeEntry } from "$lib/scopes";
 
   let {
     entries = [],
+    workspaces = [],
     selectedKey = null,
     loading = false,
     error = "",
     onSelect,
-    onAddProject,
+    onAddWorkspace,
+    onRescanWorkspace,
+    onRemoveWorkspace,
+    onManageProjects,
     onRefresh,
   }: {
     entries?: ScopeEntry[];
+    workspaces?: UserWorkspace[];
     selectedKey?: string | null;
     loading?: boolean;
     error?: string;
     onSelect: (entry: ScopeEntry) => void;
-    onAddProject: () => void;
+    onAddWorkspace: () => void;
+    onRescanWorkspace: (workspace: UserWorkspace) => void;
+    onRemoveWorkspace: (workspace: UserWorkspace) => void;
+    onManageProjects: () => void;
     onRefresh: () => void;
   } = $props();
 
+  type Group = {
+    key: string;
+    label: string | null;
+    workspace: UserWorkspace | null;
+    entries: ScopeEntry[];
+  };
+
   const userEntries = $derived(entries.filter((entry) => entry.kind === "user"));
   const projectEntries = $derived(entries.filter((entry) => entry.kind === "project"));
+
+  const groups = $derived.by((): Group[] => {
+    const known = new Set(workspaces.map((workspace) => workspace.path));
+    const result: Group[] = workspaces.map((workspace) => ({
+      key: `workspace:${workspace.path}`,
+      label: workspace.name,
+      workspace,
+      entries: projectEntries.filter((entry) => entry.workspacePath === workspace.path),
+    }));
+    const rest = projectEntries.filter(
+      (entry) => !entry.workspacePath || !known.has(entry.workspacePath)
+    );
+    if (rest.length > 0) {
+      result.push({
+        key: "other",
+        label: workspaces.length > 0 ? $t("workspace.other") : null,
+        workspace: null,
+        entries: rest,
+      });
+    }
+    return result;
+  });
 </script>
 
 {#snippet row(entry: ScopeEntry)}
@@ -100,36 +147,82 @@
       {@render row(entry)}
     {/each}
 
-    <div class="flex items-center justify-between px-4 pt-3 pb-1.5">
+    <div class="flex items-center justify-between gap-2 px-4 pt-3 pb-1.5">
       <p class="text-base-content-subtle text-[11px] font-medium tracking-wide uppercase">
         {$t("sidebar.projects")}
       </p>
-      <button
-        class="text-base-content-subtle hover:bg-base-300 hover:text-base-content inline-flex size-6 items-center justify-center rounded-md transition"
-        type="button"
-        onclick={onAddProject}
-        title={$t("projectManage.title")}
-        aria-label={$t("projectManage.title")}
-      >
-        <FolderPlus size={14} />
-      </button>
+      <div class="flex shrink-0 items-center gap-0.5">
+        <button
+          class="text-base-content-subtle hover:bg-base-300 hover:text-base-content inline-flex size-6 items-center justify-center rounded-md transition"
+          type="button"
+          onclick={onManageProjects}
+          title={$t("projectManage.title")}
+          aria-label={$t("projectManage.title")}
+        >
+          <ListPlus size={14} />
+        </button>
+        <button
+          class="text-base-content-subtle hover:bg-base-300 hover:text-base-content inline-flex size-6 items-center justify-center rounded-md transition"
+          type="button"
+          onclick={onAddWorkspace}
+          title={$t("workspace.addTitle")}
+          aria-label={$t("workspace.addTitle")}
+        >
+          <FolderPlus size={14} />
+        </button>
+      </div>
     </div>
+
     {#if loading && projectEntries.length === 0}
       <div class="text-base-content-muted flex items-center justify-center gap-2 py-6 text-xs">
         <Loader2 size={15} class="animate-spin" />
         {$t("library.loading")}
       </div>
-    {:else if projectEntries.length === 0}
+    {:else if groups.length === 0}
       <button
         class="text-base-content-faint hover:text-base-content-subtle w-full px-4 py-3 text-left text-xs transition"
         type="button"
-        onclick={onAddProject}
+        onclick={onAddWorkspace}
       >
-        {$t("projectManage.empty")}
+        {$t("workspace.empty")}
       </button>
     {:else}
-      {#each projectEntries as entry (entry.key)}
-        {@render row(entry)}
+      {#each groups as group (group.key)}
+        {#if group.label}
+          <div class="flex items-center justify-between gap-2 px-4 pt-2 pb-1">
+            <p
+              class="text-base-content-subtle min-w-0 truncate text-[11px]"
+              title={group.workspace?.path}
+            >
+              {group.label}
+            </p>
+            {#if group.workspace}
+              {@const workspace = group.workspace}
+              <DropdownMenu
+                label={$t("workspace.actions")}
+                items={[
+                  {
+                    label: $t("workspace.rescan"),
+                    onSelect: () => onRescanWorkspace(workspace),
+                  },
+                  {
+                    label: $t("workspace.remove"),
+                    danger: true,
+                    onSelect: () => onRemoveWorkspace(workspace),
+                  },
+                ]}
+              />
+            {/if}
+          </div>
+        {/if}
+        {#each group.entries as entry (entry.key)}
+          {@render row(entry)}
+        {/each}
+        {#if group.entries.length === 0}
+          <p class="text-base-content-faint px-4 py-1.5 text-[11px]">
+            {$t("workspace.emptyGroup")}
+          </p>
+        {/if}
       {/each}
     {/if}
   </div>

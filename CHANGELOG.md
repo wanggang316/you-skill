@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added automatic, idempotent migration of the previous layout on first launch, with a one-time report in the library.
 - Added a Marketplace page; importing from it goes through the hub and then offers to install.
 - Added Warp and Zed as built-in agent apps.
+- Added workspaces: pick a folder, and YouSkill lists the projects inside it (a folder with an agent skills directory or an AGENTS.md / CLAUDE.md file) so they can be registered in one step; the project list groups projects by the workspace they came from and a workspace can be scanned again later.
+- Added an instruction-file path to agent apps (`CLAUDE.md` for Claude Code, `AGENTS.md` for the rest), editable for custom agents and used to detect projects.
 - Added a Projects page for install scopes: the user scope and every project are listed on their own, and selecting one shows that location's status, the agents installed there (add an agent to install every skill of the location into it, remove one to uninstall them) and its skills, each with manage, diff, push, adopt and uninstall actions.
 - Added a diff viewer for changed skills: compare the library copy file by file with an install target, with the source folder, or with the latest GitHub version.
 
@@ -51,38 +53,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8.5] - 2026-05-11
 
 ### Added
+
 - Release v0.8.5
-
-
 
 ## [0.8.5] - 2026-05-11
 
 ### Added
+
 - Added a one-click bulk update action for all local skills with available updates.
 
 ## [0.8.4] - 2026-03-01
 
 ### Added
+
 - Added one-click translation for Markdown files in Skill directories.
 
 ## [0.8.3] - 2026-02-28
 
 ### Added
+
 - Added a skill detail catalog drawer with full skill file tree navigation and in-page file switching.
 - Added skill detail file preview modes for code and images, with unsupported-format fallback actions.
 
 ### Fixed
+
 - Fixed project-scoped local skill detail pages showing `Skill not found` by preserving scope and project path in detail navigation.
 - Fixed scope resetting to `Global` after returning from skill detail by restoring scope/project state from return URL.
 
 ## [0.8.2] - 2026-02-27
 
 ### Added
+
 - Added project skill management.
 
 ## [0.8.1] - 2026-02-24
 
 ### Added
+
 - Changed the GitHub download method from git clone to direct download.
 - Added 20 agent apps.
 - Fixed compatibility issue when the local skills directory is absent.

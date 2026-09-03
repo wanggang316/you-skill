@@ -21,9 +21,16 @@
     openProjectFormModal,
     openScopeAgentModal,
     openSkillPickerModal,
+    openWorkspaceModal,
     performAction,
   } from "$lib/stores/modals";
-  import { userProjects } from "$lib/stores/user-projects";
+  import {
+    refreshUserProjects,
+    refreshWorkspaces,
+    userProjects,
+    workspaces,
+  } from "$lib/stores/user-projects";
+  import { removeWorkspace, type UserWorkspace } from "$lib/api/user-projects";
   import { buildScopeEntries, scopeKey, type ScopeEntry } from "$lib/scopes";
 
   let busy = $state(false);
@@ -63,6 +70,19 @@
       busy = false;
       await refreshHub().catch(console.error);
     }
+  }
+
+  function handleRemoveWorkspace(workspace: UserWorkspace) {
+    void runAction(async () => {
+      const confirmed = await confirm($t("workspace.removeConfirm", { name: workspace.name }), {
+        title: $t("workspace.remove"),
+        kind: "warning",
+      });
+      if (!confirmed) return;
+      await removeWorkspace(workspace.path, false);
+      await refreshWorkspaces();
+      await refreshUserProjects();
+    });
   }
 
   function handleSelect(entry: ScopeEntry) {
@@ -197,11 +217,16 @@
   >
     <ScopeList
       {entries}
+      workspaces={$workspaces}
       {selectedKey}
       loading={$hubLoading}
       error={$hubError}
       onSelect={handleSelect}
-      onAddProject={() => openProjectFormModal()}
+      onAddWorkspace={() => openWorkspaceModal({ mode: "add" })}
+      onRescanWorkspace={(workspace) =>
+        openWorkspaceModal({ mode: "rescan", name: workspace.name, path: workspace.path })}
+      onRemoveWorkspace={handleRemoveWorkspace}
+      onManageProjects={() => openProjectFormModal()}
       onRefresh={() => refreshHub().catch(console.error)}
     />
 

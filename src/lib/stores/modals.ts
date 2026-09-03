@@ -39,6 +39,14 @@ export interface ScopeAgentModalState {
   existingIds: string[];
 }
 
+export interface WorkspaceModalState {
+  open: boolean;
+  /** "add" registers a new workspace; "rescan" looks again at an existing one. */
+  mode: "add" | "rescan";
+  name: string;
+  path: string;
+}
+
 export interface DiffModalState {
   open: boolean;
   name: string;
@@ -66,6 +74,13 @@ export const scopeAgentModal = writable<ScopeAgentModalState>({
   scopeName: "",
   skillNames: [],
   existingIds: [],
+});
+
+export const workspaceModal = writable<WorkspaceModalState>({
+  open: false,
+  mode: "add",
+  name: "",
+  path: "",
 });
 
 /** The project list dialog, opened from the projects page and the tray. */
@@ -184,4 +199,21 @@ export function openProjectFormModal(): void {
 
 export function closeProjectFormModal(): void {
   projectFormModal.set({ open: false });
+}
+
+export function openWorkspaceModal(options?: {
+  mode?: "add" | "rescan";
+  name?: string;
+  path?: string;
+}): void {
+  workspaceModal.set({
+    open: true,
+    mode: options?.mode ?? "add",
+    name: options?.name ?? "",
+    path: options?.path ?? "",
+  });
+}
+
+export function closeWorkspaceModal(): void {
+  workspaceModal.update((state) => ({ ...state, open: false }));
 }

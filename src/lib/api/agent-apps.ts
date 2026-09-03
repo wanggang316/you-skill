@@ -33,12 +33,14 @@ export async function refreshAgentApps(): Promise<AgentApp[]> {
 export async function addAgentApp(
   displayName: string,
   globalPath: string,
-  projectPath?: string
+  projectPath?: string,
+  profilePath?: string
 ): Promise<AgentApp> {
   return apiCall<AgentApp>("add_user_agent_app", {
     displayName,
     globalPath,
     projectPath,
+    profilePath,
   });
 }
 
@@ -56,12 +58,14 @@ export async function updateAgentApp(
   id: string,
   displayName: string,
   globalPath: string,
-  projectPath?: string
+  projectPath?: string,
+  profilePath?: string
 ): Promise<AgentApp> {
   return apiCall<AgentApp>("update_user_agent_app", {
     id,
     displayName,
     globalPath,
     projectPath,
+    profilePath,
   });
 }

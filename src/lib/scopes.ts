@@ -20,6 +20,8 @@ export interface ScopeEntry {
   missing: boolean;
   /** Has installs but is not in the project list. */
   unregistered: boolean;
+  /** Workspace the project was discovered in. */
+  workspacePath: string | null;
 }
 
 export const scopeKey = (ref: ScopeRef): string =>
@@ -60,11 +62,17 @@ export function buildScopeEntries(
       driftCount: user.driftCount,
       missing: false,
       unregistered: false,
+      workspacePath: null,
     },
   ];
 
   const seen = new Set<string>();
-  const push = (path: string, name: string, unregistered: boolean) => {
+  const push = (
+    path: string,
+    name: string,
+    unregistered: boolean,
+    workspacePath: string | null
+  ) => {
     if (seen.has(path)) return;
     seen.add(path);
     const ref: ScopeRef = { scope: "project", projectPath: path };
@@ -79,14 +87,17 @@ export function buildScopeEntries(
       driftCount,
       missing,
       unregistered,
+      workspacePath,
     });
   };
 
-  for (const project of projects) push(project.path, project.name, false);
+  for (const project of projects) {
+    push(project.path, project.name, false, project.workspacePath ?? null);
+  }
   for (const skill of skills) {
     for (const install of skill.installs) {
       if (install.scope !== "project" || !install.projectPath) continue;
-      push(install.projectPath, baseName(install.projectPath), true);
+      push(install.projectPath, baseName(install.projectPath), true, null);
     }
   }
   return entries;
