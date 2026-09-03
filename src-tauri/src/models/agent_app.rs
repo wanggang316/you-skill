@@ -10,6 +10,10 @@ pub struct AgentApp {
   /// `global_path` is the shared `~/.agents/skills`, which says nothing about the app.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub detect_path: Option<String>,
+  /// Instruction file the agent reads inside a project (`AGENTS.md`, `CLAUDE.md`). Its
+  /// presence marks a folder as a project.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub profile_path: Option<String>,
   #[serde(default)]
   pub is_user_custom: bool,
 }

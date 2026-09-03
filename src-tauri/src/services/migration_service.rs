@@ -454,6 +454,7 @@ mod tests {
       project_path: Some(project.to_string()),
       global_path: Some(global.to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     }
   }
@@ -474,6 +475,7 @@ mod tests {
       vec![UserProject {
         name: "proj".to_string(),
         path: project.to_string_lossy().to_string(),
+        workspace_path: None,
       }],
     );
     let legacy = env.home.join(".agents/skills");

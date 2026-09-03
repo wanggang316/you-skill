@@ -17,3 +17,4 @@ pub mod skill_service;
 pub mod source_service;
 pub mod translate_service;
 pub mod user_projects_service;
+pub mod workspace_service;

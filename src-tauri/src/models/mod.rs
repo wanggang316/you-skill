@@ -11,4 +11,4 @@ pub use skill::{
   ScanStatus, SkillDiff, SkillDirectoryEntry, SkillRecord, SkillSource, SourceState, SourceUpdate,
   SyncAction, TargetState, UninstallRequest, LOCK_VERSION,
 };
-pub use user_project::UserProject;
+pub use user_project::{ProjectCandidate, ProjectRegistration, UserProject, UserWorkspace};

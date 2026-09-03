@@ -26,6 +26,13 @@ pub const LEGACY_USER_ROOTS: &[(&str, &str)] = &[
 // Global cache for local agent apps
 static LOCAL_AGENT_APPS: RwLock<Option<Vec<AgentApp>>> = RwLock::new(None);
 
+/// Trim an optional path and drop it when it is empty.
+fn normalize_optional(value: Option<String>) -> Option<String> {
+  value
+    .map(|item| item.trim().to_string())
+    .filter(|item| !item.is_empty())
+}
+
 /// An app counts as installed when its `detect_path` exists, or (without one) when its
 /// user-level skills directory or the parent of that directory exists.
 fn is_app_present(app: &AgentApp) -> bool {
@@ -85,10 +92,12 @@ pub fn create_user_agent_app(
   display_name: String,
   global_path: String,
   project_path: Option<String>,
+  profile_path: Option<String>,
 ) -> Result<AgentApp, String> {
   let display_name = display_name.trim().to_string();
   let global_path = global_path.trim().to_string();
-  let project_path = project_path.map(|p| p.trim().to_string());
+  let project_path = normalize_optional(project_path);
+  let profile_path = normalize_optional(profile_path);
 
   validate_user_agent_app(&display_name, &global_path, project_path.as_deref(), None)?;
 
@@ -99,6 +108,7 @@ pub fn create_user_agent_app(
     global_path: Some(global_path),
     project_path,
     detect_path: None,
+    profile_path,
     is_user_custom: true,
   };
 
@@ -127,10 +137,12 @@ pub fn update_user_agent_app_detail(
   display_name: String,
   global_path: String,
   project_path: Option<String>,
+  profile_path: Option<String>,
 ) -> Result<AgentApp, String> {
   let display_name = display_name.trim().to_string();
   let global_path = global_path.trim().to_string();
-  let project_path = project_path.map(|p| p.trim().to_string());
+  let project_path = normalize_optional(project_path);
+  let profile_path = normalize_optional(profile_path);
 
   let app = get_agent_app(&id).ok_or(format!("Agent app '{}' not found", id))?;
   if !app.is_user_custom {
@@ -150,6 +162,7 @@ pub fn update_user_agent_app_detail(
     global_path: Some(global_path),
     project_path,
     detect_path: None,
+    profile_path,
     is_user_custom: true,
   };
 
@@ -168,6 +181,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some(SHARED_USER_SKILLS_DIR.to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -176,6 +190,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".claude/skills".to_string()),
       global_path: Some("~/.claude/skills".to_string()),
       detect_path: None,
+      profile_path: Some("CLAUDE.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -184,6 +199,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.agents/skills".to_string()),
       detect_path: Some("~/.codex".to_string()),
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -192,6 +208,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.agents/skills".to_string()),
       detect_path: Some("~/.cursor".to_string()),
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -200,6 +217,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.agents/skills".to_string()),
       detect_path: Some("~/.warp".to_string()),
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -208,6 +226,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.agents/skills".to_string()),
       detect_path: Some("~/.config/zed".to_string()),
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -216,6 +235,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".cline/skills".to_string()),
       global_path: Some("~/.cline/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -224,6 +244,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.agents/skills".to_string()),
       detect_path: Some("~/.config/opencode".to_string()),
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -232,6 +253,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".openhands/skills".to_string()),
       global_path: Some("~/.openhands/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -240,6 +262,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.agents/skills".to_string()),
       detect_path: Some("~/.copilot".to_string()),
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -248,6 +271,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".continue/skills".to_string()),
       global_path: Some("~/.continue/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -256,6 +280,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.agents/skills".to_string()),
       detect_path: Some("~/.gemini".to_string()),
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -264,6 +289,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.config/goose/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -272,6 +298,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".windsurf/skills".to_string()),
       global_path: Some("~/.codeium/windsurf/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -280,6 +307,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".roo/skills".to_string()),
       global_path: Some("~/.roo/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -288,6 +316,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".kiro/skills".to_string()),
       global_path: Some("~/.kiro/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -296,6 +325,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".qwen/skills".to_string()),
       global_path: Some("~/.qwen/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -304,6 +334,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.config/agents/skills".to_string()),
       detect_path: Some("~/.config/amp".to_string()),
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -312,6 +343,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.gemini/antigravity/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -320,6 +352,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".commandcode/skills".to_string()),
       global_path: Some("~/.commandcode/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -328,6 +361,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".crush/skills".to_string()),
       global_path: Some("~/.config/crush/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -336,6 +370,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".trae/skills".to_string()),
       global_path: Some("~/.trae/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -344,6 +379,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".trae/skills".to_string()),
       global_path: Some("~/.trae-cn/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -352,6 +388,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.agents/skills".to_string()),
       detect_path: Some("~/.vscode".to_string()),
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -360,6 +397,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".augment/skills".to_string()),
       global_path: Some("~/.augment/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -368,6 +406,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some("skills".to_string()),
       global_path: Some("~/.openclaw/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -376,6 +415,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".codebuddy/skills".to_string()),
       global_path: Some("~/.codebuddy/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -384,6 +424,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".cortex/skills".to_string()),
       global_path: Some("~/.snowflake/cortex/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -392,6 +433,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".factory/skills".to_string()),
       global_path: Some("~/.factory/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -400,6 +442,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".junie/skills".to_string()),
       global_path: Some("~/.junie/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -408,6 +451,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".iflow/skills".to_string()),
       global_path: Some("~/.iflow/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -416,6 +460,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".kilocode/skills".to_string()),
       global_path: Some("~/.kilocode/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -424,6 +469,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.agents/skills".to_string()),
       detect_path: Some("~/.kimi".to_string()),
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -432,6 +478,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".kode/skills".to_string()),
       global_path: Some("~/.kode/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -440,6 +487,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".mcpjam/skills".to_string()),
       global_path: Some("~/.mcpjam/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -448,6 +496,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".vibe/skills".to_string()),
       global_path: Some("~/.vibe/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -456,6 +505,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".mux/skills".to_string()),
       global_path: Some("~/.mux/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -464,6 +514,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".pi/skills".to_string()),
       global_path: Some("~/.pi/agent/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -472,6 +523,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".qoder/skills".to_string()),
       global_path: Some("~/.qoder/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -480,6 +532,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".agents/skills".to_string()),
       global_path: Some("~/.config/agents/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -488,6 +541,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".zencoder/skills".to_string()),
       global_path: Some("~/.zencoder/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -496,6 +550,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".neovate/skills".to_string()),
       global_path: Some("~/.neovate/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -504,6 +559,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".pochi/skills".to_string()),
       global_path: Some("~/.pochi/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
     AgentApp {
@@ -512,6 +568,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
       project_path: Some(".adal/skills".to_string()),
       global_path: Some("~/.adal/skills".to_string()),
       detect_path: None,
+      profile_path: Some("AGENTS.md".to_string()),
       is_user_custom: false,
     },
   ]

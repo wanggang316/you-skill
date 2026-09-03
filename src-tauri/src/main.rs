@@ -29,7 +29,10 @@ use commands::{
     open_in_file_manager, read_skill_file, read_skill_relative_file,
     read_skill_relative_file_bytes, translate_skill_markdown,
   },
-  user_projects::{add_user_project, list_user_projects, remove_user_project, update_user_project},
+  user_projects::{
+    add_user_project, add_workspace, list_user_projects, list_workspaces, register_projects,
+    remove_user_project, remove_workspace, scan_workspace, update_user_project,
+  },
 };
 use tray::setup_tray;
 
@@ -122,7 +125,12 @@ fn main() {
       list_user_projects,
       add_user_project,
       update_user_project,
-      remove_user_project
+      remove_user_project,
+      list_workspaces,
+      add_workspace,
+      remove_workspace,
+      scan_workspace,
+      register_projects
     ])
     .build(tauri::generate_context!())
     .expect("error while building tauri application")

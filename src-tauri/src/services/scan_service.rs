@@ -257,6 +257,7 @@ mod tests {
         project_path: Some(".claude/skills".to_string()),
         global_path: Some("~/.claude/skills".to_string()),
         detect_path: None,
+        profile_path: Some("AGENTS.md".to_string()),
         is_user_custom: false,
       }],
       vec![],
