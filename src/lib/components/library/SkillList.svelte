@@ -4,16 +4,16 @@
     Folder,
     Github,
     Loader2,
+    Plus,
     RefreshCw,
     ScanSearch,
     Search,
-    X,
     Zap,
   } from "@lucide/svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import SelectField from "$lib/components/ui/SelectField.svelte";
   import { t } from "$lib/i18n";
-  import type { HubSkillView } from "$lib/api/hub";
+  import { scopedHasDrift, type HubSkillView, type ScopeRef } from "$lib/api/hub";
   import type { LibraryFilter } from "$lib/navigation/app-shell";
 
   let {
@@ -24,12 +24,15 @@
     error = "",
     search = $bindable(""),
     filter = "all",
-    projectName = null,
+    filters = ["all", "changed", "uninstalled"],
+    scope = null,
+    title = "",
+    emptyText = null,
     onSelect,
     onRefresh,
     onScan,
     onFilterChange,
-    onClearProject,
+    onAddSkill = null,
   }: {
     skills?: HubSkillView[];
     totalCount?: number;
@@ -38,15 +41,20 @@
     error?: string;
     search?: string;
     filter?: LibraryFilter;
-    projectName?: string | null;
+    filters?: LibraryFilter[];
+    /** Scope the list is narrowed to; the changed tag then reflects that scope only. */
+    scope?: ScopeRef | null;
+    /** Header title; defaults to the library title. */
+    title?: string;
+    /** Shown instead of the library empty text when the list has no skills at all. */
+    emptyText?: string | null;
     onSelect: (name: string) => void;
     onRefresh: () => void;
     onScan: () => void;
     onFilterChange: (filter: LibraryFilter) => void;
-    onClearProject: () => void;
+    /** When set, a button to add library skills to the current scope is shown. */
+    onAddSkill?: (() => void) | null;
   } = $props();
-
-  const filters: LibraryFilter[] = ["all", "changed", "uninstalled", "user"];
 </script>
 
 <div class="border-base-300 flex min-h-0 min-w-0 flex-col border-r">
@@ -55,7 +63,7 @@
     data-window-drag-region
   >
     <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
-      {$t("library.title")}
+      {title || $t("library.title")}
     </h1>
     <span class="text-base-content-faint text-xs">{$t("library.count", { count: totalCount })}</span
     >
@@ -81,6 +89,17 @@
           <option value={item}>{$t(`library.filter.${item}`)}</option>
         {/each}
       </SelectField>
+      {#if onAddSkill}
+        <IconButton
+          variant="outline"
+          onclick={onAddSkill}
+          title={$t("scope.addSkill")}
+          ariaLabel={$t("scope.addSkill")}
+          class="h-8 w-8 p-0"
+        >
+          <Plus size={15} />
+        </IconButton>
+      {/if}
       <IconButton
         variant="outline"
         onclick={onScan}
@@ -100,17 +119,6 @@
         <RefreshCw size={15} class={loading ? "animate-spin" : ""} />
       </IconButton>
     </div>
-    {#if projectName}
-      <button
-        class="bg-primary/10 text-primary hover:bg-primary/15 inline-flex max-w-full items-center gap-1 rounded-full px-2.5 py-1 text-[11px] transition"
-        type="button"
-        onclick={onClearProject}
-        title={$t("library.filter.project", { name: projectName })}
-      >
-        <span class="truncate">{$t("library.filter.project", { name: projectName })}</span>
-        <X size={12} />
-      </button>
-    {/if}
   </div>
 
   <div
@@ -125,7 +133,7 @@
       </div>
     {:else if skills.length === 0}
       <p class="text-base-content-muted px-4 py-8 text-center text-xs">
-        {totalCount === 0 ? $t("library.empty") : $t("library.emptyFiltered")}
+        {totalCount === 0 ? (emptyText ?? $t("library.empty")) : $t("library.emptyFiltered")}
       </p>
     {:else}
       {#each skills as skill (skill.name)}
@@ -153,7 +161,7 @@
             <span class="text-base-content min-w-0 flex-1 truncate text-[13px] font-medium">
               {skill.name}
             </span>
-            {#if skill.hasDrift}
+            {#if scope ? scopedHasDrift(skill, scope) : skill.hasDrift}
               <span class="tag tag-warning shrink-0">{$t("library.tag.changed")}</span>
             {:else if skill.installs.length === 0}
               <span class="tag tag-neutral shrink-0">{$t("library.tag.uninstalled")}</span>

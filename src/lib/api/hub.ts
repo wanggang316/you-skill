@@ -287,6 +287,33 @@ export function targetsForProject(skill: HubSkillView, projectPath: string): Ins
   );
 }
 
+/** One install scope: the user level, or a single project. */
+export interface ScopeRef {
+  scope: InstallScope;
+  projectPath: string | null;
+}
+
+export function scopedInstalls(skill: HubSkillView, ref: ScopeRef): InstallView[] {
+  return skill.installs.filter(
+    (install) =>
+      install.scope === ref.scope &&
+      (ref.scope === "user" || install.projectPath === ref.projectPath)
+  );
+}
+
+/** Drift as seen from one scope: hub or source issues, or drifted targets in that scope. */
+export function scopedHasDrift(skill: HubSkillView, ref: ScopeRef): boolean {
+  if (skill.hubState !== "ok") return true;
+  if (
+    skill.sourceState === "update_available" ||
+    skill.sourceState === "source_modified" ||
+    skill.sourceState === "source_missing"
+  ) {
+    return true;
+  }
+  return scopedInstalls(skill, ref).some((install) => install.state !== "in_sync");
+}
+
 export function installedAgentIds(
   skill: HubSkillView,
   scope: InstallScope,

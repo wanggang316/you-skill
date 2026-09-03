@@ -1,5 +1,5 @@
 import { writable } from "svelte/store";
-import type { ActionResult, DiffAgainst, InstallScope } from "../api/hub";
+import type { ActionResult, DiffAgainst, InstallScope, ScopeRef } from "../api/hub";
 import { applySkillView } from "./hub";
 
 export type ImportTab = "github" | "zip" | "folder";
@@ -25,6 +25,11 @@ export interface ForceModalState {
   onCancel: (() => void) | null;
 }
 
+export interface SkillPickerModalState {
+  open: boolean;
+  scope: ScopeRef | null;
+}
+
 export interface DiffModalState {
   open: boolean;
   name: string;
@@ -43,6 +48,8 @@ export const installModal = writable<InstallModalState>({
   initialScope: "user",
   initialProjectPath: null,
 });
+
+export const skillPickerModal = writable<SkillPickerModalState>({ open: false, scope: null });
 
 export const diffModal = writable<DiffModalState>({
   open: false,
@@ -127,4 +134,13 @@ export function openDiffModal(name: string, against: DiffAgainst): void {
 
 export function closeDiffModal(): void {
   diffModal.update((state) => ({ ...state, open: false }));
+}
+
+/** Pick library skills that are not yet installed in `scope`, then open the install dialog. */
+export function openSkillPickerModal(scope: ScopeRef): void {
+  skillPickerModal.set({ open: true, scope });
+}
+
+export function closeSkillPickerModal(): void {
+  skillPickerModal.update((state) => ({ ...state, open: false }));
 }

@@ -9,6 +9,7 @@
     Plus,
     Settings,
     Store,
+    UserRound,
   } from "@lucide/svelte";
   import type { UserProject } from "$lib/api/user-projects";
   import { t } from "$lib/i18n";
@@ -65,6 +66,17 @@
       </a>
       <a
         class={itemClass}
+        class:bg-base-300={activeKey === "user"}
+        class:text-base-content={activeKey === "user"}
+        class:font-medium={activeKey === "user"}
+        href={buildLibraryHref({ scope: { kind: "user" } })}
+        aria-current={activeKey === "user" ? "page" : undefined}
+      >
+        <UserRound size={17} strokeWidth={1.8} />
+        <span class="min-w-0 truncate">{$t("scope.user")}</span>
+      </a>
+      <a
+        class={itemClass}
         class:bg-base-300={activeKey === "market"}
         class:text-base-content={activeKey === "market"}
         class:font-medium={activeKey === "market"}
@@ -102,7 +114,7 @@
             class:bg-base-300={activeKey === key}
             class:text-base-content={activeKey === key}
             class:font-medium={activeKey === key}
-            href={buildLibraryHref({ projectPath: project.path })}
+            href={buildLibraryHref({ scope: { kind: "project", projectPath: project.path } })}
             aria-current={activeKey === key ? "page" : undefined}
             title={project.path}
           >

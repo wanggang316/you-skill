@@ -10,6 +10,7 @@
   import ForceConfirmModal from "$lib/components/ForceConfirmModal.svelte";
   import ImportSkillModal from "$lib/components/ImportSkillModal.svelte";
   import InstallSkillModal from "$lib/components/InstallSkillModal.svelte";
+  import SkillPickerModal from "$lib/components/SkillPickerModal.svelte";
   import UserProjectFormModal from "$lib/components/UserProjectFormModal.svelte";
   import { getAppLocation } from "$lib/navigation/app-shell";
   import { loadAgents, loadMigrationReport, refreshHub } from "$lib/stores/hub";
@@ -121,6 +122,7 @@
 
 <ImportSkillModal />
 <InstallSkillModal />
+<SkillPickerModal />
 <ForceConfirmModal />
 <DiffModal />
 <UserProjectFormModal bind:open={userProjectsModalOpen} />
