@@ -20,10 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added folder scanning: scan a project, an agent's skills directory or any folder, see which skills are new, identical, or different from the hub, and import, adopt, overwrite or register them as install targets.
 - Added automatic, idempotent migration of the previous layout on first launch, with a one-time report in the library.
 - Added a Marketplace page; importing from it goes through the hub and then offers to install.
+- Added Warp and Zed as built-in agent apps.
 
 ### Changed
 
 - Changed the default install mode to copy; symlink remains available per install.
+- Changed the user-level skills directory of Codex, Cursor, GitHub Copilot, VS Code, Gemini CLI, OpenCode and Kimi Code CLI to the shared `~/.agents/skills` they read natively (Goose and Antigravity now use `.agents/skills` at project level); app presence is detected from the app's own config directory. Existing skills in the old app-specific directories are still migrated and scanned as targets of that app.
+- Changed the skill detail pane into General and Skill files tabs: changes are listed above the install targets, every installed agent has its own row with its actions on the right, and the file viewer with translation lives in the second tab.
 - Changed backup to archive the whole hub (`~/.youskill`, skills and lock file).
 - Changed GitHub imports to accept `/tree/<branch>/<path>` URLs and to record the branch that was downloaded.
 - Changed the app to a wider two-column window with persistent navigation for adding skills, browsing the library, switching scopes, selecting projects, and viewing settings alongside the sidebar.

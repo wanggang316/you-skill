@@ -44,8 +44,7 @@ export type TargetState =
   | "modified"
   | "conflict"
   | "missing"
-  | "broken_link"
-  | "relocated";
+  | "broken_link";
 
 export interface InstallView {
   scope: InstallScope;

@@ -232,8 +232,6 @@ pub enum TargetState {
   Conflict,
   Missing,
   BrokenLink,
-  /// Agent app path was reconfigured; files live at the recorded path.
-  Relocated,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]

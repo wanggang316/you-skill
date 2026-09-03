@@ -8,6 +8,7 @@
     ScanSearch,
     Search,
     X,
+    Zap,
   } from "@lucide/svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import SelectField from "$lib/components/ui/SelectField.svelte";
@@ -143,8 +144,10 @@
                 <Github size={13} />
               {:else if skill.source.type === "zip"}
                 <FileArchive size={13} />
-              {:else}
+              {:else if skill.source.type === "folder"}
                 <Folder size={13} />
+              {:else}
+                <Zap size={13} />
               {/if}
             </span>
             <span class="text-base-content min-w-0 flex-1 truncate text-[13px] font-medium">

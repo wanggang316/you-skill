@@ -4,15 +4,10 @@
   import { page } from "$app/state";
   import SkillList from "$lib/components/library/SkillList.svelte";
   import SkillDetail from "$lib/components/library/SkillDetail.svelte";
-  import type { TargetAction } from "$lib/components/library/InstallMatrix.svelte";
+  import type { TargetAction } from "$lib/components/library/InstallTargets.svelte";
   import RemoveSkillModal from "$lib/components/RemoveSkillModal.svelte";
   import { t } from "$lib/i18n";
-  import {
-    buildLibraryHref,
-    buildSkillFilesHref,
-    getAppLocation,
-    type LibraryFilter,
-  } from "$lib/navigation/app-shell";
+  import { buildLibraryHref, getAppLocation, type LibraryFilter } from "$lib/navigation/app-shell";
   import {
     installSkill,
     openInFileManager,
@@ -203,11 +198,6 @@
     });
   }
 
-  function handleViewFiles() {
-    if (!selectedSkill) return;
-    goto(buildSkillFilesHref(selectedSkill.name, `${page.url.pathname}${page.url.search}`));
-  }
-
   async function handleRemoved() {
     await refreshHub();
     navigate({ skill: null });
@@ -277,7 +267,6 @@
           onRemove={() => (removeModalOpen = true)}
           onOpenDir={handleOpenDir}
           onCheckSource={handleCheckSource}
-          onViewFiles={handleViewFiles}
         />
       {/key}
     {:else}

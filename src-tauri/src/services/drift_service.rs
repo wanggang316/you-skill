@@ -10,7 +10,7 @@ use crate::services::env::Env;
 use crate::utils::file::FileHelper;
 use crate::utils::folder::SKILL_MD;
 use crate::utils::hash::hash_dir_cached;
-use crate::utils::path::{is_symlink, same_path, symlink_points_to};
+use crate::utils::path::{is_symlink, symlink_points_to};
 use std::path::Path;
 
 pub struct HubProbe {
@@ -81,10 +81,6 @@ pub fn target_state(
     return (TargetState::Missing, None);
   }
 
-  if is_relocated(env, name, install) {
-    return (TargetState::Relocated, None);
-  }
-
   let Ok(current) = hash_dir_cached(path) else {
     return (TargetState::Missing, None);
   };
@@ -112,26 +108,6 @@ pub fn compare_three_way(target: &str, hub: Option<&str>, base: &str) -> TargetS
       }
     },
   }
-}
-
-/// True when every known agent of this install now resolves to a different directory.
-fn is_relocated(env: &Env, name: &str, install: &InstallRecord) -> bool {
-  let project_root = install.project_path.as_deref().map(Path::new);
-  let mut known = 0;
-  let mut matched = 0;
-  for agent_id in &install.agent_ids {
-    let Some(app) = env.agent(agent_id) else {
-      continue;
-    };
-    let Ok(root) = env.agent_root(app, install.scope, project_root) else {
-      continue;
-    };
-    known += 1;
-    if same_path(&root.join(name), Path::new(&install.path)) {
-      matched += 1;
-    }
-  }
-  known > 0 && matched == 0
 }
 
 pub fn source_state(record: &SkillRecord) -> SourceState {

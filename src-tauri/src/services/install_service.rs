@@ -4,14 +4,15 @@ use crate::models::{
   ActionResult, AgentRootMatch, HubSkillView, HubState, InstallMode, InstallRecord, InstallRequest,
   InstallScope, InstallTargetSpec, SkillRecord, TargetState, UninstallRequest,
 };
+use crate::services::agent_apps_service::LEGACY_USER_ROOTS;
 use crate::services::drift_service::{build_view, probe_hub, target_state};
 use crate::services::env::Env;
 use crate::services::lock_service::{ops_guard, store};
 use crate::utils::folder::{copy_dir, replace_dir_atomic, CopyOpts};
 use crate::utils::hash::{hash_dir, hash_dir_cached, invalidate_hash_cache};
 use crate::utils::path::{
-  is_symlink, is_within, legacy_agents_root, normalize_dir_path, path_to_string, remove_path_any,
-  same_path, symlink_points_to,
+  expand_home_with, is_symlink, is_within, legacy_agents_root, normalize_dir_path, path_to_string,
+  remove_path_any, same_path, symlink_points_to,
 };
 use crate::utils::time::now_rfc3339;
 use std::collections::BTreeMap;
@@ -64,7 +65,7 @@ pub fn resolve_target(
 pub fn classify_agent_root(env: &Env, skill_dir: &Path) -> Option<AgentRootMatch> {
   let parent = skill_dir.parent()?;
 
-  let user_ids: Vec<String> = env
+  let mut user_ids: Vec<String> = env
     .agent_apps
     .iter()
     .filter(|app| {
@@ -75,6 +76,15 @@ pub fn classify_agent_root(env: &Env, skill_dir: &Path) -> Option<AgentRootMatch
     })
     .map(|app| app.id.clone())
     .collect();
+  if user_ids.is_empty() {
+    for (agent_id, legacy_path) in LEGACY_USER_ROOTS {
+      if env.agent(agent_id).is_some()
+        && same_path(&expand_home_with(legacy_path, &env.home), parent)
+      {
+        user_ids.push(agent_id.to_string());
+      }
+    }
+  }
   if !user_ids.is_empty() {
     return Some(AgentRootMatch {
       scope: InstallScope::User,
@@ -591,7 +601,7 @@ pub fn push_targets(
           Err(err) => errors.push(format!("{}: {}", install.path, err)),
         }
       },
-      TargetState::Modified | TargetState::Conflict | TargetState::Relocated => {
+      TargetState::Modified | TargetState::Conflict => {
         if force {
           match replace_dir_atomic(&hub_dir, target, &CopyOpts::skill(), &[]) {
             Ok(()) => {
@@ -794,6 +804,7 @@ mod tests {
       display_name: id.to_string(),
       project_path: Some(project.to_string()),
       global_path: Some(global.to_string()),
+      detect_path: None,
       is_user_custom: false,
     }
   }
@@ -1091,5 +1102,12 @@ mod tests {
     assert!(m.project_path.unwrap().ends_with("other"));
 
     assert!(classify_agent_root(&env, &tmp.path().join("random/x")).is_none());
+
+    // App-specific directory used before the shared ~/.agents/skills.
+    let legacy = env.home.join(".cursor/skills/x");
+    fs::create_dir_all(&legacy).unwrap();
+    let m = classify_agent_root(&env, &legacy).unwrap();
+    assert_eq!(m.scope, InstallScope::User);
+    assert_eq!(m.agent_ids, vec!["cursor"]);
   }
 }

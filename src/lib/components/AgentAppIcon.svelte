@@ -63,15 +63,20 @@
     zenencoder: { src: zencoderIcon },
   };
 
+  import { Layers } from "@lucide/svelte";
+
   let { agentId, name }: { agentId: string; name: string } = $props();
 
   const icon = $derived(icons[agentId]);
+  const isSharedTarget = $derived(agentId === "agents");
   const fallback = $derived(name.trim().charAt(0).toUpperCase() || "?");
 </script>
 
 <span class:monochrome={icon?.monochrome} class="agent-app-icon" aria-hidden="true">
   {#if icon}
     <img src={icon.src} alt="" />
+  {:else if isSharedTarget}
+    <Layers size={16} class="text-base-content-muted" />
   {:else}
     <span class="fallback">{fallback}</span>
   {/if}

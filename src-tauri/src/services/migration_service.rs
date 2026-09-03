@@ -4,13 +4,15 @@
 //! agent's own skills directory. Nothing legacy is deleted.
 
 use crate::models::{InstallMode, InstallScope, MigrationReport, SkillRecord, SkillSource};
+use crate::services::agent_apps_service::LEGACY_USER_ROOTS;
 use crate::services::env::Env;
 use crate::services::install_service::{register_existing_install, write_target};
 use crate::services::lock_service::{ops_guard, store};
 use crate::utils::folder::{copy_dir, read_skill_name, CopyOpts, SKILL_MD};
 use crate::utils::hash::{hash_dir, invalidate_hash_cache};
 use crate::utils::path::{
-  is_symlink, is_within, legacy_agents_root, same_path, symlink_points_to, validate_skill_name,
+  expand_home_with, is_symlink, is_within, legacy_agents_root, same_path, symlink_points_to,
+  validate_skill_name,
 };
 use crate::utils::time::now_rfc3339;
 use serde::Deserialize;
@@ -185,6 +187,7 @@ pub fn migrate_legacy(env: &Env) -> Result<MigrationReport, String> {
       &legacy_root,
       InstallScope::User,
       None,
+      None,
       &mut report,
       |name, dir_name| {
         github_lock
@@ -202,17 +205,45 @@ pub fn migrate_legacy(env: &Env) -> Result<MigrationReport, String> {
     );
   }
 
-  // 2. Every user-level agent root.
+  // 2. Every user-level agent root, plus the app-specific directories apps used before
+  //    adopting the shared `~/.agents/skills`.
+  let mut visited_roots: Vec<PathBuf> = vec![legacy_root.clone()];
   for app in &env.agent_apps {
     let Ok(root) = env.agent_root(app, InstallScope::User, None) else {
       continue;
     };
-    if same_path(&root, &legacy_root) || !root.is_dir() {
+    if !root.is_dir() || visited_roots.iter().any(|seen| same_path(seen, &root)) {
       continue;
     }
-    migrate_root(env, &root, InstallScope::User, None, &mut report, |_, _| {
-      None
-    });
+    visited_roots.push(root.clone());
+    migrate_root(
+      env,
+      &root,
+      InstallScope::User,
+      None,
+      None,
+      &mut report,
+      |_, _| None,
+    );
+  }
+  for (agent_id, legacy_path) in LEGACY_USER_ROOTS {
+    if env.agent(agent_id).is_none() {
+      continue;
+    }
+    let root = expand_home_with(legacy_path, &env.home);
+    if !root.is_dir() || visited_roots.iter().any(|seen| same_path(seen, &root)) {
+      continue;
+    }
+    visited_roots.push(root.clone());
+    migrate_root(
+      env,
+      &root,
+      InstallScope::User,
+      None,
+      Some(vec![agent_id.to_string()]),
+      &mut report,
+      |_, _| None,
+    );
   }
 
   // 3. Registered projects: every agent's project root, with the project lock as hint.
@@ -237,6 +268,7 @@ pub fn migrate_legacy(env: &Env) -> Result<MigrationReport, String> {
         &root,
         InstallScope::Project,
         Some(project.path.clone()),
+        None,
         &mut report,
         |name, dir_name| {
           project_lock
@@ -266,6 +298,7 @@ fn migrate_root<F>(
   root: &Path,
   scope: InstallScope,
   project_path: Option<String>,
+  agent_ids_override: Option<Vec<String>>,
   report: &mut MigrationReport,
   source_hint: F,
 ) where
@@ -275,17 +308,19 @@ fn migrate_root<F>(
     return;
   };
   let legacy_root = legacy_agents_root(&env.home);
-  let agent_ids: Vec<String> = env
-    .agent_apps
-    .iter()
-    .filter(|app| {
-      env
-        .agent_root(app, scope, project_path.as_deref().map(Path::new))
-        .map(|r| same_path(&r, root))
-        .unwrap_or(false)
-    })
-    .map(|app| app.id.clone())
-    .collect();
+  let agent_ids: Vec<String> = agent_ids_override.unwrap_or_else(|| {
+    env
+      .agent_apps
+      .iter()
+      .filter(|app| {
+        env
+          .agent_root(app, scope, project_path.as_deref().map(Path::new))
+          .map(|r| same_path(&r, root))
+          .unwrap_or(false)
+      })
+      .map(|app| app.id.clone())
+      .collect()
+  });
 
   let mut dirs: Vec<PathBuf> = entries
     .flatten()
@@ -418,6 +453,7 @@ mod tests {
       display_name: id.to_string(),
       project_path: Some(project.to_string()),
       global_path: Some(global.to_string()),
+      detect_path: None,
       is_user_custom: false,
     }
   }
@@ -541,6 +577,35 @@ mod tests {
     let after = crate::services::lock_service::read_lock_file(&env.lock_path).unwrap();
     assert_eq!(before.skills, after.skills);
     assert!(!needs_migration(&env).unwrap());
+  }
+
+  #[test]
+  fn legacy_app_specific_user_roots_become_installs_of_that_app() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = Env::for_test(
+      tmp.path(),
+      vec![
+        app("agents", "~/.agents/skills", ".agents/skills"),
+        app("cursor", "~/.agents/skills", ".agents/skills"),
+      ],
+      vec![],
+    );
+    // Installed by the previous app into Cursor's own directory.
+    write(
+      &env.home.join(".cursor/skills"),
+      "foo/SKILL.md",
+      "---\nname: foo\n---\nF",
+    );
+
+    let report = migrate_legacy(&env).unwrap();
+    assert!(report.errors.is_empty(), "{:?}", report.errors);
+    assert_eq!(report.imported, vec!["foo"]);
+
+    let foo = get_hub_skill(&env, "foo").unwrap().unwrap();
+    assert_eq!(foo.installs.len(), 1);
+    assert!(foo.installs[0].record.path.ends_with(".cursor/skills/foo"));
+    assert_eq!(foo.installs[0].record.agent_ids, vec!["cursor"]);
+    assert_eq!(foo.installs[0].state, TargetState::InSync);
   }
 
   #[test]

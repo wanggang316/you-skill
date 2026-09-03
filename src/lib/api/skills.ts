@@ -37,6 +37,8 @@ export interface AgentInfo {
   display_name: string;
   project_path?: string | null;
   global_path?: string | null;
+  /** Directory whose presence marks the app as installed (when global_path is shared). */
+  detect_path?: string | null;
   is_user_custom: boolean;
 }
 

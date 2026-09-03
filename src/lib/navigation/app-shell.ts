@@ -59,6 +59,3 @@ export const buildLibraryHref = (
 };
 
 export const buildMarketHref = (): string => "/market";
-
-export const buildSkillFilesHref = (name: string, returnTo: string): string =>
-  `/skills/hub/${encodeURIComponent(name)}?returnTo=${encodeURIComponent(returnTo)}`;

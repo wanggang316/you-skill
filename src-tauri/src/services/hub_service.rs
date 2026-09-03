@@ -478,6 +478,7 @@ mod tests {
         display_name: "Claude Code".to_string(),
         project_path: Some(".claude/skills".to_string()),
         global_path: Some("~/.claude/skills".to_string()),
+        detect_path: None,
         is_user_custom: false,
       }],
       vec![],

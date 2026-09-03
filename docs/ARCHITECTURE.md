@@ -17,9 +17,14 @@ Code is the source of truth; when this document and the code disagree, fix the d
 ```
 
 Agent apps are defined in `src-tauri/src/services/agent_apps_service.rs`. Each app has a
-user-level skills directory (e.g. `~/.claude/skills`) and a project-level one
-(e.g. `.claude/skills`). The built-in `agents` app represents the shared `.agents/skills`
-convention; it is an ordinary install target, not a canonical location.
+user-level skills directory and a project-level one. Apps that natively read the shared
+directories (`~/.agents/skills` and `.agents/skills`: Codex, Cursor, GitHub Copilot, VS
+Code, Gemini CLI, OpenCode, Kimi, Warp, Zed) use them as their paths, so one install
+serves every such app; `detect_path` (e.g. `~/.cursor`) decides whether the app is shown as
+installed. Apps with their own directories (Claude Code, Cline, Windsurf, ...) keep them.
+`LEGACY_USER_ROOTS` lists the app-specific directories those apps used before adopting the
+shared one; migration and scanning still recognise skills there as targets of that app.
+The built-in `agents` app is the shared directory itself as an explicit target.
 
 ## Lock file (`~/.youskill/.skill-lock.json`)
 
@@ -70,7 +75,7 @@ offline; `check_source_updates` is the only network call and stores its result i
 | Node | States | Rule |
 |---|---|---|
 | Hub | `ok`, `modified`, `missing`, `invalid`, `name_mismatch` | `hash(H) != record.hash` is `modified` |
-| Target (copy) | `in_sync`, `outdated`, `modified`, `conflict`, `missing`, `relocated` | three-way against `install.hash` as base: T==H in sync; T==base, H!=base outdated; T!=base, H==base modified; all differ conflict |
+| Target (copy) | `in_sync`, `outdated`, `modified`, `conflict`, `missing` | three-way against `install.hash` as base: T==H in sync; T==base, H!=base outdated; T!=base, H==base modified; all differ conflict |
 | Target (symlink) | `in_sync`, `broken_link` | link into the hub is always in sync |
 | Source | `in_sync`, `update_available`, `source_modified`, `source_missing`, `not_checkable`, `unchecked` | github compares `remoteSha` with `latestRemoteSha`; folder hashes the folder |
 

@@ -654,8 +654,7 @@ pre.code-block--compact {
   }
 
   .state-outdated,
-  .state-modified,
-  .state-relocated {
+  .state-modified {
     background-color: var(--warning);
   }
 
