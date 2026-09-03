@@ -8,7 +8,6 @@
   import { t } from "$lib/i18n";
   import { Plus, Trash2, Loader2, Pencil, ChevronLeft, RefreshCw } from "@lucide/svelte";
   import AgentAppIcon from "$lib/components/AgentAppIcon.svelte";
-  import SecondaryPageShell from "$lib/components/SecondaryPageShell.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import AddAgentAppModal from "$lib/components/AddAgentAppModal.svelte";
 
@@ -78,10 +77,10 @@
   }
 </script>
 
-<SecondaryPageShell activeTab="local" currentSection="settings">
+<section class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
   <!-- Header -->
-  <header class="border-base-300 bg-base-100 sticky top-0 z-50 border-b" data-window-drag-region>
-    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+  <header class="border-base-300 bg-base-100 h-12 flex-none border-b" data-window-drag-region>
+    <div class="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-6">
       <div class="flex w-full items-center justify-between">
         <div class="flex items-center gap-4">
           <IconButton
@@ -112,7 +111,7 @@
     </div>
   </header>
 
-  <main class="flex-1 overflow-y-auto">
+  <main class="min-h-0 flex-1 overflow-y-auto">
     <section class="mx-auto max-w-4xl px-6 py-6">
       {#if loading}
         <div class="text-base-content-muted flex items-center justify-center py-20">
@@ -213,7 +212,7 @@
       {/if}
     </section>
   </main>
-</SecondaryPageShell>
+</section>
 
 <!-- Add Agent App Modal -->
 <AddAgentAppModal bind:open={showAddModal} appToEdit={editingApp} onAppsChange={loadAgentApps} />

@@ -6,7 +6,6 @@
   import hljs from "highlight.js/lib/common";
   import { Loader2 } from "@lucide/svelte";
   import PageHeader from "$lib/components/PageHeader.svelte";
-  import SecondaryPageShell from "$lib/components/SecondaryPageShell.svelte";
   import SkillDirectoryDrawer from "$lib/components/SkillDirectoryDrawer.svelte";
   import MarkdownPreview from "$lib/components/MarkdownPreview.svelte";
   import CodePreview from "$lib/components/CodePreview.svelte";
@@ -218,12 +217,6 @@
   const getExtension = (filePath: string) => filePath.split(".").at(-1)?.toLowerCase() || "";
   const activeFileName = $derived(getEntryName(activeFilePath));
   const isTranslatableMarkdown = $derived(fileViewMode === "markdown");
-  const sidebarScopeKey = $derived.by(() => {
-    const projectPath = query.get("projectPath");
-    return query.get("scope") === "project" && projectPath
-      ? `project:${encodeURIComponent(projectPath)}`
-      : "global";
-  });
   const translateButtonLabel = $derived.by(() => {
     if (showingTranslated) return $t("detail.showOriginal");
     if (translatedMarkdownContent) return $t("detail.showTranslated");
@@ -783,7 +776,7 @@
   });
 </script>
 
-<SecondaryPageShell activeTab={currentType} initialScopeKey={sidebarScopeKey}>
+<section class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
   <PageHeader
     currentView="detail"
     activeTab="local"
@@ -821,7 +814,7 @@
     }}
   />
 
-  <main class="flex-1 overflow-y-auto">
+  <main class="min-h-0 flex-1 overflow-y-auto">
     <div
       class="mx-auto max-w-6xl px-6"
       class:py-0={fileViewMode === "code"}
@@ -881,7 +874,7 @@
       {/if}
     </div>
   </main>
-</SecondaryPageShell>
+</section>
 
 <MissingTranslationSettingsModal
   bind:open={missingTranslationSettingsOpen}

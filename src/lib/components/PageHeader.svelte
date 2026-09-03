@@ -49,8 +49,8 @@
   } = $props();
 </script>
 
-<header class="border-base-300 bg-base-100 sticky top-0 z-50 border-b" data-window-drag-region>
-  <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+<header class="border-base-300 bg-base-100 h-12 flex-none border-b" data-window-drag-region>
+  <div class="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-6">
     {#if currentView === "list"}
       <div class="text-base-content flex items-center gap-2">
         <svg width="28" viewBox="0 0 433 455" fill="none" xmlns="http://www.w3.org/2000/svg">
