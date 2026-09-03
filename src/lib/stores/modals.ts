@@ -1,5 +1,5 @@
 import { writable } from "svelte/store";
-import type { ActionResult, InstallScope } from "../api/hub";
+import type { ActionResult, DiffAgainst, InstallScope } from "../api/hub";
 import { applySkillView } from "./hub";
 
 export type ImportTab = "github" | "zip" | "folder";
@@ -25,6 +25,12 @@ export interface ForceModalState {
   onCancel: (() => void) | null;
 }
 
+export interface DiffModalState {
+  open: boolean;
+  name: string;
+  against: DiffAgainst;
+}
+
 export const importModal = writable<ImportModalState>({
   open: false,
   initialTab: "github",
@@ -36,6 +42,12 @@ export const installModal = writable<InstallModalState>({
   skillNames: [],
   initialScope: "user",
   initialProjectPath: null,
+});
+
+export const diffModal = writable<DiffModalState>({
+  open: false,
+  name: "",
+  against: { kind: "source" },
 });
 
 export const forceModal = writable<ForceModalState>({
@@ -107,4 +119,12 @@ export async function performAction(
 
 export function closeForceModal(): void {
   forceModal.set({ open: false, blockers: [], onConfirm: null, onCancel: null });
+}
+
+export function openDiffModal(name: string, against: DiffAgainst): void {
+  diffModal.set({ open: true, name, against });
+}
+
+export function closeDiffModal(): void {
+  diffModal.update((state) => ({ ...state, open: false }));
 }

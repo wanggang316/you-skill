@@ -165,6 +165,43 @@ export interface MigrationReport {
   errors: string[];
 }
 
+// ---- Diff ----
+
+/** What the hub copy is compared against; the hub is always the left (old) side. */
+export type DiffAgainst = { kind: "target"; path: string } | { kind: "source" };
+
+export type DiffStatus = "added" | "removed" | "modified";
+
+export type DiffLineKind = "context" | "delete" | "insert";
+
+export interface DiffLine {
+  kind: DiffLineKind;
+  oldLine?: number;
+  newLine?: number;
+  text: string;
+}
+
+export interface DiffHunk {
+  header: string;
+  lines: DiffLine[];
+}
+
+export interface FileDiff {
+  path: string;
+  status: DiffStatus;
+  binary: boolean;
+  truncated: boolean;
+  hunks: DiffHunk[];
+}
+
+export interface SkillDiff {
+  name: string;
+  leftLabel: string;
+  rightLabel: string;
+  files: FileDiff[];
+  unchanged: number;
+}
+
 // ============ Commands ============
 
 export async function listHubSkills(): Promise<HubSkillView[]> {
@@ -216,6 +253,10 @@ export async function migrateLegacy(): Promise<MigrationReport> {
 
 export async function migrationStatus(): Promise<MigrationReport | null> {
   return apiCall<MigrationReport | null>("migration_status");
+}
+
+export async function diffSkill(name: string, against: DiffAgainst): Promise<SkillDiff> {
+  return apiCall<SkillDiff>("diff_skill", { name, against });
 }
 
 // ============ Helpers ============

@@ -88,16 +88,17 @@ Sync actions (`sync_skill`): `pull_source`, `push_targets`, `adopt_target`, `acc
 
 | Area | Commands |
 |---|---|
-| Hub | `list_hub_skills`, `get_hub_skill`, `import_skills`, `remove_hub_skill`, `sync_skill`, `check_source_updates`, `migrate_legacy`, `migration_status` |
+| Hub | `list_hub_skills`, `get_hub_skill`, `import_skills`, `remove_hub_skill`, `sync_skill`, `diff_skill`, `check_source_updates`, `migrate_legacy`, `migration_status` |
 | Install | `install_skill`, `uninstall_skill` |
 | Scan | `scan_folder`, `import_scanned` |
 | Detection | `detect_github_manual`, `detect_github_auto`, `detect_zip`, `detect_folder` (stage into a temp dir) |
 | Other | marketplace, agent apps, projects, settings, backup, file readers, translation |
 
 Services: `hub_service` (hub + lock records), `install_service` (targets), `drift_service`
-(pure state computation), `scan_service`, `migration_service`, `source_service` (network),
-`lock_service` (atomic lock writes + process-wide operation mutex), `env.rs` (paths and
-agent/project lists, injectable for tests).
+(pure state computation), `diff_service` (file-level diff of the hub against a target or
+source), `scan_service`, `migration_service`, `source_service` (network), `lock_service`
+(atomic lock writes + process-wide operation mutex), `env.rs` (paths and agent/project
+lists, injectable for tests).
 
 ## Migration from the previous layout
 
@@ -112,7 +113,7 @@ under `migration` in the lock and shown once in the library.
 
 - `src/lib/api/hub.ts` mirrors the command surface (camelCase payloads).
 - `src/lib/stores/hub.ts` holds the skill list and agent apps; `stores/modals.ts` holds the
-  import / install / force-confirm modals and `performAction`, the helper that turns a
+  import / install / force-confirm / diff modals and `performAction`, the helper that turns a
   blocked `ActionResult` into a confirmation.
 - Routes: `/` library (two columns, selection and filters in the URL), `/market`,
   `/skills/hub/<name>` and `/skills/remote/<name>` file viewers, `/settings`, `/agent-apps`.

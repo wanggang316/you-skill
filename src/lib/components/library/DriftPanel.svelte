@@ -1,6 +1,7 @@
 <script lang="ts">
   import { AlertTriangle } from "@lucide/svelte";
   import { t } from "$lib/i18n";
+  import { openDiffModal } from "$lib/stores/modals";
   import type { HubSkillView, InstallView, SyncAction } from "$lib/api/hub";
 
   export type TargetAction = "push" | "adopt" | "reinstall";
@@ -34,6 +35,12 @@
 
   const needsReinstall = (install: InstallView) =>
     install.state === "missing" || install.state === "broken_link";
+  const canDiffTarget = (install: InstallView) =>
+    install.mode === "copy" && !needsReinstall(install);
+  const canDiffSource = $derived(
+    (skill.sourceState === "update_available" && skill.source.type === "github") ||
+      (skill.sourceState === "source_modified" && skill.source.type === "folder")
+  );
 </script>
 
 <div class="border-warning/40 bg-warning/5 space-y-3 rounded-2xl border p-4 text-sm">
@@ -75,6 +82,16 @@
         {$t(`drift.source.${skill.sourceState}`)}
       </p>
       <div class="flex gap-1.5">
+        {#if canDiffSource}
+          <button
+            class={buttonClass}
+            type="button"
+            disabled={busy}
+            onclick={() => openDiffModal(skill.name, { kind: "source" })}
+          >
+            {$t("diff.view")}
+          </button>
+        {/if}
         {#if skill.sourceState !== "source_missing" && canPull}
           <button
             class={buttonClass}
@@ -109,6 +126,16 @@
             <span class="truncate text-xs" title={install.path}>{install.path}</span>
           </p>
           <div class="flex gap-1.5">
+            {#if canDiffTarget(install)}
+              <button
+                class={buttonClass}
+                type="button"
+                disabled={busy}
+                onclick={() => openDiffModal(skill.name, { kind: "target", path: install.path })}
+              >
+                {$t("diff.view")}
+              </button>
+            {/if}
             {#if install.state === "modified" || install.state === "conflict"}
               <button
                 class={buttonClass}

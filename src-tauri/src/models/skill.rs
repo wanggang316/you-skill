@@ -387,6 +387,82 @@ pub struct SourceUpdate {
 }
 
 // ---------------------------------------------------------------------------
+// Diff
+// ---------------------------------------------------------------------------
+
+/// What the hub copy is compared against. The hub is always the left (old) side.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum DiffAgainst {
+  /// An install target, identified by its install path.
+  Target { path: String },
+  /// The recorded source: a local folder, or a GitHub checkout downloaded on demand.
+  Source,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DiffStatus {
+  /// Present only on the right side.
+  Added,
+  /// Present only in the hub.
+  Removed,
+  Modified,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DiffLineKind {
+  Context,
+  Delete,
+  Insert,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffLine {
+  pub kind: DiffLineKind,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub old_line: Option<usize>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub new_line: Option<usize>,
+  pub text: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffHunk {
+  pub header: String,
+  pub lines: Vec<DiffLine>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FileDiff {
+  /// Path relative to the skill root, `/` separated.
+  pub path: String,
+  pub status: DiffStatus,
+  /// Content differs but cannot be shown as text.
+  pub binary: bool,
+  /// Hunks were cut off (file too large or too many changed lines).
+  pub truncated: bool,
+  #[serde(default)]
+  pub hunks: Vec<DiffHunk>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillDiff {
+  pub name: String,
+  pub left_label: String,
+  pub right_label: String,
+  #[serde(default)]
+  pub files: Vec<FileDiff>,
+  /// Number of files that are identical on both sides.
+  pub unchanged: usize,
+}
+
+// ---------------------------------------------------------------------------
 // Scan
 // ---------------------------------------------------------------------------
 

@@ -1,15 +1,19 @@
 use crate::config::load_config;
 use crate::models::{
-  ActionResult, HubSkillView, ImportItem, ImportOutcome, InstallMode, InstallRequest,
-  MigrationReport, ScanDecision, ScanItem, SkillSource, SourceUpdate, SyncAction, UninstallRequest,
+  ActionResult, DiffAgainst, HubSkillView, ImportItem, ImportOutcome, InstallMode, InstallRequest,
+  MigrationReport, ScanDecision, ScanItem, SkillDiff, SkillSource, SourceUpdate, SyncAction,
+  UninstallRequest,
 };
 use crate::services::env::Env;
+use crate::services::lock_service::store;
 use crate::services::scan_service::DEFAULT_SCAN_DEPTH;
 use crate::services::{
-  hub_service, install_service, migration_service, scan_service, source_service,
+  diff_service, hub_service, install_service, migration_service, scan_service, source_service,
 };
-use crate::utils::folder::sweep_temp_dirs;
+use crate::utils::folder::{is_staged_temp_path, sweep_temp_dirs};
 use crate::utils::github::GithubHelper;
+use crate::utils::path::remove_path_any;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 async fn blocking<T, F>(label: &'static str, f: F) -> Result<T, String>
@@ -121,7 +125,7 @@ pub async fn sync_skill(name: String, action: SyncAction) -> Result<ActionResult
     let is_github = env
       .lock_path
       .is_file()
-      .then(|| crate::services::lock_service::store(&env).get(&name))
+      .then(|| store(&env).get(&name))
       .transpose()?
       .flatten()
       .map(|record| record.source.github_repo().is_some())
@@ -134,6 +138,54 @@ pub async fn sync_skill(name: String, action: SyncAction) -> Result<ActionResult
     hub_service::sync_skill(&env, &name, action)
   })
   .await
+}
+
+/// Diff the hub copy against an install target or the recorded source. A GitHub source
+/// is downloaded to a temp directory first and removed afterwards.
+#[tauri::command]
+pub async fn diff_skill(name: String, against: DiffAgainst) -> Result<SkillDiff, String> {
+  let env = Env::current()?;
+  match against {
+    DiffAgainst::Target { path } => {
+      blocking("diff_skill", move || {
+        diff_service::diff_hub_against(&env, &name, Path::new(&path), &path)
+      })
+      .await
+    },
+    DiffAgainst::Source => {
+      let record = store(&env)
+        .get(&name)?
+        .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
+      match record.source {
+        SkillSource::Folder { path } => {
+          blocking("diff_skill", move || {
+            diff_service::diff_hub_against(&env, &name, Path::new(&path), &path)
+          })
+          .await
+        },
+        SkillSource::Github {
+          repo, url, branch, ..
+        } => {
+          let detected =
+            source_service::stage_github_source(&repo, &url, branch.as_deref(), &name).await?;
+          let label = match detected.branch.as_deref().or(branch.as_deref()) {
+            Some(b) if !b.is_empty() => format!("{}@{}", repo, b),
+            _ => repo.clone(),
+          };
+          let staged = PathBuf::from(detected.tmp_path);
+          blocking("diff_skill", move || {
+            let result = diff_service::diff_hub_against(&env, &name, &staged, &label);
+            if is_staged_temp_path(&staged) {
+              let _ = remove_path_any(&staged);
+            }
+            result
+          })
+          .await
+        },
+        _ => Err("This skill has no source to compare with".to_string()),
+      }
+    },
+  }
 }
 
 #[tauri::command]

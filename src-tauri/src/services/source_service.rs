@@ -166,6 +166,20 @@ pub async fn check_source_updates(
   )
 }
 
+/// Download the current version of a GitHub-sourced skill into a staged temp directory.
+pub async fn stage_github_source(
+  repo: &str,
+  url: &str,
+  branch: Option<&str>,
+  name: &str,
+) -> Result<DetectedSkill, String> {
+  let reference = match branch {
+    Some(b) if !b.is_empty() => format!("https://github.com/{}/tree/{}", repo, b),
+    _ => url.to_string(),
+  };
+  detect_github_auto(reference, name.to_string()).await
+}
+
 /// Download the current version of a GitHub-sourced skill and replace the hub copy.
 pub async fn pull_github_source(
   env: Env,
@@ -188,11 +202,7 @@ pub async fn pull_github_source(
     return Err("Skill is not sourced from GitHub".to_string());
   };
 
-  let reference = match branch.as_deref() {
-    Some(b) if !b.is_empty() => format!("https://github.com/{}/tree/{}", repo, b),
-    _ => url.clone(),
-  };
-  let detected: DetectedSkill = detect_github_auto(reference, name.clone()).await?;
+  let detected = stage_github_source(&repo, &url, branch.as_deref(), &name).await?;
   let downloaded_branch = detected.branch.clone().or(branch);
   let remote_sha = match GithubHelper::get_skill_folder_hash(
     &url,

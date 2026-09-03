@@ -15,7 +15,7 @@ use commands::{
     update_user_agent_app,
   },
   hub::{
-    check_source_updates, get_hub_skill, import_scanned, import_skills, install_skill,
+    check_source_updates, diff_skill, get_hub_skill, import_scanned, import_skills, install_skill,
     list_hub_skills, migrate_legacy, migration_status, remove_hub_skill, scan_folder, sync_skill,
     uninstall_skill,
   },
@@ -103,6 +103,7 @@ fn main() {
       uninstall_skill,
       remove_hub_skill,
       sync_skill,
+      diff_skill,
       check_source_updates,
       scan_folder,
       import_scanned,

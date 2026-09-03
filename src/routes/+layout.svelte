@@ -6,6 +6,7 @@
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import AppSidebar from "$lib/components/AppSidebar.svelte";
+  import DiffModal from "$lib/components/DiffModal.svelte";
   import ForceConfirmModal from "$lib/components/ForceConfirmModal.svelte";
   import ImportSkillModal from "$lib/components/ImportSkillModal.svelte";
   import InstallSkillModal from "$lib/components/InstallSkillModal.svelte";
@@ -121,4 +122,5 @@
 <ImportSkillModal />
 <InstallSkillModal />
 <ForceConfirmModal />
+<DiffModal />
 <UserProjectFormModal bind:open={userProjectsModalOpen} />
