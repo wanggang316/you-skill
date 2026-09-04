@@ -31,10 +31,12 @@
     workspaces,
   } from "$lib/stores/user-projects";
   import { removeWorkspace, type UserWorkspace } from "$lib/api/user-projects";
+  import { listMemoryFiles, type MemoryFile } from "$lib/api/agent-apps";
   import { buildScopeEntries, scopeKey, type ScopeEntry } from "$lib/scopes";
 
   let busy = $state(false);
   let actionError = $state("");
+  let memoryFiles = $state<MemoryFile[]>([]);
 
   const location = $derived(getAppLocation(page.url));
   const entries = $derived(buildScopeEntries($hubSkills, $userProjects, $t("scope.user")));
@@ -56,6 +58,24 @@
         ? Boolean(agent.project_path)
         : Boolean(agent.global_path);
     });
+  });
+
+  // The instruction files of the selected scope, refreshed whenever it changes.
+  $effect(() => {
+    const ref = selected?.ref;
+    if (!ref) {
+      memoryFiles = [];
+      return;
+    }
+    let current = true;
+    listMemoryFiles(ref.scope, ref.projectPath)
+      .then((files) => {
+        if (current) memoryFiles = files;
+      })
+      .catch((error) => console.error(error));
+    return () => {
+      current = false;
+    };
   });
 
   async function runAction(work: () => Promise<unknown>) {
@@ -114,18 +134,23 @@
     });
   }
 
-  /** Remove one agent from the scope: uninstall it from every skill installed there. */
-  function handleRemoveAgent(agentId: string) {
+  /**
+   * Remove agents that share a directory: they are installed together, so every skill of
+   * this scope is uninstalled from all of them at once.
+   */
+  function handleRemoveAgents(agentIds: string[]) {
     const entry = selected;
-    if (!entry) return;
+    if (!entry || agentIds.length === 0) return;
     const affected = entry.skills.filter((skill) =>
-      scopedInstalls(skill, entry.ref).some((install) => install.agentIds.includes(agentId))
+      scopedInstalls(skill, entry.ref).some((install) =>
+        install.agentIds.some((id) => agentIds.includes(id))
+      )
     );
     if (affected.length === 0) return;
-    const agentName = $agentsById.get(agentId)?.display_name ?? agentId;
+    const label = agentIds.map((id) => $agentsById.get(id)?.display_name ?? id).join(", ");
     void runAction(async () => {
       const confirmed = await confirm(
-        $t("scope.agents.removeConfirm", { agent: agentName, count: affected.length }),
+        $t("scope.agents.removeConfirm", { agent: label, count: affected.length }),
         { title: $t("scope.agents.remove"), kind: "warning" }
       );
       if (!confirmed) return;
@@ -134,7 +159,11 @@
         const result = await performAction((force) =>
           uninstallSkill({
             name: skill.name,
-            targets: [{ scope: entry.ref.scope, projectPath: entry.ref.projectPath, agentId }],
+            targets: agentIds.map((agentId) => ({
+              scope: entry.ref.scope,
+              projectPath: entry.ref.projectPath,
+              agentId,
+            })),
             force,
           })
         );
@@ -236,13 +265,16 @@
           entry={selected}
           agents={$agentsById}
           {availableAgents}
+          {memoryFiles}
           {busy}
           {actionError}
           onOpenDir={handleOpenDir}
           onScan={() => openImportModal({ tab: "folder", folder: selected.path || null })}
           onAddSkills={() => openSkillPickerModal(selected.ref)}
           onAddAgent={handleAddAgent}
-          onRemoveAgent={handleRemoveAgent}
+          onRemoveAgents={handleRemoveAgents}
+          onOpenMemory={(file) =>
+            openInFileManager(file.path).catch((error) => (actionError = String(error)))}
           onOpenSkill={(name) => goto(buildLibraryHref({ skill: name }))}
           onSkillAction={handleSkillAction}
         />

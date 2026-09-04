@@ -17,6 +17,7 @@
   let globalPath = $state("");
   let projectPath = $state("");
   let profilePath = $state("");
+  let globalProfilePath = $state("");
   let adding = $state(false);
   let validationErrors = $state<string[]>([]);
 
@@ -28,6 +29,7 @@
         globalPath = appToEdit.global_path || "";
         projectPath = appToEdit.project_path || "";
         profilePath = appToEdit.profile_path || "";
+        globalProfilePath = appToEdit.global_profile_path || "";
       } else {
         resetForm();
       }
@@ -48,6 +50,7 @@
     globalPath = "";
     projectPath = "";
     profilePath = "";
+    globalProfilePath = "";
     validationErrors = [];
   }
 
@@ -79,20 +82,23 @@
     try {
       const projectPathValue = projectPath.trim();
       const profilePathValue = profilePath.trim() || undefined;
+      const globalProfileValue = globalProfilePath.trim() || undefined;
       if (isEditMode && appToEdit) {
         await updateAgentApp(
           appToEdit.id,
           displayName.trim(),
           globalPath.trim(),
           projectPathValue,
-          profilePathValue
+          profilePathValue,
+          globalProfileValue
         );
       } else {
         await addAgentApp(
           displayName.trim(),
           globalPath.trim(),
           projectPathValue,
-          profilePathValue
+          profilePathValue,
+          globalProfileValue
         );
       }
       closeModal();
@@ -176,6 +182,19 @@
           bind:value={profilePath}
         />
         <p class="text-base-content-faint mt-1 text-xs">{$t("agentApps.profilePathHint")}</p>
+      </div>
+
+      <div>
+        <label for="global-profile-input" class="text-base-content mb-1.5 block text-sm">
+          {$t("agentApps.globalProfilePath")}
+        </label>
+        <input
+          id="global-profile-input"
+          type="text"
+          class="bg-base-100 text-base-content focus:ring-primary focus:border-primary border-base-300 w-full rounded-lg border px-4 py-2 text-sm focus:ring-2 focus:outline-none"
+          placeholder={$t("agentApps.globalProfilePathPlaceholder")}
+          bind:value={globalProfilePath}
+        />
       </div>
 
       <!-- Validation messages -->

@@ -77,6 +77,29 @@
   }
 </script>
 
+{#snippet pathRows(app: AgentApp)}
+  <dl
+    class="text-base-content-muted mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-[10px]"
+  >
+    {#if app.global_path}
+      <dt>{$t("agentApps.paths.userSkills")}</dt>
+      <dd class="truncate" title={app.global_path}>{app.global_path}</dd>
+    {/if}
+    {#if app.global_profile_path}
+      <dt>{$t("agentApps.paths.userMemory")}</dt>
+      <dd class="truncate" title={app.global_profile_path}>{app.global_profile_path}</dd>
+    {/if}
+    {#if app.project_path}
+      <dt>{$t("agentApps.paths.projectSkills")}</dt>
+      <dd class="truncate" title={app.project_path}>{app.project_path}</dd>
+    {/if}
+    {#if app.profile_path}
+      <dt>{$t("agentApps.paths.projectMemory")}</dt>
+      <dd class="truncate" title={app.profile_path}>{app.profile_path}</dd>
+    {/if}
+  </dl>
+{/snippet}
+
 <section class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
   <!-- Header -->
   <header class="border-base-300 bg-base-100 h-12 flex-none border-b" data-window-drag-region>
@@ -127,17 +150,11 @@
             <div class="bg-base-100">
               <div class="grid grid-cols-2 gap-2">
                 {#each internalApps.filter((app) => isInstalled(app.id)) as app}
-                  <div
-                    class="bg-base-200 hover:bg-base-300 flex items-center gap-3 rounded-xl px-3 py-2"
-                  >
+                  <div class="bg-base-200 flex items-start gap-3 rounded-xl px-3 py-2.5">
                     <AgentAppIcon agentId={app.id} name={app.display_name} />
-                    <div class="flex min-w-0 flex-col">
+                    <div class="flex min-w-0 flex-1 flex-col">
                       <span class="text-base-content text-xs font-medium">{app.display_name}</span>
-                      {#if app.global_path}
-                        <span class="text-base-content/50 mt-0.5 truncate text-[10px]"
-                          >{app.global_path}</span
-                        >
-                      {/if}
+                      {@render pathRows(app)}
                     </div>
                   </div>
                 {/each}
@@ -155,19 +172,13 @@
               </div>
               <div class="grid grid-cols-2 gap-2">
                 {#each userApps as app}
-                  <div
-                    class="bg-base-200 hover:bg-base-300 flex items-center justify-between rounded-xl px-3 py-2"
-                  >
-                    <div class="flex min-w-0 items-center gap-3">
+                  <div class="bg-base-200 flex items-start justify-between rounded-xl px-3 py-2.5">
+                    <div class="flex min-w-0 items-start gap-3">
                       <AgentAppIcon agentId={app.id} name={app.display_name} />
                       <div class="flex min-w-0 flex-col">
                         <span class="text-base-content text-xs font-medium">{app.display_name}</span
                         >
-                        {#if app.global_path}
-                          <span class="text-base-content/50 mt-0.5 truncate text-[10px]"
-                            >{app.global_path}</span
-                          >
-                        {/if}
+                        {@render pathRows(app)}
                       </div>
                     </div>
                     <div class="flex shrink-0 gap-1">

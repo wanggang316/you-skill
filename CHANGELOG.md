@@ -22,7 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a Marketplace page; importing from it goes through the hub and then offers to install.
 - Added Warp and Zed as built-in agent apps.
 - Added workspaces: pick a folder, and YouSkill lists the projects inside it (a folder with an agent skills directory or an AGENTS.md / CLAUDE.md file) so they can be registered in one step; the project list groups projects by the workspace they came from and a workspace can be scanned again later.
-- Added an instruction-file path to agent apps (`CLAUDE.md` for Claude Code, `AGENTS.md` for the rest), editable for custom agents and used to detect projects.
+- Added instruction-file paths to agent apps, at project level (`CLAUDE.md` for Claude Code, `AGENTS.md` for the rest) and at user level (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`); both are editable for custom agents, shown on the agent apps page next to the skills directories, and the project level is used to detect projects.
+- Added a Memory section to each install location listing the instruction files that exist there and the agents that read them.
+- Added grouping of agents that share a skills directory: they appear as one stacked entry that fans out on click, and installing or uninstalling covers the whole group.
 - Added a Projects page for install scopes: the user scope and every project are listed on their own, and selecting one shows that location's status, the agents installed there (add an agent to install every skill of the location into it, remove one to uninstall them) and its skills, each with manage, diff, push, adopt and uninstall actions.
 - Added a diff viewer for changed skills: compare the library copy file by file with an install target, with the source folder, or with the latest GitHub version.
 

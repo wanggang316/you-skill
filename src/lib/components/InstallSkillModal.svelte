@@ -168,7 +168,7 @@
       {/if}
     </div>
 
-    <AgentPicker agents={$agents} bind:selectedIds disabled={applying} />
+    <AgentPicker agents={$agents} {scope} bind:selectedIds disabled={applying} />
 
     <div class="flex items-center justify-between gap-3">
       <div class="text-base-content-muted text-[13px]">

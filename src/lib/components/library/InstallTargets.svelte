@@ -1,6 +1,6 @@
 <script lang="ts">
   import { AlertTriangle, Plus } from "@lucide/svelte";
-  import AgentAppIcon from "$lib/components/AgentAppIcon.svelte";
+  import AgentStack from "$lib/components/AgentStack.svelte";
   import { t } from "$lib/i18n";
   import type { HubSkillView, InstallScope, InstallView } from "$lib/api/hub";
   import type { AgentInfo } from "$lib/api/skills";
@@ -83,23 +83,14 @@
     return result;
   });
 
-  function agentName(id: string): string {
-    return agents.get(id)?.display_name ?? id;
-  }
-
-  function chipTitle(install: InstallView, agentId: string): string {
-    const detail = `${$t(`target.mode.${install.mode}`)} · ${$t(`target.state.${install.state}`)}`;
-    return `${agentName(agentId)}\n${install.path}\n${detail}`;
+  function chipTitle(install: InstallView): string {
+    return `${install.path}\n${$t(`target.mode.${install.mode}`)} · ${$t(`target.state.${install.state}`)}`;
   }
 </script>
 
 {#snippet agentChips(installs: InstallView[])}
   {#each installs as install (install.path)}
-    {#each install.agentIds as agentId (agentId)}
-      <span title={chipTitle(install, agentId)}>
-        <AgentAppIcon {agentId} name={agentName(agentId)} size="sm" />
-      </span>
-    {/each}
+    <AgentStack agentIds={install.agentIds} {agents} title={chipTitle(install)} />
   {/each}
 {/snippet}
 
@@ -140,7 +131,7 @@
       </div>
 
       {#if group.installs.length > 0}
-        <div class="mt-2 flex flex-wrap items-center gap-1.5">
+        <div class="mt-2 flex flex-wrap items-center gap-3">
           {@render agentChips(group.installs)}
         </div>
       {/if}

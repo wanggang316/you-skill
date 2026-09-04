@@ -88,7 +88,12 @@
     {#if candidates.length === 0}
       <p class="text-base-content-muted text-sm">{$t("agentAdd.empty")}</p>
     {:else}
-      <AgentPicker agents={candidates} bind:selectedIds disabled={applying} />
+      <AgentPicker
+        agents={candidates}
+        scope={modalState.scope?.scope ?? "user"}
+        bind:selectedIds
+        disabled={applying}
+      />
       <div class="flex items-center justify-between gap-3">
         <p class="text-base-content-muted text-[13px]">{$t("install.mode")}</p>
         <SelectField bind:value={mode} disabled={applying}>

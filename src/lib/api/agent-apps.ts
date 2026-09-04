@@ -5,11 +5,20 @@
  */
 
 import { apiCall } from "./index";
+import type { InstallScope } from "./hub";
 import type { AgentInfo } from "./skills";
 
 // ============ Types ============
 
 export type AgentApp = AgentInfo;
+
+/** An agent instruction file of one scope; agents reading the same file share an entry. */
+export interface MemoryFile {
+  path: string;
+  name: string;
+  agentIds: string[];
+  exists: boolean;
+}
 
 // ============ Agent Apps ============
 
@@ -34,13 +43,15 @@ export async function addAgentApp(
   displayName: string,
   globalPath: string,
   projectPath?: string,
-  profilePath?: string
+  profilePath?: string,
+  globalProfilePath?: string
 ): Promise<AgentApp> {
   return apiCall<AgentApp>("add_user_agent_app", {
     displayName,
     globalPath,
     projectPath,
     profilePath,
+    globalProfilePath,
   });
 }
 
@@ -59,7 +70,8 @@ export async function updateAgentApp(
   displayName: string,
   globalPath: string,
   projectPath?: string,
-  profilePath?: string
+  profilePath?: string,
+  globalProfilePath?: string
 ): Promise<AgentApp> {
   return apiCall<AgentApp>("update_user_agent_app", {
     id,
@@ -67,5 +79,14 @@ export async function updateAgentApp(
     globalPath,
     projectPath,
     profilePath,
+    globalProfilePath,
   });
+}
+
+/** Agent instruction files of one scope, with the agents that read each of them. */
+export async function listMemoryFiles(
+  scope: InstallScope,
+  projectPath?: string | null
+): Promise<MemoryFile[]> {
+  return apiCall<MemoryFile[]>("list_memory_files", { scope, projectPath: projectPath ?? null });
 }

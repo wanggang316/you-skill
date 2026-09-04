@@ -41,6 +41,8 @@ export interface AgentInfo {
   detect_path?: string | null;
   /** Instruction file read inside a project (AGENTS.md, CLAUDE.md). */
   profile_path?: string | null;
+  /** User-level instruction file (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md). */
+  global_profile_path?: string | null;
   is_user_custom: boolean;
 }
 

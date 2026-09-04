@@ -25,8 +25,10 @@ installed. Apps with their own directories (Claude Code, Cline, Windsurf, ...) k
 `LEGACY_USER_ROOTS` lists the app-specific directories those apps used before adopting the
 shared one; migration and scanning still recognise skills there as targets of that app.
 The built-in `agents` app is the shared directory itself as an explicit target. Each app
-also carries `profile_path`, the instruction file it reads inside a project (`CLAUDE.md`
-for Claude Code, `AGENTS.md` elsewhere).
+also carries the instruction files it reads: `profile_path` inside a project (`CLAUDE.md`
+for Claude Code, `AGENTS.md` elsewhere) and `global_profile_path` at user level
+(`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`). `list_memory_files` resolves them for one
+scope and groups the agents that read the same file.
 
 ## Workspaces and projects
 
@@ -97,14 +99,14 @@ Sync actions (`sync_skill`): `pull_source`, `push_targets`, `adopt_target`, `acc
 
 ## Command surface
 
-| Area      | Commands                                                                                                                                                                              |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hub       | `list_hub_skills`, `get_hub_skill`, `import_skills`, `remove_hub_skill`, `sync_skill`, `diff_skill`, `check_source_updates`, `migrate_legacy`, `migration_status`                     |
-| Install   | `install_skill`, `uninstall_skill`                                                                                                                                                    |
-| Scan      | `scan_folder`, `import_scanned`                                                                                                                                                       |
-| Projects  | `list_user_projects`, `add_user_project`, `update_user_project`, `remove_user_project`, `list_workspaces`, `add_workspace`, `remove_workspace`, `scan_workspace`, `register_projects` |
-| Detection | `detect_github_manual`, `detect_github_auto`, `detect_zip`, `detect_folder` (stage into a temp dir)                                                                                   |
-| Other     | marketplace, agent apps, projects, settings, backup, file readers, translation                                                                                                        |
+| Area      | Commands                                                                                                                                                                                                   |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hub       | `list_hub_skills`, `get_hub_skill`, `import_skills`, `remove_hub_skill`, `sync_skill`, `diff_skill`, `check_source_updates`, `migrate_legacy`, `migration_status`                                          |
+| Install   | `install_skill`, `uninstall_skill`                                                                                                                                                                         |
+| Scan      | `scan_folder`, `import_scanned`                                                                                                                                                                            |
+| Projects  | `list_user_projects`, `add_user_project`, `update_user_project`, `remove_user_project`, `list_workspaces`, `add_workspace`, `remove_workspace`, `scan_workspace`, `register_projects`, `list_memory_files` |
+| Detection | `detect_github_manual`, `detect_github_auto`, `detect_zip`, `detect_folder` (stage into a temp dir)                                                                                                        |
+| Other     | marketplace, agent apps, projects, settings, backup, file readers, translation                                                                                                                             |
 
 Services: `hub_service` (hub + lock records), `install_service` (targets), `drift_service`
 (pure state computation), `diff_service` (file-level diff of the hub against a target or
