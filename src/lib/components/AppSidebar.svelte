@@ -7,7 +7,6 @@
     Plus,
     Settings,
     Store,
-    UserRound,
   } from "@lucide/svelte";
   import { t } from "$lib/i18n";
   import {
@@ -56,17 +55,6 @@
       >
         <LibraryBig size={17} strokeWidth={1.8} />
         <span class="min-w-0 truncate">{$t("sidebar.library")}</span>
-      </a>
-      <a
-        class={itemClass}
-        class:bg-base-300={activeKey === "user"}
-        class:text-base-content={activeKey === "user"}
-        class:font-medium={activeKey === "user"}
-        href={buildScopeHref({ scope: "user", projectPath: null })}
-        aria-current={activeKey === "user" ? "page" : undefined}
-      >
-        <UserRound size={17} strokeWidth={1.8} />
-        <span class="min-w-0 truncate">{$t("scope.user")}</span>
       </a>
       <a
         class={itemClass}

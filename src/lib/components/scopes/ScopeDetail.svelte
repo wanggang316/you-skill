@@ -1,14 +1,7 @@
 <script lang="ts">
-  import {
-    AlertTriangle,
-    CheckCircle2,
-    FolderOpen,
-    Plus,
-    Puzzle,
-    ScanSearch,
-    X,
-  } from "@lucide/svelte";
+  import { AlertTriangle, CheckCircle2, FolderOpen, Plus, ScanSearch, X } from "@lucide/svelte";
   import AgentAppIcon from "$lib/components/AgentAppIcon.svelte";
+  import SkillIcon from "$lib/components/SkillIcon.svelte";
   import DropdownMenu, { type MenuItem } from "$lib/components/ui/DropdownMenu.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "$lib/i18n";
@@ -246,7 +239,9 @@
                   onclick={() => onOpenSkill(skill.name)}
                   title={installs.map((install) => install.path).join("\n")}
                 >
-                  <span class="text-base-content-subtle shrink-0"><Puzzle size={15} /></span>
+                  <span class="text-base-content-subtle shrink-0">
+                    <SkillIcon source={skill.source} />
+                  </span>
                   <span class="min-w-0 flex-1">
                     <span class="text-base-content block truncate text-[13px] font-medium">
                       {skill.name}

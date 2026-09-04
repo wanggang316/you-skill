@@ -1,14 +1,6 @@
 <script lang="ts">
-  import {
-    FileArchive,
-    Folder,
-    Github,
-    Loader2,
-    RefreshCw,
-    ScanSearch,
-    Search,
-    Zap,
-  } from "@lucide/svelte";
+  import { Loader2, RefreshCw, ScanSearch, Search } from "@lucide/svelte";
+  import SkillIcon from "$lib/components/SkillIcon.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import SelectField from "$lib/components/ui/SelectField.svelte";
   import { t } from "$lib/i18n";
@@ -124,15 +116,7 @@
         >
           <div class="flex w-full items-center gap-2">
             <span class="text-base-content-subtle shrink-0">
-              {#if skill.source.type === "github"}
-                <Github size={13} />
-              {:else if skill.source.type === "zip"}
-                <FileArchive size={13} />
-              {:else if skill.source.type === "folder"}
-                <Folder size={13} />
-              {:else}
-                <Zap size={13} />
-              {/if}
+              <SkillIcon source={skill.source} />
             </span>
             <span class="text-base-content min-w-0 flex-1 truncate text-[13px] font-medium">
               {skill.name}

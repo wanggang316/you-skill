@@ -1,6 +1,6 @@
 import type { ScopeRef } from "$lib/api/hub";
 
-export type SidebarActiveKey = "library" | "user" | "projects" | "market" | "settings";
+export type SidebarActiveKey = "library" | "projects" | "market" | "settings";
 
 export type LibraryFilter = "all" | "changed" | "uninstalled";
 
@@ -42,7 +42,7 @@ export const getAppLocation = (url: URL): AppLocation => {
   } else if (isMarketPath(url.pathname)) {
     activeKey = "market";
   } else if (isProjectsPath(url.pathname)) {
-    activeKey = scope?.scope === "user" ? "user" : "projects";
+    activeKey = "projects";
   }
 
   return {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Search } from "@lucide/svelte";
+  import SkillIcon from "./SkillIcon.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import { t } from "../i18n";
@@ -103,6 +104,9 @@
               {checked}
               onchange={() => toggle(skill.name)}
             />
+            <span class="text-base-content-subtle mt-0.5 shrink-0">
+              <SkillIcon source={skill.source} />
+            </span>
             <span class="min-w-0 flex-1">
               <span class="text-base-content block truncate text-[13px] font-medium">
                 {skill.name}
