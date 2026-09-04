@@ -455,6 +455,7 @@ mod tests {
       global_path: Some(global.to_string()),
       detect_path: None,
       profile_path: Some("AGENTS.md".to_string()),
+      global_profile_path: None,
       is_user_custom: false,
     }
   }

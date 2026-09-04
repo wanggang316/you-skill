@@ -30,8 +30,8 @@ use commands::{
     read_skill_relative_file_bytes, translate_skill_markdown,
   },
   user_projects::{
-    add_user_project, add_workspace, list_user_projects, list_workspaces, register_projects,
-    remove_user_project, remove_workspace, scan_workspace, update_user_project,
+    add_user_project, add_workspace, list_memory_files, list_user_projects, list_workspaces,
+    register_projects, remove_user_project, remove_workspace, scan_workspace, update_user_project,
   },
 };
 use tray::setup_tray;
@@ -130,7 +130,8 @@ fn main() {
       add_workspace,
       remove_workspace,
       scan_workspace,
-      register_projects
+      register_projects,
+      list_memory_files
     ])
     .build(tauri::generate_context!())
     .expect("error while building tauri application")

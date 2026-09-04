@@ -2,14 +2,16 @@
 //! agent's project skills directory (`.agents/skills`, `.claude/skills`, ...) or an agent
 //! instruction file (`AGENTS.md`, `CLAUDE.md`).
 
-use crate::models::{ProjectCandidate, ProjectRegistration, UserProject, UserWorkspace};
+use crate::models::{
+  InstallScope, MemoryFile, ProjectCandidate, ProjectRegistration, UserProject, UserWorkspace,
+};
 use crate::services::env::Env;
 use crate::services::user_projects_service::{
   add_user_projects, list_user_projects, remove_projects_of_workspace,
 };
 use crate::utils::folder::SKILL_MD;
 use crate::utils::hash::is_excluded_component;
-use crate::utils::path::{normalize_dir_path, path_to_string, same_path};
+use crate::utils::path::{expand_home_with, normalize_dir_path, path_to_string, same_path};
 use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -132,6 +134,59 @@ pub fn register_projects(items: Vec<ProjectRegistration>) -> Result<Vec<UserProj
   add_user_projects(projects)
 }
 
+/// The instruction files of one scope: user-level files come from `global_profile_path`,
+/// project-level ones from `profile_path` inside the project. Agents reading the same file
+/// share one entry.
+pub fn list_memory_files(
+  env: &Env,
+  scope: InstallScope,
+  project_path: Option<&str>,
+) -> Result<Vec<MemoryFile>, String> {
+  let project_root = match scope {
+    InstallScope::User => None,
+    InstallScope::Project => Some(normalize_dir_path(
+      project_path.unwrap_or_default(),
+      &env.home,
+    )?),
+  };
+
+  let mut files: Vec<MemoryFile> = Vec::new();
+  for app in &env.agent_apps {
+    let path = match scope {
+      InstallScope::User => app
+        .global_profile_path
+        .as_deref()
+        .map(|value| expand_home_with(value, &env.home)),
+      InstallScope::Project => app
+        .profile_path
+        .as_deref()
+        .zip(project_root.as_ref())
+        .map(|(value, root)| root.join(value)),
+    };
+    let Some(path) = path else {
+      continue;
+    };
+    match files
+      .iter_mut()
+      .find(|file| same_path(Path::new(&file.path), &path))
+    {
+      Some(file) => file.agent_ids.push(app.id.clone()),
+      None => files.push(MemoryFile {
+        name: path
+          .file_name()
+          .map(|value| value.to_string_lossy().to_string())
+          .unwrap_or_default(),
+        exists: path.is_file(),
+        path: path_to_string(&path),
+        agent_ids: vec![app.id.clone()],
+      }),
+    }
+  }
+
+  files.sort_by(|a, b| b.exists.cmp(&a.exists).then_with(|| a.path.cmp(&b.path)));
+  Ok(files)
+}
+
 struct Markers {
   agent_ids: Vec<String>,
   profiles: Vec<String>,
@@ -221,6 +276,7 @@ mod tests {
       global_path: Some(format!("~/.{}/skills", id)),
       detect_path: None,
       profile_path: profile.map(|value| value.to_string()),
+      global_profile_path: None,
       is_user_custom: false,
     }
   }

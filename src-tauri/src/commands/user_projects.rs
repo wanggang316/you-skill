@@ -1,4 +1,6 @@
-use crate::models::{ProjectCandidate, ProjectRegistration, UserProject, UserWorkspace};
+use crate::models::{
+  InstallScope, MemoryFile, ProjectCandidate, ProjectRegistration, UserProject, UserWorkspace,
+};
 use crate::services::env::Env;
 use crate::services::user_projects_service;
 use crate::services::workspace_service::{self, DEFAULT_WORKSPACE_DEPTH};
@@ -61,4 +63,14 @@ pub async fn scan_workspace(
 #[tauri::command]
 pub fn register_projects(projects: Vec<ProjectRegistration>) -> Result<Vec<UserProject>, String> {
   workspace_service::register_projects(projects)
+}
+
+/// Agent instruction files of one scope, with the agents that read each of them.
+#[tauri::command]
+pub fn list_memory_files(
+  scope: InstallScope,
+  project_path: Option<String>,
+) -> Result<Vec<MemoryFile>, String> {
+  let env = Env::current()?;
+  workspace_service::list_memory_files(&env, scope, project_path.as_deref())
 }
