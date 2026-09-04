@@ -26,6 +26,7 @@ const TRASH_MAX_AGE: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 
 pub fn list_hub_skills(env: &Env) -> Result<Vec<HubSkillView>, String> {
   adopt_untracked_hub_dirs(env)?;
+  prune_stale_agent_ids(env)?;
   let lock = store(env).read()?;
   Ok(
     lock
@@ -80,6 +81,51 @@ fn adopt_untracked_hub_dirs(env: &Env) -> Result<(), String> {
         updated_at: timestamp.clone(),
         installs: Vec::new(),
       });
+    }
+    Ok(())
+  })
+}
+
+/// Drop agent ids from install records that no longer resolve to the record's directory.
+/// An app that moved to the shared `~/.agents/skills` leaves its id behind on the old
+/// directory, where it would claim an agent reads a folder it never looks at. Ids are only
+/// removed while at least one recorded agent still resolves there.
+fn prune_stale_agent_ids(env: &Env) -> Result<(), String> {
+  let lock = store(env).read()?;
+  let mut changes: Vec<(String, String, Vec<String>)> = Vec::new();
+  for (name, record) in &lock.skills {
+    for install in &record.installs {
+      let Some(matched) = classify_agent_root(env, Path::new(&install.path)) else {
+        continue;
+      };
+      let kept: Vec<String> = install
+        .agent_ids
+        .iter()
+        .filter(|id| matched.agent_ids.contains(id))
+        .cloned()
+        .collect();
+      if !kept.is_empty() && kept.len() != install.agent_ids.len() {
+        changes.push((name.clone(), install.path.clone(), kept));
+      }
+    }
+  }
+  if changes.is_empty() {
+    return Ok(());
+  }
+
+  let _ops = ops_guard();
+  store(env).update(|lock| {
+    for (name, path, kept) in &changes {
+      let Some(record) = lock.skills.get_mut(name) else {
+        continue;
+      };
+      if let Some(install) = record
+        .installs
+        .iter_mut()
+        .find(|install| install.path == *path)
+      {
+        install.agent_ids = kept.clone();
+      }
     }
     Ok(())
   })
@@ -495,6 +541,67 @@ mod tests {
       tmp_path: dir.to_string_lossy().to_string(),
       source: SkillSource::None,
     }
+  }
+
+  #[test]
+  fn listing_prunes_agent_ids_that_no_longer_read_the_directory() {
+    let tmp = tempfile::tempdir().unwrap();
+    let mut env = env(tmp.path());
+    // Two apps that both read the shared user directory, plus a legacy directory that only
+    // one of them ever used.
+    env.agent_apps = vec![
+      AgentApp {
+        id: "agents".to_string(),
+        display_name: "Agents".to_string(),
+        project_path: Some(".agents/skills".to_string()),
+        global_path: Some("~/.agents/skills".to_string()),
+        detect_path: None,
+        profile_path: Some("AGENTS.md".to_string()),
+        global_profile_path: None,
+        is_user_custom: false,
+      },
+      AgentApp {
+        id: "codex".to_string(),
+        display_name: "Codex".to_string(),
+        project_path: Some(".agents/skills".to_string()),
+        global_path: Some("~/.agents/skills".to_string()),
+        detect_path: None,
+        profile_path: Some("AGENTS.md".to_string()),
+        global_profile_path: None,
+        is_user_custom: false,
+      },
+    ];
+    import_skills(&env, vec![staged(tmp.path(), "foo", "v1")], false).unwrap();
+
+    let legacy = env.home.join(".codex/skills/foo");
+    write(&legacy, "SKILL.md", "---\nname: foo\n---\nv1");
+    let legacy_path = legacy.to_string_lossy().to_string();
+    store(&env)
+      .update(|lock| {
+        let record = lock.skills.get_mut("foo").unwrap();
+        record.installs.push(InstallRecord {
+          scope: InstallScope::User,
+          project_path: None,
+          path: legacy_path.clone(),
+          mode: InstallMode::Copy,
+          hash: record.hash.clone(),
+          installed_at: now_rfc3339(),
+          agent_ids: vec!["codex".to_string(), "agents".to_string()],
+        });
+        Ok(())
+      })
+      .unwrap();
+
+    list_hub_skills(&env).unwrap();
+
+    let record = store(&env).get("foo").unwrap().unwrap();
+    let install = record
+      .installs
+      .iter()
+      .find(|install| install.path == legacy_path)
+      .unwrap();
+    // `~/.codex/skills` is codex's legacy root; agents never read it.
+    assert_eq!(install.agent_ids, vec!["codex".to_string()]);
   }
 
   #[test]

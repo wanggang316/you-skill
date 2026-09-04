@@ -55,17 +55,21 @@
 
   type AgentGroup = { key: string; path: string; agentIds: string[]; skillCount: number };
 
-  /** Agents that read the same directory are one entry: they are installed together. */
+  /** The directory an install writes into: its path without the skill folder. */
+  const parentDir = (path: string) => path.replace(/[/\\][^/\\]+$/, "") || path;
+
+  /** One entry per skills directory; the agents reading it are installed together. */
   const agentGroups = $derived.by((): AgentGroup[] => {
     const map = new Map<string, { agentIds: string[]; skills: Set<string> }>();
     for (const skill of entry.skills) {
       for (const install of scopedInstalls(skill, entry.ref)) {
-        const group = map.get(install.path) ?? { agentIds: [], skills: new Set<string>() };
+        const dir = parentDir(install.path);
+        const group = map.get(dir) ?? { agentIds: [], skills: new Set<string>() };
         for (const id of install.agentIds) {
           if (!group.agentIds.includes(id)) group.agentIds.push(id);
         }
         group.skills.add(skill.name);
-        map.set(install.path, group);
+        map.set(dir, group);
       }
     }
     return [...map.entries()].map(([path, group]) => ({
