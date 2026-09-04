@@ -7,6 +7,7 @@ use crate::models::{
   SourceState, TargetState,
 };
 use crate::services::env::Env;
+use crate::services::install_service::agents_reading;
 use crate::utils::file::FileHelper;
 use crate::utils::folder::SKILL_MD;
 use crate::utils::hash::hash_dir_cached;
@@ -160,8 +161,21 @@ pub fn build_install_view(
     .filter(|id| env.agent(id).is_none())
     .cloned()
     .collect();
+
+  // Show every agent that reads the directory, not only the ones named at install time.
+  let mut record = install.clone();
+  let mut agent_ids = agents_reading(env, install);
+  for id in &install.agent_ids {
+    if !agent_ids.contains(id) {
+      agent_ids.push(id.clone());
+    }
+  }
+  if !agent_ids.is_empty() {
+    record.agent_ids = agent_ids;
+  }
+
   InstallView {
-    record: install.clone(),
+    record,
     state,
     current_hash,
     project_missing,

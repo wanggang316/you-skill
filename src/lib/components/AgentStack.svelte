@@ -15,9 +15,14 @@
     title?: string;
   } = $props();
 
+  /** Icons shown while collapsed; the rest are counted in a badge. */
+  const MAX_COLLAPSED = 4;
+
   let expanded = $state(false);
 
   const items = $derived(agentIds.map((id) => ({ id, name: agents.get(id)?.display_name ?? id })));
+  const visible = $derived(expanded ? items : items.slice(0, MAX_COLLAPSED));
+  const hidden = $derived(items.length - visible.length);
   const tooltip = $derived(
     [title, items.map((item) => item.name).join(", ")].filter(Boolean).join("\n")
   );
@@ -33,7 +38,7 @@
     if (items.length > 1) expanded = !expanded;
   }}
 >
-  {#each items as item, index (item.id)}
+  {#each visible as item, index (item.id)}
     <span
       class="agent-stack-item"
       class:stacked={!expanded && index > 0}
@@ -43,6 +48,9 @@
       <AgentAppIcon agentId={item.id} name={item.name} {size} />
     </span>
   {/each}
+  {#if hidden > 0}
+    <span class="text-base-content-subtle ml-1 text-[11px]">+{hidden}</span>
+  {/if}
 </button>
 
 <style>

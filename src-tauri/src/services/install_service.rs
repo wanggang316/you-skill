@@ -60,6 +60,38 @@ pub fn resolve_target(
   })
 }
 
+/// Every installed agent app that reads the directory this install writes into. Agents
+/// that share a directory see the same skills, so they are shown and installed together,
+/// even when only one of them was named when the skill was installed.
+pub fn agents_reading(env: &Env, install: &InstallRecord) -> Vec<String> {
+  let Some(parent) = Path::new(&install.path).parent() else {
+    return Vec::new();
+  };
+  let project_root = install.project_path.as_deref().map(PathBuf::from);
+  let mut ids: Vec<String> = env
+    .agent_apps
+    .iter()
+    .filter(|app| {
+      env
+        .agent_root(app, install.scope, project_root.as_deref())
+        .map(|root| same_path(&root, parent))
+        .unwrap_or(false)
+    })
+    .map(|app| app.id.clone())
+    .collect();
+
+  if ids.is_empty() && install.scope == InstallScope::User {
+    for (agent_id, legacy_path) in LEGACY_USER_ROOTS {
+      if env.agent(agent_id).is_some()
+        && same_path(&expand_home_with(legacy_path, &env.home), parent)
+      {
+        ids.push(agent_id.to_string());
+      }
+    }
+  }
+  ids
+}
+
 /// Which agent root (if any) a skill directory lives in. Checks user-level roots first,
 /// then registered projects, then infers an unregistered project from the path suffix.
 pub fn classify_agent_root(env: &Env, skill_dir: &Path) -> Option<AgentRootMatch> {
@@ -840,6 +872,39 @@ mod tests {
       })
       .unwrap();
     env
+  }
+
+  #[test]
+  fn view_lists_every_agent_reading_the_directory() {
+    let tmp = tempfile::tempdir().unwrap();
+    let mut env = env_with_hub(tmp.path(), vec![]);
+    // Codex and Cursor read the same user-level directory.
+    env.agent_apps = vec![
+      app("claude-code", "~/.claude/skills", ".claude/skills"),
+      app("codex", "~/.agents/skills", ".agents/skills"),
+      app("cursor", "~/.agents/skills", ".agents/skills"),
+    ];
+
+    install_skill(
+      &env,
+      InstallRequest {
+        name: "foo".to_string(),
+        targets: vec![spec(InstallScope::User, None, "codex")],
+        mode: Some(InstallMode::Copy),
+        force: false,
+      },
+    )
+    .unwrap();
+
+    let record = store(&env).get("foo").unwrap().unwrap();
+    // Only the agent that was asked for is recorded ...
+    assert_eq!(record.installs[0].agent_ids, vec!["codex".to_string()]);
+    // ... but the view names every agent that reads the directory.
+    let view = view_of(&env, "foo").unwrap();
+    assert_eq!(
+      view.installs[0].record.agent_ids,
+      vec!["codex".to_string(), "cursor".to_string()]
+    );
   }
 
   fn spec(scope: InstallScope, project: Option<&Path>, agent: &str) -> InstallTargetSpec {
