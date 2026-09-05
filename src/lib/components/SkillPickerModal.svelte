@@ -69,7 +69,7 @@
   bind:open
   title={$t("picker.title", { name: scopeName })}
   onClose={handleClose}
-  containerClass="max-w-lg"
+  containerClass="max-w-2xl"
 >
   <div class="flex h-[60vh] min-h-0 flex-col">
     <div class="border-base-200 flex-none border-b px-5 py-3">
@@ -91,34 +91,30 @@
           {search.trim() ? $t("library.emptyFiltered") : $t("picker.empty")}
         </p>
       {:else}
-        {#each candidates as skill (skill.name)}
-          {@const checked = selected.includes(skill.name)}
-          <label
-            class={`hover:bg-base-200 flex cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 transition ${
-              checked ? "bg-base-200" : ""
-            }`}
-          >
-            <input
-              class="accent-primary mt-0.5"
-              type="checkbox"
-              {checked}
-              onchange={() => toggle(skill.name)}
-            />
-            <span class="text-base-content-subtle mt-0.5 shrink-0">
-              <SkillIcon source={skill.source} />
-            </span>
-            <span class="min-w-0 flex-1">
-              <span class="text-base-content block truncate text-[13px] font-medium">
+        <div class="grid grid-cols-2 gap-1">
+          {#each candidates as skill (skill.name)}
+            {@const checked = selected.includes(skill.name)}
+            <label
+              class={`hover:bg-base-200 flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition ${
+                checked ? "bg-base-200" : ""
+              }`}
+              title={skill.description ?? skill.name}
+            >
+              <input
+                class="accent-primary"
+                type="checkbox"
+                {checked}
+                onchange={() => toggle(skill.name)}
+              />
+              <span class="text-base-content-subtle shrink-0">
+                <SkillIcon source={skill.source} />
+              </span>
+              <span class="text-base-content min-w-0 flex-1 truncate text-[13px] font-medium">
                 {skill.name}
               </span>
-              {#if skill.description}
-                <span class="text-base-content-subtle line-clamp-1 block text-[11px]">
-                  {skill.description}
-                </span>
-              {/if}
-            </span>
-          </label>
-        {/each}
+            </label>
+          {/each}
+        </div>
       {/if}
     </div>
   </div>
