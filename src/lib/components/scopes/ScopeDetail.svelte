@@ -13,6 +13,7 @@
   import DropdownMenu, { type MenuItem } from "$lib/components/ui/DropdownMenu.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "$lib/i18n";
+  import { resolveAgents } from "$lib/agents";
   import { scopedInstalls, type HubSkillView, type InstallView } from "$lib/api/hub";
   import type { MemoryFile } from "$lib/api/agent-apps";
   import type { AgentInfo } from "$lib/api/skills";
@@ -80,11 +81,32 @@
     }));
   });
 
+  let selectedDir = $state<string | null>(null);
+  /** Directory whose skills are listed; drops on its own once its group is gone. */
+  const activeDir = $derived(
+    agentGroups.some((group) => group.key === selectedDir) ? selectedDir : null
+  );
+  const activeAgentName = $derived.by(() => {
+    const group = agentGroups.find((item) => item.key === activeDir);
+    return group ? (resolveAgents(group.agentIds, agents)[0]?.name ?? "") : "";
+  });
+  const visibleSkills = $derived(
+    activeDir
+      ? entry.skills.filter((skill) =>
+          installsOf(skill).some((install) => parentDir(install.path) === activeDir)
+        )
+      : entry.skills
+  );
+
   const presentMemory = $derived(memoryFiles.filter((file) => file.exists));
   const canAddAgent = $derived(availableAgents.length > 0 && entry.skills.length > 0);
 
   function installsOf(skill: HubSkillView): InstallView[] {
     return scopedInstalls(skill, entry.ref);
+  }
+
+  function toggleFilter(key: string) {
+    selectedDir = selectedDir === key ? null : key;
   }
 
   function relativePath(path: string): string {
@@ -193,13 +215,24 @@
           </p>
           <div class="flex flex-wrap items-center gap-3">
             {#each agentGroups as group (group.key)}
+              {@const active = group.key === activeDir}
               <span class="group relative inline-flex">
-                <AgentBadge
-                  agentIds={group.agentIds}
-                  {agents}
-                  size="md"
-                  title={`${group.path}\n${$t("scope.agents.count", { count: group.skillCount })}`}
-                />
+                <button
+                  class="rounded-[0.65rem] transition"
+                  class:ring-2={active}
+                  class:ring-primary={active}
+                  class:opacity-50={activeDir !== null && !active}
+                  type="button"
+                  onclick={() => toggleFilter(group.key)}
+                  aria-pressed={active}
+                >
+                  <AgentBadge
+                    agentIds={group.agentIds}
+                    {agents}
+                    size="md"
+                    title={`${group.path}\n${$t("scope.agents.count", { count: group.skillCount })}`}
+                  />
+                </button>
                 <button
                   class="border-base-300 bg-base-100 text-base-content-muted hover:border-error hover:text-error absolute -top-1.5 -right-1.5 hidden size-4 items-center justify-center rounded-full border group-hover:flex disabled:opacity-40"
                   type="button"
@@ -270,9 +303,22 @@
 
       <section class="space-y-2">
         <div class="flex items-center justify-between gap-3">
-          <h3 class="text-base-content-subtle text-[11px] font-medium tracking-wide uppercase">
-            {$t("scope.skills", { count: entry.skills.length })}
-          </h3>
+          <div class="flex min-w-0 items-center gap-2">
+            <h3 class="text-base-content-subtle text-[11px] font-medium tracking-wide uppercase">
+              {$t("scope.skills", { count: visibleSkills.length })}
+            </h3>
+            {#if activeDir}
+              <button
+                class="tag tag-neutral inline-flex max-w-48 items-center gap-1"
+                type="button"
+                onclick={() => (selectedDir = null)}
+                title={$t("scope.skills.filterClear")}
+              >
+                <span class="truncate">{activeAgentName}</span>
+                <X size={11} class="shrink-0" />
+              </button>
+            {/if}
+          </div>
           <button
             class="border-base-300 text-base-content-muted hover:border-primary hover:text-primary flex h-7 items-center gap-1 rounded-lg border border-dashed px-2 text-[12px] transition disabled:opacity-50"
             type="button"
@@ -288,7 +334,7 @@
           <p class="text-base-content-faint px-1 text-xs">{$t("scope.empty")}</p>
         {:else}
           <div class="border-base-300 divide-base-300 divide-y rounded-2xl border">
-            {#each entry.skills as skill (skill.name)}
+            {#each visibleSkills as skill (skill.name)}
               {@const installs = installsOf(skill)}
               {@const drifted = installs.some((install) => install.state !== "in_sync")}
               <div class="flex items-center gap-3 px-3 py-2">
