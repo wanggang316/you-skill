@@ -105,7 +105,6 @@
         id="translate-target-language"
         bind:value={draftTargetLanguage}
         className="w-full"
-        selectClassName="w-full"
       >
         <option value="">{$t("settings.selectPlaceholder")}</option>
         {#each languageOptions as option}

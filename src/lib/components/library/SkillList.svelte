@@ -61,7 +61,7 @@
       <SelectField
         value={filter}
         className="min-w-0 flex-1"
-        selectClassName="h-8 w-full text-[12px]"
+        selectClassName="h-8 text-[12px]"
         onchange={(event) => onFilterChange(event.currentTarget.value as LibraryFilter)}
       >
         {#each filters as item}
