@@ -1,8 +1,9 @@
 <script lang="ts">
   import { AlertCircle, FileText, Folder, Loader2 } from "@lucide/svelte";
-  import AgentAppIcon from "./AgentAppIcon.svelte";
+  import AgentBadge from "./AgentBadge.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
+  import { groupAgents } from "../agents";
   import { t } from "../i18n";
   import {
     addWorkspace,
@@ -11,6 +12,17 @@
     type ProjectCandidate,
   } from "../api/user-projects";
   import { agentsById, refreshHub } from "../stores/hub";
+  import type { AgentInfo } from "../api/skills";
+
+  /** Agent badges shown per candidate before the rest collapse into a counter. */
+  const MAX_AGENT_BADGES = 4;
+
+  /** One badge per project skills directory, since agents sharing one count as one. */
+  const agentGroups = (ids: string[], agents: Map<string, AgentInfo>) =>
+    groupAgents(
+      ids.flatMap((id) => agents.get(id) ?? []),
+      "project"
+    );
   import { closeWorkspaceModal, workspaceModal } from "../stores/modals";
   import { refreshUserProjects, refreshWorkspaces } from "../stores/user-projects";
 
@@ -233,15 +245,21 @@
                   {profile.replace(/\.md$/i, "")}
                 </span>
               {/each}
-              {#each candidate.agentIds as agentId (agentId)}
-                <span title={$agentsById.get(agentId)?.display_name ?? agentId}>
-                  <AgentAppIcon
-                    {agentId}
-                    name={$agentsById.get(agentId)?.display_name ?? agentId}
-                    size="sm"
-                  />
-                </span>
+              {@const groups = agentGroups(candidate.agentIds, $agentsById)}
+              {#each groups.slice(0, MAX_AGENT_BADGES) as group (group.key)}
+                <AgentBadge agentIds={group.agents.map((agent) => agent.id)} agents={$agentsById} />
               {/each}
+              {#if groups.length > MAX_AGENT_BADGES}
+                <span
+                  class="text-base-content-subtle text-[11px]"
+                  title={groups
+                    .slice(MAX_AGENT_BADGES)
+                    .map((group) => group.agents[0].display_name)
+                    .join(", ")}
+                >
+                  +{groups.length - MAX_AGENT_BADGES}
+                </span>
+              {/if}
             </span>
           </label>
         {/each}
