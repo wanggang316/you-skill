@@ -202,6 +202,7 @@
         </p>
         {#each candidates as candidate (candidate.path)}
           {@const checked = selected.includes(candidate.path)}
+          {@const groups = agentGroups(candidate.agentIds, $agentsById)}
           <label
             class={`flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition ${
               candidate.registered ? "opacity-55" : "hover:bg-base-200 cursor-pointer"
@@ -245,7 +246,6 @@
                   {profile.replace(/\.md$/i, "")}
                 </span>
               {/each}
-              {@const groups = agentGroups(candidate.agentIds, $agentsById)}
               {#each groups.slice(0, MAX_AGENT_BADGES) as group (group.key)}
                 <AgentBadge agentIds={group.agents.map((agent) => agent.id)} agents={$agentsById} />
               {/each}
