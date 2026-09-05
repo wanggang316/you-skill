@@ -47,7 +47,7 @@
       {$t("install.selectAll")}
     </label>
   </div>
-  <div class="space-y-1.5">
+  <div class="grid grid-cols-2 gap-1.5">
     {#each groups as group (group.key)}
       {@const ids = group.agents.map((agent) => agent.id)}
       {@const checked = isSelected(ids)}
