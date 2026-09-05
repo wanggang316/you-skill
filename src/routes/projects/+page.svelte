@@ -194,7 +194,11 @@
 
     switch (action) {
       case "manage":
-        openInstallModal([name], { scope: entry.ref.scope, projectPath: entry.ref.projectPath });
+        openInstallModal([name], {
+          scope: entry.ref.scope,
+          projectPath: entry.ref.projectPath,
+          lockScope: true,
+        });
         return;
       case "diff": {
         const target = drifted.find((install) => install.mode === "copy");

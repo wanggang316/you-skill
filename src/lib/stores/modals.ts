@@ -16,6 +16,8 @@ export interface InstallModalState {
   skillNames: string[];
   initialScope: InstallScope;
   initialProjectPath: string | null;
+  /** The target is fixed by where the action started; the dialog offers no scope switch. */
+  lockScope: boolean;
 }
 
 export interface ForceModalState {
@@ -64,6 +66,7 @@ export const installModal = writable<InstallModalState>({
   skillNames: [],
   initialScope: "user",
   initialProjectPath: null,
+  lockScope: false,
 });
 
 export const skillPickerModal = writable<SkillPickerModalState>({ open: false, scope: null });
@@ -113,7 +116,7 @@ export function closeImportModal(): void {
 
 export function openInstallModal(
   skillNames: string[],
-  options?: { scope?: InstallScope; projectPath?: string | null }
+  options?: { scope?: InstallScope; projectPath?: string | null; lockScope?: boolean }
 ): void {
   if (skillNames.length === 0) return;
   installModal.set({
@@ -121,6 +124,7 @@ export function openInstallModal(
     skillNames,
     initialScope: options?.scope ?? "user",
     initialProjectPath: options?.projectPath ?? null,
+    lockScope: options?.lockScope ?? false,
   });
 }
 

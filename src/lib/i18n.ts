@@ -239,6 +239,8 @@ const translations: Record<string, Dictionary> = {
 
     "install.title": "Install {name}",
     "install.titleMulti": "Install {count} skills",
+    "install.titleTo": "Install {name} to {target}",
+    "install.titleMultiTo": "Install {count} skills to {target}",
     "install.scope.user": "User level",
     "install.scope.project": "Project",
     "install.selectProject": "Select project",
@@ -592,7 +594,9 @@ const translations: Record<string, Dictionary> = {
     "scan.unregisteredProject": "该项目尚未加入项目列表",
 
     "install.title": "安装 {name}",
-    "install.titleMulti": "安装 {count} 个 skill",
+    "install.titleMulti": "安装 {count} 个 Skill",
+    "install.titleTo": "安装 {name} 到 {target}",
+    "install.titleMultiTo": "安装 {count} 个 Skill 到 {target}",
     "install.scope.user": "用户级",
     "install.scope.project": "项目",
     "install.selectProject": "选择项目",

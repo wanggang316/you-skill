@@ -17,7 +17,8 @@
     projects?: UserProject[];
     agents: Map<string, AgentInfo>;
     busy?: boolean;
-    onAdd: (scope: InstallScope, projectPath: string | null) => void;
+    /** `lockScope` is set: the row decides the target, the dialog must not offer another. */
+    onAdd: (scope: InstallScope, projectPath: string | null, lockScope: boolean) => void;
   } = $props();
 
   type Group = {
@@ -98,7 +99,7 @@
   <button
     class="border-base-300 text-base-content-muted hover:border-primary hover:text-primary flex h-7 shrink-0 items-center gap-1 rounded-lg border border-dashed px-2 text-[12px] transition disabled:opacity-50"
     type="button"
-    onclick={() => onAdd(group.scope, group.projectPath)}
+    onclick={() => onAdd(group.scope, group.projectPath, true)}
     disabled={busy || group.missing}
     title={$t("detail.installs.add")}
   >

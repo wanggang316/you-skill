@@ -41,7 +41,7 @@
     busy?: boolean;
     checkingSource?: boolean;
     actionError?: string;
-    onInstall: (scope: InstallScope, projectPath: string | null) => void;
+    onInstall: (scope: InstallScope, projectPath: string | null, lockScope?: boolean) => void;
     onTargetAction: (install: InstallView, action: TargetAction) => void;
     onSync: (action: SyncAction) => void;
     onRemove: () => void;

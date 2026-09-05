@@ -19,6 +19,7 @@
   import { closeInstallModal, installModal, performAction } from "../stores/modals";
   import { settings } from "../stores/settings";
   import { userProjects } from "../stores/user-projects";
+  import { baseName } from "../scopes";
 
   let open = $state(false);
   let scope = $state<InstallScope>("user");
@@ -30,11 +31,22 @@
 
   const skillNames = $derived($installModal.skillNames);
   const isSingle = $derived(skillNames.length === 1);
-  const title = $derived(
-    isSingle
-      ? $t("install.title", { name: skillNames[0] ?? "" })
-      : $t("install.titleMulti", { count: skillNames.length })
-  );
+  const locked = $derived($installModal.lockScope);
+  const targetName = $derived.by(() => {
+    if (scope === "user") return $t("scope.user");
+    const project = $userProjects.find((item) => item.path === projectPath);
+    return project?.name ?? (projectPath ? baseName(projectPath) : "");
+  });
+  const title = $derived.by(() => {
+    const name = skillNames[0] ?? "";
+    const count = skillNames.length;
+    if (locked) {
+      return isSingle
+        ? $t("install.titleTo", { name, target: targetName })
+        : $t("install.titleMultiTo", { count, target: targetName });
+    }
+    return isSingle ? $t("install.title", { name }) : $t("install.titleMulti", { count });
+  });
 
   const currentIds = $derived.by(() => {
     if (!isSingle) return [] as string[];
@@ -145,28 +157,30 @@
 
 <Modal bind:open {title} onClose={handleClose} containerClass="max-w-xl">
   <div class="space-y-5 px-6 pt-2 pb-6">
-    <div class="space-y-3">
-      <SegmentedTabs
-        items={[
-          { value: "user", label: $t("install.scope.user") },
-          { value: "project", label: $t("install.scope.project") },
-        ]}
-        value={scope}
-        onChange={handleScopeChange}
-        fullWidth={true}
-      />
-      {#if scope === "project"}
-        {#if hasProjects}
-          <SelectField bind:value={projectPath} disabled={applying} className="w-full">
-            {#each $userProjects as project (project.path)}
-              <option value={project.path}>{project.name}</option>
-            {/each}
-          </SelectField>
-        {:else}
-          <p class="text-base-content-muted text-sm">{$t("install.noProjects")}</p>
+    {#if !locked}
+      <div class="space-y-3">
+        <SegmentedTabs
+          items={[
+            { value: "user", label: $t("install.scope.user") },
+            { value: "project", label: $t("install.scope.project") },
+          ]}
+          value={scope}
+          onChange={handleScopeChange}
+          fullWidth={true}
+        />
+        {#if scope === "project"}
+          {#if hasProjects}
+            <SelectField bind:value={projectPath} disabled={applying} className="w-full">
+              {#each $userProjects as project (project.path)}
+                <option value={project.path}>{project.name}</option>
+              {/each}
+            </SelectField>
+          {:else}
+            <p class="text-base-content-muted text-sm">{$t("install.noProjects")}</p>
+          {/if}
         {/if}
-      {/if}
-    </div>
+      </div>
+    {/if}
 
     <AgentPicker agents={$agents} {scope} bind:selectedIds disabled={applying} />
 

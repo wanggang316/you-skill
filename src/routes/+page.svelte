@@ -107,9 +107,9 @@
     }
   }
 
-  function handleInstall(scope: InstallScope, projectPath: string | null) {
+  function handleInstall(scope: InstallScope, projectPath: string | null, lockScope = false) {
     if (!selectedSkill) return;
-    openInstallModal([selectedSkill.name], { scope, projectPath });
+    openInstallModal([selectedSkill.name], { scope, projectPath, lockScope });
   }
 
   function handleTargetAction(install: InstallView, action: TargetAction) {

@@ -61,7 +61,7 @@
     const names = [...selected];
     handleClose();
     if (!ref || names.length === 0) return;
-    openInstallModal(names, { scope: ref.scope, projectPath: ref.projectPath });
+    openInstallModal(names, { scope: ref.scope, projectPath: ref.projectPath, lockScope: true });
   }
 </script>
 
