@@ -1,6 +1,6 @@
 <script lang="ts">
   import { AlertTriangle, Plus } from "@lucide/svelte";
-  import AgentStack from "$lib/components/AgentStack.svelte";
+  import AgentBadge from "$lib/components/AgentBadge.svelte";
   import { t } from "$lib/i18n";
   import type { HubSkillView, InstallScope, InstallView } from "$lib/api/hub";
   import type { AgentInfo } from "$lib/api/skills";
@@ -90,7 +90,7 @@
 
 {#snippet agentChips(installs: InstallView[])}
   {#each installs as install (install.path)}
-    <AgentStack agentIds={install.agentIds} {agents} title={chipTitle(install)} />
+    <AgentBadge agentIds={install.agentIds} {agents} title={chipTitle(install)} />
   {/each}
 {/snippet}
 

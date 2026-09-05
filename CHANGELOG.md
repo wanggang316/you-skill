@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed the agents of an install location being listed once per skill instead of once per skills directory.
 - Fixed install targets naming only the agent that was picked at install time: a skills directory now lists every installed agent that reads it, so a skill in `~/.agents/skills` shows Codex, Cursor and the others that share it.
 - Fixed install records keeping agents that no longer read their directory: listing now drops an agent id when the directory is neither that agent's skills directory nor one of its legacy ones.
-- Added grouping of agents that share a skills directory: they appear as one stacked entry that fans out on click, and installing or uninstalling covers the whole group.
+- Added grouping of agents that share a skills directory: the directory shows as a single agent (the shared directory as "Agents (shared)"), hovering lists the agents that read it, and installing or uninstalling covers the whole group.
 - Added a Projects page for install scopes: the user scope and every project are listed on their own, and selecting one shows that location's status, the agents installed there (add an agent to install every skill of the location into it, remove one to uninstall them) and its skills, each with manage, diff, push, adopt and uninstall actions.
 - Added a diff viewer for changed skills: compare the library copy file by file with an install target, with the source folder, or with the latest GitHub version.
 

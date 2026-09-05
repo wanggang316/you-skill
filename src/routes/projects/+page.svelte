@@ -32,6 +32,7 @@
   } from "$lib/stores/user-projects";
   import { removeWorkspace, type UserWorkspace } from "$lib/api/user-projects";
   import { listMemoryFiles, type MemoryFile } from "$lib/api/agent-apps";
+  import { resolveAgents } from "$lib/agents";
   import { buildScopeEntries, scopeKey, type ScopeEntry } from "$lib/scopes";
 
   let busy = $state(false);
@@ -147,7 +148,7 @@
       )
     );
     if (affected.length === 0) return;
-    const label = agentIds.map((id) => $agentsById.get(id)?.display_name ?? id).join(", ");
+    const label = resolveAgents(agentIds, $agentsById)[0]?.name ?? agentIds[0];
     void runAction(async () => {
       const confirmed = await confirm(
         $t("scope.agents.removeConfirm", { agent: label, count: affected.length }),

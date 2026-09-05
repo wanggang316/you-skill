@@ -8,7 +8,7 @@
     ScanSearch,
     X,
   } from "@lucide/svelte";
-  import AgentStack from "$lib/components/AgentStack.svelte";
+  import AgentBadge from "$lib/components/AgentBadge.svelte";
   import SkillIcon from "$lib/components/SkillIcon.svelte";
   import DropdownMenu, { type MenuItem } from "$lib/components/ui/DropdownMenu.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
@@ -194,7 +194,7 @@
           <div class="flex flex-wrap items-center gap-3">
             {#each agentGroups as group (group.key)}
               <span class="group relative inline-flex">
-                <AgentStack
+                <AgentBadge
                   agentIds={group.agentIds}
                   {agents}
                   size="md"
@@ -261,7 +261,7 @@
                     </span>
                   </span>
                 </button>
-                <AgentStack agentIds={file.agentIds} {agents} title={file.path} />
+                <AgentBadge agentIds={file.agentIds} {agents} title={file.path} />
               </div>
             {/each}
           </div>
@@ -316,7 +316,7 @@
                   {/if}
                   <span class="flex items-center gap-2">
                     {#each installs as install (install.path)}
-                      <AgentStack agentIds={install.agentIds} {agents} title={install.path} />
+                      <AgentBadge agentIds={install.agentIds} {agents} title={install.path} />
                     {/each}
                   </span>
                   <DropdownMenu
