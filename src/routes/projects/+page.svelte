@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
+  import { homeDir } from "@tauri-apps/api/path";
   import { confirm } from "@tauri-apps/plugin-dialog";
   import ScopeList from "$lib/components/scopes/ScopeList.svelte";
   import ScopeDetail, { type ScopeSkillAction } from "$lib/components/scopes/ScopeDetail.svelte";
@@ -40,8 +41,18 @@
   let memoryFiles = $state<MemoryFile[]>([]);
 
   const location = $derived(getAppLocation(page.url));
-  const entries = $derived(buildScopeEntries($hubSkills, $userProjects, $t("scope.user")));
+  // The user scope is the home directory, shown like a project folder.
+  let homePath = $state("");
+  const entries = $derived(
+    buildScopeEntries($hubSkills, $userProjects, $t("scope.user"), homePath)
+  );
   const selectedKey = $derived(location.scope ? scopeKey(location.scope) : null);
+
+  $effect(() => {
+    homeDir()
+      .then((path) => (homePath = path.replace(/[/\\]+$/, "")))
+      .catch(console.error);
+  });
   const selected = $derived<ScopeEntry | null>(
     entries.find((entry) => entry.key === selectedKey) ?? null
   );
@@ -270,7 +281,11 @@
           {busy}
           {actionError}
           onOpenDir={handleOpenDir}
-          onScan={() => openImportModal({ tab: "folder", folder: selected.path || null })}
+          onScan={() =>
+            openImportModal({
+              tab: "folder",
+              folder: selected.kind === "project" ? selected.path : null,
+            })}
           onAddSkills={() => openSkillPickerModal(selected.ref)}
           onAddAgent={handleAddAgent}
           onRemoveAgents={handleRemoveAgents}

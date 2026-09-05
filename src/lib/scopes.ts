@@ -10,7 +10,7 @@ export interface ScopeEntry {
   key: string;
   kind: "user" | "project";
   name: string;
-  /** Absolute project path; empty for the user scope. */
+  /** Absolute folder: the home directory for the user scope, the project folder otherwise. */
   path: string;
   ref: ScopeRef;
   skills: HubSkillView[];
@@ -47,7 +47,8 @@ const collect = (skills: HubSkillView[], ref: ScopeRef) => {
 export function buildScopeEntries(
   skills: HubSkillView[],
   projects: UserProject[],
-  userLabel: string
+  userLabel: string,
+  homePath = ""
 ): ScopeEntry[] {
   const userRef: ScopeRef = { scope: "user", projectPath: null };
   const user = collect(skills, userRef);
@@ -56,7 +57,7 @@ export function buildScopeEntries(
       key: "user",
       kind: "user",
       name: userLabel,
-      path: "",
+      path: homePath,
       ref: userRef,
       skills: user.installed,
       driftCount: user.driftCount,
