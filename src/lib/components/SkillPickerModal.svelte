@@ -91,26 +91,35 @@
           {search.trim() ? $t("library.emptyFiltered") : $t("picker.empty")}
         </p>
       {:else}
-        <div class="grid grid-cols-2 gap-1">
+        <div class="grid grid-cols-2 gap-2">
           {#each candidates as skill (skill.name)}
             {@const checked = selected.includes(skill.name)}
             <label
-              class={`hover:bg-base-200 flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition ${
-                checked ? "bg-base-200" : ""
+              class={`flex cursor-pointer flex-col gap-1 rounded-xl border px-3 py-2.5 transition ${
+                checked
+                  ? "border-primary/60 bg-primary/10"
+                  : "border-base-300 bg-base-100 hover:bg-base-200"
               }`}
               title={skill.description ?? skill.name}
             >
-              <input
-                class="accent-primary"
-                type="checkbox"
-                {checked}
-                onchange={() => toggle(skill.name)}
-              />
-              <span class="text-base-content-subtle shrink-0">
-                <SkillIcon source={skill.source} />
+              <span class="flex min-w-0 items-center gap-2">
+                <input
+                  class="accent-primary"
+                  type="checkbox"
+                  {checked}
+                  onchange={() => toggle(skill.name)}
+                />
+                <span class="text-base-content-subtle shrink-0">
+                  <SkillIcon source={skill.source} />
+                </span>
+                <span class="text-base-content min-w-0 flex-1 truncate text-[13px] font-medium">
+                  {skill.name}
+                </span>
               </span>
-              <span class="text-base-content min-w-0 flex-1 truncate text-[13px] font-medium">
-                {skill.name}
+              <span
+                class="text-base-content-subtle line-clamp-2 min-h-[2lh] text-[11px] leading-[1.35]"
+              >
+                {skill.description ?? ""}
               </span>
             </label>
           {/each}
