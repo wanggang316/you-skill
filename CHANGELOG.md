@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed install targets naming only the agent that was picked at install time: a skills directory now lists every installed agent that reads it, so a skill in `~/.agents/skills` shows Codex, Cursor and the others that share it.
 - Fixed install records keeping agents that no longer read their directory: listing now drops an agent id when the directory is neither that agent's skills directory nor one of its legacy ones.
 - Added grouping of agents that share a skills directory: the directory shows as a single agent (the shared directory as "Agents (shared)"), hovering lists the agents that read it, clicking it filters the skill list of the project to that directory, and installing or uninstalling covers the whole group.
+- Fixed removing an agent tile on the projects page: it counted and targeted every directory that agent reads (a legacy Cursor folder offered to remove 18 skills). The tile now removes only its own directory, by path.
 - Added icons for Warp, Zed, VS Code, Augment, Command Code, Continue, Cortex Code, Crush, Droid, iFlow CLI, MCPJam, Neovate and Pochi, which used to show a letter.
 - Workspaces in the project list can be collapsed by clicking their name; the choice is remembered, and a workspace opens again when one of its projects is selected from elsewhere.
 - Removed the project management dialog: projects come from workspaces now, and a workspace can be rescanned or removed from the project list.

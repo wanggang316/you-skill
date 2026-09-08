@@ -91,6 +91,8 @@ export interface InstallRequest {
 export interface UninstallRequest {
   name: string;
   targets: InstallTargetSpec[];
+  /** Install directories to drop as a whole, whichever agents read them. */
+  paths?: string[];
   force?: boolean;
 }
 

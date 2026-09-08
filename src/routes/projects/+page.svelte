@@ -33,7 +33,7 @@
   import { removeWorkspace, type UserWorkspace } from "$lib/api/user-projects";
   import { listMemoryFiles, type MemoryFile } from "$lib/api/agent-apps";
   import { resolveAgents } from "$lib/agents";
-  import { buildScopeEntries, scopeKey, type ScopeEntry } from "$lib/scopes";
+  import { buildScopeEntries, parentDir, scopeKey, type ScopeEntry } from "$lib/scopes";
 
   let busy = $state(false);
   let actionError = $state("");
@@ -149,16 +149,20 @@
    * Remove agents that share a directory: they are installed together, so every skill of
    * this scope is uninstalled from all of them at once.
    */
-  function handleRemoveAgents(agentIds: string[]) {
+  function handleRemoveAgents(location: { path: string; agentIds: string[] }) {
     const entry = selected;
-    if (!entry || agentIds.length === 0) return;
-    const affected = entry.skills.filter((skill) =>
-      scopedInstalls(skill, entry.ref).some((install) =>
-        install.agentIds.some((id) => agentIds.includes(id))
-      )
-    );
+    if (!entry) return;
+    // The tile is a directory; an agent id would also match every other directory it reads.
+    const affected = entry.skills
+      .map((skill) => ({
+        skill,
+        paths: scopedInstalls(skill, entry.ref)
+          .filter((install) => parentDir(install.path) === location.path)
+          .map((install) => install.path),
+      }))
+      .filter((item) => item.paths.length > 0);
     if (affected.length === 0) return;
-    const label = resolveAgents(agentIds, $agentsById)[0]?.name ?? agentIds[0];
+    const label = resolveAgents(location.agentIds, $agentsById)[0]?.name ?? location.path;
     void runAction(async () => {
       const confirmed = await confirm(
         $t("scope.agents.removeConfirm", { agent: label, count: affected.length }),
@@ -166,17 +170,9 @@
       );
       if (!confirmed) return;
       const failures: string[] = [];
-      for (const skill of affected) {
+      for (const { skill, paths } of affected) {
         const result = await performAction((force) =>
-          uninstallSkill({
-            name: skill.name,
-            targets: agentIds.map((agentId) => ({
-              scope: entry.ref.scope,
-              projectPath: entry.ref.projectPath,
-              agentId,
-            })),
-            force,
-          })
+          uninstallSkill({ name: skill.name, targets: [], paths, force })
         );
         if (!result.applied) failures.push(`${skill.name}: ${result.blockers.join("; ")}`);
       }

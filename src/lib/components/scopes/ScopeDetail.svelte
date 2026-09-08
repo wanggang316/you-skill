@@ -17,7 +17,7 @@
   import { scopedInstalls, type HubSkillView, type InstallView } from "$lib/api/hub";
   import type { MemoryFile } from "$lib/api/agent-apps";
   import type { AgentInfo } from "$lib/api/skills";
-  import type { ScopeEntry } from "$lib/scopes";
+  import { parentDir, type ScopeEntry } from "$lib/scopes";
 
   export type ScopeSkillAction = "manage" | "diff" | "push" | "adopt" | "openDir" | "uninstall";
 
@@ -48,16 +48,14 @@
     onScan: () => void;
     onAddSkills: () => void;
     onAddAgent: () => void;
-    onRemoveAgents: (agentIds: string[]) => void;
+    /** Remove every skill of this scope from one skills directory. */
+    onRemoveAgents: (location: { path: string; agentIds: string[] }) => void;
     onOpenMemory: (file: MemoryFile) => void;
     onOpenSkill: (name: string) => void;
     onSkillAction: (skill: HubSkillView, action: ScopeSkillAction) => void;
   } = $props();
 
   type AgentGroup = { key: string; path: string; agentIds: string[]; skillCount: number };
-
-  /** The directory an install writes into: its path without the skill folder. */
-  const parentDir = (path: string) => path.replace(/[/\\][^/\\]+$/, "") || path;
 
   /** One entry per skills directory; the agents reading it are installed together. */
   const agentGroups = $derived.by((): AgentGroup[] => {
@@ -238,7 +236,7 @@
                   class="border-base-300 bg-base-100 text-base-content-muted hover:border-error hover:text-error absolute -top-1.5 -right-1.5 hidden size-4 items-center justify-center rounded-full border group-hover:flex disabled:opacity-40"
                   type="button"
                   disabled={busy}
-                  onclick={() => onRemoveAgents(group.agentIds)}
+                  onclick={() => onRemoveAgents(group)}
                   title={$t("scope.agents.remove")}
                   aria-label={$t("scope.agents.remove")}
                 >

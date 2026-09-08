@@ -29,6 +29,9 @@ export const scopeKey = (ref: ScopeRef): string =>
 
 export const baseName = (path: string): string => path.split(/[/\\]/).filter(Boolean).pop() || path;
 
+/** The directory an install writes into: its path without the skill folder. */
+export const parentDir = (path: string): string => path.replace(/[/\\][^/\\]+$/, "") || path;
+
 const collect = (skills: HubSkillView[], ref: ScopeRef) => {
   const installed = skills.filter((skill) => scopedInstalls(skill, ref).length > 0);
   const driftCount = installed.filter((skill) =>

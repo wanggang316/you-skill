@@ -510,6 +510,27 @@ pub fn uninstall_skill(env: &Env, request: UninstallRequest) -> Result<ActionRes
     }
   }
 
+  // A whole directory: every agent of that record goes, so the files go with it.
+  for path in &request.paths {
+    let wanted = Path::new(path.trim());
+    for install in &record.installs {
+      let recorded = Path::new(&install.path);
+      if recorded != wanted && !same_path(recorded, wanted) {
+        continue;
+      }
+      match removals.iter_mut().find(|(p, _)| p == &install.path) {
+        Some((_, ids)) => {
+          for id in &install.agent_ids {
+            if !ids.contains(id) {
+              ids.push(id.clone());
+            }
+          }
+        },
+        None => removals.push((install.path.clone(), install.agent_ids.clone())),
+      }
+    }
+  }
+
   let mut blockers = Vec::new();
   let mut files_to_remove: Vec<PathBuf> = Vec::new();
   for (path, ids) in &removals {
@@ -947,6 +968,7 @@ mod tests {
       UninstallRequest {
         name: "foo".to_string(),
         targets: vec![spec(InstallScope::User, None, "claude-code")],
+        paths: vec![],
         force: false,
       },
     )
@@ -959,6 +981,7 @@ mod tests {
       UninstallRequest {
         name: "foo".to_string(),
         targets: vec![spec(InstallScope::User, None, "claude-code")],
+        paths: vec![],
         force: true,
       },
     )
@@ -966,6 +989,66 @@ mod tests {
     assert!(forced.applied);
     assert!(!target.exists());
     assert!(view_of(&env, "foo").unwrap().installs.is_empty());
+  }
+
+  #[test]
+  fn uninstall_by_path_drops_every_agent_of_the_directory() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("proj");
+    fs::create_dir_all(&project).unwrap();
+    let env = env_with_hub(
+      tmp.path(),
+      vec![UserProject {
+        name: "proj".to_string(),
+        path: project.to_string_lossy().to_string(),
+        workspace_path: None,
+      }],
+    );
+    // Codex and Cursor share the project directory; Cursor also has its own user directory.
+    let installed = install_skill(
+      &env,
+      InstallRequest {
+        name: "foo".to_string(),
+        targets: vec![
+          spec(InstallScope::Project, Some(&project), "codex"),
+          spec(InstallScope::Project, Some(&project), "cursor"),
+          spec(InstallScope::User, None, "cursor"),
+        ],
+        mode: Some(InstallMode::Copy),
+        force: false,
+      },
+    )
+    .unwrap();
+    let view = installed.skill.unwrap();
+    assert_eq!(view.installs.len(), 2);
+    let shared = view
+      .installs
+      .iter()
+      .find(|install| install.record.scope == InstallScope::Project)
+      .unwrap();
+    assert_eq!(shared.record.agent_ids.len(), 2);
+    let shared_path = shared.record.path.clone();
+    let user_path = env.home.join(".cursor/skills/foo");
+    assert!(Path::new(&shared_path).is_dir());
+    assert!(user_path.is_dir());
+
+    // Naming the directory removes both of its agents and leaves Cursor's other directory alone.
+    let result = uninstall_skill(
+      &env,
+      UninstallRequest {
+        name: "foo".to_string(),
+        targets: vec![],
+        paths: vec![shared_path.clone()],
+        force: false,
+      },
+    )
+    .unwrap();
+    assert!(result.applied);
+    assert!(!Path::new(&shared_path).exists());
+    assert!(user_path.is_dir());
+    let view = view_of(&env, "foo").unwrap();
+    assert_eq!(view.installs.len(), 1);
+    assert_eq!(view.installs[0].record.scope, InstallScope::User);
   }
 
   #[cfg(unix)]
@@ -1027,6 +1110,7 @@ mod tests {
       UninstallRequest {
         name: "foo".to_string(),
         targets: vec![spec(InstallScope::Project, Some(&project), "codex")],
+        paths: vec![],
         force: false,
       },
     )
@@ -1037,6 +1121,7 @@ mod tests {
       UninstallRequest {
         name: "foo".to_string(),
         targets: vec![spec(InstallScope::Project, Some(&project), "cursor")],
+        paths: vec![],
         force: false,
       },
     )

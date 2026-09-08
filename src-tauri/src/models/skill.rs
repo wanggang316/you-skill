@@ -295,6 +295,9 @@ pub struct InstallRequest {
 pub struct UninstallRequest {
   pub name: String,
   pub targets: Vec<InstallTargetSpec>,
+  /// Install directories to drop as a whole, whichever agents read them.
+  #[serde(default)]
+  pub paths: Vec<String>,
   #[serde(default)]
   pub force: bool,
 }
