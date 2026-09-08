@@ -97,7 +97,7 @@ const translations: Record<string, Dictionary> = {
     "picker.next": "Next",
     "projectPicker.title": "Add {name} to projects",
     "projectPicker.search": "Search projects",
-    "projectPicker.empty": "Every project already has this skill.",
+    "projectPicker.installed": "Installed",
 
     "detail.install": "Install",
     "detail.openDir": "Open folder",
@@ -447,7 +447,7 @@ const translations: Record<string, Dictionary> = {
     "picker.next": "下一步",
     "projectPicker.title": "把 {name} 添加到项目",
     "projectPicker.search": "搜索项目",
-    "projectPicker.empty": "所有项目都已安装这个 Skill。",
+    "projectPicker.installed": "已安装",
 
     "detail.install": "安装",
     "detail.openDir": "打开目录",

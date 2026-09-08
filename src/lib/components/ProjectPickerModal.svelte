@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Folder, Search } from "@lucide/svelte";
+  import { Search } from "@lucide/svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import { t } from "../i18n";
@@ -14,20 +14,20 @@
 
   const skillName = $derived($projectPickerModal.skillName);
 
-  /** Registered projects that do not have the skill yet. */
-  const candidates = $derived.by((): UserProject[] => {
-    const skill = $hubSkillsByName.get(skillName);
-    const taken = new Set(
-      (skill?.installs ?? [])
+  /** Projects that already have the skill; listed for context, not selectable. */
+  const installed = $derived(
+    new Set(
+      ($hubSkillsByName.get(skillName)?.installs ?? [])
         .filter((install) => install.scope === "project" && install.projectPath)
         .map((install) => install.projectPath as string)
-    );
+    )
+  );
+
+  const candidates = $derived.by((): UserProject[] => {
     const needle = search.trim().toLowerCase();
-    return $userProjects.filter((project) => {
-      if (taken.has(project.path)) return false;
-      if (!needle) return true;
-      return `${project.name} ${project.path}`.toLowerCase().includes(needle);
-    });
+    return $userProjects.filter(
+      (project) => !needle || `${project.name} ${project.path}`.toLowerCase().includes(needle)
+    );
   });
 
   type Group = { key: string; label: string | null; projects: UserProject[] };
@@ -109,10 +109,8 @@
         <p class="text-base-content-muted px-3 py-8 text-center text-xs">
           {#if $userProjects.length === 0}
             {$t("install.noProjects")}
-          {:else if search.trim()}
-            {$t("library.emptyFiltered")}
           {:else}
-            {$t("projectPicker.empty")}
+            {$t("library.emptyFiltered")}
           {/if}
         </p>
       {:else}
@@ -126,23 +124,29 @@
             </p>
           {/if}
           {#each group.projects as project (project.path)}
-            {@const checked = selected.includes(project.path)}
+            {@const has = installed.has(project.path)}
+            {@const checked = has || selected.includes(project.path)}
             <label
-              class={`hover:bg-base-200 flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition ${
-                checked ? "bg-base-200" : ""
-              }`}
+              class={`flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition ${
+                has ? "opacity-60" : "hover:bg-base-200 cursor-pointer"
+              } ${checked && !has ? "bg-base-200" : ""}`}
               title={project.path}
             >
               <input
                 class="accent-primary"
                 type="checkbox"
                 {checked}
+                disabled={has}
                 onchange={() => toggle(project.path)}
               />
-              <span class="text-base-content-subtle shrink-0"><Folder size={15} /></span>
               <span class="min-w-0 flex-1">
-                <span class="text-base-content block truncate text-[13px] font-medium">
-                  {project.name}
+                <span class="flex min-w-0 items-center gap-1.5">
+                  <span class="text-base-content truncate text-[13px] font-medium">
+                    {project.name}
+                  </span>
+                  {#if has}
+                    <span class="tag tag-neutral shrink-0">{$t("projectPicker.installed")}</span>
+                  {/if}
                 </span>
                 <span class="text-base-content-faint block truncate text-[11px]">
                   {project.path}
