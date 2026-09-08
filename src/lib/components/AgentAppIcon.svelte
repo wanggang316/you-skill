@@ -26,6 +26,19 @@
   import windsurfIcon from "@lobehub/icons-static-svg/icons/windsurf.svg";
   import zencoderIcon from "@lobehub/icons-static-svg/icons/zencoder-color.svg";
   import zenMuxIcon from "@lobehub/icons-static-svg/icons/zenmux.svg";
+  import snowflakeIcon from "@lobehub/icons-static-svg/icons/snowflake-color.svg";
+  import augmentIcon from "$lib/assets/agent-icons/augment.svg";
+  import commandCodeIcon from "$lib/assets/agent-icons/command-code.png";
+  import continueIcon from "$lib/assets/agent-icons/continue.png";
+  import crushIcon from "$lib/assets/agent-icons/crush.png";
+  import droidIcon from "$lib/assets/agent-icons/droid.png";
+  import iflowIcon from "$lib/assets/agent-icons/iflow-cli.png";
+  import mcpJamIcon from "$lib/assets/agent-icons/mcpjam.png";
+  import neovateIcon from "$lib/assets/agent-icons/neovate.png";
+  import pochiIcon from "$lib/assets/agent-icons/pochi.png";
+  import vscodeIcon from "$lib/assets/agent-icons/vscode.svg";
+  import warpIcon from "$lib/assets/agent-icons/warp.svg";
+  import zedIcon from "$lib/assets/agent-icons/zed.svg";
 
   type AgentIcon = {
     src: string;
@@ -61,6 +74,19 @@
     qoder: { src: qoderIcon },
     replit: { src: replitIcon },
     zenencoder: { src: zencoderIcon },
+    warp: { src: warpIcon, monochrome: true },
+    zed: { src: zedIcon, monochrome: true },
+    vscode: { src: vscodeIcon },
+    augment: { src: augmentIcon, monochrome: true },
+    "command-code": { src: commandCodeIcon, monochrome: true },
+    continue: { src: continueIcon },
+    cortex: { src: snowflakeIcon },
+    crush: { src: crushIcon },
+    droid: { src: droidIcon },
+    "iflow-cli": { src: iflowIcon },
+    mcpjam: { src: mcpJamIcon },
+    neovate: { src: neovateIcon },
+    pochi: { src: pochiIcon },
   };
 
   import { Layers } from "@lucide/svelte";
