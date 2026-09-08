@@ -84,14 +84,18 @@
     return result;
   });
 
-  function chipTitle(install: InstallView): string {
-    return `${install.path}\n${$t(`target.mode.${install.mode}`)} · ${$t(`target.state.${install.state}`)}`;
-  }
+  const stateNote = (install: InstallView) =>
+    `${$t(`target.mode.${install.mode}`)} · ${$t(`target.state.${install.state}`)}`;
 </script>
 
 {#snippet agentChips(installs: InstallView[])}
   {#each installs as install (install.path)}
-    <AgentBadge agentIds={install.agentIds} {agents} title={chipTitle(install)} />
+    <AgentBadge
+      agentIds={install.agentIds}
+      {agents}
+      path={install.path}
+      note={stateNote(install)}
+    />
   {/each}
 {/snippet}
 

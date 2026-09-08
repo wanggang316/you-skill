@@ -230,7 +230,8 @@
                     agentIds={group.agentIds}
                     {agents}
                     size="md"
-                    title={`${group.path}\n${$t("scope.agents.count", { count: group.skillCount })}`}
+                    path={group.path}
+                    note={$t("scope.agents.count", { count: group.skillCount })}
                   />
                 </button>
                 <button
@@ -294,7 +295,7 @@
                     </span>
                   </span>
                 </button>
-                <AgentBadge agentIds={file.agentIds} {agents} title={file.path} />
+                <AgentBadge agentIds={file.agentIds} {agents} path={file.path} />
               </div>
             {/each}
           </div>
@@ -362,7 +363,7 @@
                   {/if}
                   <span class="flex items-center gap-2">
                     {#each installs as install (install.path)}
-                      <AgentBadge agentIds={install.agentIds} {agents} title={install.path} />
+                      <AgentBadge agentIds={install.agentIds} {agents} path={install.path} />
                     {/each}
                   </span>
                   <DropdownMenu
