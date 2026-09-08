@@ -10,7 +10,7 @@
   import ForceConfirmModal from "$lib/components/ForceConfirmModal.svelte";
   import ImportSkillModal from "$lib/components/ImportSkillModal.svelte";
   import InstallSkillModal from "$lib/components/InstallSkillModal.svelte";
-  import ProjectPickerModal from "$lib/components/ProjectPickerModal.svelte";
+  import LocationPickerModal from "$lib/components/LocationPickerModal.svelte";
   import ScopeAgentModal from "$lib/components/ScopeAgentModal.svelte";
   import SkillPickerModal from "$lib/components/SkillPickerModal.svelte";
   import WorkspaceModal from "$lib/components/WorkspaceModal.svelte";
@@ -107,7 +107,7 @@
 <ImportSkillModal />
 <InstallSkillModal />
 <SkillPickerModal />
-<ProjectPickerModal />
+<LocationPickerModal />
 <ScopeAgentModal />
 <ForceConfirmModal />
 <DiffModal />

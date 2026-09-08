@@ -30,7 +30,7 @@
     checkingSource = false,
     actionError = "",
     onInstall,
-    onAddProject,
+    onManageLocations,
     onTargetAction,
     onSync,
     onRemove,
@@ -45,7 +45,7 @@
     checkingSource?: boolean;
     actionError?: string;
     onInstall: (scope: InstallScope, projectPath: string | null, lockScope?: boolean) => void;
-    onAddProject: () => void;
+    onManageLocations: () => void;
     onTargetAction: (install: InstallView, action: TargetAction) => void;
     onSync: (action: SyncAction) => void;
     onRemove: () => void;
@@ -190,7 +190,7 @@
             {homePath}
             {busy}
             onAdd={onInstall}
-            {onAddProject}
+            {onManageLocations}
           />
           {#if skill.installs.length === 0}
             <p class="text-base-content-faint text-xs">{$t("detail.installs.empty")}</p>

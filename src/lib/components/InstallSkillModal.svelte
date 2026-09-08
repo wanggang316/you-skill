@@ -14,6 +14,7 @@
     type InstallMode,
     type InstallScope,
     type InstallTargetSpec,
+    type ScopeRef,
   } from "../api/hub";
   import { agents, hubSkillsByName, refreshHub } from "../stores/hub";
   import { closeInstallModal, installModal, performAction } from "../stores/modals";
@@ -24,8 +25,8 @@
   let open = $state(false);
   let scope = $state<InstallScope>("user");
   let projectPath = $state<string | null>(null);
-  /** Locked multi-project install; takes precedence over `projectPath`. */
-  let projectPaths = $state<string[]>([]);
+  /** Places fixed by the caller; takes precedence over `scope` and `projectPath`. */
+  let lockedTargets = $state<ScopeRef[]>([]);
   let selectedIds = $state<string[]>([]);
   let mode = $state<InstallMode>("copy");
   let applying = $state(false);
@@ -34,16 +35,20 @@
   const skillNames = $derived($installModal.skillNames);
   const isSingle = $derived(skillNames.length === 1);
   const locked = $derived($installModal.lockScope);
-  /** Project paths to install into; `[null]` stands for the user scope. */
-  const targets = $derived.by((): (string | null)[] => {
-    if (scope === "user") return [null];
-    if (projectPaths.length > 0) return projectPaths;
-    return projectPath ? [projectPath] : [];
+  const targets = $derived.by((): ScopeRef[] => {
+    if (lockedTargets.length > 0) return lockedTargets;
+    if (scope === "user") return [{ scope: "user", projectPath: null }];
+    return projectPath ? [{ scope: "project", projectPath }] : [];
   });
+  /** Agents are grouped by the directories of this scope; mixed targets use the project view. */
+  const pickerScope = $derived<InstallScope>(
+    targets.some((target) => target.scope === "project") ? "project" : "user"
+  );
   const targetName = $derived.by(() => {
-    if (scope === "user") return $t("scope.user");
-    if (targets.length > 1) return $t("install.projectCount", { count: targets.length });
-    const path = targets[0] ?? "";
+    if (targets.length > 1) return $t("install.locationCount", { count: targets.length });
+    const target = targets[0];
+    if (!target || target.scope === "user") return $t("scope.user");
+    const path = target.projectPath ?? "";
     const project = $userProjects.find((item) => item.path === path);
     return project?.name ?? (path ? baseName(path) : "");
   });
@@ -63,7 +68,7 @@
     if (!isSingle || targets.length !== 1) return [] as string[];
     const view = $hubSkillsByName.get(skillNames[0]);
     if (!view) return [] as string[];
-    return installedAgentIds(view, scope, targets[0]);
+    return installedAgentIds(view, targets[0].scope, targets[0].projectPath);
   });
 
   const hasProjects = $derived($userProjects.length > 0);
@@ -80,11 +85,14 @@
   $effect(() => {
     const state = $installModal;
     if (state.open && !open) {
-      scope = state.initialScope;
-      projectPaths = state.initialScope === "project" ? state.initialProjectPaths : [];
+      lockedTargets = state.lockScope ? state.targets : [];
+      scope = lockedTargets[0]?.scope ?? state.initialScope;
       projectPath =
-        state.initialScope === "project"
-          ? (state.initialProjectPath ?? projectPaths[0] ?? get(userProjects)[0]?.path ?? null)
+        scope === "project"
+          ? (lockedTargets[0]?.projectPath ??
+            state.initialProjectPath ??
+            get(userProjects)[0]?.path ??
+            null)
           : null;
       mode = get(settings).sync_mode === "symlink" ? "symlink" : "copy";
       error = "";
@@ -98,7 +106,7 @@
   $effect(() => {
     scope;
     projectPath;
-    projectPaths;
+    lockedTargets;
     selectedIds = [...currentIds];
   });
 
@@ -115,11 +123,14 @@
     if (scope === "user") {
       projectPath = null;
     }
-    projectPaths = [];
   }
 
-  function specsFor(ids: string[], path: string | null): InstallTargetSpec[] {
-    return ids.map((agentId) => ({ scope, projectPath: path, agentId }));
+  function specsFor(ids: string[], target: ScopeRef): InstallTargetSpec[] {
+    return ids.map((agentId) => ({
+      scope: target.scope,
+      projectPath: target.projectPath,
+      agentId,
+    }));
   }
 
   async function handleApply() {
@@ -130,21 +141,21 @@
     try {
       const single = isSingle && targets.length === 1;
       for (const name of skillNames) {
-        for (const path of targets) {
+        for (const target of targets) {
           const view = get(hubSkillsByName).get(name);
-          const current = view ? installedAgentIds(view, scope, path) : [];
+          const current = view ? installedAgentIds(view, target.scope, target.projectPath) : [];
           const add = selectedIds.filter((id) => !current.includes(id));
           const remove = single ? current.filter((id) => !selectedIds.includes(id)) : [];
 
           if (add.length > 0) {
             const result = await performAction((force) =>
-              installSkill({ name, targets: specsFor(add, path), mode, force })
+              installSkill({ name, targets: specsFor(add, target), mode, force })
             );
             if (!result.applied) failures.push(`${name}: ${result.blockers.join("; ")}`);
           }
           if (remove.length > 0) {
             const result = await performAction((force) =>
-              uninstallSkill({ name, targets: specsFor(remove, path), force })
+              uninstallSkill({ name, targets: specsFor(remove, target), force })
             );
             if (!result.applied) failures.push(`${name}: ${result.blockers.join("; ")}`);
           }
@@ -192,7 +203,7 @@
       </div>
     {/if}
 
-    <AgentPicker agents={$agents} {scope} bind:selectedIds disabled={applying} />
+    <AgentPicker agents={$agents} scope={pickerScope} bind:selectedIds disabled={applying} />
 
     <div class="flex items-center justify-between gap-3">
       <div class="text-base-content-muted text-[13px]">

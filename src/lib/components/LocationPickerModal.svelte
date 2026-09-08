@@ -1,0 +1,302 @@
+<script lang="ts">
+  import { Search } from "@lucide/svelte";
+  import { confirm } from "@tauri-apps/plugin-dialog";
+  import Modal from "$lib/components/ui/Modal.svelte";
+  import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
+  import { t } from "../i18n";
+  import { scopedInstalls, uninstallSkill, type InstallView, type ScopeRef } from "../api/hub";
+  import { baseName } from "../scopes";
+  import { homePath } from "../stores/env";
+  import { hubSkillsByName, refreshHub } from "../stores/hub";
+  import {
+    closeLocationPickerModal,
+    locationPickerModal,
+    openInstallModal,
+    performAction,
+  } from "../stores/modals";
+  import { userProjects, workspaces } from "../stores/user-projects";
+
+  type Location = {
+    key: string;
+    ref: ScopeRef;
+    name: string;
+    path: string;
+    installs: InstallView[];
+  };
+  type Group = { key: string; label: string | null; locations: Location[] };
+  type ContextMenu = { x: number; y: number; location: Location };
+
+  let open = $state(false);
+  let search = $state("");
+  let selected = $state<string[]>([]);
+  let menu = $state<ContextMenu | null>(null);
+  let error = $state("");
+
+  const skillName = $derived($locationPickerModal.skillName);
+  const skill = $derived($hubSkillsByName.get(skillName));
+
+  const matches = (location: { name: string; path: string }) => {
+    const needle = search.trim().toLowerCase();
+    return !needle || `${location.name} ${location.path}`.toLowerCase().includes(needle);
+  };
+
+  const location = (ref: ScopeRef, name: string, path: string): Location => ({
+    key: ref.scope === "user" ? "user" : `project:${path}`,
+    ref,
+    name,
+    path,
+    installs: skill ? scopedInstalls(skill, ref) : [],
+  });
+
+  /** The user level first, then every project under its workspace, then the rest. */
+  const groups = $derived.by((): Group[] => {
+    const result: Group[] = [];
+    const user = location(
+      { scope: "user", projectPath: null },
+      baseName($homePath) || $t("scope.user"),
+      $homePath
+    );
+    if (matches(user)) result.push({ key: "user", label: null, locations: [user] });
+
+    const projects = $userProjects
+      .map((project) =>
+        location({ scope: "project", projectPath: project.path }, project.name, project.path)
+      )
+      .filter(matches);
+    const known = new Set($workspaces.map((workspace) => workspace.path));
+    for (const workspace of $workspaces) {
+      const locations = projects.filter((item) => {
+        const project = $userProjects.find((candidate) => candidate.path === item.path);
+        return project?.workspacePath === workspace.path;
+      });
+      if (locations.length > 0)
+        result.push({ key: workspace.path, label: workspace.name, locations });
+    }
+    const rest = projects.filter((item) => {
+      const project = $userProjects.find((candidate) => candidate.path === item.path);
+      return !project?.workspacePath || !known.has(project.workspacePath);
+    });
+    if (rest.length > 0) {
+      result.push({
+        key: "other",
+        label: $workspaces.length > 0 ? $t("workspace.other") : null,
+        locations: rest,
+      });
+    }
+    return result;
+  });
+
+  const allLocations = $derived(groups.flatMap((group) => group.locations));
+
+  $effect(() => {
+    const state = $locationPickerModal;
+    if (state.open && !open) {
+      search = "";
+      selected = [];
+      menu = null;
+      error = "";
+    }
+    open = state.open;
+  });
+
+  // The context menu closes on any click elsewhere, Escape or scrolling.
+  $effect(() => {
+    if (!menu) return;
+    const close = () => (menu = null);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("scroll", close, true);
+    };
+  });
+
+  function portal(node: HTMLElement) {
+    document.body.appendChild(node);
+    return {
+      destroy() {
+        node.remove();
+      },
+    };
+  }
+
+  function toggle(key: string) {
+    selected = selected.includes(key)
+      ? selected.filter((item) => item !== key)
+      : [...selected, key];
+  }
+
+  function openMenu(event: MouseEvent, item: Location) {
+    event.preventDefault();
+    menu = { x: event.clientX, y: event.clientY, location: item };
+  }
+
+  function handleClose() {
+    closeLocationPickerModal();
+    open = false;
+  }
+
+  function manage(item: Location) {
+    const name = skillName;
+    handleClose();
+    openInstallModal([name], { targets: [item.ref], lockScope: true });
+  }
+
+  async function uninstall(item: Location) {
+    const paths = item.installs.map((install) => install.path);
+    if (paths.length === 0) return;
+    const confirmed = await confirm(
+      $t("locationPicker.uninstallConfirm", { name: skillName, location: item.name }),
+      { title: $t("scope.uninstall"), kind: "warning" }
+    );
+    if (!confirmed) return;
+    error = "";
+    try {
+      const result = await performAction((force) =>
+        uninstallSkill({ name: skillName, targets: [], paths, force })
+      );
+      if (!result.applied) error = result.blockers.join("; ");
+      await refreshHub();
+    } catch (err) {
+      error = String(err);
+    }
+  }
+
+  function handleNext() {
+    const name = skillName;
+    const targets = allLocations
+      .filter((item) => selected.includes(item.key))
+      .map((item) => item.ref);
+    handleClose();
+    if (!name || targets.length === 0) return;
+    openInstallModal([name], { targets, lockScope: true });
+  }
+</script>
+
+<Modal
+  bind:open
+  title={$t("locationPicker.title", { name: skillName })}
+  onClose={handleClose}
+  containerClass="max-w-lg"
+>
+  <div class="flex h-[60vh] min-h-0 flex-col">
+    <div class="border-base-200 flex-none border-b px-5 py-3">
+      <div class="relative">
+        <Search
+          class="text-base-content-subtle absolute top-1/2 left-3 -translate-y-1/2"
+          size={14}
+        />
+        <input
+          class="border-base-300 bg-base-200 text-base-content placeholder:text-base-content-subtle focus:border-base-300 h-8 w-full rounded-xl border pr-3 pl-8 text-[13px] focus:outline-none"
+          placeholder={$t("locationPicker.search")}
+          bind:value={search}
+        />
+      </div>
+    </div>
+    <div class="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+      {#if error}
+        <p class="text-error px-2.5 py-1 text-xs whitespace-pre-wrap">{error}</p>
+      {/if}
+      {#if allLocations.length === 0}
+        <p class="text-base-content-muted px-3 py-8 text-center text-xs">
+          {$t("library.emptyFiltered")}
+        </p>
+      {:else}
+        {#each groups as group (group.key)}
+          {#if group.label}
+            <p
+              class="text-base-content-subtle truncate px-2.5 pt-2 pb-1 text-[11px]"
+              title={group.key}
+            >
+              {group.label}
+            </p>
+          {/if}
+          {#each group.locations as item (item.key)}
+            {@const checked = selected.includes(item.key)}
+            <label
+              class={`hover:bg-base-200 flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition ${
+                checked ? "bg-base-200" : ""
+              }`}
+              title={item.path}
+              oncontextmenu={(event) => openMenu(event, item)}
+            >
+              <input
+                class="accent-primary"
+                type="checkbox"
+                {checked}
+                onchange={() => toggle(item.key)}
+              />
+              <span class="min-w-0 flex-1">
+                <span class="flex min-w-0 items-center gap-1.5">
+                  <span class="text-base-content truncate text-[13px] font-medium">
+                    {item.name}
+                  </span>
+                  {#if item.installs.length > 0}
+                    <span class="tag tag-neutral shrink-0">{$t("locationPicker.installed")}</span>
+                  {/if}
+                </span>
+                <span class="text-base-content-faint block truncate text-[11px]">{item.path}</span>
+              </span>
+            </label>
+          {/each}
+        {/each}
+      {/if}
+    </div>
+  </div>
+  {#snippet footer()}
+    <span class="text-base-content-muted mr-auto text-xs">
+      {$t("picker.selected", { count: selected.length })}
+    </span>
+    <button
+      class="border-base-300 text-base-content hover:bg-base-200 rounded-xl border px-4 py-2 text-sm transition"
+      type="button"
+      onclick={handleClose}
+    >
+      {$t("common.cancel")}
+    </button>
+    <PrimaryActionButton onclick={handleNext} disabled={selected.length === 0}>
+      {$t("picker.next")}
+    </PrimaryActionButton>
+  {/snippet}
+</Modal>
+
+{#if menu}
+  {@const item = menu.location}
+  <div
+    use:portal
+    role="menu"
+    tabindex="-1"
+    class="border-base-300 bg-base-100 fixed z-[10020] min-w-44 rounded-xl border p-1 shadow-lg"
+    style={`left:${Math.min(menu.x, window.innerWidth - 200)}px; top:${Math.min(menu.y, window.innerHeight - 96)}px;`}
+    onmousedown={(event) => event.stopPropagation()}
+  >
+    <button
+      class="text-base-content hover:bg-base-200 w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition"
+      type="button"
+      role="menuitem"
+      onclick={() => {
+        menu = null;
+        manage(item);
+      }}
+    >
+      {$t("scope.skill.manage")}
+    </button>
+    <button
+      class="text-error hover:bg-error/10 w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition disabled:opacity-40"
+      type="button"
+      role="menuitem"
+      disabled={item.installs.length === 0}
+      onclick={() => {
+        menu = null;
+        void uninstall(item);
+      }}
+    >
+      {$t("scope.uninstall")}
+    </button>
+  </div>
+{/if}

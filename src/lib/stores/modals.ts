@@ -16,13 +16,13 @@ export interface InstallModalState {
   skillNames: string[];
   initialScope: InstallScope;
   initialProjectPath: string | null;
-  /** Several projects at once; only used together with `lockScope`. */
-  initialProjectPaths: string[];
+  /** Several places at once; only used together with `lockScope`. */
+  targets: ScopeRef[];
   /** The target is fixed by where the action started; the dialog offers no scope switch. */
   lockScope: boolean;
 }
 
-export interface ProjectPickerModalState {
+export interface LocationPickerModalState {
   open: boolean;
   skillName: string;
 }
@@ -73,11 +73,14 @@ export const installModal = writable<InstallModalState>({
   skillNames: [],
   initialScope: "user",
   initialProjectPath: null,
-  initialProjectPaths: [],
+  targets: [],
   lockScope: false,
 });
 
-export const projectPickerModal = writable<ProjectPickerModalState>({ open: false, skillName: "" });
+export const locationPickerModal = writable<LocationPickerModalState>({
+  open: false,
+  skillName: "",
+});
 
 export const skillPickerModal = writable<SkillPickerModalState>({ open: false, scope: null });
 
@@ -128,7 +131,7 @@ export function openInstallModal(
   options?: {
     scope?: InstallScope;
     projectPath?: string | null;
-    projectPaths?: string[];
+    targets?: ScopeRef[];
     lockScope?: boolean;
   }
 ): void {
@@ -138,17 +141,17 @@ export function openInstallModal(
     skillNames,
     initialScope: options?.scope ?? "user",
     initialProjectPath: options?.projectPath ?? null,
-    initialProjectPaths: options?.projectPaths ?? [],
+    targets: options?.targets ?? [],
     lockScope: options?.lockScope ?? false,
   });
 }
 
-export function openProjectPickerModal(skillName: string): void {
-  projectPickerModal.set({ open: true, skillName });
+export function openLocationPickerModal(skillName: string): void {
+  locationPickerModal.set({ open: true, skillName });
 }
 
-export function closeProjectPickerModal(): void {
-  projectPickerModal.update((state) => ({ ...state, open: false }));
+export function closeLocationPickerModal(): void {
+  locationPickerModal.update((state) => ({ ...state, open: false }));
 }
 
 export function closeInstallModal(): void {

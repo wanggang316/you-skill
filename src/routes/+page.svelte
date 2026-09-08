@@ -31,7 +31,7 @@
   import {
     openImportModal,
     openInstallModal,
-    openProjectPickerModal,
+    openLocationPickerModal,
     performAction,
   } from "$lib/stores/modals";
   import { userProjects } from "$lib/stores/user-projects";
@@ -250,7 +250,7 @@
           checkingSource={$sourceChecking}
           {actionError}
           onInstall={handleInstall}
-          onAddProject={() => openProjectPickerModal(selectedSkill.name)}
+          onManageLocations={() => openLocationPickerModal(selectedSkill.name)}
           onTargetAction={handleTargetAction}
           onSync={handleSync}
           onRemove={() => (removeModalOpen = true)}

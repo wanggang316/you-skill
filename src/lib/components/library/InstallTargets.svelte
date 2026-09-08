@@ -14,7 +14,7 @@
     homePath = "",
     busy = false,
     onAdd,
-    onAddProject,
+    onManageLocations,
   }: {
     skill: HubSkillView;
     projects?: UserProject[];
@@ -24,8 +24,8 @@
     busy?: boolean;
     /** `lockScope` is set: the row decides the target, the dialog must not offer another. */
     onAdd: (scope: InstallScope, projectPath: string | null, lockScope: boolean) => void;
-    /** Pick projects that do not have the skill yet. */
-    onAddProject: () => void;
+    /** Open the location list: install into more places or uninstall from some. */
+    onManageLocations: () => void;
   } = $props();
 
   type Group = {
@@ -155,10 +155,10 @@
   <button
     class="text-base-content-muted hover:text-primary flex w-full items-center gap-1.5 px-4 py-2.5 text-left text-[12px] transition disabled:opacity-50"
     type="button"
-    onclick={onAddProject}
+    onclick={onManageLocations}
     disabled={busy}
   >
     <Plus size={13} />
-    <span>{$t("detail.installs.addProject")}</span>
+    <span>{$t("detail.installs.addLocation")}</span>
   </button>
 </div>
