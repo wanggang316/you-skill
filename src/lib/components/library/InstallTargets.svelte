@@ -84,6 +84,9 @@
     return result;
   });
 
+  const userGroup = $derived(groups[0]);
+  const projectGroups = $derived(groups.slice(1));
+
   const stateNote = (install: InstallView) =>
     `${$t(`target.mode.${install.mode}`)} · ${$t(`target.state.${install.state}`)}`;
 </script>
@@ -112,34 +115,60 @@
   </button>
 {/snippet}
 
-<div class="border-base-300 divide-base-300 divide-y rounded-2xl border">
-  {#each groups as group (group.key)}
-    <div class="px-4 py-2.5">
-      <div class="flex items-center justify-between gap-3">
-        <div class="min-w-0">
-          <p
-            class="text-base-content flex items-center gap-1.5 text-sm font-medium"
-            title={group.subtitle ?? undefined}
-          >
-            <span class="truncate">{group.label}</span>
-            {#if group.missing}
-              <span class="text-error shrink-0" title={$t("detail.installs.projectMissing")}>
-                <AlertTriangle size={13} />
-              </span>
-            {/if}
-            {#if group.unregistered}
-              <span class="tag tag-neutral shrink-0">{$t("detail.installs.unregistered")}</span>
-            {/if}
-          </p>
-        </div>
-        {@render addButton(group)}
-      </div>
-
-      {#if group.installs.length > 0}
-        <div class="mt-2 flex flex-wrap items-center gap-3">
-          {@render agentChips(group.installs)}
-        </div>
-      {/if}
+{#snippet groupRow(group: Group)}
+  <div class="px-4 py-2.5">
+    <div class="flex items-center justify-between gap-3">
+      <p
+        class="text-base-content flex min-w-0 items-center gap-1.5 text-sm font-medium"
+        title={group.subtitle ?? undefined}
+      >
+        <span class="truncate">{group.label}</span>
+        {#if group.missing}
+          <span class="text-error shrink-0" title={$t("detail.installs.projectMissing")}>
+            <AlertTriangle size={13} />
+          </span>
+        {/if}
+        {#if group.unregistered}
+          <span class="tag tag-neutral shrink-0">{$t("detail.installs.unregistered")}</span>
+        {/if}
+      </p>
+      {@render addButton(group)}
     </div>
-  {/each}
+    {#if group.installs.length > 0}
+      <div class="mt-2 flex flex-wrap items-center gap-3">
+        {@render agentChips(group.installs)}
+      </div>
+    {/if}
+  </div>
+{/snippet}
+
+<div class="space-y-4">
+  <section class="space-y-1.5">
+    <h4 class="text-base-content-subtle text-[11px] font-medium tracking-wide uppercase">
+      {$t("detail.installs.user")}
+    </h4>
+    <div
+      class="border-base-300 flex items-center justify-between gap-3 rounded-2xl border px-4 py-2.5"
+    >
+      <div class="flex min-w-0 flex-wrap items-center gap-3">
+        {@render agentChips(userGroup.installs)}
+      </div>
+      {@render addButton(userGroup)}
+    </div>
+  </section>
+
+  <section class="space-y-1.5">
+    <h4 class="text-base-content-subtle text-[11px] font-medium tracking-wide uppercase">
+      {$t("install.scope.project")}
+    </h4>
+    {#if projectGroups.length === 0}
+      <p class="text-base-content-faint px-1 text-xs">{$t("install.noProjects")}</p>
+    {:else}
+      <div class="border-base-300 divide-base-300 divide-y rounded-2xl border">
+        {#each projectGroups as group (group.key)}
+          {@render groupRow(group)}
+        {/each}
+      </div>
+    {/if}
+  </section>
 </div>
