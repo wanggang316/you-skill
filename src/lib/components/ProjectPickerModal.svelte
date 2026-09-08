@@ -6,7 +6,7 @@
   import type { UserProject } from "../api/user-projects";
   import { hubSkillsByName } from "../stores/hub";
   import { closeProjectPickerModal, openInstallModal, projectPickerModal } from "../stores/modals";
-  import { userProjects } from "../stores/user-projects";
+  import { userProjects, workspaces } from "../stores/user-projects";
 
   let open = $state(false);
   let search = $state("");
@@ -28,6 +28,31 @@
       if (!needle) return true;
       return `${project.name} ${project.path}`.toLowerCase().includes(needle);
     });
+  });
+
+  type Group = { key: string; label: string | null; projects: UserProject[] };
+
+  /** Candidates under the workspace they were found in, then the rest. */
+  const groups = $derived.by((): Group[] => {
+    const known = new Set($workspaces.map((workspace) => workspace.path));
+    const result: Group[] = $workspaces
+      .map((workspace) => ({
+        key: workspace.path,
+        label: workspace.name,
+        projects: candidates.filter((project) => project.workspacePath === workspace.path),
+      }))
+      .filter((group) => group.projects.length > 0);
+    const rest = candidates.filter(
+      (project) => !project.workspacePath || !known.has(project.workspacePath)
+    );
+    if (rest.length > 0) {
+      result.push({
+        key: "other",
+        label: $workspaces.length > 0 ? $t("workspace.other") : null,
+        projects: rest,
+      });
+    }
+    return result;
   });
 
   $effect(() => {
@@ -63,7 +88,7 @@
   bind:open
   title={$t("projectPicker.title", { name: skillName })}
   onClose={handleClose}
-  containerClass="max-w-2xl"
+  containerClass="max-w-lg"
 >
   <div class="flex h-[60vh] min-h-0 flex-col">
     <div class="border-base-200 flex-none border-b px-5 py-3">
@@ -91,14 +116,20 @@
           {/if}
         </p>
       {:else}
-        <div class="grid grid-cols-2 gap-2">
-          {#each candidates as project (project.path)}
+        {#each groups as group (group.key)}
+          {#if group.label}
+            <p
+              class="text-base-content-subtle truncate px-2.5 pt-2 pb-1 text-[11px]"
+              title={group.key}
+            >
+              {group.label}
+            </p>
+          {/if}
+          {#each group.projects as project (project.path)}
             {@const checked = selected.includes(project.path)}
             <label
-              class={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 transition ${
-                checked
-                  ? "border-primary/60 bg-primary/10"
-                  : "border-base-300 bg-base-100 hover:bg-base-200"
+              class={`hover:bg-base-200 flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition ${
+                checked ? "bg-base-200" : ""
               }`}
               title={project.path}
             >
@@ -119,7 +150,7 @@
               </span>
             </label>
           {/each}
-        </div>
+        {/each}
       {/if}
     </div>
   </div>

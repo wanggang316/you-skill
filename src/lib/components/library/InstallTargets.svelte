@@ -120,29 +120,27 @@
           <span class="tag tag-neutral shrink-0">{$t("detail.installs.unregistered")}</span>
         {/if}
       </p>
+    </div>
+    <div class="mt-2 flex flex-wrap items-center gap-3">
+      {#each group.installs as install (install.path)}
+        <AgentBadge
+          agentIds={install.agentIds}
+          {agents}
+          path={install.path}
+          note={stateNote(install)}
+        />
+      {/each}
       <button
-        class="border-base-300 text-base-content-muted hover:border-primary hover:text-primary flex h-7 shrink-0 items-center gap-1 rounded-lg border border-dashed px-2 text-[12px] transition disabled:opacity-50"
+        class="border-base-300 text-base-content-muted hover:border-primary hover:text-primary flex size-6 items-center justify-center rounded-lg border border-dashed transition disabled:opacity-40"
         type="button"
         onclick={() => onAdd(group.scope, group.projectPath, true)}
         disabled={busy || group.missing}
         title={$t("detail.installs.add")}
+        aria-label={$t("detail.installs.add")}
       >
         <Plus size={13} />
-        <span>{$t("detail.installs.add")}</span>
       </button>
     </div>
-    {#if group.installs.length > 0}
-      <div class="mt-2 flex flex-wrap items-center gap-3">
-        {#each group.installs as install (install.path)}
-          <AgentBadge
-            agentIds={install.agentIds}
-            {agents}
-            path={install.path}
-            note={stateNote(install)}
-          />
-        {/each}
-      </div>
-    {/if}
   </div>
 {/snippet}
 
