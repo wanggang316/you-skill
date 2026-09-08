@@ -1,5 +1,14 @@
 <script lang="ts">
-  import { Folder, FolderOpen, FolderPlus, Loader2, RefreshCw, UserRound } from "@lucide/svelte";
+  import { untrack } from "svelte";
+  import {
+    ChevronRight,
+    Folder,
+    FolderOpen,
+    FolderPlus,
+    Loader2,
+    RefreshCw,
+    UserRound,
+  } from "@lucide/svelte";
   import DropdownMenu from "$lib/components/ui/DropdownMenu.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "$lib/i18n";
@@ -37,6 +46,34 @@
     entries: ScopeEntry[];
   };
 
+  /** Collapsed workspace keys, remembered per machine. */
+  const COLLAPSED_STORAGE_KEY = "youskill.collapsedWorkspaces";
+
+  const readCollapsed = (): string[] => {
+    try {
+      const parsed: unknown = JSON.parse(localStorage.getItem(COLLAPSED_STORAGE_KEY) ?? "[]");
+      return Array.isArray(parsed) ? parsed.filter((key) => typeof key === "string") : [];
+    } catch {
+      return [];
+    }
+  };
+
+  let collapsed = $state<string[]>(readCollapsed());
+
+  function setCollapsed(keys: string[]) {
+    collapsed = keys;
+    try {
+      localStorage.setItem(COLLAPSED_STORAGE_KEY, JSON.stringify(keys));
+    } catch {
+      // Remembering the state is best effort.
+    }
+  }
+
+  const toggleGroup = (key: string) =>
+    setCollapsed(
+      collapsed.includes(key) ? collapsed.filter((item) => item !== key) : [...collapsed, key]
+    );
+
   const userEntries = $derived(entries.filter((entry) => entry.kind === "user"));
   const projectEntries = $derived(entries.filter((entry) => entry.kind === "project"));
 
@@ -60,6 +97,14 @@
       });
     }
     return result;
+  });
+
+  // Selecting a project elsewhere (library links, deep links) must not land in a hidden row.
+  $effect(() => {
+    const group = groups.find((item) => item.entries.some((entry) => entry.key === selectedKey));
+    if (!group) return;
+    const current = untrack(() => collapsed);
+    if (current.includes(group.key)) setCollapsed(current.filter((key) => key !== group.key));
   });
 </script>
 
@@ -169,14 +214,22 @@
       </button>
     {:else}
       {#each groups as group (group.key)}
+        {@const open = !collapsed.includes(group.key)}
         {#if group.label}
           <div class="flex items-center justify-between gap-2 px-4 pt-2 pb-1">
-            <p
-              class="text-base-content-subtle min-w-0 truncate text-[11px]"
+            <button
+              class="text-base-content-subtle hover:text-base-content flex min-w-0 flex-1 items-center gap-1 text-left text-[11px] transition"
+              type="button"
+              onclick={() => toggleGroup(group.key)}
+              aria-expanded={open}
               title={group.workspace?.path}
             >
-              {group.label}
-            </p>
+              <ChevronRight size={12} class={`shrink-0 transition ${open ? "rotate-90" : ""}`} />
+              <span class="truncate">{group.label}</span>
+              {#if !open}
+                <span class="text-base-content-faint shrink-0">{group.entries.length}</span>
+              {/if}
+            </button>
             {#if group.workspace}
               {@const workspace = group.workspace}
               <DropdownMenu
@@ -196,13 +249,15 @@
             {/if}
           </div>
         {/if}
-        {#each group.entries as entry (entry.key)}
-          {@render row(entry)}
-        {/each}
-        {#if group.entries.length === 0}
-          <p class="text-base-content-faint px-4 py-1.5 text-[11px]">
-            {$t("workspace.emptyGroup")}
-          </p>
+        {#if open || !group.label}
+          {#each group.entries as entry (entry.key)}
+            {@render row(entry)}
+          {/each}
+          {#if group.entries.length === 0}
+            <p class="text-base-content-faint px-4 py-1.5 text-[11px]">
+              {$t("workspace.emptyGroup")}
+            </p>
+          {/if}
         {/if}
       {/each}
     {/if}
