@@ -97,7 +97,6 @@ const translations: Record<string, Dictionary> = {
     "picker.next": "Next",
     "locationPicker.title": "Install {name} to…",
     "locationPicker.search": "Search locations",
-    "locationPicker.installed": "Installed",
     "locationPicker.uninstallConfirm": "Uninstall {name} from {location}?",
     "locationPicker.uninstallCount": "Uninstall {name} from {count} locations?",
 
@@ -117,7 +116,7 @@ const translations: Record<string, Dictionary> = {
     "detail.importedAt": "Imported",
     "detail.updatedAt": "Updated",
     "detail.installs": "Projects",
-    "detail.installs.addLocation": "Add location",
+    "detail.installs.addLocation": "Add project",
     "detail.installs.noProjects": "No project has this skill yet.",
     "detail.installs.user": "User level",
     "detail.installs.empty": "Not installed anywhere yet.",
@@ -449,7 +448,6 @@ const translations: Record<string, Dictionary> = {
     "picker.next": "下一步",
     "locationPicker.title": "安装 {name} 到…",
     "locationPicker.search": "搜索位置",
-    "locationPicker.installed": "已安装",
     "locationPicker.uninstallConfirm": "确定从 {location} 卸载 {name}？",
     "locationPicker.uninstallCount": "确定从 {count} 个位置卸载 {name}？",
 
@@ -469,7 +467,7 @@ const translations: Record<string, Dictionary> = {
     "detail.importedAt": "导入时间",
     "detail.updatedAt": "更新时间",
     "detail.installs": "项目",
-    "detail.installs.addLocation": "添加位置",
+    "detail.installs.addLocation": "添加项目",
     "detail.installs.noProjects": "还没有项目安装这个 Skill。",
     "detail.installs.user": "用户级",
     "detail.installs.empty": "尚未安装到任何位置。",

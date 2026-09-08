@@ -276,13 +276,8 @@
                 onchange={() => toggle(item.key)}
               />
               <span class="min-w-0 flex-1">
-                <span class="flex min-w-0 items-center gap-1.5">
-                  <span class="text-base-content truncate text-[13px] font-medium">
-                    {item.name}
-                  </span>
-                  {#if item.installs.length > 0}
-                    <span class="tag tag-neutral shrink-0">{$t("locationPicker.installed")}</span>
-                  {/if}
+                <span class="text-base-content block truncate text-[13px] font-medium">
+                  {item.name}
                 </span>
                 <span class="text-base-content-faint block truncate text-[11px]">{item.path}</span>
               </span>

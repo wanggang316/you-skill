@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ExternalLink, FolderOpen, Loader2, RefreshCw, Trash2 } from "@lucide/svelte";
+  import { ExternalLink, FolderOpen, Loader2, Plus, RefreshCw, Trash2 } from "@lucide/svelte";
   import { open as openExternal } from "@tauri-apps/plugin-shell";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
@@ -182,16 +182,19 @@
         {/if}
 
         <section class="space-y-2">
-          <h3 class="text-base-content text-sm font-medium">{$t("detail.installs")}</h3>
-          <InstallTargets
-            {skill}
-            {projects}
-            {agents}
-            {homePath}
-            {busy}
-            onAdd={onInstall}
-            {onManageLocations}
-          />
+          <div class="flex items-center justify-between gap-3">
+            <h3 class="text-base-content text-sm font-medium">{$t("detail.installs")}</h3>
+            <button
+              class="border-base-300 text-base-content-muted hover:border-primary hover:text-primary flex h-7 items-center gap-1 rounded-lg border border-dashed px-2 text-[12px] transition disabled:opacity-50"
+              type="button"
+              onclick={onManageLocations}
+              disabled={busy}
+            >
+              <Plus size={13} />
+              <span>{$t("detail.installs.addLocation")}</span>
+            </button>
+          </div>
+          <InstallTargets {skill} {projects} {agents} {homePath} {busy} onAdd={onInstall} />
           {#if skill.installs.length === 0}
             <p class="text-base-content-faint text-xs">{$t("detail.installs.empty")}</p>
           {/if}
