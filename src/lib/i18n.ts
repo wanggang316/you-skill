@@ -99,6 +99,7 @@ const translations: Record<string, Dictionary> = {
     "locationPicker.search": "Search locations",
     "locationPicker.installed": "Installed",
     "locationPicker.uninstallConfirm": "Uninstall {name} from {location}?",
+    "locationPicker.uninstallCount": "Uninstall {name} from {count} locations?",
 
     "detail.install": "Install",
     "detail.openDir": "Open folder",
@@ -450,6 +451,7 @@ const translations: Record<string, Dictionary> = {
     "locationPicker.search": "搜索位置",
     "locationPicker.installed": "已安装",
     "locationPicker.uninstallConfirm": "确定从 {location} 卸载 {name}？",
+    "locationPicker.uninstallCount": "确定从 {count} 个位置卸载 {name}？",
 
     "detail.install": "安装",
     "detail.openDir": "打开目录",

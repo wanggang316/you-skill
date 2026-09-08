@@ -88,11 +88,24 @@
 
   const allLocations = $derived(groups.flatMap((group) => group.locations));
 
+  /** Every location that has the skill, whether or not the search shows it. */
+  const installedKeys = $derived.by((): string[] => {
+    if (!skill) return [];
+    const keys = skill.installs.map((install) =>
+      install.scope === "user" ? "user" : `project:${install.projectPath ?? ""}`
+    );
+    return [...new Set(keys)];
+  });
+  const added = $derived(selected.filter((key) => !installedKeys.includes(key)));
+  const removed = $derived(installedKeys.filter((key) => !selected.includes(key)));
+  const hasChanges = $derived(added.length > 0 || removed.length > 0);
+
   $effect(() => {
     const state = $locationPickerModal;
     if (state.open && !open) {
       search = "";
-      selected = [];
+      // The checklist starts as the current state: checked means installed there.
+      selected = [...installedKeys];
       menu = null;
       error = "";
     }
@@ -167,14 +180,43 @@
     }
   }
 
-  function handleNext() {
+  /** Unchecked places are uninstalled first; newly checked ones go on to the agent dialog. */
+  async function handleNext() {
     const name = skillName;
-    const targets = allLocations
-      .filter((item) => selected.includes(item.key))
-      .map((item) => item.ref);
+    const view = skill;
+    if (!name || !view || !hasChanges) return;
+    const toRemove = view.installs.filter((install) =>
+      removed.includes(install.scope === "user" ? "user" : `project:${install.projectPath ?? ""}`)
+    );
+    if (toRemove.length > 0) {
+      const confirmed = await confirm(
+        $t("locationPicker.uninstallCount", { name, count: removed.length }),
+        { title: $t("scope.uninstall"), kind: "warning" }
+      );
+      if (!confirmed) return;
+      error = "";
+      try {
+        const result = await performAction((force) =>
+          uninstallSkill({
+            name,
+            targets: [],
+            paths: toRemove.map((install) => install.path),
+            force,
+          })
+        );
+        await refreshHub();
+        if (!result.applied) {
+          error = result.blockers.join("; ");
+          return;
+        }
+      } catch (err) {
+        error = String(err);
+        return;
+      }
+    }
+    const targets = allLocations.filter((item) => added.includes(item.key)).map((item) => item.ref);
     handleClose();
-    if (!name || targets.length === 0) return;
-    openInstallModal([name], { targets, lockScope: true });
+    if (targets.length > 0) openInstallModal([name], { targets, lockScope: true });
   }
 </script>
 
@@ -259,8 +301,8 @@
     >
       {$t("common.cancel")}
     </button>
-    <PrimaryActionButton onclick={handleNext} disabled={selected.length === 0}>
-      {$t("picker.next")}
+    <PrimaryActionButton onclick={() => void handleNext()} disabled={!hasChanges}>
+      {added.length > 0 ? $t("picker.next") : $t("install.confirm")}
     </PrimaryActionButton>
   {/snippet}
 </Modal>
