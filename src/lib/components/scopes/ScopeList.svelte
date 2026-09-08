@@ -1,13 +1,5 @@
 <script lang="ts">
-  import {
-    Folder,
-    FolderOpen,
-    FolderPlus,
-    ListPlus,
-    Loader2,
-    RefreshCw,
-    UserRound,
-  } from "@lucide/svelte";
+  import { Folder, FolderOpen, FolderPlus, Loader2, RefreshCw, UserRound } from "@lucide/svelte";
   import DropdownMenu from "$lib/components/ui/DropdownMenu.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "$lib/i18n";
@@ -24,7 +16,6 @@
     onAddWorkspace,
     onRescanWorkspace,
     onRemoveWorkspace,
-    onManageProjects,
     onRefresh,
   }: {
     entries?: ScopeEntry[];
@@ -36,7 +27,6 @@
     onAddWorkspace: () => void;
     onRescanWorkspace: (workspace: UserWorkspace) => void;
     onRemoveWorkspace: (workspace: UserWorkspace) => void;
-    onManageProjects: () => void;
     onRefresh: () => void;
   } = $props();
 
@@ -152,15 +142,6 @@
         {$t("sidebar.projects")}
       </p>
       <div class="flex shrink-0 items-center gap-0.5">
-        <button
-          class="text-base-content-subtle hover:bg-base-300 hover:text-base-content inline-flex size-6 items-center justify-center rounded-md transition"
-          type="button"
-          onclick={onManageProjects}
-          title={$t("projectManage.title")}
-          aria-label={$t("projectManage.title")}
-        >
-          <ListPlus size={14} />
-        </button>
         <button
           class="text-base-content-subtle hover:bg-base-300 hover:text-base-content inline-flex size-6 items-center justify-center rounded-md transition"
           type="button"

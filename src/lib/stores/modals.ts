@@ -87,7 +87,6 @@ export const workspaceModal = writable<WorkspaceModalState>({
 });
 
 /** The project list dialog, opened from the projects page and the tray. */
-export const projectFormModal = writable<{ open: boolean }>({ open: false });
 
 export const diffModal = writable<DiffModalState>({
   open: false,
@@ -195,14 +194,6 @@ export function openScopeAgentModal(options: {
 
 export function closeScopeAgentModal(): void {
   scopeAgentModal.update((state) => ({ ...state, open: false }));
-}
-
-export function openProjectFormModal(): void {
-  projectFormModal.set({ open: true });
-}
-
-export function closeProjectFormModal(): void {
-  projectFormModal.set({ open: false });
 }
 
 export function openWorkspaceModal(options?: {

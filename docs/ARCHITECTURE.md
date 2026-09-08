@@ -37,7 +37,7 @@ Scanning one walks up to four levels deep and reports a folder as a project when
 agent's project skills directory (`project_path`) or an agent instruction file
 (`profile_path`); the walk stops at each project and skips hidden and excluded folders.
 Registered projects (`user_projects.json`) keep the `workspacePath` they were found in, so
-the projects page can group them; projects added by hand have none.
+the projects page can group them; projects registered before workspaces existed have none.
 
 ## Lock file (`~/.youskill/.skill-lock.json`)
 

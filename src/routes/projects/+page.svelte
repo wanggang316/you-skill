@@ -19,7 +19,6 @@
     openDiffModal,
     openImportModal,
     openInstallModal,
-    openProjectFormModal,
     openScopeAgentModal,
     openSkillPickerModal,
     openWorkspaceModal,
@@ -271,7 +270,6 @@
       onRescanWorkspace={(workspace) =>
         openWorkspaceModal({ mode: "rescan", name: workspace.name, path: workspace.path })}
       onRemoveWorkspace={handleRemoveWorkspace}
-      onManageProjects={() => openProjectFormModal()}
       onRefresh={() => refreshHub().catch(console.error)}
     />
 

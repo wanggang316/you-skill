@@ -3,7 +3,6 @@
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
   import { page } from "$app/state";
-  import { get } from "svelte/store";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import AppSidebar from "$lib/components/AppSidebar.svelte";
@@ -13,23 +12,15 @@
   import InstallSkillModal from "$lib/components/InstallSkillModal.svelte";
   import ScopeAgentModal from "$lib/components/ScopeAgentModal.svelte";
   import SkillPickerModal from "$lib/components/SkillPickerModal.svelte";
-  import UserProjectFormModal from "$lib/components/UserProjectFormModal.svelte";
   import WorkspaceModal from "$lib/components/WorkspaceModal.svelte";
   import { getAppLocation } from "$lib/navigation/app-shell";
   import { loadAgents, loadMigrationReport, refreshHub } from "$lib/stores/hub";
-  import {
-    closeProjectFormModal,
-    openImportModal,
-    openProjectFormModal,
-    projectFormModal,
-  } from "$lib/stores/modals";
+  import { openImportModal } from "$lib/stores/modals";
   import { loadSettings } from "$lib/stores/settings";
   import { ensureUpdateChecked, installAvailableUpdate, updaterState } from "$lib/stores/updater";
   import { refreshUserProjects, refreshWorkspaces } from "$lib/stores/user-projects";
 
   let { children } = $props();
-  let userProjectsModalOpen = $state(false);
-  let userProjectsModalWasOpen = $state(false);
 
   const location = $derived(getAppLocation(page.url));
   const dragExcludedSelector = [
@@ -59,33 +50,7 @@
 
   $effect(() => {
     const action = page.url.searchParams.get("action");
-    if (action === "add") {
-      openImportModal();
-    } else if (action === "manage-projects") {
-      openProjectFormModal();
-    }
-  });
-
-  // The dialog owns its own open flag, so mirror it against the store both ways.
-  $effect(() => {
-    if ($projectFormModal.open) userProjectsModalOpen = true;
-  });
-
-  $effect(() => {
-    if (!userProjectsModalOpen && get(projectFormModal).open) closeProjectFormModal();
-  });
-
-  $effect(() => {
-    if (userProjectsModalOpen) {
-      userProjectsModalWasOpen = true;
-      return;
-    }
-    if (userProjectsModalWasOpen) {
-      userProjectsModalWasOpen = false;
-      refreshUserProjects()
-        .then(() => refreshHub())
-        .catch(console.error);
-    }
+    if (action === "add") openImportModal();
   });
 
   onMount(() => {
@@ -142,5 +107,4 @@
 <ScopeAgentModal />
 <ForceConfirmModal />
 <DiffModal />
-<UserProjectFormModal bind:open={userProjectsModalOpen} />
 <WorkspaceModal />
