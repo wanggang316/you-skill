@@ -261,8 +261,10 @@
           {#each group.locations as item (item.key)}
             {@const checked = selected.includes(item.key)}
             <label
-              class={`hover:bg-base-200 flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition ${
-                checked ? "bg-base-200" : ""
+              class={`mb-1.5 flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 transition ${
+                checked
+                  ? "border-primary/60 bg-primary/10"
+                  : "border-base-300 bg-base-100 hover:bg-base-200"
               }`}
               title={item.path}
               oncontextmenu={(event) => openMenu(event, item)}
