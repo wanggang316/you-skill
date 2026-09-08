@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { AlertTriangle, Plus } from "@lucide/svelte";
+  import { AlertTriangle, Folder, Plus, UserRound } from "@lucide/svelte";
   import AgentBadge from "$lib/components/AgentBadge.svelte";
   import { t } from "$lib/i18n";
+  import { baseName } from "$lib/scopes";
   import type { HubSkillView, InstallScope, InstallView } from "$lib/api/hub";
   import type { AgentInfo } from "$lib/api/skills";
   import type { UserProject } from "$lib/api/user-projects";
@@ -10,15 +11,21 @@
     skill,
     projects = [],
     agents,
+    homePath = "",
     busy = false,
     onAdd,
+    onAddProject,
   }: {
     skill: HubSkillView;
     projects?: UserProject[];
     agents: Map<string, AgentInfo>;
+    /** Home directory: the user row is named after it, like a project after its folder. */
+    homePath?: string;
     busy?: boolean;
     /** `lockScope` is set: the row decides the target, the dialog must not offer another. */
     onAdd: (scope: InstallScope, projectPath: string | null, lockScope: boolean) => void;
+    /** Pick projects that do not have the skill yet. */
+    onAddProject: () => void;
   } = $props();
 
   type Group = {
@@ -32,26 +39,29 @@
     installs: InstallView[];
   };
 
-  const baseName = (path: string) => path.split(/[/\\]/).filter(Boolean).pop() || path;
+  const userGroup = $derived<Group>({
+    key: "user",
+    label: baseName(homePath) || $t("detail.installs.user"),
+    scope: "user",
+    projectPath: null,
+    subtitle: homePath || null,
+    missing: false,
+    unregistered: false,
+    installs: skill.installs.filter((install) => install.scope === "user"),
+  });
 
-  const groups = $derived.by((): Group[] => {
-    const userGroup: Group = {
-      key: "user",
-      label: $t("detail.installs.user"),
-      scope: "user",
-      projectPath: null,
-      subtitle: null,
-      missing: false,
-      unregistered: false,
-      installs: skill.installs.filter((install) => install.scope === "user"),
-    };
-    const result: Group[] = [userGroup];
+  /** Only projects that have the skill; registered ones first, under their own name. */
+  const projectGroups = $derived.by((): Group[] => {
+    const result: Group[] = [];
     const seen = new Set<string>();
-    for (const project of projects) {
-      seen.add(project.path);
-      const installs = skill.installs.filter(
-        (install) => install.scope === "project" && install.projectPath === project.path
+    const installsOf = (path: string) =>
+      skill.installs.filter(
+        (install) => install.scope === "project" && install.projectPath === path
       );
+    for (const project of projects) {
+      const installs = installsOf(project.path);
+      if (installs.length === 0) continue;
+      seen.add(project.path);
       result.push({
         key: `project:${project.path}`,
         label: project.name,
@@ -76,52 +86,30 @@
         subtitle: install.projectPath,
         missing: install.projectMissing,
         unregistered: true,
-        installs: skill.installs.filter(
-          (item) => item.scope === "project" && item.projectPath === install.projectPath
-        ),
+        installs: installsOf(install.projectPath),
       });
     }
     return result;
   });
 
-  const userGroup = $derived(groups[0]);
-  const projectGroups = $derived(groups.slice(1));
-
   const stateNote = (install: InstallView) =>
     `${$t(`target.mode.${install.mode}`)} · ${$t(`target.state.${install.state}`)}`;
 </script>
-
-{#snippet agentChips(installs: InstallView[])}
-  {#each installs as install (install.path)}
-    <AgentBadge
-      agentIds={install.agentIds}
-      {agents}
-      path={install.path}
-      note={stateNote(install)}
-    />
-  {/each}
-{/snippet}
-
-{#snippet addButton(group: Group)}
-  <button
-    class="border-base-300 text-base-content-muted hover:border-primary hover:text-primary flex h-7 shrink-0 items-center gap-1 rounded-lg border border-dashed px-2 text-[12px] transition disabled:opacity-50"
-    type="button"
-    onclick={() => onAdd(group.scope, group.projectPath, true)}
-    disabled={busy || group.missing}
-    title={$t("detail.installs.add")}
-  >
-    <Plus size={13} />
-    <span>{$t("detail.installs.add")}</span>
-  </button>
-{/snippet}
 
 {#snippet groupRow(group: Group)}
   <div class="px-4 py-2.5">
     <div class="flex items-center justify-between gap-3">
       <p
-        class="text-base-content flex min-w-0 items-center gap-1.5 text-sm font-medium"
+        class="text-base-content flex min-w-0 items-center gap-2 text-sm font-medium"
         title={group.subtitle ?? undefined}
       >
+        <span class="text-base-content-subtle shrink-0">
+          {#if group.scope === "user"}
+            <UserRound size={14} />
+          {:else}
+            <Folder size={14} />
+          {/if}
+        </span>
         <span class="truncate">{group.label}</span>
         {#if group.missing}
           <span class="text-error shrink-0" title={$t("detail.installs.projectMissing")}>
@@ -132,43 +120,47 @@
           <span class="tag tag-neutral shrink-0">{$t("detail.installs.unregistered")}</span>
         {/if}
       </p>
-      {@render addButton(group)}
+      <button
+        class="border-base-300 text-base-content-muted hover:border-primary hover:text-primary flex h-7 shrink-0 items-center gap-1 rounded-lg border border-dashed px-2 text-[12px] transition disabled:opacity-50"
+        type="button"
+        onclick={() => onAdd(group.scope, group.projectPath, true)}
+        disabled={busy || group.missing}
+        title={$t("detail.installs.add")}
+      >
+        <Plus size={13} />
+        <span>{$t("detail.installs.add")}</span>
+      </button>
     </div>
     {#if group.installs.length > 0}
       <div class="mt-2 flex flex-wrap items-center gap-3">
-        {@render agentChips(group.installs)}
+        {#each group.installs as install (install.path)}
+          <AgentBadge
+            agentIds={install.agentIds}
+            {agents}
+            path={install.path}
+            note={stateNote(install)}
+          />
+        {/each}
       </div>
     {/if}
   </div>
 {/snippet}
 
-<div class="space-y-4">
-  <section class="space-y-1.5">
-    <h4 class="text-base-content-subtle text-[11px] font-medium tracking-wide uppercase">
-      {$t("detail.installs.user")}
-    </h4>
-    <div
-      class="border-base-300 flex items-center justify-between gap-3 rounded-2xl border px-4 py-2.5"
-    >
-      <div class="flex min-w-0 flex-wrap items-center gap-3">
-        {@render agentChips(userGroup.installs)}
-      </div>
-      {@render addButton(userGroup)}
-    </div>
-  </section>
-
-  <section class="space-y-1.5">
-    <h4 class="text-base-content-subtle text-[11px] font-medium tracking-wide uppercase">
-      {$t("install.scope.project")}
-    </h4>
-    {#if projectGroups.length === 0}
-      <p class="text-base-content-faint px-1 text-xs">{$t("install.noProjects")}</p>
-    {:else}
-      <div class="border-base-300 divide-base-300 divide-y rounded-2xl border">
-        {#each projectGroups as group (group.key)}
-          {@render groupRow(group)}
-        {/each}
-      </div>
-    {/if}
-  </section>
+<div class="border-base-300 divide-base-300 divide-y rounded-2xl border">
+  {@render groupRow(userGroup)}
+  {#each projectGroups as group (group.key)}
+    {@render groupRow(group)}
+  {/each}
+  {#if projectGroups.length === 0}
+    <p class="text-base-content-faint px-4 py-2.5 text-xs">{$t("detail.installs.noProjects")}</p>
+  {/if}
+  <button
+    class="text-base-content-muted hover:text-primary flex w-full items-center gap-1.5 px-4 py-2.5 text-left text-[12px] transition disabled:opacity-50"
+    type="button"
+    onclick={onAddProject}
+    disabled={busy}
+  >
+    <Plus size={13} />
+    <span>{$t("detail.installs.addProject")}</span>
+  </button>
 </div>

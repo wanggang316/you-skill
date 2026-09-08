@@ -24,6 +24,8 @@
   let open = $state(false);
   let scope = $state<InstallScope>("user");
   let projectPath = $state<string | null>(null);
+  /** Locked multi-project install; takes precedence over `projectPath`. */
+  let projectPaths = $state<string[]>([]);
   let selectedIds = $state<string[]>([]);
   let mode = $state<InstallMode>("copy");
   let applying = $state(false);
@@ -32,10 +34,18 @@
   const skillNames = $derived($installModal.skillNames);
   const isSingle = $derived(skillNames.length === 1);
   const locked = $derived($installModal.lockScope);
+  /** Project paths to install into; `[null]` stands for the user scope. */
+  const targets = $derived.by((): (string | null)[] => {
+    if (scope === "user") return [null];
+    if (projectPaths.length > 0) return projectPaths;
+    return projectPath ? [projectPath] : [];
+  });
   const targetName = $derived.by(() => {
     if (scope === "user") return $t("scope.user");
-    const project = $userProjects.find((item) => item.path === projectPath);
-    return project?.name ?? (projectPath ? baseName(projectPath) : "");
+    if (targets.length > 1) return $t("install.projectCount", { count: targets.length });
+    const path = targets[0] ?? "";
+    const project = $userProjects.find((item) => item.path === path);
+    return project?.name ?? (path ? baseName(path) : "");
   });
   const title = $derived.by(() => {
     const name = skillNames[0] ?? "";
@@ -48,18 +58,16 @@
     return isSingle ? $t("install.title", { name }) : $t("install.titleMulti", { count });
   });
 
+  /** Agents already installed; only meaningful for one skill going to one place. */
   const currentIds = $derived.by(() => {
-    if (!isSingle) return [] as string[];
+    if (!isSingle || targets.length !== 1) return [] as string[];
     const view = $hubSkillsByName.get(skillNames[0]);
     if (!view) return [] as string[];
-    if (scope === "project" && !projectPath) return [] as string[];
-    return installedAgentIds(view, scope, projectPath);
+    return installedAgentIds(view, scope, targets[0]);
   });
 
   const hasProjects = $derived($userProjects.length > 0);
-  const canApply = $derived(
-    !applying && (scope === "user" || Boolean(projectPath)) && hasChanges()
-  );
+  const canApply = $derived(!applying && targets.length > 0 && hasChanges());
 
   function hasChanges(): boolean {
     const current = new Set(currentIds);
@@ -73,9 +81,10 @@
     const state = $installModal;
     if (state.open && !open) {
       scope = state.initialScope;
+      projectPaths = state.initialScope === "project" ? state.initialProjectPaths : [];
       projectPath =
         state.initialScope === "project"
-          ? (state.initialProjectPath ?? get(userProjects)[0]?.path ?? null)
+          ? (state.initialProjectPath ?? projectPaths[0] ?? get(userProjects)[0]?.path ?? null)
           : null;
       mode = get(settings).sync_mode === "symlink" ? "symlink" : "copy";
       error = "";
@@ -89,6 +98,7 @@
   $effect(() => {
     scope;
     projectPath;
+    projectPaths;
     selectedIds = [...currentIds];
   });
 
@@ -105,14 +115,11 @@
     if (scope === "user") {
       projectPath = null;
     }
+    projectPaths = [];
   }
 
-  function specsFor(ids: string[]): InstallTargetSpec[] {
-    return ids.map((agentId) => ({
-      scope,
-      projectPath: scope === "project" ? projectPath : null,
-      agentId,
-    }));
+  function specsFor(ids: string[], path: string | null): InstallTargetSpec[] {
+    return ids.map((agentId) => ({ scope, projectPath: path, agentId }));
   }
 
   async function handleApply() {
@@ -121,23 +128,26 @@
     error = "";
     const failures: string[] = [];
     try {
+      const single = isSingle && targets.length === 1;
       for (const name of skillNames) {
-        const view = get(hubSkillsByName).get(name);
-        const current = view ? installedAgentIds(view, scope, projectPath) : [];
-        const add = selectedIds.filter((id) => !current.includes(id));
-        const remove = isSingle ? current.filter((id) => !selectedIds.includes(id)) : [];
+        for (const path of targets) {
+          const view = get(hubSkillsByName).get(name);
+          const current = view ? installedAgentIds(view, scope, path) : [];
+          const add = selectedIds.filter((id) => !current.includes(id));
+          const remove = single ? current.filter((id) => !selectedIds.includes(id)) : [];
 
-        if (add.length > 0) {
-          const result = await performAction((force) =>
-            installSkill({ name, targets: specsFor(add), mode, force })
-          );
-          if (!result.applied) failures.push(`${name}: ${result.blockers.join("; ")}`);
-        }
-        if (remove.length > 0) {
-          const result = await performAction((force) =>
-            uninstallSkill({ name, targets: specsFor(remove), force })
-          );
-          if (!result.applied) failures.push(`${name}: ${result.blockers.join("; ")}`);
+          if (add.length > 0) {
+            const result = await performAction((force) =>
+              installSkill({ name, targets: specsFor(add, path), mode, force })
+            );
+            if (!result.applied) failures.push(`${name}: ${result.blockers.join("; ")}`);
+          }
+          if (remove.length > 0) {
+            const result = await performAction((force) =>
+              uninstallSkill({ name, targets: specsFor(remove, path), force })
+            );
+            if (!result.applied) failures.push(`${name}: ${result.blockers.join("; ")}`);
+          }
         }
       }
       await refreshHub();

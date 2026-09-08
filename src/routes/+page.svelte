@@ -27,7 +27,13 @@
     refreshHub,
     sourceChecking,
   } from "$lib/stores/hub";
-  import { openImportModal, openInstallModal, performAction } from "$lib/stores/modals";
+  import { homePath } from "$lib/stores/env";
+  import {
+    openImportModal,
+    openInstallModal,
+    openProjectPickerModal,
+    performAction,
+  } from "$lib/stores/modals";
   import { userProjects } from "$lib/stores/user-projects";
 
   let search = $state("");
@@ -239,10 +245,12 @@
           skill={selectedSkill}
           projects={$userProjects}
           agents={$agentsById}
+          homePath={$homePath}
           {busy}
           checkingSource={$sourceChecking}
           {actionError}
           onInstall={handleInstall}
+          onAddProject={() => openProjectPickerModal(selectedSkill.name)}
           onTargetAction={handleTargetAction}
           onSync={handleSync}
           onRemove={() => (removeModalOpen = true)}

@@ -10,10 +10,12 @@
   import ForceConfirmModal from "$lib/components/ForceConfirmModal.svelte";
   import ImportSkillModal from "$lib/components/ImportSkillModal.svelte";
   import InstallSkillModal from "$lib/components/InstallSkillModal.svelte";
+  import ProjectPickerModal from "$lib/components/ProjectPickerModal.svelte";
   import ScopeAgentModal from "$lib/components/ScopeAgentModal.svelte";
   import SkillPickerModal from "$lib/components/SkillPickerModal.svelte";
   import WorkspaceModal from "$lib/components/WorkspaceModal.svelte";
   import { getAppLocation } from "$lib/navigation/app-shell";
+  import { loadHomePath } from "$lib/stores/env";
   import { loadAgents, loadMigrationReport, refreshHub } from "$lib/stores/hub";
   import { openImportModal } from "$lib/stores/modals";
   import { loadSettings } from "$lib/stores/settings";
@@ -65,6 +67,7 @@
     loadAgents().catch(console.error);
     refreshUserProjects().catch(console.error);
     refreshWorkspaces().catch(console.error);
+    loadHomePath().catch(console.error);
     refreshHub()
       .then(() => loadMigrationReport())
       .catch(console.error);
@@ -104,6 +107,7 @@
 <ImportSkillModal />
 <InstallSkillModal />
 <SkillPickerModal />
+<ProjectPickerModal />
 <ScopeAgentModal />
 <ForceConfirmModal />
 <DiffModal />

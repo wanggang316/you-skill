@@ -25,10 +25,12 @@
     skill,
     projects = [],
     agents,
+    homePath = "",
     busy = false,
     checkingSource = false,
     actionError = "",
     onInstall,
+    onAddProject,
     onTargetAction,
     onSync,
     onRemove,
@@ -38,10 +40,12 @@
     skill: HubSkillView;
     projects?: UserProject[];
     agents: Map<string, AgentInfo>;
+    homePath?: string;
     busy?: boolean;
     checkingSource?: boolean;
     actionError?: string;
     onInstall: (scope: InstallScope, projectPath: string | null, lockScope?: boolean) => void;
+    onAddProject: () => void;
     onTargetAction: (install: InstallView, action: TargetAction) => void;
     onSync: (action: SyncAction) => void;
     onRemove: () => void;
@@ -179,7 +183,15 @@
 
         <section class="space-y-2">
           <h3 class="text-base-content text-sm font-medium">{$t("detail.installs")}</h3>
-          <InstallTargets {skill} {projects} {agents} {busy} onAdd={onInstall} />
+          <InstallTargets
+            {skill}
+            {projects}
+            {agents}
+            {homePath}
+            {busy}
+            onAdd={onInstall}
+            {onAddProject}
+          />
           {#if skill.installs.length === 0}
             <p class="text-base-content-faint text-xs">{$t("detail.installs.empty")}</p>
           {/if}
