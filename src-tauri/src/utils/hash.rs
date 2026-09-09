@@ -139,6 +139,24 @@ pub fn hash_dir(root: &Path) -> Result<String, String> {
   Ok(format!("{:x}", hasher.finalize()))
 }
 
+/// Content hash of a single file (a symlink is followed). Used for instruction files, which
+/// are deployed one file at a time.
+pub fn hash_file(path: &Path) -> Result<String, String> {
+  let file =
+    File::open(path).map_err(|e| format!("Failed to read {}: {}", path.to_string_lossy(), e))?;
+  let mut reader = BufReader::new(file);
+  let mut hasher = Sha256::new();
+  let mut buf = [0u8; 16 * 1024];
+  loop {
+    let n = reader.read(&mut buf).map_err(|e| e.to_string())?;
+    if n == 0 {
+      break;
+    }
+    hasher.update(&buf[..n]);
+  }
+  Ok(format!("{:x}", hasher.finalize()))
+}
+
 /// `hash_dir` with an in-memory cache keyed by directory signature.
 pub fn hash_dir_cached(root: &Path) -> Result<String, String> {
   let signature = dir_signature(root)?;
@@ -221,6 +239,18 @@ mod tests {
     write(b.path(), "node_modules/x/index.js", "1");
     write(b.path(), ".DS_Store", "junk");
     assert_eq!(hash_dir(a.path()).unwrap(), hash_dir(b.path()).unwrap());
+  }
+
+  #[test]
+  fn file_hash_depends_on_content_only() {
+    let a = tempfile::tempdir().unwrap();
+    write(a.path(), "AGENTS.md", "# rules\n");
+    write(a.path(), "CLAUDE.md", "# rules\n");
+    write(a.path(), "other.md", "# other\n");
+    let agents = hash_file(&a.path().join("AGENTS.md")).unwrap();
+    assert_eq!(agents, hash_file(&a.path().join("CLAUDE.md")).unwrap());
+    assert_ne!(agents, hash_file(&a.path().join("other.md")).unwrap());
+    assert!(hash_file(&a.path().join("missing.md")).is_err());
   }
 
   #[test]

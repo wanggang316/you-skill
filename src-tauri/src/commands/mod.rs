@@ -1,5 +1,6 @@
 pub mod agent_apps;
 pub mod hub;
+pub mod instructions;
 pub mod remote;
 pub mod settings;
 pub mod skill;

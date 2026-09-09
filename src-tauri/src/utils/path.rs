@@ -4,6 +4,8 @@ use std::path::{Component, Path, PathBuf};
 pub const YOUSKILL_DIR: &str = ".youskill";
 pub const HUB_DIR: &str = "skills";
 pub const LOCK_FILE: &str = ".skill-lock.json";
+pub const INSTRUCTIONS_DIR: &str = "instructions";
+pub const INSTRUCTION_LOCK_FILE: &str = ".instruction-lock.json";
 pub const TRASH_DIR: &str = ".trash";
 const MAX_SKILL_NAME_LEN: usize = 64;
 
@@ -42,23 +44,35 @@ pub fn path_to_string(path: &Path) -> String {
 
 /// A skill name is used verbatim as a directory name inside the hub and every install target.
 pub fn validate_skill_name(name: &str) -> Result<(), String> {
+  validate_entry_name("Skill", name)
+}
+
+/// An instruction name is used verbatim as the hub file name (`<name>.md`).
+pub fn validate_instruction_name(name: &str) -> Result<(), String> {
+  validate_entry_name("Instruction", name)
+}
+
+fn validate_entry_name(kind: &str, name: &str) -> Result<(), String> {
   if name.is_empty() || name != name.trim() {
-    return Err("Skill name must not be empty or padded with whitespace".to_string());
+    return Err(format!(
+      "{} name must not be empty or padded with whitespace",
+      kind
+    ));
   }
   if name == "." || name == ".." {
-    return Err(format!("Invalid skill name: '{}'", name));
+    return Err(format!("Invalid {} name: '{}'", kind.to_lowercase(), name));
   }
   if name.starts_with('.') {
-    return Err(format!("Skill name must not start with '.': '{}'", name));
+    return Err(format!("{} name must not start with '.': '{}'", kind, name));
   }
   if name.chars().count() > MAX_SKILL_NAME_LEN {
     return Err(format!(
-      "Skill name is longer than {} characters: '{}'",
-      MAX_SKILL_NAME_LEN, name
+      "{} name is longer than {} characters: '{}'",
+      kind, MAX_SKILL_NAME_LEN, name
     ));
   }
   if name.ends_with('.') {
-    return Err(format!("Skill name must not end with '.': '{}'", name));
+    return Err(format!("{} name must not end with '.': '{}'", kind, name));
   }
   const RESERVED: &[char] = &['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
   if name
@@ -66,8 +80,8 @@ pub fn validate_skill_name(name: &str) -> Result<(), String> {
     .any(|ch| ch.is_control() || RESERVED.contains(&ch))
   {
     return Err(format!(
-      "Skill name contains characters that are not allowed: '{}'",
-      name
+      "{} name contains characters that are not allowed: '{}'",
+      kind, name
     ));
   }
   Ok(())

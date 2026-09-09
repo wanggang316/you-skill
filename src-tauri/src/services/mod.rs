@@ -9,6 +9,7 @@ pub mod drift_service;
 pub mod env;
 pub mod hub_service;
 pub mod install_service;
+pub mod instruction_service;
 pub mod lock_service;
 pub mod migration_service;
 pub mod remote_service;

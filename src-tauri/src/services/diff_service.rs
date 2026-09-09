@@ -42,6 +42,29 @@ pub fn diff_hub_against(
   })
 }
 
+/// Compare two single files. `None` when their bytes are identical; a missing side shows
+/// as added / removed relative to `left`.
+pub fn diff_files(rel: &str, left: &Path, right: &Path) -> Result<Option<FileDiff>, String> {
+  let entry = |path: &Path| -> Option<Entry> {
+    if fs::symlink_metadata(path).is_err() {
+      return None;
+    }
+    if path.is_file() {
+      Some(Entry::File(path.to_path_buf()))
+    } else {
+      fs::read_link(path)
+        .ok()
+        .map(|target| Entry::Symlink(target.to_string_lossy().to_string()))
+    }
+  };
+  match (entry(left), entry(right)) {
+    (Some(old), Some(new)) => diff_entry(rel, &old, &new),
+    (Some(old), None) => single_side(rel, &old, DiffStatus::Removed).map(Some),
+    (None, Some(new)) => single_side(rel, &new, DiffStatus::Added).map(Some),
+    (None, None) => Ok(None),
+  }
+}
+
 /// Compare two directories file by file. Returns the changed files and the number of
 /// identical ones.
 pub fn diff_dirs(left: &Path, right: &Path) -> Result<(Vec<FileDiff>, usize), String> {

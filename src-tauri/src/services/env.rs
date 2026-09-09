@@ -1,7 +1,10 @@
 use crate::models::{AgentApp, InstallScope, UserProject};
 use crate::services::agent_apps_service::local_agent_apps;
 use crate::services::user_projects_service::list_user_projects;
-use crate::utils::path::{expand_home_with, youskill_root, HUB_DIR, LOCK_FILE, TRASH_DIR};
+use crate::utils::path::{
+  expand_home_with, youskill_root, HUB_DIR, INSTRUCTIONS_DIR, INSTRUCTION_LOCK_FILE, LOCK_FILE,
+  TRASH_DIR,
+};
 use std::path::{Path, PathBuf};
 
 /// Everything a hub operation needs to know about the machine it runs on. Built once per
@@ -14,6 +17,9 @@ pub struct Env {
   pub youskill_root: PathBuf,
   pub hub_root: PathBuf,
   pub lock_path: PathBuf,
+  /// `~/.youskill/instructions`, one `<name>.md` per library instruction.
+  pub instructions_root: PathBuf,
+  pub instruction_lock_path: PathBuf,
   pub trash_root: PathBuf,
   pub agent_apps: Vec<AgentApp>,
   pub projects: Vec<UserProject>,
@@ -44,6 +50,8 @@ impl Env {
     Env {
       hub_root: youskill_root.join(HUB_DIR),
       lock_path: youskill_root.join(LOCK_FILE),
+      instructions_root: youskill_root.join(INSTRUCTIONS_DIR),
+      instruction_lock_path: youskill_root.join(INSTRUCTION_LOCK_FILE),
       trash_root: youskill_root.join(TRASH_DIR),
       youskill_root,
       home,
@@ -66,8 +74,41 @@ impl Env {
     self.hub_root.join(name)
   }
 
+  /// Library copy of an instruction.
+  pub fn instruction_file(&self, name: &str) -> PathBuf {
+    self.instructions_root.join(format!("{}.md", name))
+  }
+
   pub fn agent(&self, id: &str) -> Option<&AgentApp> {
     self.agent_apps.iter().find(|app| app.id == id)
+  }
+
+  /// Instruction file an agent app reads in the given scope (`~/.claude/CLAUDE.md`,
+  /// `<project>/AGENTS.md`).
+  pub fn agent_profile(
+    &self,
+    app: &AgentApp,
+    scope: InstallScope,
+    project_root: Option<&Path>,
+  ) -> Result<PathBuf, String> {
+    match scope {
+      InstallScope::User => {
+        let profile = app
+          .global_profile_path
+          .as_deref()
+          .ok_or_else(|| format!("{} has no user-level instruction file", app.display_name))?;
+        Ok(expand_home_with(profile, &self.home))
+      },
+      InstallScope::Project => {
+        let project_root =
+          project_root.ok_or_else(|| "project path is required for project scope".to_string())?;
+        let profile = app
+          .profile_path
+          .as_deref()
+          .ok_or_else(|| format!("{} has no project-level instruction file", app.display_name))?;
+        Ok(project_root.join(profile))
+      },
+    }
   }
 
   /// Skills root of an agent app for the given scope.

@@ -19,6 +19,11 @@ use commands::{
     list_hub_skills, migrate_legacy, migration_status, remove_hub_skill, scan_folder, sync_skill,
     uninstall_skill,
   },
+  instructions::{
+    create_instruction, diff_instruction, get_instruction, import_instructions,
+    import_scanned_instructions, install_instruction, list_instructions, read_instruction,
+    remove_instruction, scan_instruction_files, sync_instruction, uninstall_instruction,
+  },
   remote::{fetch_remote_skills, fetch_skills_by_names, record_skill_install},
   settings::{
     backup_skills, get_settings, list_openrouter_models, open_backup_folder, set_backup_folder,
@@ -131,7 +136,19 @@ fn main() {
       remove_workspace,
       scan_workspace,
       register_projects,
-      list_memory_files
+      list_memory_files,
+      list_instructions,
+      get_instruction,
+      read_instruction,
+      import_instructions,
+      create_instruction,
+      install_instruction,
+      uninstall_instruction,
+      remove_instruction,
+      sync_instruction,
+      diff_instruction,
+      scan_instruction_files,
+      import_scanned_instructions
     ])
     .build(tauri::generate_context!())
     .expect("error while building tauri application")
