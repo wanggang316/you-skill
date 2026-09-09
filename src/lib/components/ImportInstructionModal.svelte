@@ -4,24 +4,24 @@
     CheckCircle2,
     FilePlus2,
     FileText,
+    Folder,
+    Github,
     Loader2,
-    ScanSearch,
   } from "@lucide/svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import SegmentedTabs from "$lib/components/ui/SegmentedTabs.svelte";
-  import InstructionScanList, {
-    type InstructionScanChoice,
-  } from "./instructions/InstructionScanList.svelte";
+  import DetectedInstructionList, {
+    type DetectedChoice,
+  } from "./instructions/DetectedInstructionList.svelte";
   import { t } from "../i18n";
   import {
     createInstruction,
+    detectInstructionFiles,
+    detectInstructionGithub,
     importInstructions,
-    importScannedInstructions,
-    scanInstructionFiles,
+    type DetectedInstruction,
     type InstructionImportOutcome,
-    type InstructionScanDecision,
-    type InstructionScanItem,
   } from "../api/instructions";
   import { instructionsByName, refreshInstructions } from "../stores/instructions";
   import {
@@ -30,26 +30,26 @@
     openInstallModal,
   } from "../stores/modals";
 
-  type Tab = "file" | "scan" | "new";
+  type Tab = "github" | "local" | "new";
 
   let open = $state(false);
-  let activeTab = $state<Tab>("file");
+  let activeTab = $state<Tab>("github");
 
-  // File
-  let filePath = $state("");
-  let fileName = $state("");
-  let name = $state("");
-  let fileError = $state("");
+  // GitHub
+  let githubUrl = $state("");
+  let isDetectingGithub = $state(false);
+  let githubItems = $state<DetectedInstruction[]>([]);
+  let githubError = $state("");
+
+  // Local files and folders
+  let localItems = $state<DetectedInstruction[]>([]);
+  let isDetectingLocal = $state(false);
+  let localError = $state("");
   let isDragOver = $state(false);
   let suppressClick = $state(false);
-  let overwriteExisting = $state(false);
 
-  // Scan
-  let scanned = $state(false);
-  let isScanning = $state(false);
-  let scanItems = $state<InstructionScanItem[]>([]);
-  let scanChoices = $state<Record<string, InstructionScanChoice>>({});
-  let scanError = $state("");
+  /** Selection and name per detected file, keyed by path. */
+  let choices = $state<Record<string, DetectedChoice>>({});
 
   // New
   let newName = $state("");
@@ -58,30 +58,27 @@
   // Import
   let isImporting = $state(false);
   let importError = $state("");
+  let overwriteExisting = $state(false);
   let importedOutcomes = $state<InstructionImportOutcome[] | null>(null);
   let unlistenNativeDragDrop: (() => void) | null = null;
 
-  const existingName = $derived.by(() => {
-    const wanted = name.trim().toLowerCase();
-    if (!wanted) return "";
-    for (const key of $instructionsByName.keys()) {
-      if (key.toLowerCase() === wanted) return key;
-    }
-    return "";
-  });
-  const selectedScanCount = $derived(
-    scanItems.filter((item) => scanChoices[item.path]?.selected).length
+  const items = $derived(
+    activeTab === "github" ? githubItems : activeTab === "local" ? localItems : []
+  );
+  const selectedItems = $derived(items.filter((item) => choices[item.path]?.selected));
+  const existingNames = $derived(
+    new Set([...$instructionsByName.keys()].map((name) => name.toLowerCase()))
+  );
+  const chosenName = (item: DetectedInstruction) =>
+    (choices[item.path]?.name ?? item.name).trim() || item.name;
+  const overwriteNames = $derived(
+    selectedItems.map(chosenName).filter((name) => existingNames.has(name.toLowerCase()))
   );
   const canConfirm = $derived.by(() => {
     if (isImporting) return false;
-    switch (activeTab) {
-      case "file":
-        return Boolean(filePath) && Boolean(name.trim()) && (!existingName || overwriteExisting);
-      case "scan":
-        return selectedScanCount > 0;
-      default:
-        return Boolean(newName.trim());
-    }
+    if (activeTab === "new") return Boolean(newName.trim());
+    if (selectedItems.length === 0) return false;
+    return overwriteNames.length === 0 || overwriteExisting;
   });
 
   $effect(() => {
@@ -90,35 +87,43 @@
     open = state.open;
   });
 
-  // The agent locations are scanned the first time the tab is shown.
-  $effect(() => {
-    if (open && activeTab === "scan" && !scanned) void runScan();
-  });
-
   function resetState() {
-    activeTab = "file";
-    filePath = "";
-    fileName = "";
-    name = "";
-    fileError = "";
+    activeTab = "github";
+    githubUrl = "";
+    isDetectingGithub = false;
+    githubItems = [];
+    githubError = "";
+    localItems = [];
+    isDetectingLocal = false;
+    localError = "";
     isDragOver = false;
     suppressClick = false;
-    overwriteExisting = false;
-    scanned = false;
-    isScanning = false;
-    scanItems = [];
-    scanChoices = {};
-    scanError = "";
+    choices = {};
     newName = "";
     newContent = "";
     isImporting = false;
     importError = "";
+    overwriteExisting = false;
     importedOutcomes = null;
   }
 
   function handleClose() {
     open = false;
     closeImportInstructionModal();
+  }
+
+  function addItems(found: DetectedInstruction[], target: "github" | "local") {
+    const next = { ...choices };
+    for (const item of found) {
+      next[item.path] = next[item.path] ?? { selected: true, name: item.name };
+    }
+    choices = next;
+    if (target === "github") {
+      githubItems = found;
+      return;
+    }
+    const known = new Set(localItems.map((item) => item.path));
+    localItems = [...localItems, ...found.filter((item) => !known.has(item.path))];
   }
 
   // ---------------------------------------------------------------------------
@@ -130,7 +135,7 @@
     let disposed = false;
     const onWindowDragOver = (event: DragEvent) => {
       event.preventDefault();
-      if (activeTab === "file") isDragOver = true;
+      if (activeTab === "local") isDragOver = true;
     };
     const onWindowDragLeave = () => (isDragOver = false);
     const onWindowDrop = (event: DragEvent) => {
@@ -148,7 +153,7 @@
         const unlisten = await getCurrentWebview().onDragDropEvent((event) => {
           const payload = event.payload;
           if (payload.type === "enter" || payload.type === "over") {
-            if (activeTab === "file") isDragOver = true;
+            if (activeTab === "local") isDragOver = true;
             return;
           }
           if (payload.type === "leave") {
@@ -157,8 +162,8 @@
           }
           if (payload.type === "drop") {
             isDragOver = false;
-            const dropped = payload.paths?.[0] ?? "";
-            if (dropped && activeTab === "file") applyFilePath(dropped);
+            const dropped = payload.paths ?? [];
+            if (dropped.length > 0 && activeTab === "local") void addLocalPaths(dropped);
           }
         });
         if (disposed) {
@@ -194,23 +199,21 @@
     }
   }
 
-  function extractPathFromTransfer(dt: DataTransfer | null): string | null {
-    if (!dt) return null;
-    const candidates: Array<File | null> = [
-      dt.files?.[0] ?? null,
+  function extractPathsFromTransfer(dt: DataTransfer | null): string[] {
+    if (!dt) return [];
+    const fromFiles = [
+      ...Array.from(dt.files || []),
       ...Array.from(dt.items || []).map((item) => item.getAsFile?.() ?? null),
-    ];
-    for (const file of candidates) {
-      const withPath = file as (File & { path?: string }) | null;
-      if (withPath?.path) return withPath.path;
-    }
+    ]
+      .map((file) => (file as (File & { path?: string }) | null)?.path)
+      .filter((path): path is string => Boolean(path));
+    if (fromFiles.length > 0) return [...new Set(fromFiles)];
     const raw = dt.getData("text/uri-list") || dt.getData("text/plain");
-    const firstLine = raw
+    return raw
       .split("\n")
       .map((line) => line.trim())
-      .find((line) => line && !line.startsWith("#"));
-    if (!firstLine) return null;
-    return pathFromUri(firstLine) ?? firstLine.replace(/^['"]|['"]$/g, "");
+      .filter((line) => line && !line.startsWith("#"))
+      .map((line) => pathFromUri(line) ?? line.replace(/^['"]|['"]$/g, ""));
   }
 
   function handleDrop(event: DragEvent) {
@@ -218,132 +221,130 @@
     isDragOver = false;
     suppressClick = true;
     setTimeout(() => (suppressClick = false), 100);
-    const path = extractPathFromTransfer(event.dataTransfer);
-    if (path) applyFilePath(path);
-    else fileError = $t("instructions.import.file.dropReadError");
+    const paths = extractPathsFromTransfer(event.dataTransfer);
+    if (paths.length > 0) void addLocalPaths(paths);
+    else localError = $t("instructions.import.local.dropReadError");
   }
 
   // ---------------------------------------------------------------------------
-  // File
+  // GitHub
   // ---------------------------------------------------------------------------
 
-  async function handleSelectFile() {
+  function parseGithubInput(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    if (/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(trimmed)) return trimmed;
+    return null;
+  }
+
+  async function handleDetectGithub() {
+    const githubPath = parseGithubInput(githubUrl);
+    if (!githubPath) {
+      githubError = "Unsupported URL format. Use http(s) URL or owner/repo.";
+      githubItems = [];
+      return;
+    }
+    isDetectingGithub = true;
+    githubError = "";
+    githubItems = [];
+    try {
+      const found = await detectInstructionGithub(githubPath);
+      addItems(found, "github");
+      if (found.length === 0) githubError = $t("instructions.import.noFilesFound");
+    } catch (error) {
+      githubError = String(error);
+    } finally {
+      isDetectingGithub = false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Local
+  // ---------------------------------------------------------------------------
+
+  async function handleSelectFiles() {
     if (suppressClick) return;
     try {
       const { open: openDialog } = await import("@tauri-apps/plugin-dialog");
       const result = await openDialog({
-        multiple: false,
+        multiple: true,
         directory: false,
-        filters: [{ name: "Markdown", extensions: ["md", "markdown", "txt"] }],
+        filters: [{ name: "Markdown", extensions: ["md", "markdown", "mdc"] }],
       });
-      if (result) applyFilePath(result);
+      const paths = Array.isArray(result) ? result : result ? [result] : [];
+      if (paths.length > 0) await addLocalPaths(paths);
     } catch (error) {
-      console.error("Failed to select file:", error);
+      console.error("Failed to select files:", error);
     }
   }
 
-  const baseName = (path: string) => path.split(/[/\\]/).filter(Boolean).pop() || "";
-
-  /** `~/.claude/CLAUDE.md` → `claude`, `<project>/AGENTS.md` → `<project>`, `notes.md` → `notes`. */
-  function suggestName(path: string): string {
-    const parts = path.split(/[/\\]/).filter(Boolean);
-    const file = parts.pop() ?? "";
-    const stem = file.replace(/\.[^.]+$/, "");
-    const base = /^[A-Z0-9_-]+$/.test(stem) ? (parts.pop() ?? stem).replace(/^\.+/, "") : stem;
-    return base
-      .toLowerCase()
-      .replace(/[^\w.-]+/g, "-")
-      .replace(/^[-.]+|[-.]+$/g, "");
-  }
-
-  function applyFilePath(path: string) {
-    const normalized = path.trim().startsWith("file://")
-      ? (pathFromUri(path.trim()) ?? "")
-      : path.trim();
-    if (!normalized) {
-      fileError = $t("instructions.import.file.dropReadError");
-      return;
-    }
-    if (!/\.(md|markdown|txt)$/i.test(normalized)) {
-      fileError = $t("instructions.import.invalidFile");
-      return;
-    }
-    fileError = "";
-    filePath = normalized;
-    fileName = baseName(normalized);
-    name = suggestName(normalized);
-    overwriteExisting = false;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Scan
-  // ---------------------------------------------------------------------------
-
-  function defaultChoice(item: InstructionScanItem): InstructionScanChoice {
-    const base = { name: item.name, registerInstall: true };
-    switch (item.status) {
-      case "new":
-        return { ...base, selected: true, resolution: "import" };
-      case "identical":
-        return { ...base, selected: !item.registered, resolution: "import" };
-      case "different":
-        return { ...base, selected: true, resolution: "adopt_into_hub" };
-      default:
-        return { ...base, selected: false, resolution: "skip", registerInstall: false };
-    }
-  }
-
-  async function runScan() {
-    scanned = true;
-    isScanning = true;
-    scanError = "";
+  async function handleSelectFolder() {
     try {
-      const items = await scanInstructionFiles();
-      scanItems = items;
-      const choices: Record<string, InstructionScanChoice> = {};
-      for (const item of items) choices[item.path] = defaultChoice(item);
-      scanChoices = choices;
+      const { open: openDialog } = await import("@tauri-apps/plugin-dialog");
+      const result = await openDialog({ multiple: false, directory: true });
+      if (typeof result === "string") await addLocalPaths([result]);
     } catch (error) {
-      scanError = String(error);
-    } finally {
-      isScanning = false;
+      console.error("Failed to select folder:", error);
     }
   }
 
-  function buildScanDecisions(): InstructionScanDecision[] {
-    return scanItems
-      .filter((item) => scanChoices[item.path]?.selected)
-      .map((item) => {
-        const choice = scanChoices[item.path];
-        return {
-          name: choice.name.trim() || item.name,
-          path: item.path,
-          resolution: choice.resolution,
-          registerInstall: choice.registerInstall,
-          hubName: item.hubName ?? null,
-        };
-      });
+  async function addLocalPaths(raw: string[]) {
+    const paths = raw
+      .map((path) => (path.trim().startsWith("file://") ? pathFromUri(path.trim()) : path.trim()))
+      .filter((path): path is string => Boolean(path));
+    if (paths.length === 0) {
+      localError = $t("instructions.import.local.dropReadError");
+      return;
+    }
+    isDetectingLocal = true;
+    localError = "";
+    try {
+      const found = await detectInstructionFiles(paths);
+      addItems(found, "local");
+      if (found.length === 0) localError = $t("instructions.import.noFilesFound");
+    } catch (error) {
+      localError = String(error);
+    } finally {
+      isDetectingLocal = false;
+    }
   }
 
   // ---------------------------------------------------------------------------
   // Confirm
   // ---------------------------------------------------------------------------
 
+  function duplicateNames(): string[] {
+    const seen = new Set<string>();
+    const dupes = new Set<string>();
+    for (const item of selectedItems) {
+      const name = chosenName(item).toLowerCase();
+      if (seen.has(name)) dupes.add(name);
+      else seen.add(name);
+    }
+    return [...dupes];
+  }
+
   async function handleConfirm() {
     if (!canConfirm) return;
     importError = "";
+    if (activeTab !== "new") {
+      const dupes = duplicateNames();
+      if (dupes.length > 0) {
+        importError = $t("instructions.import.duplicateNames", { names: dupes.join(", ") });
+        return;
+      }
+    }
     isImporting = true;
     try {
       let outcomes: InstructionImportOutcome[];
-      if (activeTab === "file") {
+      if (activeTab === "new") {
+        outcomes = [await createInstruction(newName.trim(), newContent)];
+      } else {
         outcomes = await importInstructions(
-          [{ name: name.trim(), path: filePath }],
+          selectedItems.map((item) => ({ name: chosenName(item), path: item.path })),
           overwriteExisting
         );
-      } else if (activeTab === "scan") {
-        outcomes = await importScannedInstructions(buildScanDecisions());
-      } else {
-        outcomes = [await createInstruction(newName.trim(), newContent)];
       }
       await refreshInstructions();
       importedOutcomes = outcomes;
@@ -398,8 +399,8 @@
         <div class="sticky top-0 z-10 mb-4">
           <SegmentedTabs
             items={[
-              { value: "file", label: $t("instructions.import.tab.file"), icon: FileText },
-              { value: "scan", label: $t("instructions.import.tab.scan"), icon: ScanSearch },
+              { value: "github", label: $t("instructions.import.tab.github"), icon: Github },
+              { value: "local", label: $t("instructions.import.tab.local"), icon: Folder },
               { value: "new", label: $t("instructions.import.tab.new"), icon: FilePlus2 },
             ]}
             value={activeTab}
@@ -408,10 +409,46 @@
           />
         </div>
 
-        {#if activeTab === "file"}
+        {#if activeTab === "github"}
+          <div class="space-y-4">
+            <p class="text-base-content-muted text-sm">
+              {$t("instructions.import.github.description")}
+            </p>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                class={`${inputClass} flex-1`}
+                placeholder={$t("import.github.urlPlaceholder")}
+                bind:value={githubUrl}
+                onkeydown={(event) => event.key === "Enter" && handleDetectGithub()}
+              />
+              <PrimaryActionButton
+                onclick={handleDetectGithub}
+                disabled={!githubUrl.trim() || isDetectingGithub}
+                loading={isDetectingGithub}
+              >
+                {$t("import.detect")}
+              </PrimaryActionButton>
+            </div>
+            {#if githubError}
+              <div class="text-error flex items-center gap-2 text-sm">
+                <AlertCircle size={16} />
+                <span>{githubError}</span>
+              </div>
+            {/if}
+            {#if githubItems.length > 0}
+              <DetectedInstructionList
+                items={githubItems}
+                bind:choices
+                {existingNames}
+                disabled={isImporting}
+              />
+            {/if}
+          </div>
+        {:else if activeTab === "local"}
           <div class="space-y-3">
             <p class="text-base-content-muted text-sm">
-              {$t("instructions.import.file.description")}
+              {$t("instructions.import.local.description")}
             </p>
             <button
               class={`w-full rounded-xl border-2 border-dashed p-3 transition ${
@@ -419,79 +456,46 @@
                   ? "border-primary bg-base-200"
                   : "border-base-300 hover:border-primary hover:bg-base-200"
               }`}
-              onclick={handleSelectFile}
+              onclick={handleSelectFiles}
               ondragover={(event) => event.preventDefault()}
               ondragenter={() => (isDragOver = true)}
               ondragleave={() => (isDragOver = false)}
               ondrop={handleDrop}
               type="button"
             >
-              {#if filePath}
-                <div class="text-base-content flex items-center justify-center gap-2 text-sm">
-                  <FileText size={16} class="text-primary" />
-                  <span class="font-medium">{fileName}</span>
-                </div>
-                <p class="text-base-content-muted mt-1 truncate text-[11px]" title={filePath}>
-                  {filePath}
-                </p>
-              {:else}
-                <div class="text-base-content-muted flex flex-col items-center gap-1 text-sm">
-                  <FileText size={24} />
-                  <span>{$t("instructions.import.file.select")}</span>
-                </div>
-              {/if}
+              <div class="text-base-content-muted flex flex-col items-center gap-1 text-sm">
+                <FileText size={24} />
+                <span>{$t("instructions.import.local.select")}</span>
+              </div>
             </button>
-            {#if fileError}
-              <div class="text-error flex items-center gap-2 text-sm">
-                <AlertCircle size={16} />
-                <span>{fileError}</span>
-              </div>
-            {/if}
-            {#if filePath}
-              <label class="block space-y-1 text-sm">
-                <span class="text-base-content-muted text-[13px]">
-                  {$t("instructions.import.name")}
+            <div class="flex items-center justify-between gap-3">
+              <button
+                class="border-base-300 text-base-content hover:bg-base-200 flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[13px] transition disabled:opacity-50"
+                type="button"
+                onclick={handleSelectFolder}
+                disabled={isDetectingLocal || isImporting}
+              >
+                <Folder size={14} />
+                {$t("instructions.import.local.selectFolder")}
+              </button>
+              {#if isDetectingLocal}
+                <span class="text-base-content-muted flex items-center gap-2 text-sm">
+                  <Loader2 size={16} class="animate-spin" />
+                  {$t("instructions.import.detecting")}
                 </span>
-                <input
-                  type="text"
-                  class={inputClass}
-                  placeholder={$t("instructions.import.namePlaceholder")}
-                  bind:value={name}
-                  disabled={isImporting}
-                />
-              </label>
-              {#if existingName}
-                <label class="text-warning-content flex cursor-pointer items-start gap-2 text-sm">
-                  <input type="checkbox" class="mt-0.5" bind:checked={overwriteExisting} />
-                  <span>
-                    {$t("instructions.import.overwriteExisting", { name: existingName })}
-                  </span>
-                </label>
               {/if}
-            {/if}
-          </div>
-        {:else if activeTab === "scan"}
-          <div class="space-y-3">
-            <p class="text-base-content-muted text-sm">
-              {$t("instructions.import.scan.description")}
-            </p>
-            {#if scanError}
+            </div>
+            {#if localError}
               <div class="text-error flex items-center gap-2 text-sm">
                 <AlertCircle size={16} />
-                <span>{scanError}</span>
+                <span>{localError}</span>
               </div>
             {/if}
-            {#if isScanning}
-              <div class="text-base-content-muted flex items-center gap-2 text-sm">
-                <Loader2 size={16} class="animate-spin" />
-                <span>{$t("instructions.import.scan.scanning")}</span>
-              </div>
-            {:else if scanItems.length === 0 && !scanError}
-              <p class="text-base-content-muted text-sm">{$t("instructions.import.scan.empty")}</p>
-            {:else if scanItems.length > 0}
-              <InstructionScanList
-                items={scanItems}
-                bind:choices={scanChoices}
+            {#if localItems.length > 0}
+              <DetectedInstructionList
+                items={localItems}
+                bind:choices
+                {existingNames}
                 disabled={isImporting}
               />
             {/if}
@@ -526,6 +530,15 @@
           </div>
         {/if}
 
+        {#if activeTab !== "new" && overwriteNames.length > 0}
+          <label class="text-warning-content mt-4 flex cursor-pointer items-start gap-2 text-sm">
+            <input type="checkbox" class="mt-0.5" bind:checked={overwriteExisting} />
+            <span>
+              {$t("instructions.import.overwriteExisting", { names: overwriteNames.join(", ") })}
+            </span>
+          </label>
+        {/if}
+
         {#if importError}
           <div class="text-error mt-4 flex items-start gap-2 text-sm whitespace-pre-wrap">
             <AlertCircle size={16} class="mt-0.5 shrink-0" />
@@ -556,7 +569,12 @@
       >
         {$t("common.cancel")}
       </button>
-      <PrimaryActionButton onclick={handleConfirm} disabled={!canConfirm} loading={isImporting}>
+      <PrimaryActionButton
+        onclick={handleConfirm}
+        disabled={!canConfirm}
+        loading={isImporting}
+        loadingText={$t("import.importing")}
+      >
         {activeTab === "new" ? $t("instructions.import.create") : $t("import.confirm")}
       </PrimaryActionButton>
     {/if}

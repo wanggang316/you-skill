@@ -3,9 +3,7 @@
 //! reads. Install records reuse the skill types; only the unit differs (a file, not a
 //! directory).
 
-use crate::models::{
-  AgentRootMatch, HubState, InstallRecord, InstallView, ScanStatus, LOCK_VERSION,
-};
+use crate::models::{HubState, InstallRecord, InstallView, LOCK_VERSION};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -106,39 +104,17 @@ impl InstructionActionResult {
   }
 }
 
-/// An instruction file found at an agent location (user level or a registered project).
-#[derive(Debug, Serialize, Deserialize, Clone)]
+/// A Markdown file found in a folder, among picked files, or in a downloaded repository.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct InstructionScanItem {
+pub struct DetectedInstruction {
   /// Suggested library name; the user may change it before importing.
   pub name: String,
+  /// Absolute path to copy from (a temp directory for GitHub sources).
   pub path: String,
-  /// `AGENTS.md`, `CLAUDE.md`, ...
+  /// Path relative to the folder or repository it was found in.
+  pub rel_path: String,
   pub file_name: String,
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub hash: Option<String>,
-  pub status: ScanStatus,
-  /// Library entry this file belongs to: the one whose install record covers the path, or
-  /// the one with identical content when the path is not registered yet.
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub hub_name: Option<String>,
-  /// The path is already an install record of `hub_name`.
-  pub registered: bool,
-  pub location: AgentRootMatch,
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub error: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct InstructionScanDecision {
-  pub name: String,
-  pub path: String,
-  pub resolution: crate::models::ScanResolution,
-  #[serde(default)]
-  pub register_install: bool,
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub hub_name: Option<String>,
 }
 
 #[cfg(test)]

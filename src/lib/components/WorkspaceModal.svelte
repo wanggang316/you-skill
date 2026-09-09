@@ -12,6 +12,7 @@
     type ProjectCandidate,
   } from "../api/user-projects";
   import { agentsById, refreshHub } from "../stores/hub";
+  import { refreshInstructions } from "../stores/instructions";
   import type { AgentInfo } from "../api/skills";
 
   /** Agent badges shown per candidate before the rest collapse into a counter. */
@@ -157,7 +158,7 @@
       }
       await refreshWorkspaces();
       await refreshUserProjects();
-      await refreshHub();
+      await Promise.all([refreshHub(), refreshInstructions()]);
       handleClose();
     } catch (err) {
       error = String(err);

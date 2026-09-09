@@ -20,9 +20,9 @@ use commands::{
     uninstall_skill,
   },
   instructions::{
-    create_instruction, diff_instruction, get_instruction, import_instructions,
-    import_scanned_instructions, install_instruction, list_instructions, read_instruction,
-    remove_instruction, scan_instruction_files, sync_instruction, uninstall_instruction,
+    create_instruction, detect_instruction_files, detect_instruction_github, diff_instruction,
+    get_instruction, import_instructions, install_instruction, list_instructions, read_instruction,
+    remove_instruction, sync_instruction, uninstall_instruction, write_instruction,
   },
   remote::{fetch_remote_skills, fetch_skills_by_names, record_skill_install},
   settings::{
@@ -147,8 +147,9 @@ fn main() {
       remove_instruction,
       sync_instruction,
       diff_instruction,
-      scan_instruction_files,
-      import_scanned_instructions
+      write_instruction,
+      detect_instruction_files,
+      detect_instruction_github
     ])
     .build(tauri::generate_context!())
     .expect("error while building tauri application")

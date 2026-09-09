@@ -10,7 +10,8 @@ use zip::ZipArchive;
 const USER_AGENT: &str = "you-skill";
 const DEFAULT_BRANCHES: [&str; 2] = ["main", "master"];
 
-/// Parsed GitHub reference: `owner/repo`, optionally with `/tree/<branch>[/<path>]`.
+/// Parsed GitHub reference: `owner/repo`, optionally with `/tree/<branch>[/<path>]` or
+/// `/blob/<branch>/<file>`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GithubRef {
   pub owner: String,
@@ -44,7 +45,7 @@ impl GithubHelper {
     }
     let mut branch = None;
     let mut subpath = None;
-    if segments.len() >= 4 && segments[2] == "tree" {
+    if segments.len() >= 4 && (segments[2] == "tree" || segments[2] == "blob") {
       branch = Some(segments[3].to_string());
       if segments.len() > 4 {
         subpath = Some(segments[4..].join("/"));
@@ -408,6 +409,11 @@ mod tests {
 
     let r = GithubHelper::parse_github_ref("git@github.com:owner/repo.git").unwrap();
     assert_eq!((r.owner.as_str(), r.repo.as_str()), ("owner", "repo"));
+
+    let r =
+      GithubHelper::parse_github_ref("https://github.com/owner/repo/blob/main/AGENTS.md").unwrap();
+    assert_eq!(r.branch.as_deref(), Some("main"));
+    assert_eq!(r.subpath.as_deref(), Some("AGENTS.md"));
 
     assert!(GithubHelper::parse_github_ref("nonsense").is_err());
   }

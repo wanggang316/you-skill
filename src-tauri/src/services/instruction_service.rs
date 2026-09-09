@@ -1,30 +1,33 @@
 //! The instruction library (`~/.youskill/instructions/<name>.md`): agent instruction files
 //! kept once and deployed to the `AGENTS.md` / `CLAUDE.md` locations each agent reads.
-//! Mirrors the skill hub (import, install, three-way drift, push / adopt, scan) for single
-//! files; install records share the skill types.
+//! Mirrors the skill hub (import, install, three-way drift, push / adopt) for single files;
+//! install records share the skill types. Files found at agent locations are adopted into
+//! the library automatically whenever it is listed.
 
 use crate::models::{
-  AgentRootMatch, HubState, InstallMode, InstallRecord, InstallRequest, InstallScope,
-  InstallTargetSpec, InstallView, InstructionActionResult, InstructionImportItem,
-  InstructionImportOutcome, InstructionLockFile, InstructionRecord, InstructionScanDecision,
-  InstructionScanItem, InstructionView, ScanResolution, ScanStatus, SkillDiff, SyncAction,
-  TargetState, UninstallRequest, LOCK_VERSION,
+  AgentRootMatch, DetectedInstruction, HubState, InstallMode, InstallRecord, InstallRequest,
+  InstallScope, InstallTargetSpec, InstallView, InstructionActionResult, InstructionImportItem,
+  InstructionImportOutcome, InstructionLockFile, InstructionRecord, InstructionView, SkillDiff,
+  SyncAction, TargetState, UninstallRequest, LOCK_VERSION,
 };
 use crate::services::diff_service::diff_files;
 use crate::services::drift_service::compare_three_way;
 use crate::services::env::Env;
 use crate::services::install_service::ResolvedTarget;
 use crate::services::lock_service::ops_guard;
+use crate::utils::folder::create_temp_dir;
+use crate::utils::github::GithubHelper;
 use crate::utils::hash::hash_file;
 use crate::utils::path::{
-  is_symlink, is_within, normalize_dir_path, path_to_string, remove_path_any, same_path,
-  symlink_points_to, validate_instruction_name,
+  expand_home_with, is_symlink, is_within, normalize_dir_path, path_to_string, remove_path_any,
+  same_path, symlink_points_to, validate_instruction_name,
 };
 use crate::utils::time::{now_file_stamp, now_rfc3339};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use walkdir::WalkDir;
 
 const DESCRIPTION_MAX_CHARS: usize = 160;
 
@@ -381,6 +384,7 @@ fn view_of(env: &Env, name: &str) -> Result<InstructionView, String> {
 
 pub fn list_instructions(env: &Env) -> Result<Vec<InstructionView>, String> {
   adopt_untracked_files(env)?;
+  adopt_agent_files(env)?;
   let lock = read_lock(env)?;
   Ok(
     lock
@@ -1352,36 +1356,22 @@ pub fn diff_instruction(env: &Env, name: &str, path: &str) -> Result<SkillDiff, 
 }
 
 // ---------------------------------------------------------------------------
-// Scan
+// Agent locations
 // ---------------------------------------------------------------------------
 
 /// Every instruction file that exists at an agent location: user level and each registered
-/// project. Files already in the library are matched by install record or content.
-pub fn scan_instruction_files(env: &Env) -> Result<Vec<InstructionScanItem>, String> {
-  let lock = read_lock(env)?;
-  let hub_hashes: Vec<(String, String)> = lock
-    .instructions
-    .keys()
-    .filter_map(|name| {
-      hash_file(&env.instruction_file(name))
-        .ok()
-        .map(|hash| (name.clone(), hash))
-    })
-    .collect();
-
-  let mut candidates: Vec<(PathBuf, AgentRootMatch)> = Vec::new();
+/// project whose folder exists. Keyed by path; agents that read the same file are merged.
+fn agent_files(env: &Env) -> Vec<(PathBuf, AgentRootMatch)> {
+  let mut found: Vec<(PathBuf, AgentRootMatch)> = Vec::new();
   let mut add = |path: PathBuf, location: AgentRootMatch| {
-    if let Some((_, existing)) = candidates
-      .iter_mut()
-      .find(|(known, _)| same_path(known, &path))
-    {
+    if let Some((_, existing)) = found.iter_mut().find(|(known, _)| same_path(known, &path)) {
       for id in location.agent_ids {
         if !existing.agent_ids.contains(&id) {
           existing.agent_ids.push(id);
         }
       }
     } else {
-      candidates.push((path, location));
+      found.push((path, location));
     }
   };
   for app in &env.agent_apps {
@@ -1401,6 +1391,9 @@ pub fn scan_instruction_files(env: &Env) -> Result<Vec<InstructionScanItem>, Str
   }
   for project in &env.projects {
     let root = Path::new(&project.path);
+    if !root.is_dir() {
+      continue;
+    }
     for app in &env.agent_apps {
       if let Ok(path) = env.agent_profile(app, InstallScope::Project, Some(root)) {
         if path.is_file() {
@@ -1417,188 +1410,112 @@ pub fn scan_instruction_files(env: &Env) -> Result<Vec<InstructionScanItem>, Str
       }
     }
   }
+  found
+}
 
-  let mut items: Vec<InstructionScanItem> = candidates
+/// Files at agent locations become library entries without asking: a file with the same
+/// content as an entry is registered as an install of it, anything else is imported under
+/// a generated name. Symlinks are only registered when they point into the library, so a
+/// file linked to a dotfiles repository is left alone.
+fn adopt_agent_files(env: &Env) -> Result<(), String> {
+  let lock = read_lock(env)?;
+  let tracked = |path: &Path| {
+    lock.instructions.values().any(|record| {
+      record.installs.iter().any(|install| {
+        let recorded = Path::new(&install.path);
+        recorded == path || same_path(recorded, path)
+      })
+    })
+  };
+  let pending: Vec<(PathBuf, AgentRootMatch)> = agent_files(env)
     .into_iter()
-    .map(|(path, location)| {
-      let hash = hash_file(&path).ok();
-      let tracked = lock
-        .instructions
-        .iter()
-        .find(|(_, record)| {
-          record
-            .installs
-            .iter()
-            .any(|install| same_path(Path::new(&install.path), &path))
-        })
-        .map(|(name, _)| name.clone());
-      let linked = is_symlink(&path)
-        && fs::read_link(&path)
-          .ok()
-          .map(|raw| {
-            let resolved = if raw.is_absolute() {
-              raw
-            } else {
-              path.parent().map(|p| p.join(&raw)).unwrap_or(raw)
-            };
-            is_within(&resolved, &env.instructions_root)
-          })
-          .unwrap_or(false);
-      let (status, hub_name, registered) = if linked {
-        let name = tracked
-          .clone()
-          .or_else(|| fs::read_link(&path).ok().and_then(|raw| library_name(&raw)));
-        (ScanStatus::Linked, name, tracked.is_some())
-      } else if let Some(name) = tracked {
-        let current = hub_hashes
-          .iter()
-          .find(|(known, _)| known == &name)
-          .map(|(_, hash)| hash.clone());
-        let status = if current.is_some() && current == hash {
-          ScanStatus::Identical
-        } else {
-          ScanStatus::Different
-        };
-        (status, Some(name), true)
-      } else if let Some((name, _)) = hub_hashes
-        .iter()
-        .find(|(_, known)| Some(known) == hash.as_ref())
-      {
-        (ScanStatus::Identical, Some(name.clone()), false)
-      } else {
-        (ScanStatus::New, None, false)
-      };
-      InstructionScanItem {
-        name: String::new(),
-        file_name: path
-          .file_name()
-          .map(|n| n.to_string_lossy().to_string())
-          .unwrap_or_default(),
-        path: path_to_string(&path),
-        hash,
-        status,
-        hub_name,
-        registered,
-        location,
-        error: None,
-      }
+    .filter(|(path, _)| !tracked(path))
+    .collect();
+  if pending.is_empty() {
+    return Ok(());
+  }
+
+  let _ops = ops_guard();
+  let mut hub_hashes: Vec<(String, String)> = lock
+    .instructions
+    .keys()
+    .filter_map(|name| {
+      hash_file(&env.instruction_file(name))
+        .ok()
+        .map(|hash| (name.clone(), hash))
     })
     .collect();
-
-  items.sort_by(|a, b| {
-    let rank = |item: &InstructionScanItem| match item.location.scope {
-      InstallScope::User => 0,
-      InstallScope::Project => 1,
-    };
-    rank(a).cmp(&rank(b)).then_with(|| a.path.cmp(&b.path))
-  });
-  suggest_names(&lock, &mut items);
-  Ok(items)
-}
-
-/// Library names for new files: `user-<file>` at user level, the project folder name in a
-/// project (plus the file stem when a project has several files), made unique.
-fn suggest_names(lock: &InstructionLockFile, items: &mut [InstructionScanItem]) {
-  let mut used: Vec<String> = lock.instructions.keys().map(|k| k.to_lowercase()).collect();
-  let project_counts: BTreeMap<String, usize> =
-    items.iter().fold(BTreeMap::new(), |mut map, item| {
-      if let Some(project) = &item.location.project_path {
-        *map.entry(project.clone()).or_insert(0) += 1;
+  let mut used: Vec<String> = lock
+    .instructions
+    .keys()
+    .map(|key| key.to_lowercase())
+    .collect();
+  for (path, location) in pending {
+    if is_symlink(&path) {
+      let Some(name) = library_link_name(env, &path) else {
+        continue;
+      };
+      if let Some((_, hash)) = hub_hashes.iter().find(|(known, _)| known == &name) {
+        let hash = hash.clone();
+        if let Err(err) =
+          register_install(env, &name, &location, &path, InstallMode::Symlink, &hash)
+        {
+          tracing::warn!("registering {} failed: {}", path.to_string_lossy(), err);
+        }
       }
-      map
-    });
-  for item in items.iter_mut() {
-    if let Some(hub_name) = &item.hub_name {
-      item.name = hub_name.clone();
       continue;
     }
-    let stem = item.file_name.trim_end_matches(".md").to_lowercase();
-    let base = match &item.location.project_path {
-      None => format!("user-{}", stem),
-      Some(project) => {
-        let folder = Path::new(project)
-          .file_name()
-          .map(|n| n.to_string_lossy().to_string())
-          .unwrap_or_else(|| "project".to_string());
-        if project_counts.get(project).copied().unwrap_or(0) > 1 {
-          format!("{}-{}", folder, stem)
-        } else {
-          folder
-        }
+    let Ok(hash) = hash_file(&path) else {
+      continue;
+    };
+    let result = match hub_hashes.iter().find(|(_, known)| known == &hash) {
+      Some((name, _)) => register_install(env, name, &location, &path, InstallMode::Copy, &hash),
+      None => {
+        let name = unique_name(&adopted_name(&path, &location), &used);
+        used.push(name.to_lowercase());
+        hub_hashes.push((name.clone(), hash));
+        import_one(env, &name, &path, false, true).map(|_| ())
       },
     };
-    let base = if validate_instruction_name(&base).is_ok() {
-      base
-    } else {
-      format!("instruction-{}", stem)
-    };
-    let mut candidate = base.clone();
-    let mut counter = 2;
-    while used.contains(&candidate.to_lowercase()) {
-      candidate = format!("{}-{}", base, counter);
-      counter += 1;
+    if let Err(err) = result {
+      tracing::warn!("adopting {} failed: {}", path.to_string_lossy(), err);
     }
-    used.push(candidate.to_lowercase());
-    item.name = candidate;
   }
+  Ok(())
 }
 
-/// Apply scan decisions: import new files (registering them as installs), register files
-/// identical to a library entry, and adopt or overwrite files that drifted from theirs.
-pub fn import_scanned_instructions(
+/// Library entry a symlink points to, if it points into the library at all.
+fn library_link_name(env: &Env, link: &Path) -> Option<String> {
+  let raw = fs::read_link(link).ok()?;
+  let resolved = if raw.is_absolute() {
+    raw
+  } else {
+    link.parent().map(|parent| parent.join(&raw)).unwrap_or(raw)
+  };
+  if !is_within(&resolved, &env.instructions_root) {
+    return None;
+  }
+  library_name(&resolved)
+}
+
+fn register_install(
   env: &Env,
-  decisions: Vec<InstructionScanDecision>,
-) -> Result<Vec<InstructionImportOutcome>, String> {
-  let _ops = ops_guard();
-  let mut outcomes = Vec::new();
-  let mut errors = Vec::new();
-  for decision in decisions {
-    let path = Path::new(decision.path.trim());
-    let result = match decision.resolution {
-      ScanResolution::Skip => continue,
-      ScanResolution::Import => match &decision.hub_name {
-        Some(hub_name) => register_identical(env, hub_name, path, decision.register_install),
-        None => import_one(env, &decision.name, path, false, decision.register_install),
-      },
-      ScanResolution::AdoptIntoHub => match &decision.hub_name {
-        Some(hub_name) => adopt_scanned(env, hub_name, path),
-        None => Err("adopting needs a library entry".to_string()),
-      },
-      ScanResolution::PushFromHub => match &decision.hub_name {
-        Some(hub_name) => push_scanned(env, hub_name, path),
-        None => Err("overwriting needs a library entry".to_string()),
-      },
-    };
-    match result {
-      Ok(outcome) => outcomes.push(outcome),
-      Err(err) => errors.push(format!("{}: {}", decision.path, err)),
-    }
-  }
-  finish_import(outcomes, errors)
-}
-
-fn outcome_for(env: &Env, name: &str, hash: String) -> InstructionImportOutcome {
-  InstructionImportOutcome {
-    name: name.to_string(),
-    hub_path: path_to_string(&env.instruction_file(name)),
-    hash,
-    replaced: true,
-  }
-}
-
-fn register_path(env: &Env, name: &str, path: &Path, hash: &str) -> Result<(), String> {
-  let matched =
-    classify_profile(env, path).ok_or_else(|| "not an agent instruction location".to_string())?;
+  name: &str,
+  location: &AgentRootMatch,
+  path: &Path,
+  mode: InstallMode,
+  hash: &str,
+) -> Result<(), String> {
   let timestamp = now_rfc3339();
   update_lock(env, |lock| {
     let record = record_mut(lock, name)?;
     upsert_install(
       record,
-      matched.scope,
-      matched.project_path.clone(),
+      location.scope,
+      location.project_path.clone(),
       &path_to_string(path),
-      InstallMode::Copy,
-      &matched.agent_ids,
+      mode,
+      &location.agent_ids,
       hash,
       &timestamp,
     );
@@ -1606,49 +1523,317 @@ fn register_path(env: &Env, name: &str, path: &Path, hash: &str) -> Result<(), S
   })
 }
 
-/// A file with the same content as a library entry only needs an install record.
-fn register_identical(
-  env: &Env,
-  name: &str,
-  path: &Path,
-  register: bool,
-) -> Result<InstructionImportOutcome, String> {
-  let hub_hash = hash_file(&env.instruction_file(name))?;
-  if hash_file(path)? != hub_hash {
-    return Err(format!("content differs from '{}'", name));
+/// `user-<agent dir>` at user level (`~/.claude/CLAUDE.md` → `user-claude`) and
+/// `<project>-<file>` in a project (`multica/AGENTS.md` → `multica-agents`).
+fn adopted_name(path: &Path, location: &AgentRootMatch) -> String {
+  let stem = file_stem(path);
+  match &location.project_path {
+    None => {
+      let dir = path
+        .parent()
+        .and_then(Path::file_name)
+        .map(|n| n.to_string_lossy().trim_start_matches('.').to_string())
+        .unwrap_or_default();
+      let tail = if is_upper(&stem) && !dir.is_empty() {
+        dir
+      } else {
+        stem
+      };
+      slug(&format!("user-{}", tail))
+    },
+    Some(project) => {
+      let folder = Path::new(project)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "project".to_string());
+      slug(&format!("{}-{}", folder, stem))
+    },
   }
-  if register {
-    register_path(env, name, path, &hub_hash)?;
-  }
-  Ok(outcome_for(env, name, hub_hash))
 }
 
-fn adopt_scanned(env: &Env, name: &str, path: &Path) -> Result<InstructionImportOutcome, String> {
-  get_record(env, name)?;
-  if !path.is_file() {
-    return Err("not a file".to_string());
+fn file_stem(path: &Path) -> String {
+  path
+    .file_stem()
+    .map(|s| s.to_string_lossy().to_string())
+    .unwrap_or_default()
+}
+
+/// `AGENTS`, `CLAUDE`, `GEMINI`: conventional file names that say nothing on their own.
+fn is_upper(stem: &str) -> bool {
+  !stem.is_empty()
+    && stem
+      .chars()
+      .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_' || c == '-')
+}
+
+/// A valid library name derived from free text: lower case, runs of other characters
+/// become one `-`.
+fn slug(text: &str) -> String {
+  let mut out = String::new();
+  let mut dash = false;
+  for c in text.chars() {
+    if c.is_ascii_alphanumeric() || c == '.' || c == '_' {
+      out.push(c.to_ascii_lowercase());
+      dash = false;
+    } else if !dash && !out.is_empty() {
+      out.push('-');
+      dash = true;
+    }
   }
-  let hash = replace_hub_file(env, name, path)?;
+  let out = out.trim_matches(|c| c == '-' || c == '.').to_string();
+  if validate_instruction_name(&out).is_ok() {
+    out
+  } else {
+    "instruction".to_string()
+  }
+}
+
+fn unique_name(base: &str, used: &[String]) -> String {
+  let mut candidate = base.to_string();
+  let mut counter = 2;
+  while used.contains(&candidate.to_lowercase()) {
+    candidate = format!("{}-{}", base, counter);
+    counter += 1;
+  }
+  candidate
+}
+
+// ---------------------------------------------------------------------------
+// Detection: folders, files and GitHub repositories
+// ---------------------------------------------------------------------------
+
+const DETECT_MAX_DEPTH: usize = 6;
+const DETECT_MAX_FILES: usize = 200;
+const MARKDOWN_EXTENSIONS: [&str; 3] = ["md", "markdown", "mdc"];
+/// Directories that never hold instruction files worth listing.
+const SKIPPED_DIRS: [&str; 7] = [
+  ".git",
+  "node_modules",
+  "target",
+  "dist",
+  "build",
+  "vendor",
+  ".youskill",
+];
+
+fn is_markdown(path: &Path) -> bool {
+  path
+    .extension()
+    .map(|ext| {
+      MARKDOWN_EXTENSIONS
+        .iter()
+        .any(|known| ext.eq_ignore_ascii_case(known))
+    })
+    .unwrap_or(false)
+}
+
+/// Hidden directories worth descending into: `.github` and whatever an agent's project
+/// instruction file lives in. Other dotfolders (`.venv`, `.next`, ...) are skipped.
+fn allowed_hidden_dirs(env: &Env) -> Vec<String> {
+  let mut dirs = vec![".github".to_string()];
+  for app in &env.agent_apps {
+    let Some(profile) = app.profile_path.as_deref() else {
+      continue;
+    };
+    let parents: Vec<String> = Path::new(profile)
+      .parent()
+      .map(|parent| {
+        parent
+          .components()
+          .map(|c| c.as_os_str().to_string_lossy().to_string())
+          .collect()
+      })
+      .unwrap_or_default();
+    for dir in parents {
+      if dir.starts_with('.') && dir.len() > 1 && !dirs.contains(&dir) {
+        dirs.push(dir);
+      }
+    }
+  }
+  dirs
+}
+
+/// Markdown files under `root` (or `root` itself when it is a file), shallowest first.
+fn find_markdown_files(env: &Env, root: &Path) -> Result<Vec<PathBuf>, String> {
+  if root.is_file() {
+    return Ok(vec![root.to_path_buf()]);
+  }
+  if !root.is_dir() {
+    return Err(format!("Path does not exist: {}", root.to_string_lossy()));
+  }
+  let hidden = allowed_hidden_dirs(env);
+  let mut out: Vec<PathBuf> = Vec::new();
+  let mut walker = WalkDir::new(root)
+    .follow_links(false)
+    .max_depth(DETECT_MAX_DEPTH)
+    .sort_by_file_name()
+    .into_iter();
+  while let Some(entry) = walker.next() {
+    let Ok(entry) = entry else {
+      continue;
+    };
+    let name = entry.file_name().to_string_lossy().to_string();
+    if entry.file_type().is_dir() {
+      let skip = entry.depth() > 0
+        && (SKIPPED_DIRS.contains(&name.as_str())
+          || (name.starts_with('.') && !hidden.contains(&name)));
+      if skip {
+        walker.skip_current_dir();
+      }
+      continue;
+    }
+    if !entry.file_type().is_file() || !is_markdown(entry.path()) {
+      continue;
+    }
+    out.push(entry.path().to_path_buf());
+    if out.len() >= DETECT_MAX_FILES {
+      break;
+    }
+  }
+  out.sort_by_key(|path| (path.components().count(), path.clone()));
+  Ok(out)
+}
+
+/// `AGENTS.md` at the top of `repo` → `repo-agents`, `packages/x/CLAUDE.md` → `x-claude`,
+/// `prompts/python.md` → `python`.
+fn detected_name(file: &Path, base: &Path, base_label: &str) -> String {
+  let stem = file_stem(file);
+  if !is_upper(&stem) {
+    return slug(&stem);
+  }
+  let parent = file.parent().unwrap_or(base);
+  let label = if same_path(parent, base) {
+    base_label.to_string()
+  } else {
+    parent
+      .file_name()
+      .map(|n| n.to_string_lossy().to_string())
+      .unwrap_or_else(|| base_label.to_string())
+  };
+  slug(&format!("{}-{}", label, stem))
+}
+
+/// List the Markdown files under `root` as import candidates; `base` is where relative
+/// paths start and `base_label` names it for suggested names.
+fn detect_in(
+  env: &Env,
+  root: &Path,
+  base: &Path,
+  base_label: &str,
+  used: &mut Vec<String>,
+) -> Result<Vec<DetectedInstruction>, String> {
+  let mut items = Vec::new();
+  for file in find_markdown_files(env, root)? {
+    let rel_path = file
+      .strip_prefix(base)
+      .map(|p| p.to_string_lossy().replace('\\', "/"))
+      .unwrap_or_else(|_| path_to_string(&file));
+    let name = unique_name(&detected_name(&file, base, base_label), used);
+    used.push(name.to_lowercase());
+    items.push(DetectedInstruction {
+      name,
+      path: path_to_string(&file),
+      rel_path,
+      file_name: file
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default(),
+    });
+  }
+  Ok(items)
+}
+
+fn folder_label(path: &Path) -> String {
+  path
+    .file_name()
+    .map(|n| n.to_string_lossy().trim_start_matches('.').to_string())
+    .filter(|label| !label.is_empty())
+    .unwrap_or_else(|| "instruction".to_string())
+}
+
+/// Markdown files in the given files and folders. Suggested names are unique across the
+/// result but may match existing entries, which import can overwrite on request.
+pub fn detect_instruction_files(
+  env: &Env,
+  paths: &[String],
+) -> Result<Vec<DetectedInstruction>, String> {
+  let mut used: Vec<String> = Vec::new();
+  let mut items = Vec::new();
+  for raw in paths {
+    let path = expand_home_with(raw.trim(), &env.home);
+    let base = if path.is_file() {
+      path.parent().map(Path::to_path_buf).unwrap_or(path.clone())
+    } else {
+      path.clone()
+    };
+    let label = folder_label(&base);
+    items.extend(detect_in(env, &path, &base, &label, &mut used)?);
+  }
+  Ok(items)
+}
+
+/// Download a repository (optionally a `/tree/` or `/blob/` path inside it) and list its
+/// Markdown files. The archive stays in a temp directory until the import copies from it.
+pub async fn detect_instruction_github(
+  env: &Env,
+  github_path: &str,
+) -> Result<Vec<DetectedInstruction>, String> {
+  let reference = GithubHelper::parse_github_ref(github_path)?;
+  let clone_dir = create_temp_dir(&format!(
+    "detect-instructions-{}-{}",
+    reference.owner, reference.repo
+  ))?;
+  GithubHelper::clone_repo_to(
+    &reference.owner,
+    &reference.repo,
+    reference.branch.as_deref(),
+    &clone_dir,
+  )
+  .await?;
+  let root = match &reference.subpath {
+    Some(subpath) => {
+      let inside = clone_dir.join(subpath);
+      if !inside.exists() {
+        return Err(format!("{} was not found in the repository", subpath));
+      }
+      inside
+    },
+    None => clone_dir.clone(),
+  };
+  let mut used: Vec<String> = Vec::new();
+  detect_in(env, &root, &clone_dir, &reference.repo, &mut used)
+}
+
+// ---------------------------------------------------------------------------
+// Editing
+// ---------------------------------------------------------------------------
+
+/// Save edited content to the library file and push it to the copy targets that were in
+/// sync. Targets with local changes are reported as blockers and left alone.
+pub fn write_instruction(
+  env: &Env,
+  name: &str,
+  content: &str,
+) -> Result<InstructionActionResult, String> {
+  let _ops = ops_guard();
+  get_record(env, name)?;
+  let hub_file = env.instruction_file(name);
+  fs::create_dir_all(&env.instructions_root).map_err(|e| e.to_string())?;
+  let body = if content.is_empty() || content.ends_with('\n') {
+    content.to_string()
+  } else {
+    format!("{}\n", content)
+  };
+  fs::write(&hub_file, body).map_err(|e| e.to_string())?;
+  let hash = hash_file(&hub_file)?;
+  let timestamp = now_rfc3339();
   update_lock(env, |lock| {
     let record = record_mut(lock, name)?;
     record.hash = hash.clone();
-    record.updated_at = now_rfc3339();
+    record.updated_at = timestamp.clone();
     Ok(())
   })?;
-  register_path(env, name, path, &hash)?;
-  Ok(outcome_for(env, name, hash))
-}
-
-fn push_scanned(env: &Env, name: &str, path: &Path) -> Result<InstructionImportOutcome, String> {
-  get_record(env, name)?;
-  let hub_file = env.instruction_file(name);
-  if !hub_file.is_file() {
-    return Err("library copy is missing".to_string());
-  }
-  let hash = hash_file(&hub_file)?;
-  write_target(&hub_file, path, InstallMode::Copy)?;
-  register_path(env, name, path, &hash)?;
-  Ok(outcome_for(env, name, hash))
+  push_targets(env, name, None, false)
 }
 
 #[cfg(test)]
@@ -1966,90 +2151,138 @@ mod tests {
   }
 
   #[test]
-  fn scan_suggests_names_and_tracks_registered_files() {
+  fn agent_files_are_adopted_on_list() {
     let tmp = tempfile::tempdir().unwrap();
     let env = env(tmp.path());
     let project = tmp.path().join("proj");
     write(&env.home.join(".claude/CLAUDE.md"), "# Claude\n");
     write(&project.join("AGENTS.md"), "# Proj\n");
-    write(&project.join("CLAUDE.md"), "# Proj claude\n");
-
-    let items = scan_instruction_files(&env).unwrap();
-    assert_eq!(items.len(), 3);
-    assert_eq!(items[0].name, "user-claude");
-    assert_eq!(items[0].status, ScanStatus::New);
-    assert_eq!(items[0].location.scope, InstallScope::User);
-    assert_eq!(items[0].location.agent_ids, vec!["claude-code"]);
-    let names: Vec<&str> = items[1..].iter().map(|item| item.name.as_str()).collect();
-    assert_eq!(names, vec!["proj-agents", "proj-claude"]);
-    assert_eq!(items[1].location.agent_ids, vec!["agents", "codex"]);
-    assert!(items[1].location.registered_project);
-
-    import_scanned_instructions(
-      &env,
-      vec![InstructionScanDecision {
-        name: "user-claude".to_string(),
-        path: items[0].path.clone(),
-        resolution: ScanResolution::Import,
-        register_install: true,
-        hub_name: None,
-      }],
-    )
-    .unwrap();
-    let items = scan_instruction_files(&env).unwrap();
-    assert_eq!(items[0].status, ScanStatus::Identical);
-    assert_eq!(items[0].hub_name.as_deref(), Some("user-claude"));
-    assert!(items[0].registered);
-
-    // A second project file with the same content is only registered, not copied again.
+    // Same content as the user-level file: registered, not imported twice.
     write(&project.join("CLAUDE.md"), "# Claude\n");
-    let items = scan_instruction_files(&env).unwrap();
-    let same = items
-      .iter()
-      .find(|item| item.file_name == "CLAUDE.md" && item.location.scope == InstallScope::Project)
-      .unwrap();
-    assert_eq!(same.status, ScanStatus::Identical);
-    assert!(!same.registered);
-    import_scanned_instructions(
-      &env,
-      vec![InstructionScanDecision {
-        name: same.name.clone(),
-        path: same.path.clone(),
-        resolution: ScanResolution::Import,
-        register_install: true,
-        hub_name: Some("user-claude".to_string()),
-      }],
-    )
-    .unwrap();
-    assert_eq!(get_record(&env, "user-claude").unwrap().installs.len(), 2);
 
-    // Edit the project file: different, then adopted.
-    write(&project.join("CLAUDE.md"), "# Claude edited\n");
-    let items = scan_instruction_files(&env).unwrap();
-    let edited = items.iter().find(|item| item.path == same.path).unwrap();
-    assert_eq!(edited.status, ScanStatus::Different);
-    import_scanned_instructions(
-      &env,
-      vec![InstructionScanDecision {
-        name: "user-claude".to_string(),
-        path: edited.path.clone(),
-        resolution: ScanResolution::AdoptIntoHub,
-        register_install: true,
-        hub_name: Some("user-claude".to_string()),
-      }],
-    )
-    .unwrap();
-    assert_eq!(
-      read(&env.instruction_file("user-claude")),
-      "# Claude edited\n"
-    );
-    let view = get_instruction(&env, "user-claude").unwrap().unwrap();
-    let user = view
+    let list = list_instructions(&env).unwrap();
+    let names: Vec<&str> = list.iter().map(|item| item.name.as_str()).collect();
+    assert_eq!(names, vec!["proj-agents", "user-claude"]);
+    let claude = list.iter().find(|item| item.name == "user-claude").unwrap();
+    assert_eq!(claude.installs.len(), 2);
+    assert!(claude
       .installs
       .iter()
-      .find(|install| install.record.scope == InstallScope::User)
-      .unwrap();
-    assert_eq!(user.state, TargetState::Outdated);
+      .all(|install| install.state == TargetState::InSync));
+    let agents = list.iter().find(|item| item.name == "proj-agents").unwrap();
+    assert_eq!(agents.installs.len(), 1);
+    assert_eq!(agents.installs[0].record.agent_ids, vec!["agents", "codex"]);
+    assert!(project.join("AGENTS.md").is_file(), "files stay in place");
+
+    // Listing again changes nothing; an edited file drifts instead of being re-imported.
+    write(&project.join("AGENTS.md"), "# Proj edited\n");
+    let list = list_instructions(&env).unwrap();
+    assert_eq!(list.len(), 2);
+    let agents = list.iter().find(|item| item.name == "proj-agents").unwrap();
+    assert_eq!(agents.installs[0].state, TargetState::Modified);
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn adoption_skips_symlinks_unless_they_point_into_the_library() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let dotfiles = tmp.path().join("dotfiles/AGENTS.md");
+    write(&dotfiles, "# Dotfiles\n");
+    let codex = env.home.join(".codex/AGENTS.md");
+    fs::create_dir_all(codex.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(&dotfiles, &codex).unwrap();
+    import(&env, tmp.path(), "rules", "# Rules\n");
+    let claude = env.home.join(".claude/CLAUDE.md");
+    fs::create_dir_all(claude.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(env.instruction_file("rules"), &claude).unwrap();
+
+    let list = list_instructions(&env).unwrap();
+    assert_eq!(list.len(), 1, "the dotfiles link is not imported");
+    assert_eq!(list[0].installs.len(), 1);
+    assert_eq!(list[0].installs[0].record.mode, InstallMode::Symlink);
+    assert_eq!(list[0].installs[0].record.agent_ids, vec!["claude-code"]);
+    assert!(is_symlink(&codex));
+  }
+
+  #[test]
+  fn detect_lists_markdown_files_with_suggested_names() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let repo = tmp.path().join("repo");
+    write(&repo.join("AGENTS.md"), "a\n");
+    write(&repo.join("README.md"), "r\n");
+    write(&repo.join("packages/x/CLAUDE.md"), "c\n");
+    write(&repo.join("prompts/python.md"), "p\n");
+    write(&repo.join(".github/copilot-instructions.md"), "g\n");
+    write(&repo.join("node_modules/dep/AGENTS.md"), "n\n");
+    write(&repo.join(".venv/lib/notes.md"), "v\n");
+    write(&repo.join("src/main.rs"), "fn main() {}\n");
+
+    let items = detect_instruction_files(&env, &[path_to_string(&repo)]).unwrap();
+    let rel: Vec<&str> = items.iter().map(|item| item.rel_path.as_str()).collect();
+    assert_eq!(
+      rel,
+      vec![
+        "AGENTS.md",
+        "README.md",
+        ".github/copilot-instructions.md",
+        "prompts/python.md",
+        "packages/x/CLAUDE.md",
+      ]
+    );
+    let names: Vec<&str> = items.iter().map(|item| item.name.as_str()).collect();
+    assert_eq!(
+      names,
+      vec![
+        "repo-agents",
+        "repo-readme",
+        "copilot-instructions",
+        "python",
+        "x-claude"
+      ]
+    );
+
+    let single =
+      detect_instruction_files(&env, &[path_to_string(&repo.join("prompts/python.md"))]).unwrap();
+    assert_eq!(single.len(), 1);
+    assert_eq!(single[0].name, "python");
+    assert_eq!(single[0].rel_path, "python.md");
+    assert!(detect_instruction_files(&env, &[path_to_string(&repo.join("missing"))]).is_err());
+  }
+
+  #[test]
+  fn writing_content_updates_the_hash_and_pushes_copies() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    import(&env, tmp.path(), "rules", "v1\n");
+    let target = env.home.join(".claude/CLAUDE.md");
+    assert!(
+      install(
+        &env,
+        "rules",
+        vec![spec(InstallScope::User, None, "claude-code")],
+        InstallMode::Copy,
+        false
+      )
+      .applied
+    );
+
+    let result = write_instruction(&env, "rules", "v2").unwrap();
+    assert!(result.applied);
+    let view = result.instruction.unwrap();
+    assert_eq!(view.hub_state, HubState::Ok);
+    assert_eq!(view.installs[0].state, TargetState::InSync);
+    assert_eq!(read(&target), "v2\n");
+    assert_eq!(read_instruction(&env, "rules").unwrap(), "v2\n");
+
+    // A target edited by hand is reported, not overwritten.
+    write(&target, "mine\n");
+    let result = write_instruction(&env, "rules", "v3\n").unwrap();
+    assert!(!result.applied);
+    assert!(result.blockers[0].contains("local changes"));
+    assert_eq!(read(&target), "mine\n");
+    assert_eq!(read_instruction(&env, "rules").unwrap(), "v3\n");
   }
 
   #[cfg(unix)]

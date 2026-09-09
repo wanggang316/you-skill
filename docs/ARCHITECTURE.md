@@ -110,9 +110,16 @@ agents that read the same file share one record. Because there is one file per a
 location, installing where another entry is already installed is refused unless forced,
 which moves the install record over. Drift is the same three-way comparison
 (`compare_three_way`) on file hashes with push, adopt and accept; there is no source.
-`scan_instruction_files` lists every existing instruction file at user level and in
-registered projects, matches it to an entry by install record or by identical content, and
-suggests a name (`user-<file>` or the project folder) for new ones. Everything lives in
+Listing the library adopts what exists at agent locations without asking: every
+instruction file at user level and in a registered project that no install record covers
+is registered as an install of the entry with identical content, or imported under a
+generated name (`user-claude` for `~/.claude/CLAUDE.md`, `<project>-agents` for a project's
+`AGENTS.md`). Symlinks are only registered when they point into the library. Explicit
+imports come from picked files, a folder (`detect_instruction_files`, Markdown files up to
+six levels deep, skipping VCS, dependency and most hidden folders) or a GitHub repository,
+folder or file URL (`detect_instruction_github`, downloaded to a temp directory). Editing
+in the app goes through `write_instruction`, which accepts the new content as the library
+version and pushes it to copy targets that were in sync. Everything lives in
 `instruction_service`.
 
 ## Command surface
@@ -122,7 +129,7 @@ suggests a name (`user-<file>` or the project folder) for new ones. Everything l
 | Hub          | `list_hub_skills`, `get_hub_skill`, `import_skills`, `remove_hub_skill`, `sync_skill`, `diff_skill`, `check_source_updates`, `migrate_legacy`, `migration_status`                                                                                                              |
 | Install      | `install_skill`, `uninstall_skill`                                                                                                                                                                                                                                             |
 | Scan         | `scan_folder`, `import_scanned`                                                                                                                                                                                                                                                |
-| Instructions | `list_instructions`, `get_instruction`, `read_instruction`, `import_instructions`, `create_instruction`, `install_instruction`, `uninstall_instruction`, `remove_instruction`, `sync_instruction`, `diff_instruction`, `scan_instruction_files`, `import_scanned_instructions` |
+| Instructions | `list_instructions`, `get_instruction`, `read_instruction`, `write_instruction`, `import_instructions`, `create_instruction`, `detect_instruction_files`, `detect_instruction_github`, `install_instruction`, `uninstall_instruction`, `remove_instruction`, `sync_instruction`, `diff_instruction` |
 | Projects     | `list_user_projects`, `add_user_project`, `update_user_project`, `remove_user_project`, `list_workspaces`, `add_workspace`, `remove_workspace`, `scan_workspace`, `register_projects`, `list_memory_files`                                                                     |
 | Detection    | `detect_github_manual`, `detect_github_auto`, `detect_zip`, `detect_folder` (stage into a temp dir)                                                                                                                                                                            |
 | Other        | marketplace, agent apps, projects, settings, backup, file readers, translation                                                                                                                                                                                                 |

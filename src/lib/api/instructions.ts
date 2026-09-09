@@ -8,12 +8,9 @@
 
 import { apiCall } from "./index";
 import type {
-  AgentRootMatch,
   HubState,
   InstallRequest,
   InstallView,
-  ScanResolution,
-  ScanStatus,
   SkillDiff,
   SyncAction,
   UninstallRequest,
@@ -54,28 +51,15 @@ export interface InstructionActionResult {
   instruction?: InstructionView | null;
 }
 
-/** An instruction file found at an agent location (user level or a registered project). */
-export interface InstructionScanItem {
+/** A Markdown file found in a folder, among picked files, or in a downloaded repository. */
+export interface DetectedInstruction {
   /** Suggested library name, editable before importing. */
   name: string;
+  /** Absolute path to copy from (a temp directory for GitHub sources). */
   path: string;
+  /** Path relative to the folder or repository it was found in. */
+  relPath: string;
   fileName: string;
-  hash?: string | null;
-  status: ScanStatus;
-  /** Library entry the file belongs to, by install record or by identical content. */
-  hubName?: string | null;
-  /** The path is already an install record of `hubName`. */
-  registered: boolean;
-  location: AgentRootMatch;
-  error?: string | null;
-}
-
-export interface InstructionScanDecision {
-  name: string;
-  path: string;
-  resolution: ScanResolution;
-  registerInstall: boolean;
-  hubName?: string | null;
 }
 
 // ============ Commands ============
@@ -133,12 +117,20 @@ export async function diffInstruction(name: string, path: string): Promise<Skill
   return apiCall<SkillDiff>("diff_instruction", { name, path });
 }
 
-export async function scanInstructionFiles(): Promise<InstructionScanItem[]> {
-  return apiCall<InstructionScanItem[]>("scan_instruction_files");
+/** Save edited content; unmodified copies are pushed, edited ones come back as blockers. */
+export async function writeInstruction(
+  name: string,
+  content: string
+): Promise<InstructionActionResult> {
+  return apiCall<InstructionActionResult>("write_instruction", { name, content });
 }
 
-export async function importScannedInstructions(
-  decisions: InstructionScanDecision[]
-): Promise<InstructionImportOutcome[]> {
-  return apiCall<InstructionImportOutcome[]>("import_scanned_instructions", { decisions });
+/** Markdown files in the given files and folders. */
+export async function detectInstructionFiles(paths: string[]): Promise<DetectedInstruction[]> {
+  return apiCall<DetectedInstruction[]>("detect_instruction_files", { paths });
+}
+
+/** Markdown files in a GitHub repository, folder or file URL. */
+export async function detectInstructionGithub(githubPath: string): Promise<DetectedInstruction[]> {
+  return apiCall<DetectedInstruction[]>("detect_instruction_github", { githubPath });
 }

@@ -5,7 +5,12 @@
   import ScopeList from "$lib/components/scopes/ScopeList.svelte";
   import ScopeDetail, { type ScopeSkillAction } from "$lib/components/scopes/ScopeDetail.svelte";
   import { t } from "$lib/i18n";
-  import { buildLibraryHref, buildScopeHref, getAppLocation } from "$lib/navigation/app-shell";
+  import {
+    buildInstructionsHref,
+    buildLibraryHref,
+    buildScopeHref,
+    getAppLocation,
+  } from "$lib/navigation/app-shell";
   import {
     openInFileManager,
     scopedInstalls,
@@ -15,6 +20,7 @@
   } from "$lib/api";
   import { homePath } from "$lib/stores/env";
   import { agents, agentsById, hubError, hubLoading, hubSkills, refreshHub } from "$lib/stores/hub";
+  import { instructions } from "$lib/stores/instructions";
   import {
     openDiffModal,
     openImportModal,
@@ -47,6 +53,14 @@
     buildScopeEntries($hubSkills, $userProjects, $t("scope.user"), $homePath)
   );
   const selectedKey = $derived(location.scope ? scopeKey(location.scope) : null);
+  // Instruction files are adopted into the library, so each one maps to an entry.
+  const libraryNames = $derived.by(() => {
+    const map: Record<string, string> = {};
+    for (const item of $instructions) {
+      for (const install of item.installs) map[install.path] = item.name;
+    }
+    return map;
+  });
 
   const selected = $derived<ScopeEntry | null>(
     entries.find((entry) => entry.key === selectedKey) ?? null
@@ -306,6 +320,7 @@
           agents={$agentsById}
           {availableAgents}
           {memoryFiles}
+          {libraryNames}
           {busy}
           {actionError}
           onOpenDir={handleOpenDir}
@@ -318,8 +333,11 @@
           onAddSkills={() => openSkillPickerModal(selected.ref)}
           onAddAgent={handleAddAgent}
           onRemoveAgents={handleRemoveAgents}
-          onOpenMemory={(file) =>
-            openInFileManager(file.path).catch((error) => (actionError = String(error)))}
+          onOpenMemory={(file) => {
+            const name = libraryNames[file.path];
+            if (name) goto(buildInstructionsHref({ name }));
+            else openInFileManager(file.path).catch((error) => (actionError = String(error)));
+          }}
           onOpenSkill={(name) => goto(buildLibraryHref({ skill: name }))}
           onSkillAction={handleSkillAction}
         />

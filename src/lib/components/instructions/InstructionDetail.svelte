@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { FolderOpen, Loader2, Plus, Trash2 } from "@lucide/svelte";
+  import { FolderOpen, Loader2, Pencil, Plus, Trash2 } from "@lucide/svelte";
   import { open as openExternal } from "@tauri-apps/plugin-shell";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
@@ -9,7 +9,8 @@
   import InstallTargets from "$lib/components/library/InstallTargets.svelte";
   import DriftPanel, { type TargetAction } from "$lib/components/library/DriftPanel.svelte";
   import { t } from "$lib/i18n";
-  import { readInstruction, type InstructionView } from "$lib/api/instructions";
+  import { readInstruction, writeInstruction, type InstructionView } from "$lib/api/instructions";
+  import { applyInstructionView, refreshInstructions } from "$lib/stores/instructions";
   import type { InstallScope, InstallView, SyncAction } from "$lib/api/hub";
   import type { AgentInfo } from "$lib/api/skills";
   import type { UserProject } from "$lib/api/user-projects";
@@ -50,6 +51,12 @@
   let contentError = $state("");
   let contentLoading = $state(false);
   let loadedKey = $state("");
+  let editing = $state(false);
+  let draft = $state("");
+  let saving = $state(false);
+  let saveError = $state("");
+  /** Copy targets with local changes that the last save left alone. */
+  let saveBlockers = $state<string[]>([]);
 
   const shortHash = $derived(instruction.hash.slice(0, 10));
   const html = $derived(renderMarkdownBody(content));
@@ -71,6 +78,52 @@
       .catch((error) => (contentError = String(error)))
       .finally(() => (contentLoading = false));
   });
+
+  function startEdit() {
+    draft = content;
+    saveError = "";
+    saveBlockers = [];
+    editing = true;
+  }
+
+  function cancelEdit() {
+    editing = false;
+    draft = "";
+  }
+
+  /** Save the library file; unmodified copies follow, edited ones are listed. */
+  async function save() {
+    if (saving) return;
+    saving = true;
+    saveError = "";
+    try {
+      const result = await writeInstruction(instruction.name, draft);
+      const view = result.instruction;
+      if (view) {
+        // Keep the editor's text instead of re-reading the file it was just written to.
+        loadedKey = `${view.name}|${view.hubHash ?? view.hash}`;
+        content = draft === "" || draft.endsWith("\n") ? draft : `${draft}\n`;
+        applyInstructionView(view);
+      }
+      saveBlockers = result.blockers;
+      editing = false;
+      await refreshInstructions();
+    } catch (error) {
+      saveError = String(error);
+    } finally {
+      saving = false;
+    }
+  }
+
+  function handleEditorKeydown(event: KeyboardEvent) {
+    if ((event.metaKey || event.ctrlKey) && event.key === "s") {
+      event.preventDefault();
+      void save();
+    }
+  }
+
+  const toolbarButtonClass =
+    "border-base-300 text-base-content hover:bg-base-200 flex h-7 items-center gap-1 rounded-lg border px-2.5 text-xs transition disabled:opacity-50";
 </script>
 
 <div class="flex min-h-0 min-w-0 flex-col">
@@ -195,8 +248,56 @@
     </div>
   {:else}
     <div class="min-h-0 flex-1 overflow-y-auto">
-      <div class="mx-auto max-w-4xl px-6 py-5">
-        {#if contentLoading}
+      <div class="mx-auto max-w-4xl space-y-3 px-6 py-5">
+        <div class="flex items-center justify-end gap-1.5">
+          {#if editing}
+            <button class={toolbarButtonClass} type="button" onclick={cancelEdit} disabled={saving}>
+              {$t("common.cancel")}
+            </button>
+            <PrimaryActionButton
+              onclick={save}
+              className="h-7 px-3 py-0 text-xs"
+              disabled={saving}
+              loading={saving}
+            >
+              {$t("instructions.save")}
+            </PrimaryActionButton>
+          {:else}
+            <button
+              class={toolbarButtonClass}
+              type="button"
+              onclick={startEdit}
+              disabled={busy || contentLoading || Boolean(contentError)}
+            >
+              <Pencil size={12} />
+              <span>{$t("instructions.edit")}</span>
+            </button>
+          {/if}
+        </div>
+
+        {#if saveError}
+          <p class="text-error text-sm whitespace-pre-wrap">{saveError}</p>
+        {/if}
+        {#if saveBlockers.length > 0}
+          <div class="border-warning/40 bg-warning/5 rounded-2xl border p-3 text-xs">
+            <p class="text-base-content">{$t("instructions.saveBlocked")}</p>
+            <ul class="text-base-content-muted mt-1 space-y-0.5">
+              {#each saveBlockers as blocker}
+                <li class="truncate" title={blocker}>{blocker}</li>
+              {/each}
+            </ul>
+          </div>
+        {/if}
+
+        {#if editing}
+          <textarea
+            class="border-base-300 bg-base-200 text-base-content focus:border-primary min-h-[60vh] w-full resize-y rounded-xl border px-4 py-3 font-mono text-[13px] leading-relaxed focus:outline-none"
+            bind:value={draft}
+            onkeydown={handleEditorKeydown}
+            disabled={saving}
+            spellcheck="false"
+          ></textarea>
+        {:else if contentLoading}
           <div class="text-base-content-muted flex items-center gap-2 py-10 text-sm">
             <Loader2 size={16} class="animate-spin" />
           </div>

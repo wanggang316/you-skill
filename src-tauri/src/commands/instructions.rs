@@ -1,8 +1,7 @@
 use crate::config::load_config;
 use crate::models::{
-  InstallMode, InstallRequest, InstructionActionResult, InstructionImportItem,
-  InstructionImportOutcome, InstructionScanDecision, InstructionScanItem, InstructionView,
-  SkillDiff, SyncAction, UninstallRequest,
+  DetectedInstruction, InstallMode, InstallRequest, InstructionActionResult, InstructionImportItem,
+  InstructionImportOutcome, InstructionView, SkillDiff, SyncAction, UninstallRequest,
 };
 use crate::services::env::Env;
 use crate::services::instruction_service;
@@ -126,21 +125,32 @@ pub async fn diff_instruction(name: String, path: String) -> Result<SkillDiff, S
 }
 
 #[tauri::command]
-pub async fn scan_instruction_files() -> Result<Vec<InstructionScanItem>, String> {
+pub async fn write_instruction(
+  name: String,
+  content: String,
+) -> Result<InstructionActionResult, String> {
   let env = Env::current()?;
-  blocking("scan_instruction_files", move || {
-    instruction_service::scan_instruction_files(&env)
+  blocking("write_instruction", move || {
+    instruction_service::write_instruction(&env, &name, &content)
   })
   .await
 }
 
 #[tauri::command]
-pub async fn import_scanned_instructions(
-  decisions: Vec<InstructionScanDecision>,
-) -> Result<Vec<InstructionImportOutcome>, String> {
+pub async fn detect_instruction_files(
+  paths: Vec<String>,
+) -> Result<Vec<DetectedInstruction>, String> {
   let env = Env::current()?;
-  blocking("import_scanned_instructions", move || {
-    instruction_service::import_scanned_instructions(&env, decisions)
+  blocking("detect_instruction_files", move || {
+    instruction_service::detect_instruction_files(&env, &paths)
   })
   .await
+}
+
+#[tauri::command]
+pub async fn detect_instruction_github(
+  github_path: String,
+) -> Result<Vec<DetectedInstruction>, String> {
+  let env = Env::current()?;
+  instruction_service::detect_instruction_github(&env, &github_path).await
 }
