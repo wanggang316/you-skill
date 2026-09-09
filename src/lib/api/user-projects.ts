@@ -5,6 +5,8 @@ export interface UserProject {
   path: string;
   /** Workspace the project was discovered in; absent when it was added by hand. */
   workspacePath?: string | null;
+  /** The folder was deleted or renamed since the project was added. */
+  missing?: boolean;
 }
 
 /** A folder that holds projects. */

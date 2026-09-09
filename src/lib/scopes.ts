@@ -75,7 +75,8 @@ export function buildScopeEntries(
     path: string,
     name: string,
     unregistered: boolean,
-    workspacePath: string | null
+    workspacePath: string | null,
+    folderMissing = false
   ) => {
     if (seen.has(path)) return;
     seen.add(path);
@@ -89,14 +90,20 @@ export function buildScopeEntries(
       ref,
       skills: installed,
       driftCount,
-      missing,
+      missing: folderMissing || missing,
       unregistered,
       workspacePath,
     });
   };
 
   for (const project of projects) {
-    push(project.path, project.name, false, project.workspacePath ?? null);
+    push(
+      project.path,
+      project.name,
+      false,
+      project.workspacePath ?? null,
+      Boolean(project.missing)
+    );
   }
   for (const skill of skills) {
     for (const install of skill.installs) {

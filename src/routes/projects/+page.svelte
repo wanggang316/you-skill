@@ -25,12 +25,14 @@
     performAction,
   } from "$lib/stores/modals";
   import {
+    forgetProject,
+    projectInstallCount,
     refreshUserProjects,
     refreshWorkspaces,
     userProjects,
     workspaces,
   } from "$lib/stores/user-projects";
-  import { removeWorkspace, type UserWorkspace } from "$lib/api/user-projects";
+  import { removeUserProject, removeWorkspace, type UserWorkspace } from "$lib/api/user-projects";
   import { listMemoryFiles, type MemoryFile } from "$lib/api/agent-apps";
   import { resolveAgents } from "$lib/agents";
   import { buildScopeEntries, parentDir, scopeKey, type ScopeEntry } from "$lib/scopes";
@@ -107,6 +109,38 @@
       await removeWorkspace(workspace.path, false);
       await refreshWorkspaces();
       await refreshUserProjects();
+    });
+  }
+
+  function handleRemoveProject(entry: ScopeEntry) {
+    void runAction(async () => {
+      const confirmed = await confirm($t("scope.project.removeConfirm", { name: entry.name }), {
+        title: $t("scope.project.remove"),
+        kind: "warning",
+      });
+      if (!confirmed) return;
+      await removeUserProject(entry.name);
+      await refreshUserProjects();
+    });
+  }
+
+  /** The folder is gone: drop the project and every record that points into it. */
+  function handleForgetProject(entry: ScopeEntry) {
+    void runAction(async () => {
+      const confirmed = await confirm(
+        $t("scope.project.forgetConfirm", {
+          name: entry.name,
+          path: entry.path,
+          count: projectInstallCount(entry.path),
+        }),
+        { title: $t("scope.project.forget"), kind: "warning" }
+      );
+      if (!confirmed) return;
+      const failures = await forgetProject(entry.path, entry.unregistered ? null : entry.name);
+      if (failures.length > 0) actionError = failures.join("\n");
+      if (selectedKey === entry.key) {
+        await goto(buildScopeHref(), { replaceState: true, keepFocus: true, noScroll: true });
+      }
     });
   }
 
@@ -260,6 +294,8 @@
       onRescanWorkspace={(workspace) =>
         openWorkspaceModal({ mode: "rescan", name: workspace.name, path: workspace.path })}
       onRemoveWorkspace={handleRemoveWorkspace}
+      onRemoveProject={handleRemoveProject}
+      onForgetProject={handleForgetProject}
       onRefresh={() => refreshHub().catch(console.error)}
     />
 
@@ -273,6 +309,7 @@
           {busy}
           {actionError}
           onOpenDir={handleOpenDir}
+          onForgetProject={() => handleForgetProject(selected)}
           onScan={() =>
             openImportModal({
               tab: "folder",

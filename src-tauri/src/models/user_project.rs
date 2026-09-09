@@ -10,6 +10,16 @@ pub struct UserProject {
   pub workspace_path: Option<String>,
 }
 
+/// A registered project as listed to the UI, with whether its folder still exists.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct UserProjectView {
+  #[serde(flatten)]
+  pub project: UserProject,
+  /// The folder was deleted or renamed since the project was added.
+  pub missing: bool,
+}
+
 /// A folder that holds projects. Scanning it registers the projects it contains.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AlertCircle, FileText, Folder, Loader2 } from "@lucide/svelte";
+  import { AlertCircle, AlertTriangle, FileText, Folder, Loader2 } from "@lucide/svelte";
   import AgentBadge from "./AgentBadge.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
@@ -24,13 +24,20 @@
       "project"
     );
   import { closeWorkspaceModal, workspaceModal } from "../stores/modals";
-  import { refreshUserProjects, refreshWorkspaces } from "../stores/user-projects";
+  import {
+    forgetProject,
+    refreshUserProjects,
+    refreshWorkspaces,
+    userProjects,
+  } from "../stores/user-projects";
 
   let open = $state(false);
   let name = $state("");
   let path = $state("");
   let candidates = $state<ProjectCandidate[]>([]);
   let selected = $state<string[]>([]);
+  /** Missing registered projects picked for removal (rescan only). */
+  let staleSelected = $state<string[]>([]);
   let scanning = $state(false);
   let applying = $state(false);
   let error = $state("");
@@ -39,8 +46,17 @@
   const modalState = $derived($workspaceModal);
   const isRescan = $derived(modalState.mode === "rescan");
   const fresh = $derived(candidates.filter((item) => !item.registered));
+  /** Projects added from this workspace whose folder is gone (deleted or renamed). */
+  const stale = $derived(
+    isRescan
+      ? $userProjects.filter((project) => project.workspacePath === path && project.missing)
+      : []
+  );
   const canApply = $derived(
-    !applying && !scanning && Boolean(path.trim()) && (isRescan ? selected.length > 0 : true)
+    !applying &&
+      !scanning &&
+      Boolean(path.trim()) &&
+      (isRescan ? selected.length > 0 || staleSelected.length > 0 : true)
   );
 
   $effect(() => {
@@ -50,6 +66,7 @@
       path = next.path;
       candidates = [];
       selected = [];
+      staleSelected = [];
       error = "";
       scanned = false;
       applying = false;
@@ -72,6 +89,10 @@
       const found = await scanWorkspace(target);
       candidates = found;
       selected = found.filter((item) => !item.registered).map((item) => item.path);
+      if (isRescan) {
+        await refreshUserProjects();
+        staleSelected = stale.map((project) => project.path);
+      }
       scanned = true;
     } catch (err) {
       error = String(err);
@@ -101,6 +122,12 @@
       : [...selected, candidatePath];
   }
 
+  function toggleStale(projectPath: string) {
+    staleSelected = staleSelected.includes(projectPath)
+      ? staleSelected.filter((item) => item !== projectPath)
+      : [...staleSelected, projectPath];
+  }
+
   function handleClose() {
     open = false;
     closeWorkspaceModal();
@@ -119,6 +146,14 @@
         await registerProjects(
           picked.map((item) => ({ name: item.name, path: item.path, workspacePath: path.trim() }))
         );
+      }
+      const failures: string[] = [];
+      for (const project of stale.filter((item) => staleSelected.includes(item.path))) {
+        failures.push(...(await forgetProject(project.path, project.name)));
+      }
+      if (failures.length > 0) {
+        error = failures.join("\n");
+        return;
       }
       await refreshWorkspaces();
       await refreshUserProjects();
@@ -265,6 +300,49 @@
         {/each}
       {/if}
 
+      {#if scanned && stale.length > 0}
+        <div class="border-base-200 mt-3 border-t pt-2">
+          <p class="text-base-content-subtle px-3 pb-0.5 text-[11px] font-medium">
+            {$t("workspace.missingProjects")}
+          </p>
+          <p class="text-base-content-faint px-3 pb-1.5 text-[11px]">
+            {$t("workspace.missingHint")}
+          </p>
+          {#each stale as project (project.path)}
+            {@const checked = staleSelected.includes(project.path)}
+            <label
+              class={`hover:bg-base-200 flex cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 transition ${
+                checked ? "bg-base-200" : ""
+              }`}
+            >
+              <input
+                class="accent-primary mt-1"
+                type="checkbox"
+                {checked}
+                disabled={applying}
+                onchange={() => toggleStale(project.path)}
+              />
+              <span class="min-w-0 flex-1">
+                <span class="flex min-w-0 items-center gap-1.5">
+                  <span class="text-base-content truncate text-[13px] font-medium">
+                    {project.name}
+                  </span>
+                  <span class="text-error shrink-0" title={$t("projects.missing")}>
+                    <AlertTriangle size={12} />
+                  </span>
+                </span>
+                <span
+                  class="text-base-content-faint block truncate text-[11px]"
+                  title={project.path}
+                >
+                  {relativePath(project.path)}
+                </span>
+              </span>
+            </label>
+          {/each}
+        </div>
+      {/if}
+
       {#if error}
         <div class="text-error flex items-start gap-2 px-3 py-2 text-sm whitespace-pre-wrap">
           <AlertCircle size={16} class="mt-0.5 shrink-0" />
@@ -291,7 +369,13 @@
       loading={applying}
       loadingText={$t("install.applying")}
     >
-      {isRescan ? $t("workspace.registerConfirm") : $t("workspace.addConfirm")}
+      {#if !isRescan}
+        {$t("workspace.addConfirm")}
+      {:else if selected.length > 0}
+        {$t("workspace.registerConfirm")}
+      {:else}
+        {$t("install.confirm")}
+      {/if}
     </PrimaryActionButton>
   {/snippet}
 </Modal>

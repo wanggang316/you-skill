@@ -29,6 +29,7 @@
     busy = false,
     actionError = "",
     onOpenDir,
+    onForgetProject,
     onScan,
     onAddSkills,
     onAddAgent,
@@ -45,6 +46,8 @@
     busy?: boolean;
     actionError?: string;
     onOpenDir: () => void;
+    /** The folder is gone: drop the project and its install records. */
+    onForgetProject: () => void;
     onScan: () => void;
     onAddSkills: () => void;
     onAddAgent: () => void;
@@ -168,11 +171,18 @@
           onclick={onOpenDir}
           title={$t("detail.openDir")}
           class="h-8 w-8 p-0"
+          disabled={entry.missing}
         >
           <FolderOpen size={15} />
         </IconButton>
       {/if}
-      <IconButton variant="outline" onclick={onScan} title={$t("library.scan")} class="h-8 w-8 p-0">
+      <IconButton
+        variant="outline"
+        onclick={onScan}
+        title={$t("library.scan")}
+        class="h-8 w-8 p-0"
+        disabled={entry.missing}
+      >
         <ScanSearch size={15} />
       </IconButton>
     </div>
@@ -206,6 +216,22 @@
             </span>
           {/if}
         </div>
+
+        {#if entry.missing}
+          <div
+            class="border-error/40 bg-error/5 flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs"
+          >
+            <p class="text-base-content min-w-0 flex-1">{$t("scope.project.missingHint")}</p>
+            <button
+              class="border-error/40 text-error hover:bg-error/10 shrink-0 rounded-lg border px-2.5 py-1 text-xs transition disabled:opacity-50"
+              type="button"
+              disabled={busy}
+              onclick={onForgetProject}
+            >
+              {$t("scope.project.forget")}
+            </button>
+          </div>
+        {/if}
 
         <div class="space-y-2">
           <p class="text-base-content-subtle text-[11px] font-medium tracking-wide uppercase">
@@ -248,7 +274,7 @@
               class="border-base-300 text-base-content-muted hover:border-primary hover:text-primary flex size-8 items-center justify-center rounded-[0.65rem] border border-dashed transition disabled:opacity-40"
               type="button"
               onclick={onAddAgent}
-              disabled={busy || !canAddAgent}
+              disabled={busy || !canAddAgent || entry.missing}
               title={entry.skills.length === 0
                 ? $t("scope.agents.needSkill")
                 : $t("scope.agents.add")}
@@ -322,7 +348,7 @@
             class="border-base-300 text-base-content-muted hover:border-primary hover:text-primary flex h-7 items-center gap-1 rounded-lg border border-dashed px-2 text-[12px] transition disabled:opacity-50"
             type="button"
             onclick={onAddSkills}
-            disabled={busy}
+            disabled={busy || entry.missing}
           >
             <Plus size={13} />
             <span>{$t("scope.addSkill")}</span>

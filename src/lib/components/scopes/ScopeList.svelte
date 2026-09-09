@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import {
+    AlertTriangle,
     ChevronRight,
     Folder,
     FolderOpen,
@@ -9,7 +10,7 @@
     RefreshCw,
     UserRound,
   } from "@lucide/svelte";
-  import DropdownMenu from "$lib/components/ui/DropdownMenu.svelte";
+  import DropdownMenu, { type MenuItem } from "$lib/components/ui/DropdownMenu.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "$lib/i18n";
   import type { UserWorkspace } from "$lib/api/user-projects";
@@ -25,6 +26,8 @@
     onAddWorkspace,
     onRescanWorkspace,
     onRemoveWorkspace,
+    onRemoveProject,
+    onForgetProject,
     onRefresh,
   }: {
     entries?: ScopeEntry[];
@@ -36,6 +39,10 @@
     onAddWorkspace: () => void;
     onRescanWorkspace: (workspace: UserWorkspace) => void;
     onRemoveWorkspace: (workspace: UserWorkspace) => void;
+    /** Take a registered project off the list; its files stay. */
+    onRemoveProject: (entry: ScopeEntry) => void;
+    /** Drop a project whose folder is gone, records included. */
+    onForgetProject: (entry: ScopeEntry) => void;
     onRefresh: () => void;
   } = $props();
 
@@ -74,6 +81,21 @@
       collapsed.includes(key) ? collapsed.filter((item) => item !== key) : [...collapsed, key]
     );
 
+  function projectMenu(entry: ScopeEntry): MenuItem[] {
+    if (entry.kind !== "project") return [];
+    if (entry.missing) {
+      return [
+        { label: $t("scope.project.forget"), danger: true, onSelect: () => onForgetProject(entry) },
+      ];
+    }
+    if (!entry.unregistered) {
+      return [
+        { label: $t("scope.project.remove"), danger: true, onSelect: () => onRemoveProject(entry) },
+      ];
+    }
+    return [];
+  }
+
   const userEntries = $derived(entries.filter((entry) => entry.kind === "user"));
   const projectEntries = $derived(entries.filter((entry) => entry.kind === "project"));
 
@@ -110,43 +132,62 @@
 
 {#snippet row(entry: ScopeEntry)}
   {@const selected = entry.key === selectedKey}
-  <button
-    class={`mx-1.5 mb-0.5 flex w-[calc(100%-0.75rem)] items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition ${
-      selected ? "bg-base-300" : "hover:bg-base-200"
-    }`}
-    type="button"
-    onclick={() => onSelect(entry)}
-    aria-current={selected ? "true" : undefined}
-  >
-    <span class="text-base-content-subtle mt-0.5 shrink-0">
-      {#if entry.kind === "user"}
-        <UserRound size={15} />
-      {:else if selected}
-        <FolderOpen size={15} />
-      {:else}
-        <Folder size={15} />
-      {/if}
-    </span>
-    <span class="min-w-0 flex-1">
-      <span class="flex min-w-0 items-center gap-1.5">
-        <span class="text-base-content truncate text-[13px] font-medium">{entry.name}</span>
-        {#if entry.unregistered}
-          <span class="tag tag-neutral shrink-0">{$t("projects.unregistered")}</span>
+  {@const menu = projectMenu(entry)}
+  <div class="group relative mx-1.5 mb-0.5">
+    <button
+      class={`flex w-full items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition ${
+        selected ? "bg-base-300" : "hover:bg-base-200"
+      } ${menu.length > 0 ? "pr-10" : ""}`}
+      type="button"
+      onclick={() => onSelect(entry)}
+      aria-current={selected ? "true" : undefined}
+    >
+      <span class="text-base-content-subtle mt-0.5 shrink-0">
+        {#if entry.kind === "user"}
+          <UserRound size={15} />
+        {:else if selected}
+          <FolderOpen size={15} />
+        {:else}
+          <Folder size={15} />
         {/if}
       </span>
-      <span
-        class="text-base-content-faint block truncate text-[11px]"
-        title={entry.path || undefined}
-      >
-        {entry.path || $t("projects.userHint")}
+      <span class="min-w-0 flex-1">
+        <span class="flex min-w-0 items-center gap-1.5">
+          <span class="text-base-content truncate text-[13px] font-medium">{entry.name}</span>
+          {#if entry.missing}
+            <span class="text-error shrink-0" title={$t("projects.missing")}>
+              <AlertTriangle size={12} />
+            </span>
+          {/if}
+          {#if entry.unregistered}
+            <span class="tag tag-neutral shrink-0">{$t("projects.unregistered")}</span>
+          {/if}
+        </span>
+        <span
+          class="text-base-content-faint block truncate text-[11px]"
+          title={entry.path || undefined}
+        >
+          {entry.path || $t("projects.userHint")}
+        </span>
       </span>
-    </span>
-    {#if entry.driftCount > 0}
-      <span class="tag tag-warning mt-0.5 shrink-0">{entry.driftCount}</span>
-    {:else if entry.skills.length > 0}
-      <span class="text-base-content-faint mt-0.5 shrink-0 text-[11px]">{entry.skills.length}</span>
+      {#if entry.driftCount > 0}
+        <span class="tag tag-warning mt-0.5 shrink-0">{entry.driftCount}</span>
+      {:else if entry.skills.length > 0}
+        <span class="text-base-content-faint mt-0.5 shrink-0 text-[11px]">
+          {entry.skills.length}
+        </span>
+      {/if}
+    </button>
+    {#if menu.length > 0}
+      <div
+        class={`absolute top-1.5 right-2 transition ${
+          entry.missing ? "" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+        }`}
+      >
+        <DropdownMenu label={$t("scope.project.actions")} items={menu} />
+      </div>
     {/if}
-  </button>
+  </div>
 {/snippet}
 
 <div class="border-base-300 flex min-h-0 min-w-0 flex-col border-r">

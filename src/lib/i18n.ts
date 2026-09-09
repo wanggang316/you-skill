@@ -87,6 +87,16 @@ const translations: Record<string, Dictionary> = {
     "projects.userHint": "User-level skill directories of every agent",
     "projects.unregistered": "Not in project list",
     "projects.selectHint": "Select a location to see what is installed there.",
+    "projects.missing": "Folder is missing",
+    "scope.project.actions": "Project actions",
+    "scope.project.remove": "Remove from project list",
+    "scope.project.removeConfirm":
+      "Remove {name} from the project list? Installed files stay where they are.",
+    "scope.project.forget": "Remove missing project",
+    "scope.project.forgetConfirm":
+      "The folder {path} no longer exists. Remove {name} and drop its {count} install records? No file is touched.",
+    "scope.project.missingHint":
+      "This folder no longer exists. Remove the project, or scan its workspace again if it was renamed.",
     "workspace.addTitle": "Add workspace",
     "workspace.rescanTitle": "Scan workspace again",
     "workspace.folder": "Workspace folder",
@@ -111,6 +121,9 @@ const translations: Record<string, Dictionary> = {
     "workspace.other": "Other",
     "workspace.emptyGroup": "No project yet.",
     "workspace.empty": "No project yet. Add a workspace to look for them.",
+    "workspace.missingProjects": "Missing projects",
+    "workspace.missingHint":
+      "These projects were added from this workspace but their folders are gone; checked ones are removed.",
     "scope.user": "User level",
     "scope.agents": "Agents",
     "scope.agents.add": "Add agent",
@@ -481,6 +494,15 @@ const translations: Record<string, Dictionary> = {
     "projects.userHint": "所有 Agent 的用户级 Skill 目录",
     "projects.unregistered": "未登记",
     "projects.selectHint": "选择一个位置，查看这里安装了哪些 Skill。",
+    "projects.missing": "项目目录不存在",
+    "scope.project.actions": "项目操作",
+    "scope.project.remove": "从项目列表移除",
+    "scope.project.removeConfirm": "确定将 {name} 从项目列表移除？已安装的文件保持不变。",
+    "scope.project.forget": "移除失效项目",
+    "scope.project.forgetConfirm":
+      "目录 {path} 已不存在。移除 {name} 并清除它的 {count} 条安装记录？不会删除任何文件。",
+    "scope.project.missingHint":
+      "这个目录已不存在。可以移除该项目；如果只是改了名，重新扫描工作区即可登记新目录。",
     "workspace.addTitle": "添加工作区",
     "workspace.rescanTitle": "重新扫描工作区",
     "workspace.folder": "工作区目录",
@@ -505,6 +527,8 @@ const translations: Record<string, Dictionary> = {
     "workspace.other": "其他",
     "workspace.emptyGroup": "暂无项目。",
     "workspace.empty": "还没有项目。添加一个工作区来查找。",
+    "workspace.missingProjects": "已失效的项目",
+    "workspace.missingHint": "这些项目来自此工作区，但目录已不存在；勾选的将被移除。",
     "scope.user": "用户级",
     "scope.agents": "Agents",
     "scope.agents.add": "添加 Agent",

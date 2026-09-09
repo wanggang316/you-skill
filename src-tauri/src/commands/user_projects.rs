@@ -1,13 +1,23 @@
 use crate::models::{
-  InstallScope, MemoryFile, ProjectCandidate, ProjectRegistration, UserProject, UserWorkspace,
+  InstallScope, MemoryFile, ProjectCandidate, ProjectRegistration, UserProject, UserProjectView,
+  UserWorkspace,
 };
 use crate::services::env::Env;
 use crate::services::user_projects_service;
 use crate::services::workspace_service::{self, DEFAULT_WORKSPACE_DEPTH};
 
+/// Registered projects, flagging the ones whose folder no longer exists.
 #[tauri::command]
-pub fn list_user_projects() -> Result<Vec<UserProject>, String> {
-  user_projects_service::list_user_projects()
+pub fn list_user_projects() -> Result<Vec<UserProjectView>, String> {
+  Ok(
+    user_projects_service::list_user_projects()?
+      .into_iter()
+      .map(|project| UserProjectView {
+        missing: !std::path::Path::new(&project.path).is_dir(),
+        project,
+      })
+      .collect(),
+  )
 }
 
 #[tauri::command]
