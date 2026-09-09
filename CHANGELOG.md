@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The user scope is presented as the home directory, like a project: its path is shown, it can be opened in the file manager, and skill and memory paths are relative to it.
 - Added a Projects page for install scopes: the user scope and every project are listed on their own, and selecting one shows that location's status, the agents installed there (add an agent to install every skill of the location into it, remove one to uninstall them) and its skills, each with manage, diff, push, adopt and uninstall actions.
 - Added a diff viewer for changed skills: compare the library copy file by file with an install target, with the source folder, or with the latest GitHub version.
+- Added an Instructions library, a sidebar entry next to the Skill Library for agent instruction files (`AGENTS.md`, `CLAUDE.md`). Each entry is one Markdown file kept under `~/.youskill/instructions/<name>.md` and tracked by `.instruction-lock.json`; it can be imported from a file, picked from the instruction files found at user level and in registered projects (with a suggested name), or created empty. Installing writes the file each chosen agent reads at user level or in a project (copy or symlink, agents that share a file are grouped); a file that already holds a different instruction is refused unless overwritten on purpose. Installed files get the same three-way drift as skills with push, adopt, accept and diff, and the project detail's Memory section is now called Instructions.
 
 ### Changed
 
