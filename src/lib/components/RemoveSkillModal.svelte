@@ -3,15 +3,22 @@
   import Modal from "$lib/components/ui/Modal.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import { t } from "../i18n";
-  import { removeHubSkill, type HubSkillView } from "../api/hub";
+  import type { LibraryKind } from "../stores/modals";
 
   let {
     open = $bindable(false),
-    skill = null,
+    name = "",
+    installCount = 0,
+    kind = "skill",
+    remove,
     onRemoved = () => {},
   }: {
     open?: boolean;
-    skill?: HubSkillView | null;
+    name?: string;
+    installCount?: number;
+    kind?: LibraryKind;
+    /** Delete the entry; `removeInstalls` also deletes the installed copies. */
+    remove: (removeInstalls: boolean) => Promise<void>;
     onRemoved?: () => void | Promise<void>;
   } = $props();
 
@@ -28,11 +35,11 @@
   });
 
   async function handleRemove() {
-    if (!skill) return;
+    if (!name) return;
     removing = true;
     error = "";
     try {
-      await removeHubSkill(skill.name, removeInstalls);
+      await remove(removeInstalls);
       open = false;
       await onRemoved();
     } catch (err) {
@@ -45,17 +52,19 @@
 
 <Modal
   bind:open
-  title={$t("remove.title", { name: skill?.name ?? "" })}
+  title={$t("remove.title", { name })}
   onClose={() => (open = false)}
   containerClass="max-w-md"
 >
   <div class="space-y-4 px-6 pt-2 pb-6 text-sm">
-    <p class="text-base-content-muted">{$t("remove.description")}</p>
-    {#if skill && skill.installs.length > 0}
+    <p class="text-base-content-muted">
+      {kind === "instruction" ? $t("instructions.remove.description") : $t("remove.description")}
+    </p>
+    {#if installCount > 0}
       <label class="text-base-content flex cursor-pointer items-start gap-2">
         <input type="checkbox" class="mt-0.5" bind:checked={removeInstalls} disabled={removing} />
         <span>
-          {$t("remove.alsoInstalls", { count: skill.installs.length })}
+          {$t("remove.alsoInstalls", { count: installCount })}
           {#if !removeInstalls}
             <span class="text-base-content-faint block text-xs">
               {$t("remove.keepInstallsHint")}

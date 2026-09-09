@@ -3,19 +3,20 @@
   import AgentBadge from "$lib/components/AgentBadge.svelte";
   import { t } from "$lib/i18n";
   import { baseName } from "$lib/scopes";
-  import type { HubSkillView, InstallScope, InstallView } from "$lib/api/hub";
+  import type { InstallScope, InstallView } from "$lib/api/hub";
   import type { AgentInfo } from "$lib/api/skills";
   import type { UserProject } from "$lib/api/user-projects";
 
   let {
-    skill,
+    installs = [],
     projects = [],
     agents,
     homePath = "",
     busy = false,
     onAdd,
   }: {
-    skill: HubSkillView;
+    /** Install records of one skill or instruction. */
+    installs?: InstallView[];
     projects?: UserProject[];
     agents: Map<string, AgentInfo>;
     /** Home directory: the user row is named after it, like a project after its folder. */
@@ -44,7 +45,7 @@
     subtitle: homePath || null,
     missing: false,
     unregistered: false,
-    installs: skill.installs.filter((install) => install.scope === "user"),
+    installs: installs.filter((install) => install.scope === "user"),
   });
 
   /** Only projects that have the skill; registered ones first, under their own name. */
@@ -52,9 +53,7 @@
     const result: Group[] = [];
     const seen = new Set<string>();
     const installsOf = (path: string) =>
-      skill.installs.filter(
-        (install) => install.scope === "project" && install.projectPath === path
-      );
+      installs.filter((install) => install.scope === "project" && install.projectPath === path);
     for (const project of projects) {
       const installs = installsOf(project.path);
       if (installs.length === 0) continue;
@@ -70,7 +69,7 @@
         installs,
       });
     }
-    for (const install of skill.installs) {
+    for (const install of installs) {
       if (install.scope !== "project" || !install.projectPath || seen.has(install.projectPath)) {
         continue;
       }

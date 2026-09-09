@@ -2,8 +2,9 @@
   import { FileMinus, FilePlus, FileDiff as FileDiffIcon, Loader2 } from "@lucide/svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import { t } from "../i18n";
-  import { closeDiffModal, diffModal } from "../stores/modals";
+  import { closeDiffModal, diffModal, type LibraryKind } from "../stores/modals";
   import { diffSkill, type DiffAgainst, type DiffStatus, type SkillDiff } from "../api/hub";
+  import { diffInstruction } from "../api/instructions";
 
   let open = $state(false);
   let loading = $state(false);
@@ -20,18 +21,21 @@
     const state = $diffModal;
     open = state.open;
     if (state.open && state.name) {
-      void load(state.name, state.against);
+      void load(state.name, state.against, state.kind);
     }
   });
 
-  async function load(name: string, against: DiffAgainst) {
+  async function load(name: string, against: DiffAgainst, kind: LibraryKind) {
     const id = ++requestId;
     loading = true;
     error = "";
     diff = null;
     selectedPath = null;
     try {
-      const result = await diffSkill(name, against);
+      const result =
+        kind === "instruction" && against.kind === "target"
+          ? await diffInstruction(name, against.path)
+          : await diffSkill(name, against);
       if (id !== requestId) return;
       diff = result;
       selectedPath = result.files[0]?.path ?? null;

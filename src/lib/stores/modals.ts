@@ -1,6 +1,11 @@
 import { writable } from "svelte/store";
 import type { ActionResult, DiffAgainst, InstallScope, ScopeRef } from "../api/hub";
+import type { InstructionActionResult } from "../api/instructions";
 import { applySkillView } from "./hub";
+import { applyInstructionView } from "./instructions";
+
+/** Which library a dialog acts on: hub skills or instruction files. */
+export type LibraryKind = "skill" | "instruction";
 
 export type ImportTab = "github" | "zip" | "folder";
 
@@ -13,6 +18,7 @@ export interface ImportModalState {
 
 export interface InstallModalState {
   open: boolean;
+  kind: LibraryKind;
   skillNames: string[];
   initialScope: InstallScope;
   initialProjectPath: string | null;
@@ -24,7 +30,12 @@ export interface InstallModalState {
 
 export interface LocationPickerModalState {
   open: boolean;
+  kind: LibraryKind;
   skillName: string;
+}
+
+export interface ImportInstructionModalState {
+  open: boolean;
 }
 
 export interface ForceModalState {
@@ -58,6 +69,7 @@ export interface WorkspaceModalState {
 
 export interface DiffModalState {
   open: boolean;
+  kind: LibraryKind;
   name: string;
   against: DiffAgainst;
 }
@@ -70,6 +82,7 @@ export const importModal = writable<ImportModalState>({
 
 export const installModal = writable<InstallModalState>({
   open: false,
+  kind: "skill",
   skillNames: [],
   initialScope: "user",
   initialProjectPath: null,
@@ -79,8 +92,11 @@ export const installModal = writable<InstallModalState>({
 
 export const locationPickerModal = writable<LocationPickerModalState>({
   open: false,
+  kind: "skill",
   skillName: "",
 });
+
+export const importInstructionModal = writable<ImportInstructionModalState>({ open: false });
 
 export const skillPickerModal = writable<SkillPickerModalState>({ open: false, scope: null });
 
@@ -103,6 +119,7 @@ export const workspaceModal = writable<WorkspaceModalState>({
 
 export const diffModal = writable<DiffModalState>({
   open: false,
+  kind: "skill",
   name: "",
   against: { kind: "source" },
 });
@@ -133,11 +150,13 @@ export function openInstallModal(
     projectPath?: string | null;
     targets?: ScopeRef[];
     lockScope?: boolean;
+    kind?: LibraryKind;
   }
 ): void {
   if (skillNames.length === 0) return;
   installModal.set({
     open: true,
+    kind: options?.kind ?? "skill",
     skillNames,
     initialScope: options?.scope ?? "user",
     initialProjectPath: options?.projectPath ?? null,
@@ -146,8 +165,16 @@ export function openInstallModal(
   });
 }
 
-export function openLocationPickerModal(skillName: string): void {
-  locationPickerModal.set({ open: true, skillName });
+export function openLocationPickerModal(skillName: string, kind: LibraryKind = "skill"): void {
+  locationPickerModal.set({ open: true, kind, skillName });
+}
+
+export function openImportInstructionModal(): void {
+  importInstructionModal.set({ open: true });
+}
+
+export function closeImportInstructionModal(): void {
+  importInstructionModal.set({ open: false });
 }
 
 export function closeLocationPickerModal(): void {
@@ -158,30 +185,37 @@ export function closeInstallModal(): void {
   installModal.update((state) => ({ ...state, open: false }));
 }
 
+export interface ActionOutcome {
+  applied: boolean;
+  blockers: string[];
+}
+
 /**
- * Run a hub action that may be refused because local changes would be lost. When the
- * backend reports blockers, the user is asked whether to force the action; the returned
- * promise resolves with the final (possibly still blocked) result.
+ * Run an action that may be refused because local changes would be lost. When the backend
+ * reports blockers, the user is asked whether to force the action; the returned promise
+ * resolves with the final (possibly still blocked) result. `apply` pushes each result into
+ * the matching store.
  */
-export async function performAction(
-  run: (force: boolean) => Promise<ActionResult>
-): Promise<ActionResult> {
+export async function confirmForce<T extends ActionOutcome>(
+  run: (force: boolean) => Promise<T>,
+  apply: (result: T) => void
+): Promise<T> {
   const first = await run(false);
-  applySkillView(first.skill);
+  apply(first);
   if (first.applied || first.blockers.length === 0) {
     return first;
   }
-  return new Promise<ActionResult>((resolve) => {
+  return new Promise<T>((resolve) => {
     forceModal.set({
       open: true,
       blockers: first.blockers,
       onConfirm: async () => {
         try {
           const forced = await run(true);
-          applySkillView(forced.skill);
+          apply(forced);
           resolve(forced);
         } catch (error) {
-          resolve({ applied: false, blockers: [String(error)], skill: first.skill });
+          resolve({ ...first, applied: false, blockers: [String(error)] });
         }
       },
       onCancel: () => resolve(first),
@@ -189,12 +223,30 @@ export async function performAction(
   });
 }
 
+/** `confirmForce` for hub skills. */
+export function performAction(
+  run: (force: boolean) => Promise<ActionResult>
+): Promise<ActionResult> {
+  return confirmForce(run, (result) => applySkillView(result.skill));
+}
+
+/** `confirmForce` for library instructions. */
+export function performInstructionAction(
+  run: (force: boolean) => Promise<InstructionActionResult>
+): Promise<InstructionActionResult> {
+  return confirmForce(run, (result) => applyInstructionView(result.instruction));
+}
+
 export function closeForceModal(): void {
   forceModal.set({ open: false, blockers: [], onConfirm: null, onCancel: null });
 }
 
-export function openDiffModal(name: string, against: DiffAgainst): void {
-  diffModal.set({ open: true, name, against });
+export function openDiffModal(
+  name: string,
+  against: DiffAgainst,
+  kind: LibraryKind = "skill"
+): void {
+  diffModal.set({ open: true, kind, name, against });
 }
 
 export function closeDiffModal(): void {

@@ -1,24 +1,27 @@
 <script lang="ts">
   import AgentAppIcon from "./AgentAppIcon.svelte";
   import { t } from "../i18n";
-  import { agentNames, groupAgents } from "../agents";
+  import { agentNames, groupAgents, type AgentTarget } from "../agents";
   import type { InstallScope } from "../api/hub";
   import type { AgentInfo } from "../api/skills";
 
   let {
     agents = [],
     scope = "user",
+    target = "skills",
     selectedIds = $bindable<string[]>([]),
     disabled = false,
   }: {
     agents?: AgentInfo[];
-    /** Agents are grouped by the directory they read in this scope. */
+    /** Agents are grouped by the location they read in this scope. */
     scope?: InstallScope;
+    /** Group by skills directory or by instruction file. */
+    target?: AgentTarget;
     selectedIds?: string[];
     disabled?: boolean;
   } = $props();
 
-  const groups = $derived(groupAgents(agents, scope));
+  const groups = $derived(groupAgents(agents, scope, target));
   const allSelected = $derived(
     groups.length > 0 &&
       groups.every((group) => group.agents.every((a) => selectedIds.includes(a.id)))

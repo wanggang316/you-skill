@@ -5,14 +5,17 @@
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import { t } from "../i18n";
   import { scopedInstalls, uninstallSkill, type InstallView, type ScopeRef } from "../api/hub";
+  import { uninstallInstruction } from "../api/instructions";
   import { baseName } from "../scopes";
   import { homePath } from "../stores/env";
   import { hubSkillsByName, refreshHub } from "../stores/hub";
+  import { instructionsByName, refreshInstructions } from "../stores/instructions";
   import {
     closeLocationPickerModal,
     locationPickerModal,
     openInstallModal,
     performAction,
+    performInstructionAction,
   } from "../stores/modals";
   import { userProjects, workspaces } from "../stores/user-projects";
 
@@ -33,7 +36,12 @@
   let error = $state("");
 
   const skillName = $derived($locationPickerModal.skillName);
-  const skill = $derived($hubSkillsByName.get(skillName));
+  const kind = $derived($locationPickerModal.kind);
+  const isInstruction = $derived(kind === "instruction");
+  const skill = $derived(
+    isInstruction ? $instructionsByName.get(skillName) : $hubSkillsByName.get(skillName)
+  );
+  const refresh = () => (isInstruction ? refreshInstructions() : refreshHub());
 
   const matches = (location: { name: string; path: string }) => {
     const needle = search.trim().toLowerCase();
@@ -157,7 +165,7 @@
   function manage(item: Location) {
     const name = skillName;
     handleClose();
-    openInstallModal([name], { targets: [item.ref], lockScope: true });
+    openInstallModal([name], { targets: [item.ref], lockScope: true, kind });
   }
 
   async function uninstall(item: Location) {
@@ -170,11 +178,15 @@
     if (!confirmed) return;
     error = "";
     try {
-      const result = await performAction((force) =>
-        uninstallSkill({ name: skillName, targets: [], paths, force })
-      );
+      const result = isInstruction
+        ? await performInstructionAction((force) =>
+            uninstallInstruction({ name: skillName, targets: [], paths, force })
+          )
+        : await performAction((force) =>
+            uninstallSkill({ name: skillName, targets: [], paths, force })
+          );
       if (!result.applied) error = result.blockers.join("; ");
-      await refreshHub();
+      await refresh();
     } catch (err) {
       error = String(err);
     }
@@ -196,15 +208,13 @@
       if (!confirmed) return;
       error = "";
       try {
-        const result = await performAction((force) =>
-          uninstallSkill({
-            name,
-            targets: [],
-            paths: toRemove.map((install) => install.path),
-            force,
-          })
-        );
-        await refreshHub();
+        const paths = toRemove.map((install) => install.path);
+        const result = isInstruction
+          ? await performInstructionAction((force) =>
+              uninstallInstruction({ name, targets: [], paths, force })
+            )
+          : await performAction((force) => uninstallSkill({ name, targets: [], paths, force }));
+        await refresh();
         if (!result.applied) {
           error = result.blockers.join("; ");
           return;
@@ -216,7 +226,7 @@
     }
     const targets = allLocations.filter((item) => added.includes(item.key)).map((item) => item.ref);
     handleClose();
-    if (targets.length > 0) openInstallModal([name], { targets, lockScope: true });
+    if (targets.length > 0) openInstallModal([name], { targets, lockScope: true, kind });
   }
 </script>
 

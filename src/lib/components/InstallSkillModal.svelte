@@ -16,8 +16,15 @@
     type InstallTargetSpec,
     type ScopeRef,
   } from "../api/hub";
+  import { installInstruction, uninstallInstruction } from "../api/instructions";
   import { agents, hubSkillsByName, refreshHub } from "../stores/hub";
-  import { closeInstallModal, installModal, performAction } from "../stores/modals";
+  import { instructionsByName, refreshInstructions } from "../stores/instructions";
+  import {
+    closeInstallModal,
+    installModal,
+    performAction,
+    performInstructionAction,
+  } from "../stores/modals";
   import { settings } from "../stores/settings";
   import { userProjects } from "../stores/user-projects";
   import { baseName } from "../scopes";
@@ -33,6 +40,7 @@
   let error = $state("");
 
   const skillNames = $derived($installModal.skillNames);
+  const isInstruction = $derived($installModal.kind === "instruction");
   const isSingle = $derived(skillNames.length === 1);
   const locked = $derived($installModal.lockScope);
   const targets = $derived.by((): ScopeRef[] => {
@@ -66,13 +74,17 @@
   /** Agents already installed; only meaningful for one skill going to one place. */
   const currentIds = $derived.by(() => {
     if (!isSingle || targets.length !== 1) return [] as string[];
-    const view = $hubSkillsByName.get(skillNames[0]);
+    const view = isInstruction
+      ? $instructionsByName.get(skillNames[0])
+      : $hubSkillsByName.get(skillNames[0]);
     if (!view) return [] as string[];
     return installedAgentIds(view, targets[0].scope, targets[0].projectPath);
   });
 
   const hasProjects = $derived($userProjects.length > 0);
   const canApply = $derived(!applying && targets.length > 0 && hasChanges());
+
+  const refresh = () => (isInstruction ? refreshInstructions() : refreshHub());
 
   function hasChanges(): boolean {
     const current = new Set(currentIds);
@@ -142,26 +154,32 @@
       const single = isSingle && targets.length === 1;
       for (const name of skillNames) {
         for (const target of targets) {
-          const view = get(hubSkillsByName).get(name);
+          const view = isInstruction
+            ? get(instructionsByName).get(name)
+            : get(hubSkillsByName).get(name);
           const current = view ? installedAgentIds(view, target.scope, target.projectPath) : [];
           const add = selectedIds.filter((id) => !current.includes(id));
           const remove = single ? current.filter((id) => !selectedIds.includes(id)) : [];
 
           if (add.length > 0) {
-            const result = await performAction((force) =>
-              installSkill({ name, targets: specsFor(add, target), mode, force })
-            );
+            const request = { name, targets: specsFor(add, target), mode };
+            const result = isInstruction
+              ? await performInstructionAction((force) => installInstruction({ ...request, force }))
+              : await performAction((force) => installSkill({ ...request, force }));
             if (!result.applied) failures.push(`${name}: ${result.blockers.join("; ")}`);
           }
           if (remove.length > 0) {
-            const result = await performAction((force) =>
-              uninstallSkill({ name, targets: specsFor(remove, target), force })
-            );
+            const request = { name, targets: specsFor(remove, target) };
+            const result = isInstruction
+              ? await performInstructionAction((force) =>
+                  uninstallInstruction({ ...request, force })
+                )
+              : await performAction((force) => uninstallSkill({ ...request, force }));
             if (!result.applied) failures.push(`${name}: ${result.blockers.join("; ")}`);
           }
         }
       }
-      await refreshHub();
+      await refresh();
       if (failures.length > 0) {
         error = failures.join("\n");
         return;
@@ -169,7 +187,7 @@
       handleClose();
     } catch (err) {
       error = String(err);
-      await refreshHub().catch(console.error);
+      await refresh().catch(console.error);
     } finally {
       applying = false;
     }
@@ -203,7 +221,13 @@
       </div>
     {/if}
 
-    <AgentPicker agents={$agents} scope={pickerScope} bind:selectedIds disabled={applying} />
+    <AgentPicker
+      agents={$agents}
+      scope={pickerScope}
+      target={isInstruction ? "instructions" : "skills"}
+      bind:selectedIds
+      disabled={applying}
+    />
 
     <div class="flex items-center justify-between gap-3">
       <div class="text-base-content-muted text-[13px]">

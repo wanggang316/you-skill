@@ -8,6 +8,7 @@
   import AppSidebar from "$lib/components/AppSidebar.svelte";
   import DiffModal from "$lib/components/DiffModal.svelte";
   import ForceConfirmModal from "$lib/components/ForceConfirmModal.svelte";
+  import ImportInstructionModal from "$lib/components/ImportInstructionModal.svelte";
   import ImportSkillModal from "$lib/components/ImportSkillModal.svelte";
   import InstallSkillModal from "$lib/components/InstallSkillModal.svelte";
   import LocationPickerModal from "$lib/components/LocationPickerModal.svelte";
@@ -17,6 +18,7 @@
   import { getAppLocation } from "$lib/navigation/app-shell";
   import { loadHomePath } from "$lib/stores/env";
   import { loadAgents, loadMigrationReport, refreshHub } from "$lib/stores/hub";
+  import { refreshInstructions } from "$lib/stores/instructions";
   import { openImportModal } from "$lib/stores/modals";
   import { loadSettings } from "$lib/stores/settings";
   import { ensureUpdateChecked, installAvailableUpdate, updaterState } from "$lib/stores/updater";
@@ -71,6 +73,7 @@
     refreshHub()
       .then(() => loadMigrationReport())
       .catch(console.error);
+    refreshInstructions().catch(console.error);
     ensureUpdateChecked().catch(console.error);
     listen("open-install-modal", () => {
       openImportModal();
@@ -105,6 +108,7 @@
 </div>
 
 <ImportSkillModal />
+<ImportInstructionModal />
 <InstallSkillModal />
 <SkillPickerModal />
 <LocationPickerModal />

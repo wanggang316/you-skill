@@ -295,8 +295,13 @@ export interface ScopeRef {
   projectPath: string | null;
 }
 
-export function scopedInstalls(skill: HubSkillView, ref: ScopeRef): InstallView[] {
-  return skill.installs.filter(
+/** Anything with install records: a hub skill or a library instruction. */
+export interface Installable {
+  installs: InstallView[];
+}
+
+export function scopedInstalls(item: Installable, ref: ScopeRef): InstallView[] {
+  return item.installs.filter(
     (install) =>
       install.scope === ref.scope &&
       (ref.scope === "user" || install.projectPath === ref.projectPath)
@@ -317,12 +322,12 @@ export function scopedHasDrift(skill: HubSkillView, ref: ScopeRef): boolean {
 }
 
 export function installedAgentIds(
-  skill: HubSkillView,
+  item: Installable,
   scope: InstallScope,
   projectPath: string | null
 ): string[] {
   const ids = new Set<string>();
-  for (const install of skill.installs) {
+  for (const install of item.installs) {
     if (install.scope !== scope) continue;
     if (scope === "project" && install.projectPath !== projectPath) continue;
     for (const id of install.agentIds) ids.add(id);

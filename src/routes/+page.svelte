@@ -11,6 +11,7 @@
   import {
     installSkill,
     openInFileManager,
+    removeHubSkill,
     syncSkill,
     type HubSkillView,
     type InstallScope,
@@ -187,6 +188,11 @@
     });
   }
 
+  async function handleRemove(removeInstalls: boolean) {
+    if (!selectedSkill) return;
+    await removeHubSkill(selectedSkill.name, removeInstalls);
+  }
+
   async function handleRemoved() {
     await refreshHub();
     navigate({ skill: null });
@@ -271,4 +277,10 @@
   </div>
 </section>
 
-<RemoveSkillModal bind:open={removeModalOpen} skill={selectedSkill} onRemoved={handleRemoved} />
+<RemoveSkillModal
+  bind:open={removeModalOpen}
+  name={selectedSkill?.name ?? ""}
+  installCount={selectedSkill?.installs.length ?? 0}
+  remove={handleRemove}
+  onRemoved={handleRemoved}
+/>

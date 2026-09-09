@@ -1,33 +1,44 @@
 <script lang="ts">
   import { AlertTriangle } from "@lucide/svelte";
   import { t } from "$lib/i18n";
-  import { openDiffModal } from "$lib/stores/modals";
-  import type { HubSkillView, InstallView, SyncAction } from "$lib/api/hub";
+  import { openDiffModal, type LibraryKind } from "$lib/stores/modals";
+  import type { HubState, InstallView, SkillSource, SourceState, SyncAction } from "$lib/api/hub";
 
   export type TargetAction = "push" | "adopt" | "reinstall";
 
   let {
-    skill,
+    name,
+    kind = "skill",
+    hubState,
+    sourceState = "not_checkable",
+    source = null,
+    installs = [],
     busy = false,
     onSync,
     onTargetAction,
   }: {
-    skill: HubSkillView;
+    name: string;
+    kind?: LibraryKind;
+    hubState: HubState;
+    /** Instructions have no source; they leave these at their defaults. */
+    sourceState?: SourceState;
+    source?: SkillSource | null;
+    installs?: InstallView[];
     busy?: boolean;
     onSync: (action: SyncAction) => void;
     onTargetAction: (install: InstallView, action: TargetAction) => void;
   } = $props();
 
-  const driftedTargets = $derived(skill.installs.filter((install) => install.state !== "in_sync"));
-  const hubIssue = $derived(skill.hubState !== "ok");
+  const driftedTargets = $derived(installs.filter((install) => install.state !== "in_sync"));
+  const hubIssue = $derived(hubState !== "ok");
   const sourceIssue = $derived(
-    skill.sourceState === "update_available" ||
-      skill.sourceState === "source_modified" ||
-      skill.sourceState === "source_missing"
+    sourceState === "update_available" ||
+      sourceState === "source_modified" ||
+      sourceState === "source_missing"
   );
-  const canPull = $derived(skill.source.type === "github" || skill.source.type === "folder");
+  const canPull = $derived(source?.type === "github" || source?.type === "folder");
   const hasOutdated = $derived(
-    skill.installs.some((install) => install.state === "outdated" || install.state === "missing")
+    installs.some((install) => install.state === "outdated" || install.state === "missing")
   );
 
   const buttonClass =
@@ -38,8 +49,8 @@
   const canDiffTarget = (install: InstallView) =>
     install.mode === "copy" && !needsReinstall(install);
   const canDiffSource = $derived(
-    (skill.sourceState === "update_available" && skill.source.type === "github") ||
-      (skill.sourceState === "source_modified" && skill.source.type === "folder")
+    (sourceState === "update_available" && source?.type === "github") ||
+      (sourceState === "source_modified" && source?.type === "folder")
   );
 </script>
 
@@ -48,10 +59,10 @@
     <div class="flex flex-wrap items-center justify-between gap-2">
       <p class="text-base-content flex items-center gap-2">
         <AlertTriangle size={15} class="text-warning-content shrink-0" />
-        {$t(`drift.hub.${skill.hubState}`)}
+        {$t(`drift.hub.${hubState}`)}
       </p>
       <div class="flex gap-1.5">
-        {#if skill.hubState === "modified" || skill.hubState === "name_mismatch"}
+        {#if hubState === "modified" || hubState === "name_mismatch"}
           <button
             class={buttonClass}
             type="button"
@@ -79,7 +90,7 @@
     <div class="flex flex-wrap items-center justify-between gap-2">
       <p class="text-base-content flex items-center gap-2">
         <AlertTriangle size={15} class="text-warning-content shrink-0" />
-        {$t(`drift.source.${skill.sourceState}`)}
+        {$t(`drift.source.${sourceState}`)}
       </p>
       <div class="flex gap-1.5">
         {#if canDiffSource}
@@ -87,12 +98,12 @@
             class={buttonClass}
             type="button"
             disabled={busy}
-            onclick={() => openDiffModal(skill.name, { kind: "source" })}
+            onclick={() => openDiffModal(name, { kind: "source" }, kind)}
           >
             {$t("diff.view")}
           </button>
         {/if}
-        {#if skill.sourceState !== "source_missing" && canPull}
+        {#if sourceState !== "source_missing" && canPull}
           <button
             class={buttonClass}
             type="button"
@@ -102,7 +113,7 @@
             {$t("drift.pullSource")}
           </button>
         {/if}
-        {#if skill.sourceState === "source_modified" && skill.source.type === "folder"}
+        {#if sourceState === "source_modified" && source?.type === "folder"}
           <button
             class={buttonClass}
             type="button"
@@ -131,7 +142,7 @@
                 class={buttonClass}
                 type="button"
                 disabled={busy}
-                onclick={() => openDiffModal(skill.name, { kind: "target", path: install.path })}
+                onclick={() => openDiffModal(name, { kind: "target", path: install.path }, kind)}
               >
                 {$t("diff.view")}
               </button>

@@ -5,11 +5,13 @@
     LibraryBig,
     Loader2,
     Plus,
+    ScrollText,
     Settings,
     Store,
   } from "@lucide/svelte";
   import { t } from "$lib/i18n";
   import {
+    buildInstructionsHref,
     buildLibraryHref,
     buildMarketHref,
     buildScopeHref,
@@ -55,6 +57,17 @@
       >
         <LibraryBig size={17} strokeWidth={1.8} />
         <span class="min-w-0 truncate">{$t("sidebar.library")}</span>
+      </a>
+      <a
+        class={itemClass}
+        class:bg-base-300={activeKey === "instructions"}
+        class:text-base-content={activeKey === "instructions"}
+        class:font-medium={activeKey === "instructions"}
+        href={buildInstructionsHref()}
+        aria-current={activeKey === "instructions" ? "page" : undefined}
+      >
+        <ScrollText size={17} strokeWidth={1.8} />
+        <span class="min-w-0 truncate">{$t("sidebar.instructions")}</span>
       </a>
       <a
         class={itemClass}
