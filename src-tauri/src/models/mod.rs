@@ -1,12 +1,22 @@
 pub mod agent_app;
+pub mod instruction;
 pub mod skill;
 pub mod user_project;
 
-pub use agent_app::AgentApp;
-pub use skill::{
-  DetectedSkill, InstallGithubRequest, InstallMethod, InstallNativeRequest, InstallResult,
-  InstallScope, InstallTarget, InstallUnknownRequest, InstalledAgentApp, LocalSkill,
-  ManageSkillAgentAppsRequest, RemoteSkill, RemoteSkillsResponse, SelectedAgentPath,
-  SkillDirectoryEntry, SkillUpdateCheckItem, SourceCheckResult, SourceType, SourceVersionGroup,
+pub use agent_app::{AgentApp, MemoryFile};
+pub use instruction::{
+  AgentFileTemplate, AgentFileView, DetectedInstruction, InstructionActionResult,
+  InstructionImportItem, InstructionImportOutcome, InstructionLockFile, InstructionRecord,
+  InstructionSource, InstructionView,
 };
-pub use user_project::UserProject;
+pub use skill::{
+  ActionResult, AgentRootMatch, DetectedSkill, DiffAgainst, DiffHunk, DiffLine, DiffLineKind,
+  DiffStatus, FileDiff, HubSkillView, HubState, ImportItem, ImportOutcome, InstallMode,
+  InstallRecord, InstallRequest, InstallScope, InstallTargetSpec, InstallView, LockFile,
+  MigrationReport, RemoteSkill, RemoteSkillsResponse, ScanDecision, ScanItem, ScanResolution,
+  ScanStatus, SkillDiff, SkillDirectoryEntry, SkillRecord, SkillSource, SourceState, SourceUpdate,
+  SyncAction, TargetState, UninstallRequest, LOCK_VERSION,
+};
+pub use user_project::{
+  ProjectCandidate, ProjectRegistration, UserProject, UserProjectView, UserWorkspace,
+};

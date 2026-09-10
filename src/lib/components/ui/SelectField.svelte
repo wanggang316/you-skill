@@ -19,7 +19,7 @@
   >();
 
   const baseSelectClass =
-    "border-base-300 bg-base-100 text-base-content focus:border-base-300 h-9 cursor-pointer appearance-none rounded-xl border pr-8 pl-3 text-sm focus:outline-none disabled:cursor-not-allowed disabled:opacity-60";
+    "border-base-300 bg-base-100 text-base-content focus:border-base-300 h-9 w-full cursor-pointer appearance-none rounded-xl border pr-8 pl-3 text-sm focus:outline-none disabled:cursor-not-allowed disabled:opacity-60";
 </script>
 
 <div class={`relative ${className}`}>

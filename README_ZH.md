@@ -17,14 +17,16 @@
 
 ## 功能概览
 
-1. 支持 40+ 主流编程工具的 Skill 安装，并支持自定义 Agent 应用。
-2. 兼容 Vercel `skill add` 规则与目录（以 `.agents/skills` 作为统一标准目录）。
-3. 支持自动检查更新，并可一键更新 Skill。
-4. 内置动态 Skill 市场（15000+），可在应用内快速检索和安装。
-5. 支持从 Skill 市场、GitHub 地址、本地压缩包（`.zip` / `.skill`）和本地文件夹安装。
-6. 支持 Skill 一键备份。
-7. 支持软链接（Symlink）和复制（Copy）两种同步模式，实现“一处修改，多处生效”。
-8. 支持多主题和多语言。
+1. 中心化 Skill 库：所有 Skill 只导入一次，统一存放在 `~/.youskill/skills`，由唯一的 `~/.youskill/.skill-lock.json` 管理。
+2. 两步式工作流：先「导入」（Skill 市场、GitHub 地址、`.zip` / `.skill` 压缩包、本地文件夹），再「安装」到 40+ 主流编程工具或自定义 Agent 应用的用户级 / 项目级目录，支持复制与软链接。
+3. 安装矩阵：一眼看清每个 Skill 安装到了哪些项目、哪些 Agent。
+4. 变更追踪：每个安装位置都记录它所基于的中心库版本，因此能区分「落后」「本地修改」「冲突」，并由你选择同步方向（从来源更新、推送到目标、采纳本地副本）。
+5. 文件夹扫描：扫描项目目录或某个 Agent 的 skills 目录，把找到的 Skill 同步进中心库。
+6. 内置动态 Skill 市场（15000+），并可对照来源仓库检查更新。
+7. 兼容 `.agents/skills` 共享目录约定（即「Agents (shared)」目标）。
+8. 一键备份整个中心库，支持多主题和多语言。
+
+存储布局、lock 文件与变更模型见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 ## 预览
 
@@ -96,8 +98,9 @@ npm run tauri -- build
 ## 路线图
 
 - [x] 项目级的 Skill 管理
+- [x] 中心化 Skill 库，支持变更追踪与文件夹扫描
+- [x] Skill 详情，支持快速查看所有 Skill 文件
 - [ ] 备份到 GitHub，实现多设备同步
-- [ ] Skill 详情，支持快速查看所有 Skill 文件
 - [ ] 基于 AI 的 FindSkill
 
 ## 贡献

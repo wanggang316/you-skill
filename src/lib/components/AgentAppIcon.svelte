@@ -26,6 +26,19 @@
   import windsurfIcon from "@lobehub/icons-static-svg/icons/windsurf.svg";
   import zencoderIcon from "@lobehub/icons-static-svg/icons/zencoder-color.svg";
   import zenMuxIcon from "@lobehub/icons-static-svg/icons/zenmux.svg";
+  import snowflakeIcon from "@lobehub/icons-static-svg/icons/snowflake-color.svg";
+  import augmentIcon from "$lib/assets/agent-icons/augment.svg";
+  import commandCodeIcon from "$lib/assets/agent-icons/command-code.png";
+  import continueIcon from "$lib/assets/agent-icons/continue.png";
+  import crushIcon from "$lib/assets/agent-icons/crush.png";
+  import droidIcon from "$lib/assets/agent-icons/droid.png";
+  import iflowIcon from "$lib/assets/agent-icons/iflow-cli.png";
+  import mcpJamIcon from "$lib/assets/agent-icons/mcpjam.png";
+  import neovateIcon from "$lib/assets/agent-icons/neovate.png";
+  import pochiIcon from "$lib/assets/agent-icons/pochi.png";
+  import vscodeIcon from "$lib/assets/agent-icons/vscode.svg";
+  import warpIcon from "$lib/assets/agent-icons/warp.svg";
+  import zedIcon from "$lib/assets/agent-icons/zed.svg";
 
   type AgentIcon = {
     src: string;
@@ -61,17 +74,44 @@
     qoder: { src: qoderIcon },
     replit: { src: replitIcon },
     zenencoder: { src: zencoderIcon },
+    warp: { src: warpIcon, monochrome: true },
+    zed: { src: zedIcon, monochrome: true },
+    vscode: { src: vscodeIcon },
+    augment: { src: augmentIcon, monochrome: true },
+    "command-code": { src: commandCodeIcon, monochrome: true },
+    continue: { src: continueIcon },
+    cortex: { src: snowflakeIcon },
+    crush: { src: crushIcon },
+    droid: { src: droidIcon },
+    "iflow-cli": { src: iflowIcon },
+    mcpjam: { src: mcpJamIcon },
+    neovate: { src: neovateIcon },
+    pochi: { src: pochiIcon },
   };
 
-  let { agentId, name }: { agentId: string; name: string } = $props();
+  import { Layers } from "@lucide/svelte";
+
+  let {
+    agentId,
+    name,
+    size = "md",
+  }: { agentId: string; name: string; size?: "sm" | "md" } = $props();
 
   const icon = $derived(icons[agentId]);
+  const isSharedTarget = $derived(agentId === "agents");
   const fallback = $derived(name.trim().charAt(0).toUpperCase() || "?");
 </script>
 
-<span class:monochrome={icon?.monochrome} class="agent-app-icon" aria-hidden="true">
+<span
+  class:monochrome={icon?.monochrome}
+  class:small={size === "sm"}
+  class="agent-app-icon"
+  aria-hidden="true"
+>
   {#if icon}
     <img src={icon.src} alt="" />
+  {:else if isSharedTarget}
+    <Layers size={size === "sm" ? 13 : 16} class="text-base-content-muted" />
   {:else}
     <span class="fallback">{fallback}</span>
   {/if}
@@ -90,10 +130,25 @@
     background: var(--base-100);
   }
 
+  .agent-app-icon.small {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.5rem;
+  }
+
   .agent-app-icon img {
     width: 1.15rem;
     height: 1.15rem;
     object-fit: contain;
+  }
+
+  .agent-app-icon.small img {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
+  .agent-app-icon.small .fallback {
+    font-size: 0.65rem;
   }
 
   .fallback {

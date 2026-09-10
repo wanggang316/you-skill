@@ -15,6 +15,7 @@
         "title": "YouSkill",
         "hiddenTitle": true,
         "titleBarStyle": "Overlay",
+        "trafficLightPosition": { "x": 14, "y": 26 },
         "width": 1120,
         "height": 800,
         "minWidth": 900,

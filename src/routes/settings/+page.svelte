@@ -299,10 +299,10 @@
           </div>
         </div>
 
-        <!-- Skill Sync Mode -->
+        <!-- Default install mode -->
         <div class="bg-base-200 rounded-2xl px-4 py-2.5">
           <div class="flex items-center justify-between">
-            <span class="text-base-content text-[15px]">{$t("settings.syncMode")}</span>
+            <span class="text-base-content text-[15px]">{$t("settings.installMode")}</span>
             <div class="relative">
               <select
                 class="bg-base-300 text-base-content hover:bg-base-100 min-w-[120px] cursor-pointer appearance-none rounded-lg px-3 py-1.5 pr-9 text-right text-[14px] transition-colors focus:outline-none"
@@ -313,8 +313,8 @@
                       .value as import("$lib/api/settings").AppSettings["sync_mode"],
                   })}
               >
-                <option value="symlink">{$t("settings.syncMode.symlink")}</option>
                 <option value="copy">{$t("settings.syncMode.copy")}</option>
+                <option value="symlink">{$t("settings.syncMode.symlink")}</option>
               </select>
               <ChevronRight
                 class="text-base-content-muted pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rotate-90"

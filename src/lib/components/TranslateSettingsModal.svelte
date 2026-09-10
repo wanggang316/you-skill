@@ -105,7 +105,6 @@
         id="translate-target-language"
         bind:value={draftTargetLanguage}
         className="w-full"
-        selectClassName="w-full"
       >
         <option value="">{$t("settings.selectPlaceholder")}</option>
         {#each languageOptions as option}
@@ -164,10 +163,10 @@
       type="button"
       disabled={saving}
     >
-      {$t("addSkill.cancel")}
+      {$t("common.cancel")}
     </button>
     <PrimaryActionButton onclick={handleSave} disabled={saving || !isFormValid}>
-      {saving ? $t("settings.translation.saving") : $t("selectAgent.confirm")}
+      {saving ? $t("settings.translation.saving") : $t("common.confirm")}
     </PrimaryActionButton>
   {/snippet}
 </Modal>

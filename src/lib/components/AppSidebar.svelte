@@ -1,40 +1,54 @@
 <script lang="ts">
   import {
+    ArrowLeft,
+    ArrowRight,
     ArrowUpCircle,
-    Folder,
-    FolderOpen,
-    FolderPlus,
-    Globe2,
+    FolderTree,
     LibraryBig,
     Loader2,
     Plus,
+    ScrollText,
     Settings,
+    Store,
   } from "@lucide/svelte";
-  import type { UserProject } from "$lib/api/user-projects";
   import { t } from "$lib/i18n";
+  import { canGoBack, canGoForward, goBack, goForward } from "$lib/navigation/history";
   import {
-    buildSkillsHref,
-    projectScopeKey,
+    buildInstructionsHref,
+    buildLibraryHref,
+    buildMarketHref,
+    buildScopeHref,
     type SidebarActiveKey,
   } from "$lib/navigation/app-shell";
 
   let {
     activeKey,
-    projects,
+    collapsed = false,
     hasUpdate,
     updateLoading,
-    onAddSkill,
+    onImportSkill,
     onOpenUpdate,
-    onOpenProjectManage,
   }: {
     activeKey: SidebarActiveKey;
-    projects: UserProject[];
+    /** Icons with the label underneath instead of beside. */
+    collapsed?: boolean;
     hasUpdate: boolean;
     updateLoading: boolean;
-    onAddSkill: () => void;
+    onImportSkill: () => void;
     onOpenUpdate: () => void;
-    onOpenProjectManage: () => void;
   } = $props();
+
+  /** Icons only is narrow but not tiny: the label goes under the icon in a smaller face. */
+  const collapsedItemClass = "flex-col gap-1 px-1 py-1.5 text-[11px] leading-4";
+  const itemClass = $derived(
+    `text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center rounded-lg text-left font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px ${
+      collapsed ? collapsedItemClass : "gap-2.5 px-2.5 py-2 text-sm leading-5"
+    }`
+  );
+  const labelClass = $derived(collapsed ? "max-w-full truncate" : "min-w-0 truncate");
+  const historyButtonClass =
+    "text-base-content-muted hover:bg-base-300 hover:text-base-content flex size-7 items-center justify-center rounded-lg transition disabled:opacity-35 disabled:hover:bg-transparent";
+  const padding = $derived(collapsed ? "px-2" : "px-2.5");
 </script>
 
 <aside
@@ -42,116 +56,123 @@
   aria-label={$t("sidebar.navigation")}
   data-window-drag-region
 >
-  <nav class="flex min-h-0 flex-1 flex-col px-2.5 pt-10 pb-4 max-[832px]:px-[0.45rem]">
+  {#snippet historyButtons()}
+    <button
+      class={historyButtonClass}
+      type="button"
+      onclick={goBack}
+      disabled={!$canGoBack}
+      title={$t("sidebar.back")}
+      aria-label={$t("sidebar.back")}
+    >
+      <ArrowLeft size={16} strokeWidth={1.8} />
+    </button>
+    <button
+      class={historyButtonClass}
+      type="button"
+      onclick={goForward}
+      disabled={!$canGoForward}
+      title={$t("sidebar.forward")}
+      aria-label={$t("sidebar.forward")}
+    >
+      <ArrowRight size={16} strokeWidth={1.8} />
+    </button>
+  {/snippet}
+
+  <!-- The window controls sit at the left of this row (centred by `trafficLightPosition`);
+       the buttons follow them and go away with the labels. -->
+  <header class="flex h-12 flex-none items-center gap-0.5 pl-[5.25rem]">
+    {#if !collapsed}
+      {@render historyButtons()}
+    {/if}
+  </header>
+  <nav class={`flex min-h-0 flex-1 flex-col pt-1 pb-4 ${padding}`}>
     <div class="grid gap-0.5" aria-label={$t("sidebar.skills")}>
-      <button
-        class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
-        type="button"
-        onclick={onAddSkill}
-      >
+      <button class={itemClass} type="button" onclick={onImportSkill} title={$t("import.title")}>
         <Plus size={17} strokeWidth={1.8} />
-        <span class="min-w-0 truncate">{$t("addSkill.title")}</span>
+        <span class={labelClass}>{$t("import.title")}</span>
       </button>
       <a
-        class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
+        class={itemClass}
         class:bg-base-300={activeKey === "library"}
         class:text-base-content={activeKey === "library"}
         class:font-medium={activeKey === "library"}
-        href={buildSkillsHref("remote")}
+        href={buildLibraryHref()}
         aria-current={activeKey === "library" ? "page" : undefined}
+        title={$t("sidebar.library")}
       >
         <LibraryBig size={17} strokeWidth={1.8} />
-        <span class="min-w-0 truncate">{$t("sidebar.library")}</span>
+        <span class={labelClass}>{$t("sidebar.library")}</span>
       </a>
       <a
-        class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
-        class:bg-base-300={activeKey === "global"}
-        class:text-base-content={activeKey === "global"}
-        class:font-medium={activeKey === "global"}
-        href={buildSkillsHref("local")}
-        aria-current={activeKey === "global" ? "page" : undefined}
+        class={itemClass}
+        class:bg-base-300={activeKey === "instructions"}
+        class:text-base-content={activeKey === "instructions"}
+        class:font-medium={activeKey === "instructions"}
+        href={buildInstructionsHref()}
+        aria-current={activeKey === "instructions" ? "page" : undefined}
+        title={$t("sidebar.instructions")}
       >
-        <Globe2 size={17} strokeWidth={1.8} />
-        <span class="min-w-0 truncate">{$t("sidebar.global")}</span>
+        <ScrollText size={17} strokeWidth={1.8} />
+        <span class={labelClass}>{$t("sidebar.instructions")}</span>
+      </a>
+      <a
+        class={itemClass}
+        class:bg-base-300={activeKey === "projects"}
+        class:text-base-content={activeKey === "projects"}
+        class:font-medium={activeKey === "projects"}
+        href={buildScopeHref()}
+        aria-current={activeKey === "projects" ? "page" : undefined}
+        title={$t("sidebar.projects")}
+      >
+        <FolderTree size={17} strokeWidth={1.8} />
+        <span class={labelClass}>{$t("sidebar.projects")}</span>
+      </a>
+      <a
+        class={itemClass}
+        class:bg-base-300={activeKey === "market"}
+        class:text-base-content={activeKey === "market"}
+        class:font-medium={activeKey === "market"}
+        href={buildMarketHref()}
+        aria-current={activeKey === "market" ? "page" : undefined}
+        title={$t("sidebar.market")}
+      >
+        <Store size={17} strokeWidth={1.8} />
+        <span class={labelClass}>{$t("sidebar.market")}</span>
       </a>
     </div>
-
-    <section class="mt-3.5 flex min-h-0 flex-1 flex-col" aria-labelledby="project-heading">
-      <div
-        class="text-base-content-subtle flex items-center justify-between pt-1 pr-2 pb-1.5 pl-2.5 text-xs font-medium"
-      >
-        <span id="project-heading">{$t("sidebar.projects")}</span>
-        <button
-          class="hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 inline-flex size-7 items-center justify-center rounded-md bg-transparent focus-visible:outline-2 focus-visible:outline-offset-1"
-          type="button"
-          onclick={onOpenProjectManage}
-          title={$t("projectManage.title")}
-          aria-label={$t("projectManage.title")}
-        >
-          <FolderPlus size={15} strokeWidth={1.8} />
-        </button>
-      </div>
-
-      <div
-        class="min-h-0 overflow-y-auto [scrollbar-color:var(--scrollbar-thumb)_transparent] [scrollbar-width:thin]"
-      >
-        {#each projects as project (project.path)}
-          {@const key = projectScopeKey(project.path)}
-          <a
-            class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 mb-0.5 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
-            class:bg-base-300={activeKey === key}
-            class:text-base-content={activeKey === key}
-            class:font-medium={activeKey === key}
-            href={buildSkillsHref("local", project.path)}
-            aria-current={activeKey === key ? "page" : undefined}
-            title={project.path}
-          >
-            {#if activeKey === key}
-              <FolderOpen size={17} strokeWidth={1.8} />
-            {:else}
-              <Folder size={17} strokeWidth={1.8} />
-            {/if}
-            <span class="min-w-0 truncate">{project.name}</span>
-          </a>
-        {:else}
-          <button
-            class="text-base-content-faint hover:text-base-content-subtle focus-visible:outline-primary/60 w-full rounded-lg bg-transparent p-2.5 text-left text-xs focus-visible:outline-2 focus-visible:outline-offset-1"
-            type="button"
-            onclick={onOpenProjectManage}
-          >
-            {$t("projectManage.empty")}
-          </button>
-        {/each}
-      </div>
-    </section>
   </nav>
 
-  <div class="border-base-300 grid gap-0.5 border-t p-2.5 max-[832px]:px-[0.45rem]">
+  <div class={`border-base-300 grid gap-0.5 border-t py-2.5 ${padding}`}>
     {#if hasUpdate}
       <button
-        class="text-error hover:bg-base-300 focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px disabled:cursor-default disabled:opacity-55"
+        class={`text-error hover:bg-base-300 focus-visible:outline-primary/60 flex w-full min-w-0 items-center rounded-lg text-left font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px disabled:cursor-default disabled:opacity-55 ${
+          collapsed ? collapsedItemClass : "gap-2.5 px-2.5 py-2 text-sm leading-5"
+        }`}
         type="button"
         onclick={onOpenUpdate}
         disabled={updateLoading}
+        title={$t("header.updateAvailable")}
       >
         {#if updateLoading}
           <Loader2 size={17} class="animate-spin" />
         {:else}
           <ArrowUpCircle size={17} strokeWidth={1.8} />
         {/if}
-        <span class="min-w-0 truncate">{$t("header.updateAvailable")}</span>
+        <span class={labelClass}>{$t("header.updateAvailable")}</span>
       </button>
     {/if}
     <a
-      class="text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px"
+      class={itemClass}
       class:bg-base-300={activeKey === "settings"}
       class:text-base-content={activeKey === "settings"}
       class:font-medium={activeKey === "settings"}
       href="/settings"
       aria-current={activeKey === "settings" ? "page" : undefined}
+      title={$t("header.settings")}
     >
       <Settings size={17} strokeWidth={1.8} />
-      <span class="min-w-0 truncate">{$t("header.settings")}</span>
+      <span class={labelClass}>{$t("header.settings")}</span>
     </a>
   </div>
 </aside>

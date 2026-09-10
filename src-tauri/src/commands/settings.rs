@@ -9,8 +9,6 @@ pub struct SettingsPayload {
   pub theme: String,
   pub sync_mode: String,
   #[serde(default)]
-  pub unknown_skill_install_permission: bool,
-  #[serde(default)]
   pub openrouter_api_key: Option<String>,
   #[serde(default = "default_translate_target_language")]
   pub translate_target_language: String,
@@ -35,7 +33,6 @@ pub fn get_settings() -> Result<SettingsPayload, String> {
     language: config.language,
     theme: config.theme,
     sync_mode: config.sync_mode,
-    unknown_skill_install_permission: config.unknown_skill_install_permission,
     openrouter_api_key: config.openrouter_api_key,
     translate_target_language: config.translate_target_language,
     translate_model: config.translate_model,
@@ -50,7 +47,6 @@ pub fn update_settings(settings: SettingsPayload) -> Result<SettingsPayload, Str
   config.language = settings.language.clone();
   config.theme = settings.theme.clone();
   config.sync_mode = settings.sync_mode.clone();
-  config.unknown_skill_install_permission = settings.unknown_skill_install_permission;
   config.openrouter_api_key = settings
     .openrouter_api_key
     .as_ref()
@@ -71,7 +67,6 @@ pub fn update_settings(settings: SettingsPayload) -> Result<SettingsPayload, Str
     language: config.language,
     theme: config.theme,
     sync_mode: config.sync_mode,
-    unknown_skill_install_permission: config.unknown_skill_install_permission,
     openrouter_api_key: config.openrouter_api_key,
     translate_target_language: config.translate_target_language,
     translate_model: config.translate_model,

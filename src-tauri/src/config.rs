@@ -7,8 +7,8 @@ use std::path::PathBuf;
 pub struct AppConfig {
   pub language: String,
   pub theme: String,
+  /// Default install mode: "copy" or "symlink".
   pub sync_mode: String,
-  pub unknown_skill_install_permission: bool,
   pub backup_folder: Option<String>,
   pub last_backup_time: Option<String>,
   pub openrouter_api_key: Option<String>,
@@ -21,8 +21,7 @@ impl Default for AppConfig {
     Self {
       language: "en".to_string(),
       theme: "system".to_string(),
-      sync_mode: "symlink".to_string(),
-      unknown_skill_install_permission: false,
+      sync_mode: "copy".to_string(),
       backup_folder: None,
       last_backup_time: None,
       openrouter_api_key: None,

@@ -9,14 +9,24 @@ import { apiCall } from "./index";
 export interface AppSettings {
   language: "en" | "zh";
   theme: "system" | "light" | "dark";
+  /** Default install mode for new targets. */
   sync_mode: "symlink" | "copy";
-  unknown_skill_install_permission: boolean;
   backup_folder?: string | null;
   last_backup_time?: string | null;
   openrouter_api_key?: string | null;
   translate_target_language: string;
   translate_model: string;
 }
+
+export type EditableSettings = Pick<
+  AppSettings,
+  | "language"
+  | "theme"
+  | "sync_mode"
+  | "openrouter_api_key"
+  | "translate_target_language"
+  | "translate_model"
+>;
 
 /**
  * 获取应用设置
@@ -28,18 +38,7 @@ export async function getSettings(): Promise<AppSettings> {
 /**
  * 更新应用设置
  */
-export async function updateSettings(
-  settings: Pick<
-    AppSettings,
-    | "language"
-    | "theme"
-    | "sync_mode"
-    | "unknown_skill_install_permission"
-    | "openrouter_api_key"
-    | "translate_target_language"
-    | "translate_model"
-  >
-): Promise<AppSettings> {
+export async function updateSettings(settings: EditableSettings): Promise<AppSettings> {
   return apiCall<AppSettings>("update_settings", { settings });
 }
 
@@ -58,7 +57,7 @@ export async function openBackupFolder(path: string): Promise<void> {
 }
 
 /**
- * 备份所有技能
+ * 备份中心库（skills + lock 文件）
  */
 export async function backupSkills(backupFolder: string): Promise<BackupResult> {
   return apiCall<BackupResult>("backup_skills", { backupFolder });

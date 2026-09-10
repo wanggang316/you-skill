@@ -11,9 +11,13 @@ impl ZipHelper {
 
     for i in 0..archive.len() {
       let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
-      let outpath = dest_dir.join(file.name());
+      // `enclosed_name` rejects absolute paths and `..` components (zip-slip).
+      let relative = file
+        .enclosed_name()
+        .ok_or_else(|| format!("Invalid ZIP entry path: {}", file.name()))?;
+      let outpath = dest_dir.join(relative);
 
-      if file.name().ends_with('/') {
+      if file.is_dir() {
         fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
       } else {
         if let Some(p) = outpath.parent() {
@@ -27,5 +31,45 @@ impl ZipHelper {
     }
 
     Ok(())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use std::io::Write;
+
+  fn build_zip(path: &Path, entries: &[(&str, &str)]) {
+    let file = fs::File::create(path).unwrap();
+    let mut writer = zip::ZipWriter::new(file);
+    let options: zip::write::FileOptions<()> = zip::write::FileOptions::default();
+    for (name, content) in entries {
+      writer.start_file(*name, options).unwrap();
+      writer.write_all(content.as_bytes()).unwrap();
+    }
+    writer.finish().unwrap();
+  }
+
+  #[test]
+  fn extracts_regular_entries() {
+    let tmp = tempfile::tempdir().unwrap();
+    let zip_path = tmp.path().join("a.zip");
+    build_zip(&zip_path, &[("skill/SKILL.md", "hello")]);
+    let dest = tmp.path().join("out");
+    ZipHelper::extract_to_dir(&zip_path.to_string_lossy(), &dest).unwrap();
+    assert_eq!(
+      fs::read_to_string(dest.join("skill/SKILL.md")).unwrap(),
+      "hello"
+    );
+  }
+
+  #[test]
+  fn rejects_path_traversal() {
+    let tmp = tempfile::tempdir().unwrap();
+    let zip_path = tmp.path().join("evil.zip");
+    build_zip(&zip_path, &[("../evil.txt", "x")]);
+    let dest = tmp.path().join("out");
+    assert!(ZipHelper::extract_to_dir(&zip_path.to_string_lossy(), &dest).is_err());
+    assert!(!tmp.path().join("evil.txt").exists());
   }
 }

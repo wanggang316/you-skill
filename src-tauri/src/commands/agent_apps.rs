@@ -23,8 +23,16 @@ pub fn add_user_agent_app(
   display_name: String,
   global_path: String,
   project_path: Option<String>,
+  profile_path: Option<String>,
+  global_profile_path: Option<String>,
 ) -> Result<AgentApp, String> {
-  create_user_agent_app(display_name, global_path, project_path)
+  create_user_agent_app(
+    display_name,
+    global_path,
+    project_path,
+    profile_path,
+    global_profile_path,
+  )
 }
 
 /// Remove a user agent app
@@ -40,6 +48,15 @@ pub fn update_user_agent_app(
   display_name: String,
   global_path: String,
   project_path: Option<String>,
+  profile_path: Option<String>,
+  global_profile_path: Option<String>,
 ) -> Result<AgentApp, String> {
-  update_user_agent_app_detail(id, display_name, global_path, project_path)
+  update_user_agent_app_detail(
+    id,
+    display_name,
+    global_path,
+    project_path,
+    profile_path,
+    global_profile_path,
+  )
 }
