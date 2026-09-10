@@ -1,8 +1,8 @@
 <script lang="ts">
   import {
+    ArrowLeft,
+    ArrowRight,
     ArrowUpCircle,
-    ChevronLeft,
-    ChevronRight,
     FolderTree,
     LibraryBig,
     Loader2,
@@ -62,7 +62,7 @@
       title={$t("sidebar.back")}
       aria-label={$t("sidebar.back")}
     >
-      <ChevronLeft size={17} strokeWidth={1.8} />
+      <ArrowLeft size={16} strokeWidth={1.8} />
     </button>
     <button
       class={historyButtonClass}
@@ -72,13 +72,13 @@
       title={$t("sidebar.forward")}
       aria-label={$t("sidebar.forward")}
     >
-      <ChevronRight size={17} strokeWidth={1.8} />
+      <ArrowRight size={16} strokeWidth={1.8} />
     </button>
   {/snippet}
 
-  <!-- The window controls sit at the left of this row, vertically centred by
-       `trafficLightPosition`; the buttons keep to the right and go away with the labels. -->
-  <header class={`flex h-12 flex-none items-center justify-end gap-0.5 ${padding}`}>
+  <!-- The window controls sit at the left of this row (centred by `trafficLightPosition`);
+       the buttons follow them and go away with the labels. -->
+  <header class="flex h-12 flex-none items-center gap-0.5 pl-[5.25rem]">
     {#if !collapsed}
       {@render historyButtons()}
     {/if}
