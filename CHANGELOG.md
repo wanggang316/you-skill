@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.9.0] - 2026-09-10
+
+### Breaking Changes
+
 - Managed skills now live in a central hub at `~/.youskill/skills/<name>` tracked by a single `~/.youskill/.skill-lock.json`; `~/.agents/skills` is an ordinary install target (built-in "Agents (shared)" app). The previous lock files (`~/.agents/.skill-lock.json`, `native-skill-lock.json`, `<project>/skills-lock.json`) are read once for migration and no longer written.
 - Installing is split into two steps: import (GitHub / archive / folder into the hub) and install (hub into user-level or project agent directories). The `list_skills`, `install_from_*`, `manage_skill_agent_apps`, `check_skill_version`, `check_skills_updates` and `delete_skill` commands were replaced by the hub commands.
 
@@ -24,21 +36,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added workspaces: pick a folder, and YouSkill lists the projects inside it (a folder with an agent skills directory or an AGENTS.md / CLAUDE.md file) so they can be registered in one step; the project list groups projects by the workspace they came from and a workspace can be scanned again later.
 - Added instruction-file paths to agent apps, at project level (`CLAUDE.md` for Claude Code, `AGENTS.md` for the rest) and at user level (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`); both are editable for custom agents, shown on the agent apps page next to the skills directories, and the project level is used to detect projects.
 - Added a Memory section to each install location listing the instruction files that exist there and the agents that read them.
-- Fixed the agents of an install location being listed once per skill instead of once per skills directory.
-- Fixed install targets naming only the agent that was picked at install time: a skills directory now lists every installed agent that reads it, so a skill in `~/.agents/skills` shows Codex, Cursor and the others that share it.
-- Fixed install records keeping agents that no longer read their directory: listing now drops an agent id when the directory is neither that agent's skills directory nor one of its legacy ones.
 - Added grouping of agents that share a skills directory: the directory shows as a single agent (the shared directory as "Agents (shared)"), hovering lists the agents that read it, clicking it filters the skill list of the project to that directory, and installing or uninstalling covers the whole group.
 - The skill detail lists where a skill is installed as projects: the user level is named after the local user and home folder, only projects that have the skill appear, and an add row opens a location list (user level and every project by workspace) where several places can be picked for one install, installed places are marked, and a right-click menu manages agents or uninstalls from that place.
-- Fixed removing an agent tile on the projects page: it counted and targeted every directory that agent reads (a legacy Cursor folder offered to remove 18 skills). The tile now removes only its own directory, by path.
 - Added icons for Warp, Zed, VS Code, Augment, Command Code, Continue, Cortex Code, Crush, Droid, iFlow CLI, MCPJam, Neovate and Pochi, which used to show a letter.
 - Workspaces in the project list can be collapsed by clicking their name; the choice is remembered, and a workspace opens again when one of its projects is selected from elsewhere.
-- Removed the project management dialog: projects come from workspaces now, and a workspace can be rescanned or removed from the project list.
-- Installing from a project page, from the user scope or from an install-target row no longer shows the scope switch: the skill goes where the action started, and the dialog title names that place. Only the library header, the market and the import flow still let you choose.
-- The user scope is presented as the home directory, like a project: its path is shown, it can be opened in the file manager, and skill and memory paths are relative to it.
 - Added a Projects page for install scopes: the user scope and every project are listed on their own, and selecting one shows that location's status, the agents installed there (add an agent to install every skill of the location into it, remove one to uninstall them) and its skills, each with manage, diff, push, adopt and uninstall actions.
 - Added a diff viewer for changed skills: compare the library copy file by file with an install target, with the source folder, or with the latest GitHub version.
 - Added an Instructions page next to the Skill Library. It lists the agent instruction files (`AGENTS.md`, `CLAUDE.md`) found at user level and in every registered project, each viewable and editable in place, and the templates kept under `~/.youskill/instructions/<id>.md` (tracked by `.instruction-lock.json`, named freely, identified by a generated id). A template comes from local files or a folder, from a GitHub repository, folder or file URL, from an empty start, or from an agent file promoted to one; it can be renamed, edited (copies that were in sync follow the save), and installed to the file each chosen agent reads at user level or in a project (copy or symlink, agents that share a file are grouped); a file that already holds a different template is refused unless overwritten on purpose. Installed files get the same three-way drift as skills with push, adopt, accept and diff; the detail shows where a template came from, an agent file shows which template it belongs to, and the project detail's Memory section is now called Instructions and opens the file on that page.
-- Fixed projects whose folder was deleted or renamed lingering in the project list with nothing to do about it: the list and the project detail mark them, a menu on the row removes a missing project together with the install records that point into it (no file is touched), a registered project can be taken off the list, and scanning a workspace again lists its missing projects for removal alongside the new folders.
 - Added a resizable sidebar (drag its edge, double-click to reset; narrower than 140px it collapses to icons with small labels) and back / forward buttons next to the window controls, also on ⌘[ and ⌘].
 
 ### Changed
@@ -49,21 +53,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed backup to archive the whole hub (`~/.youskill`, skills and lock file).
 - Changed GitHub imports to accept `/tree/<branch>/<path>` URLs and to record the branch that was downloaded.
 - Changed the app to a wider two-column window with persistent navigation for adding skills, browsing the library, switching scopes, selecting projects, and viewing settings alongside the sidebar.
-- Consolidated the two-column frame into the root Svelte layout so every route renders only its right-side page content and preserves shared sidebar state.
-- Removed the brand logo from the sidebar while preserving the window drag area.
-- Grouped the add action with the primary navigation below compact titlebar clearance and reduced single-line content header height.
+- Installing from a project page, from the user scope or from an install-target row no longer shows the scope switch: the skill goes where the action started, and the dialog title names that place. Only the library header, the market and the import flow still let you choose.
+- The user scope is presented as the home directory, like a project: its path is shown, it can be opened in the file manager, and skill and memory paths are relative to it.
+- Sidebar and header polish: the add action sits with the main navigation, the brand logo is gone, and single-line content headers are shorter.
 
 ### Fixed
 
 - Fixed Agent Apps and Skill detail routes replacing the app shell instead of rendering in the right content pane.
-- Fixed window dragging from sidebar and content headers by manually invoking Tauri window dragging from non-interactive header regions.
+- Fixed dragging the window by its sidebar or content header.
 - Fixed archive extraction to reject entries that escape the destination directory.
 - Fixed update checks for repositories whose default branch is not `main`.
+- Fixed the agents of an install location being listed once per skill instead of once per skills directory.
+- Fixed install targets naming only the agent that was picked at install time: a skills directory now lists every installed agent that reads it, so a skill in `~/.agents/skills` shows Codex, Cursor and the others that share it.
+- Fixed install records keeping agents that no longer read their directory: listing now drops an agent id when the directory is neither that agent's skills directory nor one of its legacy ones.
+- Fixed removing an agent tile on the projects page: it counted and targeted every directory that agent reads (a legacy Cursor folder offered to remove 18 skills). The tile now removes only its own directory, by path.
+- Fixed projects whose folder was deleted or renamed lingering in the project list with nothing to do about it: the list and the project detail mark them, a menu on the row removes a missing project together with the install records that point into it (no file is touched), a registered project can be taken off the list, and scanning a workspace again lists its missing projects for removal alongside the new folders.
 
 ### Removed
 
 - Removed the Global / project scope switcher; the library shows every hub skill, and install locations live on the Projects page.
 - Removed the "take over unmanaged skill" permission setting and the version-pick dialog; scanning replaces both.
+- Removed the project management dialog: projects come from workspaces now, and a workspace can be rescanned or removed from the project list.
 
 ## [0.8.5] - 2026-05-11
 
