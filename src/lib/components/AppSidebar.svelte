@@ -76,17 +76,13 @@
     </button>
   {/snippet}
 
-  <!-- The window controls sit at the left of this row; the buttons keep to the right. -->
+  <!-- The window controls sit at the left of this row, vertically centred by
+       `trafficLightPosition`; the buttons keep to the right and go away with the labels. -->
   <header class={`flex h-12 flex-none items-center justify-end gap-0.5 ${padding}`}>
     {#if !collapsed}
       {@render historyButtons()}
     {/if}
   </header>
-  {#if collapsed}
-    <div class="flex flex-none flex-col items-center gap-0.5 pb-1">
-      {@render historyButtons()}
-    </div>
-  {/if}
   <nav class={`flex min-h-0 flex-1 flex-col pt-1 pb-4 ${padding}`}>
     <div class="grid gap-0.5" aria-label={$t("sidebar.skills")}>
       <button class={itemClass} type="button" onclick={onImportSkill} title={$t("import.title")}>
