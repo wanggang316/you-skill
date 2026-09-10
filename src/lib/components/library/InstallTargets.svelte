@@ -88,6 +88,11 @@
     return result;
   });
 
+  /** Only locations that hold the entry; empty ones are added from the header. */
+  const groups = $derived(
+    userGroup.installs.length > 0 ? [userGroup, ...projectGroups] : projectGroups
+  );
+
   const stateNote = (install: InstallView) =>
     `${$t(`target.mode.${install.mode}`)} · ${$t(`target.state.${install.state}`)}`;
 </script>
@@ -140,12 +145,10 @@
   </div>
 {/snippet}
 
-<div class="border-base-300 divide-base-300 divide-y rounded-2xl border">
-  {@render groupRow(userGroup)}
-  {#each projectGroups as group (group.key)}
-    {@render groupRow(group)}
-  {/each}
-  {#if projectGroups.length === 0}
-    <p class="text-base-content-faint px-4 py-2.5 text-xs">{$t("detail.installs.noProjects")}</p>
-  {/if}
-</div>
+{#if groups.length > 0}
+  <div class="border-base-300 divide-base-300 divide-y rounded-2xl border">
+    {#each groups as group (group.key)}
+      {@render groupRow(group)}
+    {/each}
+  </div>
+{/if}
