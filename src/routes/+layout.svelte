@@ -167,19 +167,12 @@
 
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    class="group absolute top-0 bottom-0 z-20 w-1.5 -translate-x-1/2 cursor-col-resize"
+    class="absolute top-0 bottom-0 z-20 w-1.5 -translate-x-1/2 cursor-col-resize"
     style={`left: ${sidebarWidth}px;`}
     title={$t("sidebar.resize")}
     onpointerdown={startSidebarResize}
     ondblclick={resetSidebarWidth}
-  >
-    <!-- A hairline that only shows while hovering or dragging; the hit area stays wider. -->
-    <div
-      class={`group-hover:bg-base-content/15 mx-auto h-full w-px transition-colors delay-100 ${
-        resizing ? "bg-base-content/25" : ""
-      }`}
-    ></div>
-  </div>
+  ></div>
 </div>
 
 <ImportSkillModal />
