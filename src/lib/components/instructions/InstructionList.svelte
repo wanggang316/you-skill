@@ -211,7 +211,8 @@
             aria-current={selected ? "true" : undefined}
             title={file.path}
           >
-            <div class="flex w-full items-center gap-2">
+            <!-- Indented under the folder heading like a file tree. -->
+            <div class="flex w-full items-center gap-2 pl-4">
               <span class="text-base-content-subtle shrink-0"><FileText size={13} /></span>
               <span class="text-base-content min-w-0 flex-1 truncate font-mono text-[12px]">
                 {file.fileName}
