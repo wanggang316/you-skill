@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Info, X } from "@lucide/svelte";
+  import { confirm } from "@tauri-apps/plugin-dialog";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import SkillList from "$lib/components/library/SkillList.svelte";
@@ -13,6 +14,7 @@
     openInFileManager,
     removeHubSkill,
     syncSkill,
+    uninstallSkill,
     type HubSkillView,
     type InstallScope,
     type InstallView,
@@ -36,6 +38,7 @@
     performAction,
   } from "$lib/stores/modals";
   import { userProjects } from "$lib/stores/user-projects";
+  import { baseName } from "$lib/scopes";
 
   let search = $state("");
   let busy = $state(false);
@@ -117,6 +120,36 @@
   function handleInstall(scope: InstallScope, projectPath: string | null, lockScope = false) {
     if (!selectedSkill) return;
     openInstallModal([selectedSkill.name], { scope, projectPath, lockScope });
+  }
+
+  /** Uninstall from every agent of one location, after confirming. */
+  function handleUninstallLocation(
+    scope: InstallScope,
+    projectPath: string | null,
+    installs: InstallView[]
+  ) {
+    const skill = selectedSkill;
+    if (!skill || installs.length === 0) return;
+    const name = skill.name;
+    const paths = installs.map((install) => install.path);
+    const location =
+      scope === "user"
+        ? $t("scope.user")
+        : ($userProjects.find((project) => project.path === projectPath)?.name ??
+          baseName(projectPath ?? ""));
+    void runAction(async () => {
+      const confirmed = await confirm($t("locationPicker.uninstallConfirm", { name, location }), {
+        title: $t("scope.uninstall"),
+        kind: "warning",
+      });
+      if (!confirmed) return;
+      const result = await performAction((force) =>
+        uninstallSkill({ name, targets: [], paths, force })
+      );
+      if (!result.applied && result.blockers.length > 0) {
+        actionError = result.blockers.join("\n");
+      }
+    });
   }
 
   function handleTargetAction(install: InstallView, action: TargetAction) {
@@ -256,6 +289,7 @@
           checkingSource={$sourceChecking}
           {actionError}
           onInstall={handleInstall}
+          onUninstallLocation={handleUninstallLocation}
           onManageLocations={() => openLocationPickerModal(selectedSkill.name)}
           onTargetAction={handleTargetAction}
           onSync={handleSync}

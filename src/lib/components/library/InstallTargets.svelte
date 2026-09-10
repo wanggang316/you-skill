@@ -1,6 +1,7 @@
 <script lang="ts">
   import { AlertTriangle, Folder, Plus, UserRound } from "@lucide/svelte";
   import AgentBadge from "$lib/components/AgentBadge.svelte";
+  import DropdownMenu from "$lib/components/ui/DropdownMenu.svelte";
   import { t } from "$lib/i18n";
   import { baseName } from "$lib/scopes";
   import type { InstallScope, InstallView } from "$lib/api/hub";
@@ -14,6 +15,7 @@
     homePath = "",
     busy = false,
     onAdd,
+    onUninstall,
   }: {
     /** Install records of one skill or instruction. */
     installs?: InstallView[];
@@ -24,6 +26,8 @@
     busy?: boolean;
     /** `lockScope` is set: the row decides the target, the dialog must not offer another. */
     onAdd: (scope: InstallScope, projectPath: string | null, lockScope: boolean) => void;
+    /** Uninstall from every agent of one location; the row's install records are passed. */
+    onUninstall: (scope: InstallScope, projectPath: string | null, installs: InstallView[]) => void;
   } = $props();
 
   type Group = {
@@ -121,6 +125,22 @@
           <span class="tag tag-neutral shrink-0">{$t("detail.installs.unregistered")}</span>
         {/if}
       </p>
+      <DropdownMenu
+        label={$t("detail.installs.actions")}
+        disabled={busy}
+        items={[
+          {
+            label: $t("scope.skill.manage"),
+            disabled: group.missing,
+            onSelect: () => onAdd(group.scope, group.projectPath, true),
+          },
+          {
+            label: $t("scope.uninstall"),
+            danger: true,
+            onSelect: () => onUninstall(group.scope, group.projectPath, group.installs),
+          },
+        ]}
+      />
     </div>
     <div class="mt-2 flex flex-wrap items-center gap-3">
       {#each group.installs as install (install.path)}

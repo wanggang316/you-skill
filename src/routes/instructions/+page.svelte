@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
+  import { confirm } from "@tauri-apps/plugin-dialog";
   import InstructionList from "$lib/components/instructions/InstructionList.svelte";
   import InstructionDetail from "$lib/components/instructions/InstructionDetail.svelte";
   import InstructionFileDetail from "$lib/components/instructions/InstructionFileDetail.svelte";
@@ -18,6 +19,7 @@
     installInstruction,
     removeInstruction,
     syncInstruction,
+    uninstallInstruction,
     type AgentFileView,
     type InstructionView,
   } from "$lib/api/instructions";
@@ -137,6 +139,36 @@
     openInstallModal([selected.id], { scope, projectPath, lockScope, kind: "instruction" });
   }
 
+  /** Uninstall from every agent of one location, after confirming. */
+  function handleUninstallLocation(
+    scope: InstallScope,
+    projectPath: string | null,
+    installs: InstallView[]
+  ) {
+    const item = selected;
+    if (!item || installs.length === 0) return;
+    const id = item.id;
+    const paths = installs.map((install) => install.path);
+    const location =
+      scope === "user"
+        ? $t("scope.user")
+        : ($userProjects.find((project) => project.path === projectPath)?.name ??
+          baseName(projectPath ?? ""));
+    void runAction(async () => {
+      const confirmed = await confirm(
+        $t("locationPicker.uninstallConfirm", { name: item.name, location }),
+        { title: $t("scope.uninstall"), kind: "warning" }
+      );
+      if (!confirmed) return;
+      const result = await performInstructionAction((force) =>
+        uninstallInstruction({ name: id, targets: [], paths, force })
+      );
+      if (!result.applied && result.blockers.length > 0) {
+        actionError = result.blockers.join("\n");
+      }
+    });
+  }
+
   function handleTargetAction(install: InstallView, action: TargetAction) {
     const item = selected;
     if (!item) return;
@@ -247,6 +279,7 @@
           {busy}
           {actionError}
           onInstall={handleInstall}
+          onUninstallLocation={handleUninstallLocation}
           onManageLocations={() => openLocationPickerModal(selected.id, "instruction")}
           onTargetAction={handleTargetAction}
           onSync={handleSync}
