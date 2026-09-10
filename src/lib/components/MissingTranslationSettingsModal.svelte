@@ -45,7 +45,7 @@
       onclick={handleCancel}
       type="button"
     >
-      {$t("addSkill.cancel")}
+      {$t("common.cancel")}
     </button>
     <button
       class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-4 py-2 text-sm transition"

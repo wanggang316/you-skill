@@ -30,7 +30,7 @@
       {#if isMulti}
         <label class="text-base-content-muted inline-flex items-center gap-2 text-[13px]">
           <input type="checkbox" checked={allSelected} onchange={onToggleAll} />
-          {$t("addSkill.selectAll")}
+          {$t("import.selectAll")}
         </label>
       {/if}
     </div>
