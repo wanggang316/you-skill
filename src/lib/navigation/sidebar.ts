@@ -1,6 +1,6 @@
 /** Sidebar width in px: user-resizable, remembered per machine, icons only when narrow. */
 export const SIDEBAR = {
-  initial: 200,
+  initial: 180,
   min: 176,
   max: 360,
   /** Width of the icons-only sidebar: wide enough to keep the window controls inside it. */
