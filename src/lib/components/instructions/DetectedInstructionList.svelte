@@ -11,13 +11,10 @@
   let {
     items = [],
     choices = $bindable<Record<string, DetectedChoice>>({}),
-    existingNames = new Set<string>(),
     disabled = false,
   }: {
     items?: DetectedInstruction[];
     choices?: Record<string, DetectedChoice>;
-    /** Lower-case names already in the library, flagged as overwrites. */
-    existingNames?: Set<string>;
     disabled?: boolean;
   } = $props();
 
@@ -55,7 +52,6 @@
   <div class="border-base-300 bg-base-200 max-h-72 space-y-2 overflow-y-auto rounded-xl border p-2">
     {#each items as item (item.path)}
       {@const choice = choices[item.path]}
-      {@const exists = existingNames.has((choice?.name ?? "").trim().toLowerCase())}
       <div
         class={`rounded-lg px-3 py-2 text-sm transition ${
           choice?.selected ? "bg-base-100 ring-primary/40 ring-1" : "bg-base-100/60"
@@ -79,9 +75,6 @@
                 oninput={(event) => update(item, { name: event.currentTarget.value })}
               />
               <span class="text-base-content-subtle font-mono text-[11px]">{item.fileName}</span>
-              {#if exists && choice?.selected}
-                <span class="tag tag-warning">{$t("instructions.import.willOverwrite")}</span>
-              {/if}
             </div>
             <p class="text-base-content-subtle truncate text-[11px]" title={item.path}>
               {item.relPath}

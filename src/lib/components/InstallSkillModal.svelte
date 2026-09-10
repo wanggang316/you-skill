@@ -18,7 +18,7 @@
   } from "../api/hub";
   import { installInstruction, uninstallInstruction } from "../api/instructions";
   import { agents, hubSkillsByName, refreshHub } from "../stores/hub";
-  import { instructionsByName, refreshInstructions } from "../stores/instructions";
+  import { instructionName, instructionsById, refreshInstructions } from "../stores/instructions";
   import {
     closeInstallModal,
     installModal,
@@ -61,7 +61,8 @@
     return project?.name ?? (path ? baseName(path) : "");
   });
   const title = $derived.by(() => {
-    const name = skillNames[0] ?? "";
+    const first = skillNames[0] ?? "";
+    const name = isInstruction ? $instructionName(first) : first;
     const count = skillNames.length;
     if (locked) {
       return isSingle
@@ -75,7 +76,7 @@
   const currentIds = $derived.by(() => {
     if (!isSingle || targets.length !== 1) return [] as string[];
     const view = isInstruction
-      ? $instructionsByName.get(skillNames[0])
+      ? $instructionsById.get(skillNames[0])
       : $hubSkillsByName.get(skillNames[0]);
     if (!view) return [] as string[];
     return installedAgentIds(view, targets[0].scope, targets[0].projectPath);
@@ -85,6 +86,8 @@
   const canApply = $derived(!applying && targets.length > 0 && hasChanges());
 
   const refresh = () => (isInstruction ? refreshInstructions() : refreshHub());
+  /** What failures are reported under: the template name, not its id. */
+  const label = (name: string) => (isInstruction ? get(instructionName)(name) : name);
 
   function hasChanges(): boolean {
     const current = new Set(currentIds);
@@ -155,7 +158,7 @@
       for (const name of skillNames) {
         for (const target of targets) {
           const view = isInstruction
-            ? get(instructionsByName).get(name)
+            ? get(instructionsById).get(name)
             : get(hubSkillsByName).get(name);
           const current = view ? installedAgentIds(view, target.scope, target.projectPath) : [];
           const add = selectedIds.filter((id) => !current.includes(id));
@@ -166,7 +169,7 @@
             const result = isInstruction
               ? await performInstructionAction((force) => installInstruction({ ...request, force }))
               : await performAction((force) => installSkill({ ...request, force }));
-            if (!result.applied) failures.push(`${name}: ${result.blockers.join("; ")}`);
+            if (!result.applied) failures.push(`${label(name)}: ${result.blockers.join("; ")}`);
           }
           if (remove.length > 0) {
             const request = { name, targets: specsFor(remove, target) };
@@ -175,7 +178,7 @@
                   uninstallInstruction({ ...request, force })
                 )
               : await performAction((force) => uninstallSkill({ ...request, force }));
-            if (!result.applied) failures.push(`${name}: ${result.blockers.join("; ")}`);
+            if (!result.applied) failures.push(`${label(name)}: ${result.blockers.join("; ")}`);
           }
         }
       }

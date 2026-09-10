@@ -36,6 +36,10 @@ export interface LocationPickerModalState {
 
 export interface ImportInstructionModalState {
   open: boolean;
+  /** Files to list right away, e.g. an agent file being promoted to a template. */
+  paths: string[];
+  /** Name to suggest for those files. */
+  name: string;
 }
 
 export interface ForceModalState {
@@ -96,7 +100,11 @@ export const locationPickerModal = writable<LocationPickerModalState>({
   skillName: "",
 });
 
-export const importInstructionModal = writable<ImportInstructionModalState>({ open: false });
+export const importInstructionModal = writable<ImportInstructionModalState>({
+  open: false,
+  paths: [],
+  name: "",
+});
 
 export const skillPickerModal = writable<SkillPickerModalState>({ open: false, scope: null });
 
@@ -169,12 +177,14 @@ export function openLocationPickerModal(skillName: string, kind: LibraryKind = "
   locationPickerModal.set({ open: true, kind, skillName });
 }
 
-export function openImportInstructionModal(): void {
-  importInstructionModal.set({ open: true });
+export function openImportInstructionModal(
+  options: { paths?: string[]; name?: string } = {}
+): void {
+  importInstructionModal.set({ open: true, paths: options.paths ?? [], name: options.name ?? "" });
 }
 
 export function closeImportInstructionModal(): void {
-  importInstructionModal.set({ open: false });
+  importInstructionModal.set({ open: false, paths: [], name: "" });
 }
 
 export function closeLocationPickerModal(): void {

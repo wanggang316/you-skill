@@ -9,7 +9,7 @@
   import { baseName } from "../scopes";
   import { homePath } from "../stores/env";
   import { hubSkillsByName, refreshHub } from "../stores/hub";
-  import { instructionsByName, refreshInstructions } from "../stores/instructions";
+  import { instructionName, instructionsById, refreshInstructions } from "../stores/instructions";
   import {
     closeLocationPickerModal,
     locationPickerModal,
@@ -39,8 +39,9 @@
   const kind = $derived($locationPickerModal.kind);
   const isInstruction = $derived(kind === "instruction");
   const skill = $derived(
-    isInstruction ? $instructionsByName.get(skillName) : $hubSkillsByName.get(skillName)
+    isInstruction ? $instructionsById.get(skillName) : $hubSkillsByName.get(skillName)
   );
+  const displayName = $derived(isInstruction ? $instructionName(skillName) : skillName);
   const refresh = () => (isInstruction ? refreshInstructions() : refreshHub());
 
   const matches = (location: { name: string; path: string }) => {
@@ -172,7 +173,7 @@
     const paths = item.installs.map((install) => install.path);
     if (paths.length === 0) return;
     const confirmed = await confirm(
-      $t("locationPicker.uninstallConfirm", { name: skillName, location: item.name }),
+      $t("locationPicker.uninstallConfirm", { name: displayName, location: item.name }),
       { title: $t("scope.uninstall"), kind: "warning" }
     );
     if (!confirmed) return;
@@ -232,7 +233,7 @@
 
 <Modal
   bind:open
-  title={$t("locationPicker.title", { name: skillName })}
+  title={$t("locationPicker.title", { name: displayName })}
   onClose={handleClose}
   containerClass="max-w-lg"
 >

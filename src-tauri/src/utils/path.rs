@@ -47,11 +47,6 @@ pub fn validate_skill_name(name: &str) -> Result<(), String> {
   validate_entry_name("Skill", name)
 }
 
-/// An instruction name is used verbatim as the hub file name (`<name>.md`).
-pub fn validate_instruction_name(name: &str) -> Result<(), String> {
-  validate_entry_name("Instruction", name)
-}
-
 fn validate_entry_name(kind: &str, name: &str) -> Result<(), String> {
   if name.is_empty() || name != name.trim() {
     return Err(format!(

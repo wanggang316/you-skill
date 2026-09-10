@@ -5,8 +5,9 @@ pub mod user_project;
 
 pub use agent_app::{AgentApp, MemoryFile};
 pub use instruction::{
-  DetectedInstruction, InstructionActionResult, InstructionImportItem, InstructionImportOutcome,
-  InstructionLockFile, InstructionRecord, InstructionSource, InstructionView,
+  AgentFileTemplate, AgentFileView, DetectedInstruction, InstructionActionResult,
+  InstructionImportItem, InstructionImportOutcome, InstructionLockFile, InstructionRecord,
+  InstructionSource, InstructionView,
 };
 pub use skill::{
   ActionResult, AgentRootMatch, DetectedSkill, DiffAgainst, DiffHunk, DiffLine, DiffLineKind,

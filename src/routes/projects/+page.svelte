@@ -53,7 +53,7 @@
     buildScopeEntries($hubSkills, $userProjects, $t("scope.user"), $homePath)
   );
   const selectedKey = $derived(location.scope ? scopeKey(location.scope) : null);
-  // Instruction files are adopted into the library, so each one maps to an entry.
+  // Template name per instruction file that is installed from one.
   const libraryNames = $derived.by(() => {
     const map: Record<string, string> = {};
     for (const item of $instructions) {
@@ -333,11 +333,7 @@
           onAddSkills={() => openSkillPickerModal(selected.ref)}
           onAddAgent={handleAddAgent}
           onRemoveAgents={handleRemoveAgents}
-          onOpenMemory={(file) => {
-            const name = libraryNames[file.path];
-            if (name) goto(buildInstructionsHref({ name }));
-            else openInFileManager(file.path).catch((error) => (actionError = String(error)));
-          }}
+          onOpenMemory={(file) => goto(buildInstructionsHref({ file: file.path }))}
           onOpenSkill={(name) => goto(buildLibraryHref({ skill: name }))}
           onSkillAction={handleSkillAction}
         />

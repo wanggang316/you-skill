@@ -21,8 +21,10 @@ use commands::{
   },
   instructions::{
     create_instruction, detect_instruction_files, detect_instruction_github, diff_instruction,
-    get_instruction, import_instructions, install_instruction, list_instructions, read_instruction,
-    remove_instruction, sync_instruction, uninstall_instruction, write_instruction,
+    get_instruction, import_instructions, install_instruction, list_instruction_files,
+    list_instructions, read_instruction, read_instruction_file, remove_instruction,
+    rename_instruction, sync_instruction, uninstall_instruction, write_instruction,
+    write_instruction_file,
   },
   remote::{fetch_remote_skills, fetch_skills_by_names, record_skill_install},
   settings::{
@@ -148,6 +150,10 @@ fn main() {
       sync_instruction,
       diff_instruction,
       write_instruction,
+      rename_instruction,
+      list_instruction_files,
+      read_instruction_file,
+      write_instruction_file,
       detect_instruction_files,
       detect_instruction_github
     ])

@@ -56,7 +56,7 @@ export async function forgetProject(
   for (const item of get(instructions)) {
     const paths = scopedInstalls(item, ref).map((install) => install.path);
     if (paths.length === 0) continue;
-    const result = await uninstallInstruction({ name: item.name, targets: [], paths, force: true });
+    const result = await uninstallInstruction({ name: item.id, targets: [], paths, force: true });
     if (!result.applied) failures.push(`${item.name}: ${result.blockers.join("; ")}`);
   }
   if (registeredName) await removeUserProject(registeredName);

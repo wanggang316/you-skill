@@ -1,11 +1,11 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { ExternalLink, FolderOpen, Loader2, Pencil, Plus, Trash2 } from "@lucide/svelte";
+  import { Check, ExternalLink, FolderOpen, Pencil, Plus, Trash2, X } from "@lucide/svelte";
   import { open as openExternal } from "@tauri-apps/plugin-shell";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import SegmentedTabs from "$lib/components/ui/SegmentedTabs.svelte";
-  import MarkdownPreview from "$lib/components/MarkdownPreview.svelte";
+  import MarkdownEditor from "$lib/components/MarkdownEditor.svelte";
   import InstallTargets from "$lib/components/library/InstallTargets.svelte";
   import DriftPanel, { type TargetAction } from "$lib/components/library/DriftPanel.svelte";
   import { t } from "$lib/i18n";
@@ -13,6 +13,7 @@
     instructionSourceLabel,
     instructionSourceUrl,
     readInstruction,
+    renameInstruction,
     writeInstruction,
     type InstructionView,
   } from "$lib/api/instructions";
@@ -21,7 +22,6 @@
   import type { InstallScope, InstallView, SyncAction } from "$lib/api/hub";
   import type { AgentInfo } from "$lib/api/skills";
   import type { UserProject } from "$lib/api/user-projects";
-  import { renderMarkdownBody } from "$lib/utils/markdown";
 
   type DetailTab = "general" | "content";
 
@@ -58,12 +58,9 @@
   let contentError = $state("");
   let contentLoading = $state(false);
   let loadedKey = $state("");
-  let editing = $state(false);
-  let draft = $state("");
-  let saving = $state(false);
-  let saveError = $state("");
-  /** Copy targets with local changes that the last save left alone. */
-  let saveBlockers = $state<string[]>([]);
+  let renaming = $state(false);
+  let nameDraft = $state("");
+  let renameError = $state("");
 
   const shortHash = $derived(instruction.hash.slice(0, 10));
   const sourceLabel = $derived(instructionSourceLabel(instruction.source));
@@ -74,75 +71,68 @@
     const source = instruction.source;
     return source.type === "file" || source.type === "agent" ? source.path : null;
   });
-  function openSource() {
-    if (sourceUrl) void openExternal(sourceUrl);
-    else if (sourceHref) openInFileManager(sourceHref).catch(console.error);
-  }
-  const html = $derived(renderMarkdownBody(content));
   const formatDate = (value: string) => {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
   };
 
+  function openSource() {
+    if (sourceUrl) void openExternal(sourceUrl);
+    else if (sourceHref) openInFileManager(sourceHref).catch(console.error);
+  }
+
   // Read the file when the content tab is shown, again whenever it changed on disk.
   $effect(() => {
     if (tab !== "content") return;
-    const key = `${instruction.name}|${instruction.hubHash ?? instruction.hash}`;
+    const key = `${instruction.id}|${instruction.hubHash ?? instruction.hash}`;
     if (key === untrack(() => loadedKey)) return;
     loadedKey = key;
     contentLoading = true;
     contentError = "";
-    readInstruction(instruction.name)
+    readInstruction(instruction.id)
       .then((text) => (content = text))
       .catch((error) => (contentError = String(error)))
       .finally(() => (contentLoading = false));
   });
 
-  function startEdit() {
-    draft = content;
-    saveError = "";
-    saveBlockers = [];
-    editing = true;
-  }
-
-  function cancelEdit() {
-    editing = false;
-    draft = "";
-  }
-
   /** Save the library file; unmodified copies follow, edited ones are listed. */
-  async function save() {
-    if (saving) return;
-    saving = true;
-    saveError = "";
+  async function save(text: string): Promise<string[]> {
+    const result = await writeInstruction(instruction.id, text);
+    const view = result.instruction;
+    if (view) {
+      // Keep the editor's text instead of re-reading the file it was just written to.
+      loadedKey = `${view.id}|${view.hubHash ?? view.hash}`;
+      content = text === "" || text.endsWith("\n") ? text : `${text}\n`;
+      applyInstructionView(view);
+    }
+    await refreshInstructions();
+    return result.blockers;
+  }
+
+  function startRename() {
+    nameDraft = instruction.name;
+    renameError = "";
+    renaming = true;
+  }
+
+  async function commitRename() {
+    const name = nameDraft.trim();
+    if (!name || name === instruction.name) {
+      renaming = false;
+      return;
+    }
     try {
-      const result = await writeInstruction(instruction.name, draft);
-      const view = result.instruction;
-      if (view) {
-        // Keep the editor's text instead of re-reading the file it was just written to.
-        loadedKey = `${view.name}|${view.hubHash ?? view.hash}`;
-        content = draft === "" || draft.endsWith("\n") ? draft : `${draft}\n`;
-        applyInstructionView(view);
-      }
-      saveBlockers = result.blockers;
-      editing = false;
-      await refreshInstructions();
+      applyInstructionView(await renameInstruction(instruction.id, name));
+      renaming = false;
     } catch (error) {
-      saveError = String(error);
-    } finally {
-      saving = false;
+      renameError = String(error);
     }
   }
 
-  function handleEditorKeydown(event: KeyboardEvent) {
-    if ((event.metaKey || event.ctrlKey) && event.key === "s") {
-      event.preventDefault();
-      void save();
-    }
+  function handleNameKeydown(event: KeyboardEvent) {
+    if (event.key === "Enter") void commitRename();
+    if (event.key === "Escape") renaming = false;
   }
-
-  const toolbarButtonClass =
-    "border-base-300 text-base-content hover:bg-base-200 flex h-7 items-center gap-1 rounded-lg border px-2.5 text-xs transition disabled:opacity-50";
 </script>
 
 <div class="flex min-h-0 min-w-0 flex-col">
@@ -150,12 +140,48 @@
     class="border-base-300 flex h-12 flex-none items-center justify-between gap-3 border-b px-6"
     data-window-drag-region
   >
-    <div class="flex min-w-0 items-center gap-2">
-      <h2 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
-        {instruction.name}
-      </h2>
-      {#if instruction.hasDrift}
-        <span class="tag tag-warning">{$t("library.tag.changed")}</span>
+    <div class="flex min-w-0 flex-1 items-center gap-2">
+      {#if renaming}
+        <!-- svelte-ignore a11y_autofocus -->
+        <input
+          class="border-base-300 bg-base-200 text-base-content focus:border-primary h-8 min-w-0 flex-1 rounded-lg border px-2 text-sm focus:outline-none"
+          bind:value={nameDraft}
+          onkeydown={handleNameKeydown}
+          aria-label={$t("instructions.rename")}
+          autofocus
+        />
+        <IconButton
+          variant="outline"
+          onclick={commitRename}
+          title={$t("common.confirm")}
+          class="h-8 w-8 p-0"
+        >
+          <Check size={14} />
+        </IconButton>
+        <IconButton
+          variant="outline"
+          onclick={() => (renaming = false)}
+          title={$t("common.cancel")}
+          class="h-8 w-8 p-0"
+        >
+          <X size={14} />
+        </IconButton>
+      {:else}
+        <h2 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
+          {instruction.name}
+        </h2>
+        <button
+          class="text-base-content-subtle hover:text-base-content shrink-0 transition"
+          type="button"
+          onclick={startRename}
+          title={$t("instructions.rename")}
+          aria-label={$t("instructions.rename")}
+        >
+          <Pencil size={13} />
+        </button>
+        {#if instruction.hasDrift}
+          <span class="tag tag-warning">{$t("library.tag.changed")}</span>
+        {/if}
       {/if}
     </div>
     <div class="flex shrink-0 items-center gap-1.5">
@@ -238,6 +264,9 @@
           <dd>{formatDate(instruction.updatedAt)}</dd>
         </dl>
 
+        {#if renameError}
+          <p class="text-error text-sm whitespace-pre-wrap">{renameError}</p>
+        {/if}
         {#if actionError}
           <p class="text-error text-sm whitespace-pre-wrap">{actionError}</p>
         {/if}
@@ -246,7 +275,7 @@
           <section class="space-y-2">
             <h3 class="text-base-content text-sm font-medium">{$t("detail.drift")}</h3>
             <DriftPanel
-              name={instruction.name}
+              name={instruction.id}
               kind="instruction"
               hubState={instruction.hubState}
               installs={instruction.installs}
@@ -286,66 +315,14 @@
     </div>
   {:else}
     <div class="min-h-0 flex-1 overflow-y-auto">
-      <div class="mx-auto max-w-4xl space-y-3 px-6 py-5">
-        <div class="flex items-center justify-end gap-1.5">
-          {#if editing}
-            <button class={toolbarButtonClass} type="button" onclick={cancelEdit} disabled={saving}>
-              {$t("common.cancel")}
-            </button>
-            <PrimaryActionButton
-              onclick={save}
-              className="h-7 px-3 py-0 text-xs"
-              disabled={saving}
-              loading={saving}
-            >
-              {$t("instructions.save")}
-            </PrimaryActionButton>
-          {:else}
-            <button
-              class={toolbarButtonClass}
-              type="button"
-              onclick={startEdit}
-              disabled={busy || contentLoading || Boolean(contentError)}
-            >
-              <Pencil size={12} />
-              <span>{$t("instructions.edit")}</span>
-            </button>
-          {/if}
-        </div>
-
-        {#if saveError}
-          <p class="text-error text-sm whitespace-pre-wrap">{saveError}</p>
-        {/if}
-        {#if saveBlockers.length > 0}
-          <div class="border-warning/40 bg-warning/5 rounded-2xl border p-3 text-xs">
-            <p class="text-base-content">{$t("instructions.saveBlocked")}</p>
-            <ul class="text-base-content-muted mt-1 space-y-0.5">
-              {#each saveBlockers as blocker}
-                <li class="truncate" title={blocker}>{blocker}</li>
-              {/each}
-            </ul>
-          </div>
-        {/if}
-
-        {#if editing}
-          <textarea
-            class="border-base-300 bg-base-200 text-base-content focus:border-primary min-h-[60vh] w-full resize-y rounded-xl border px-4 py-3 font-mono text-[13px] leading-relaxed focus:outline-none"
-            bind:value={draft}
-            onkeydown={handleEditorKeydown}
-            disabled={saving}
-            spellcheck="false"
-          ></textarea>
-        {:else if contentLoading}
-          <div class="text-base-content-muted flex items-center gap-2 py-10 text-sm">
-            <Loader2 size={16} class="animate-spin" />
-          </div>
-        {:else if contentError}
-          <p class="text-error text-sm whitespace-pre-wrap">
-            {$t("instructions.contentError")}: {contentError}
-          </p>
-        {:else}
-          <MarkdownPreview htmlContent={html} onOpenExternalLink={(href) => openExternal(href)} />
-        {/if}
+      <div class="mx-auto max-w-4xl px-6 py-5">
+        <MarkdownEditor
+          {content}
+          loading={contentLoading}
+          error={contentError}
+          disabled={busy}
+          onSave={save}
+        />
       </div>
     </div>
   {/if}

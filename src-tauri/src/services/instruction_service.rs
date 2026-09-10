@@ -1,14 +1,15 @@
-//! The instruction library (`~/.youskill/instructions/<name>.md`): agent instruction files
-//! kept once and deployed to the `AGENTS.md` / `CLAUDE.md` locations each agent reads.
-//! Mirrors the skill hub (import, install, three-way drift, push / adopt) for single files;
-//! install records share the skill types. Files found at agent locations are adopted into
-//! the library automatically whenever it is listed.
+//! Instruction templates (`~/.youskill/instructions/<id>.md`) and the agent files
+//! (`AGENTS.md`, `CLAUDE.md`, ...) they are installed to. Templates are keyed by a
+//! generated id and carry a free-text display name; agent files are listed and edited in
+//! place and only enter the library when promoted to a template. Install records and the
+//! three-way drift share the skill types.
 
 use crate::models::{
-  AgentRootMatch, DetectedInstruction, HubState, InstallMode, InstallRecord, InstallRequest,
-  InstallScope, InstallTargetSpec, InstallView, InstructionActionResult, InstructionImportItem,
-  InstructionImportOutcome, InstructionLockFile, InstructionRecord, InstructionSource,
-  InstructionView, SkillDiff, SyncAction, TargetState, UninstallRequest, LOCK_VERSION,
+  AgentFileTemplate, AgentFileView, AgentRootMatch, DetectedInstruction, HubState, InstallMode,
+  InstallRecord, InstallRequest, InstallScope, InstallTargetSpec, InstallView,
+  InstructionActionResult, InstructionImportItem, InstructionImportOutcome, InstructionLockFile,
+  InstructionRecord, InstructionSource, InstructionView, SkillDiff, SyncAction, TargetState,
+  UninstallRequest, LOCK_VERSION,
 };
 use crate::services::diff_service::diff_files;
 use crate::services::drift_service::compare_three_way;
@@ -20,13 +21,14 @@ use crate::utils::github::GithubHelper;
 use crate::utils::hash::hash_file;
 use crate::utils::path::{
   expand_home_with, is_symlink, is_within, normalize_dir_path, path_to_string, remove_path_any,
-  same_path, symlink_points_to, validate_instruction_name,
+  same_path, symlink_points_to,
 };
 use crate::utils::time::{now_file_stamp, now_rfc3339};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use uuid::Uuid;
 use walkdir::WalkDir;
 
 const DESCRIPTION_MAX_CHARS: usize = 160;
@@ -361,7 +363,8 @@ pub fn build_view(env: &Env, name: &str, record: &InstructionRecord) -> Instruct
       .iter()
       .any(|install| install.state != TargetState::InSync);
   InstructionView {
-    name: name.to_string(),
+    id: name.to_string(),
+    name: record.name.clone(),
     hub_path: path_to_string(&env.instruction_file(name)),
     source: record.source.clone(),
     description: probe.description,
@@ -384,101 +387,97 @@ fn view_of(env: &Env, name: &str) -> Result<InstructionView, String> {
 // ---------------------------------------------------------------------------
 
 pub fn list_instructions(env: &Env) -> Result<Vec<InstructionView>, String> {
-  adopt_untracked_files(env)?;
-  adopt_agent_files(env)?;
-  backfill_sources(env)?;
+  migrate_named_records(env)?;
   let lock = read_lock(env)?;
   Ok(
     lock
       .instructions
       .iter()
-      .map(|(name, record)| build_view(env, name, record))
+      .map(|(id, record)| build_view(env, id, record))
       .collect(),
   )
 }
 
-pub fn get_instruction(env: &Env, name: &str) -> Result<Option<InstructionView>, String> {
+pub fn get_instruction(env: &Env, id: &str) -> Result<Option<InstructionView>, String> {
   Ok(
     read_lock(env)?
       .instructions
-      .get(name)
-      .map(|record| build_view(env, name, record)),
+      .get(id)
+      .map(|record| build_view(env, id, record)),
   )
 }
 
-pub fn read_instruction(env: &Env, name: &str) -> Result<String, String> {
-  let file = env.instruction_file(name);
+pub fn read_instruction(env: &Env, id: &str) -> Result<String, String> {
+  let file = env.instruction_file(id);
   fs::read_to_string(&file).map_err(|e| format!("Failed to read {}: {}", file.to_string_lossy(), e))
 }
 
-/// Markdown files dropped into the library folder by hand become tracked records.
-fn adopt_untracked_files(env: &Env) -> Result<(), String> {
-  if !env.instructions_root.is_dir() {
-    return Ok(());
-  }
-  let known = read_lock(env)?.instructions;
-  let mut untracked: Vec<(String, String)> = Vec::new();
-  for entry in fs::read_dir(&env.instructions_root).map_err(|e| e.to_string())? {
-    let entry = entry.map_err(|e| e.to_string())?;
-    let file = entry.path();
-    if !file.is_file() {
-      continue;
-    }
-    let Some(name) = library_name(&file) else {
-      continue;
-    };
-    if known.contains_key(&name) || validate_instruction_name(&name).is_err() {
-      continue;
-    }
-    if let Ok(hash) = hash_file(&file) {
-      untracked.push((name, hash));
-    }
-  }
-  if untracked.is_empty() {
+fn new_id() -> String {
+  Uuid::new_v4().to_string()
+}
+
+fn is_id(key: &str) -> bool {
+  Uuid::parse_str(key).is_ok()
+}
+
+/// Records from before templates had ids were keyed by a generated name, and every agent
+/// file had been copied into the library. A record that only mirrored one agent file is
+/// dropped again (the agent file stays, the copy goes to the trash); any other gets an id
+/// and keeps its key as display name.
+fn migrate_named_records(env: &Env) -> Result<(), String> {
+  let lock = read_lock(env)?;
+  let legacy: Vec<(String, InstructionRecord)> = lock
+    .instructions
+    .iter()
+    .filter(|(key, _)| !is_id(key))
+    .map(|(key, record)| (key.clone(), record.clone()))
+    .collect();
+  if legacy.is_empty() {
     return Ok(());
   }
   let _ops = ops_guard();
-  let timestamp = now_rfc3339();
-  update_lock(env, |lock| {
-    for (name, hash) in untracked {
-      lock.instructions.entry(name).or_insert(InstructionRecord {
-        source: InstructionSource::None,
-        hash,
-        imported_at: timestamp.clone(),
-        updated_at: timestamp.clone(),
-        installs: Vec::new(),
-      });
-    }
-    Ok(())
-  })
-}
-
-/// Entries adopted before sources were recorded: the agent file they were taken from is
-/// their first install, the user-level one when there are several.
-fn backfill_sources(env: &Env) -> Result<(), String> {
-  let lock = read_lock(env)?;
-  let missing: Vec<(String, String)> = lock
-    .instructions
-    .iter()
-    .filter(|(_, record)| record.source == InstructionSource::None)
-    .filter_map(|(name, record)| {
-      let install = record
+  let mut renamed: Vec<(String, String)> = Vec::new();
+  let mut dropped: Vec<String> = Vec::new();
+  for (key, record) in legacy {
+    let old_file = env.instruction_file(&key);
+    let mirrors_one_file = record.installs.len() <= 1
+      && record
         .installs
         .iter()
-        .find(|install| install.scope == InstallScope::User)
-        .or_else(|| record.installs.first())?;
-      Some((name.clone(), install.path.clone()))
-    })
-    .collect();
-  if missing.is_empty() {
-    return Ok(());
+        .all(|install| install.mode == InstallMode::Copy && install.hash == record.hash);
+    let adopted = match &record.source {
+      InstructionSource::Agent { .. } => true,
+      InstructionSource::None => record.installs.len() == 1,
+      _ => false,
+    };
+    if adopted && mirrors_one_file {
+      if old_file.exists() || is_symlink(&old_file) {
+        trash_file(env, &old_file)?;
+      }
+      dropped.push(key);
+      continue;
+    }
+    let id = new_id();
+    let new_file = env.instruction_file(&id);
+    if old_file.is_file() {
+      fs::rename(&old_file, &new_file).map_err(|e| e.to_string())?;
+      for install in &record.installs {
+        let target = Path::new(&install.path);
+        if is_symlink(target) && symlink_points_to(target, &old_file) {
+          let _ = write_target(&new_file, target, InstallMode::Symlink);
+        }
+      }
+    }
+    renamed.push((key, id));
   }
   update_lock(env, |lock| {
-    for (name, path) in missing {
-      if let Some(record) = lock.instructions.get_mut(&name) {
-        if record.source == InstructionSource::None {
-          record.source = InstructionSource::Agent { path };
-        }
+    for key in &dropped {
+      lock.instructions.remove(key);
+    }
+    for (key, id) in &renamed {
+      if let Some(mut record) = lock.instructions.remove(key) {
+        record.name = key.clone();
+        lock.instructions.insert(id.clone(), record);
       }
     }
     Ok(())
@@ -523,55 +522,46 @@ fn trash_file(env: &Env, file: &Path) -> Result<(), String> {
   Ok(())
 }
 
-fn existing_key(lock: &InstructionLockFile, name: &str) -> Option<String> {
-  lock
-    .instructions
-    .keys()
-    .find(|key| key.eq_ignore_ascii_case(name))
-    .cloned()
+const NAME_MAX_CHARS: usize = 80;
+
+/// Display names are free text: trimmed, one line, not empty.
+fn validate_name(name: &str) -> Result<String, String> {
+  let name = name.trim();
+  if name.is_empty() {
+    return Err("Name must not be empty".to_string());
+  }
+  if name.contains(['\n', '\r']) {
+    return Err("Name must be one line".to_string());
+  }
+  if name.chars().count() > NAME_MAX_CHARS {
+    return Err(format!(
+      "Name must be at most {} characters",
+      NAME_MAX_CHARS
+    ));
+  }
+  Ok(name.to_string())
 }
 
-/// Copy Markdown files into the library and record them. With `overwrite`, an existing
-/// entry of the same name is replaced (installs are kept and unmodified copies pushed).
+/// Copy Markdown files into the library as new templates.
 pub fn import_instructions(
   env: &Env,
   items: Vec<InstructionImportItem>,
-  overwrite: bool,
 ) -> Result<Vec<InstructionImportOutcome>, String> {
   let _ops = ops_guard();
   let mut outcomes = Vec::new();
   let mut errors = Vec::new();
-  let mut replaced_names = Vec::new();
   for item in items {
     match import_one(
       env,
       &item.name,
       Path::new(item.path.trim()),
       item.source,
-      overwrite,
       true,
     ) {
-      Ok(outcome) => {
-        if outcome.replaced {
-          replaced_names.push(outcome.name.clone());
-        }
-        outcomes.push(outcome);
-      },
+      Ok(outcome) => outcomes.push(outcome),
       Err(err) => errors.push(format!("{}: {}", item.name, err)),
     }
   }
-  for name in replaced_names {
-    if let Err(err) = push_targets(env, &name, None, false) {
-      tracing::warn!("push after replacing '{}' failed: {}", name, err);
-    }
-  }
-  finish_import(outcomes, errors)
-}
-
-fn finish_import(
-  outcomes: Vec<InstructionImportOutcome>,
-  errors: Vec<String>,
-) -> Result<Vec<InstructionImportOutcome>, String> {
   if !errors.is_empty() {
     if outcomes.is_empty() {
       return Err(errors.join("\n"));
@@ -581,34 +571,19 @@ fn finish_import(
   Ok(outcomes)
 }
 
-/// Import one file. A file that is itself an agent location is registered as an install
-/// (when `register` is set) so the library entry and the file stay linked. Without an
-/// explicit `source`, the file itself is recorded as one.
+/// Import one file as a new template. A file that is itself an agent location is
+/// registered as an install (when `register` is set) so the template and the file stay
+/// linked. Without an explicit `source`, the file itself is recorded as one.
 fn import_one(
   env: &Env,
   name: &str,
   src: &Path,
   source: Option<InstructionSource>,
-  overwrite: bool,
   register: bool,
 ) -> Result<InstructionImportOutcome, String> {
-  let name = name.trim().to_string();
-  validate_instruction_name(&name)?;
+  let name = validate_name(name)?;
   if !src.is_file() {
     return Err(format!("Not a file: {}", src.to_string_lossy()));
-  }
-  let lock = read_lock(env)?;
-  let existing = existing_key(&lock, &name);
-  if let Some(key) = &existing {
-    if key != &name {
-      return Err(format!(
-        "An instruction named '{}' already exists (names are case-insensitive)",
-        key
-      ));
-    }
-    if !overwrite {
-      return Err("Instruction already exists in the library".to_string());
-    }
   }
   let auto_install = if register && !is_within(src, &env.youskill_root) {
     classify_profile(env, src)
@@ -616,15 +591,12 @@ fn import_one(
     None
   };
 
-  let hub_file = env.instruction_file(&name);
-  if hub_file.exists() || is_symlink(&hub_file) {
-    trash_file(env, &hub_file)?;
-  }
+  let id = new_id();
+  let hub_file = env.instruction_file(&id);
   fs::create_dir_all(&env.instructions_root).map_err(|e| e.to_string())?;
   fs::copy(src, &hub_file).map_err(|e| e.to_string())?;
   let hash = hash_file(&hub_file)?;
   let timestamp = now_rfc3339();
-  let replaced = existing.is_some();
   let src_text = path_to_string(src);
   let source = source.unwrap_or_else(|| {
     if auto_install.is_some() {
@@ -637,62 +609,56 @@ fn import_one(
       }
     }
   });
+  let mut record = InstructionRecord {
+    name: name.clone(),
+    source,
+    hash: hash.clone(),
+    imported_at: timestamp.clone(),
+    updated_at: timestamp.clone(),
+    installs: Vec::new(),
+  };
+  if let Some(matched) = &auto_install {
+    upsert_install(
+      &mut record,
+      matched.scope,
+      matched.project_path.clone(),
+      &src_text,
+      InstallMode::Copy,
+      &matched.agent_ids,
+      &hash,
+      &timestamp,
+    );
+  }
   update_lock(env, |lock| {
-    let record = lock
-      .instructions
-      .entry(name.clone())
-      .or_insert(InstructionRecord {
-        source: InstructionSource::None,
-        hash: hash.clone(),
-        imported_at: timestamp.clone(),
-        updated_at: timestamp.clone(),
-        installs: Vec::new(),
-      });
-    record.source = source;
-    record.hash = hash.clone();
-    record.updated_at = timestamp.clone();
-    if let Some(matched) = &auto_install {
-      upsert_install(
-        record,
-        matched.scope,
-        matched.project_path.clone(),
-        &src_text,
-        InstallMode::Copy,
-        &matched.agent_ids,
-        &hash,
-        &timestamp,
-      );
+    // Another template may already claim this file; the newer one takes it.
+    if auto_install.is_some() {
+      for other in lock.instructions.values_mut() {
+        other
+          .installs
+          .retain(|install| !same_path(Path::new(&install.path), src));
+      }
     }
+    lock.instructions.insert(id.clone(), record);
     Ok(())
   })?;
   Ok(InstructionImportOutcome {
+    id,
     name,
     hub_path: path_to_string(&hub_file),
     hash,
-    replaced,
   })
 }
 
-/// Start a new library entry from text.
+/// Start a new template from text.
 pub fn create_instruction(
   env: &Env,
   name: &str,
   content: &str,
 ) -> Result<InstructionImportOutcome, String> {
   let _ops = ops_guard();
-  let name = name.trim().to_string();
-  validate_instruction_name(&name)?;
-  let lock = read_lock(env)?;
-  if let Some(key) = existing_key(&lock, &name) {
-    return Err(format!("An instruction named '{}' already exists", key));
-  }
-  let hub_file = env.instruction_file(&name);
-  if hub_file.exists() || is_symlink(&hub_file) {
-    return Err(format!(
-      "A file named {} already exists in the library folder",
-      hub_file.to_string_lossy()
-    ));
-  }
+  let name = validate_name(name)?;
+  let id = new_id();
+  let hub_file = env.instruction_file(&id);
   fs::create_dir_all(&env.instructions_root).map_err(|e| e.to_string())?;
   let body = if content.trim().is_empty() {
     format!("# {}\n", name)
@@ -706,8 +672,9 @@ pub fn create_instruction(
   let timestamp = now_rfc3339();
   update_lock(env, |lock| {
     lock.instructions.insert(
-      name.clone(),
+      id.clone(),
       InstructionRecord {
+        name: name.clone(),
         source: InstructionSource::None,
         hash: hash.clone(),
         imported_at: timestamp.clone(),
@@ -718,11 +685,21 @@ pub fn create_instruction(
     Ok(())
   })?;
   Ok(InstructionImportOutcome {
+    id,
     name,
     hub_path: path_to_string(&hub_file),
     hash,
-    replaced: false,
   })
+}
+
+pub fn rename_instruction(env: &Env, id: &str, name: &str) -> Result<InstructionView, String> {
+  let name = validate_name(name)?;
+  let record = update_lock(env, |lock| {
+    let record = record_mut(lock, id)?;
+    record.name = name;
+    Ok(record.clone())
+  })?;
+  Ok(build_view(env, id, &record))
 }
 
 /// Accept whatever is in the library file as the current version.
@@ -1019,12 +996,12 @@ pub fn install_instruction(
             .iter()
             .any(|install| same_path(Path::new(&install.path), &group.path))
       });
-      if let Some((other, _)) = occupant {
+      if let Some((other, other_record)) = occupant {
         if !request.force {
           blockers.push(format!(
             "{} is occupied by '{}'; use force to replace it",
             group.path.to_string_lossy(),
-            other
+            other_record.name
           ));
           continue;
         }
@@ -1408,7 +1385,7 @@ pub fn diff_instruction(env: &Env, name: &str, path: &str) -> Result<SkillDiff, 
 }
 
 // ---------------------------------------------------------------------------
-// Agent locations
+// Agent files
 // ---------------------------------------------------------------------------
 
 /// Every instruction file that exists at an agent location: user level and each registered
@@ -1465,79 +1442,8 @@ fn agent_files(env: &Env) -> Vec<(PathBuf, AgentRootMatch)> {
   found
 }
 
-/// Files at agent locations become library entries without asking: a file with the same
-/// content as an entry is registered as an install of it, anything else is imported under
-/// a generated name. Symlinks are only registered when they point into the library, so a
-/// file linked to a dotfiles repository is left alone.
-fn adopt_agent_files(env: &Env) -> Result<(), String> {
-  let lock = read_lock(env)?;
-  let tracked = |path: &Path| {
-    lock.instructions.values().any(|record| {
-      record.installs.iter().any(|install| {
-        let recorded = Path::new(&install.path);
-        recorded == path || same_path(recorded, path)
-      })
-    })
-  };
-  let pending: Vec<(PathBuf, AgentRootMatch)> = agent_files(env)
-    .into_iter()
-    .filter(|(path, _)| !tracked(path))
-    .collect();
-  if pending.is_empty() {
-    return Ok(());
-  }
-
-  let _ops = ops_guard();
-  let mut hub_hashes: Vec<(String, String)> = lock
-    .instructions
-    .keys()
-    .filter_map(|name| {
-      hash_file(&env.instruction_file(name))
-        .ok()
-        .map(|hash| (name.clone(), hash))
-    })
-    .collect();
-  let mut used: Vec<String> = lock
-    .instructions
-    .keys()
-    .map(|key| key.to_lowercase())
-    .collect();
-  for (path, location) in pending {
-    if is_symlink(&path) {
-      let Some(name) = library_link_name(env, &path) else {
-        continue;
-      };
-      if let Some((_, hash)) = hub_hashes.iter().find(|(known, _)| known == &name) {
-        let hash = hash.clone();
-        if let Err(err) =
-          register_install(env, &name, &location, &path, InstallMode::Symlink, &hash)
-        {
-          tracing::warn!("registering {} failed: {}", path.to_string_lossy(), err);
-        }
-      }
-      continue;
-    }
-    let Ok(hash) = hash_file(&path) else {
-      continue;
-    };
-    let result = match hub_hashes.iter().find(|(_, known)| known == &hash) {
-      Some((name, _)) => register_install(env, name, &location, &path, InstallMode::Copy, &hash),
-      None => {
-        let name = unique_name(&adopted_name(&path, &location), &used);
-        used.push(name.to_lowercase());
-        hub_hashes.push((name.clone(), hash));
-        import_one(env, &name, &path, None, false, true).map(|_| ())
-      },
-    };
-    if let Err(err) = result {
-      tracing::warn!("adopting {} failed: {}", path.to_string_lossy(), err);
-    }
-  }
-  Ok(())
-}
-
-/// Library entry a symlink points to, if it points into the library at all.
-fn library_link_name(env: &Env, link: &Path) -> Option<String> {
+/// Template id a symlink points to, if it points into the library at all.
+fn linked_template(env: &Env, link: &Path) -> Option<String> {
   let raw = fs::read_link(link).ok()?;
   let resolved = if raw.is_absolute() {
     raw
@@ -1547,60 +1453,106 @@ fn library_link_name(env: &Env, link: &Path) -> Option<String> {
   if !is_within(&resolved, &env.instructions_root) {
     return None;
   }
-  library_name(&resolved)
+  library_name(&resolved).filter(|id| is_id(id))
 }
 
-fn register_install(
-  env: &Env,
-  name: &str,
-  location: &AgentRootMatch,
-  path: &Path,
-  mode: InstallMode,
-  hash: &str,
-) -> Result<(), String> {
-  let timestamp = now_rfc3339();
-  update_lock(env, |lock| {
-    let record = record_mut(lock, name)?;
-    upsert_install(
-      record,
-      location.scope,
-      location.project_path.clone(),
-      &path_to_string(path),
-      mode,
-      &location.agent_ids,
-      hash,
-      &timestamp,
-    );
-    Ok(())
-  })
-}
-
-/// `user-<agent dir>` at user level (`~/.claude/CLAUDE.md` → `user-claude`) and
-/// `<project>-<file>` in a project (`multica/AGENTS.md` → `multica-agents`).
-fn adopted_name(path: &Path, location: &AgentRootMatch) -> String {
-  let stem = file_stem(path);
-  match &location.project_path {
-    None => {
-      let dir = path
-        .parent()
-        .and_then(Path::file_name)
-        .map(|n| n.to_string_lossy().trim_start_matches('.').to_string())
-        .unwrap_or_default();
-      let tail = if is_upper(&stem) && !dir.is_empty() {
-        dir
-      } else {
-        stem
+/// The agent files that exist, each with the template it belongs to (by install record,
+/// or by pointing into the library) and how it compares to that template.
+pub fn list_instruction_files(env: &Env) -> Result<Vec<AgentFileView>, String> {
+  let lock = read_lock(env)?;
+  let hub_hashes: BTreeMap<String, String> = lock
+    .instructions
+    .keys()
+    .filter_map(|id| {
+      hash_file(&env.instruction_file(id))
+        .ok()
+        .map(|hash| (id.clone(), hash))
+    })
+    .collect();
+  let mut files: Vec<AgentFileView> = agent_files(env)
+    .into_iter()
+    .map(|(path, location)| {
+      let recorded = lock.instructions.iter().find_map(|(id, record)| {
+        record
+          .installs
+          .iter()
+          .find(|install| same_path(Path::new(&install.path), &path))
+          .map(|install| (id.clone(), record, install))
+      });
+      let template = match recorded {
+        Some((id, record, install)) => {
+          let (state, _) = target_state(env, &id, install, hub_hashes.get(&id).map(String::as_str));
+          Some(AgentFileTemplate {
+            id,
+            name: record.name.clone(),
+            state,
+          })
+        },
+        None => linked_template(env, &path).and_then(|id| {
+          let state = if env.instruction_file(&id).is_file() {
+            TargetState::InSync
+          } else {
+            TargetState::BrokenLink
+          };
+          lock.instructions.get(&id).map(|record| AgentFileTemplate {
+            id,
+            name: record.name.clone(),
+            state,
+          })
+        }),
       };
-      slug(&format!("user-{}", tail))
-    },
-    Some(project) => {
-      let folder = Path::new(project)
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| "project".to_string());
-      slug(&format!("{}-{}", folder, stem))
-    },
+      AgentFileView {
+        file_name: path
+          .file_name()
+          .map(|n| n.to_string_lossy().to_string())
+          .unwrap_or_default(),
+        path: path_to_string(&path),
+        scope: location.scope,
+        project_path: location.project_path,
+        agent_ids: location.agent_ids,
+        hash: hash_file(&path).ok(),
+        template,
+      }
+    })
+    .collect();
+  files.sort_by(|a, b| {
+    let rank = |file: &AgentFileView| match file.scope {
+      InstallScope::User => 0,
+      InstallScope::Project => 1,
+    };
+    rank(a).cmp(&rank(b)).then_with(|| a.path.cmp(&b.path))
+  });
+  Ok(files)
+}
+
+/// The agent file at `path`, refusing anything that is not an agent location.
+fn agent_file(env: &Env, path: &str) -> Result<PathBuf, String> {
+  let wanted = expand_home_with(path.trim(), &env.home);
+  agent_files(env)
+    .into_iter()
+    .map(|(known, _)| known)
+    .find(|known| same_path(known, &wanted))
+    .ok_or_else(|| format!("{} is not an agent instruction file", path))
+}
+
+pub fn read_instruction_file(env: &Env, path: &str) -> Result<String, String> {
+  let file = agent_file(env, path)?;
+  fs::read_to_string(&file).map_err(|e| format!("Failed to read {}: {}", file.to_string_lossy(), e))
+}
+
+/// Write an agent file in place. A symlink into the library writes the template instead,
+/// so the change is accepted there and reaches every other copy that was in sync.
+pub fn write_instruction_file(env: &Env, path: &str, content: &str) -> Result<(), String> {
+  let file = agent_file(env, path)?;
+  if let Some(id) = linked_template(env, &file) {
+    return write_instruction(env, &id, content).map(|_| ());
   }
+  let body = if content.is_empty() || content.ends_with('\n') {
+    content.to_string()
+  } else {
+    format!("{}\n", content)
+  };
+  fs::write(&file, body).map_err(|e| format!("Failed to write {}: {}", file.to_string_lossy(), e))
 }
 
 fn file_stem(path: &Path) -> String {
@@ -1633,10 +1585,10 @@ fn slug(text: &str) -> String {
     }
   }
   let out = out.trim_matches(|c| c == '-' || c == '.').to_string();
-  if validate_instruction_name(&out).is_ok() {
-    out
-  } else {
+  if out.is_empty() {
     "instruction".to_string()
+  } else {
+    out
   }
 }
 
@@ -1944,7 +1896,8 @@ mod tests {
     )
   }
 
-  fn import(env: &Env, tmp: &Path, name: &str, body: &str) -> InstructionImportOutcome {
+  /// Import `body` from a scratch file under `name`; returns the template id.
+  fn import(env: &Env, tmp: &Path, name: &str, body: &str) -> String {
     let src = tmp.join("src").join(format!("{}.md", name));
     write(&src, body);
     let mut outcomes = import_instructions(
@@ -1954,10 +1907,9 @@ mod tests {
         path: src.to_string_lossy().to_string(),
         source: None,
       }],
-      false,
     )
     .unwrap();
-    outcomes.remove(0)
+    outcomes.remove(0).id
   }
 
   fn spec(scope: InstallScope, project: Option<&Path>, agent: &str) -> InstallTargetSpec {
@@ -1970,7 +1922,7 @@ mod tests {
 
   fn install(
     env: &Env,
-    name: &str,
+    id: &str,
     targets: Vec<InstallTargetSpec>,
     mode: InstallMode,
     force: bool,
@@ -1978,7 +1930,7 @@ mod tests {
     install_instruction(
       env,
       InstallRequest {
-        name: name.to_string(),
+        name: id.to_string(),
         targets,
         mode: Some(mode),
         force,
@@ -1991,17 +1943,22 @@ mod tests {
   fn import_install_drift_adopt_and_push() {
     let tmp = tempfile::tempdir().unwrap();
     let env = env(tmp.path());
-    let outcome = import(&env, tmp.path(), "rules", "# Team rules\n\nv1\n");
-    assert!(!outcome.replaced);
-    let view = get_instruction(&env, "rules").unwrap().unwrap();
+    let id = import(&env, tmp.path(), "rules", "# Team rules\n\nv1\n");
+    assert!(is_id(&id));
+    let view = get_instruction(&env, &id).unwrap().unwrap();
+    assert_eq!(view.name, "rules");
     assert_eq!(view.description.as_deref(), Some("Team rules"));
-    assert!(matches!(view.source, InstructionSource::File { .. }));
     assert_eq!(view.hub_state, HubState::Ok);
+    assert!(matches!(view.source, InstructionSource::File { .. }));
     assert!(view.installs.is_empty());
+    // Names are free text and may repeat; ids tell templates apart.
+    let again = import(&env, tmp.path(), "rules", "other\n");
+    assert_ne!(again, id);
+    assert_eq!(list_instructions(&env).unwrap().len(), 2);
 
     let result = install(
       &env,
-      "rules",
+      &id,
       vec![spec(InstallScope::User, None, "claude-code")],
       InstallMode::Copy,
       false,
@@ -2016,12 +1973,12 @@ mod tests {
 
     // Edit the target: modified, then adopted into the library.
     write(&target, "# Team rules\n\nv2 edited\n");
-    let view = get_instruction(&env, "rules").unwrap().unwrap();
+    let view = get_instruction(&env, &id).unwrap().unwrap();
     assert_eq!(view.installs[0].state, TargetState::Modified);
     assert!(view.has_drift);
     let adopted = sync_instruction(
       &env,
-      "rules",
+      &id,
       SyncAction::AdoptTarget {
         path: path_to_string(&target),
         force: false,
@@ -2029,23 +1986,23 @@ mod tests {
     )
     .unwrap();
     assert!(adopted.applied);
-    assert!(read(&env.instruction_file("rules")).ends_with("v2 edited\n"));
+    assert!(read(&env.instruction_file(&id)).ends_with("v2 edited\n"));
     assert_eq!(
       adopted.instruction.unwrap().installs[0].state,
       TargetState::InSync
     );
 
     // Edit the library copy: accept it, the target is outdated, push it.
-    write(&env.instruction_file("rules"), "# Team rules\n\nv3\n");
-    let view = get_instruction(&env, "rules").unwrap().unwrap();
+    write(&env.instruction_file(&id), "# Team rules\n\nv3\n");
+    let view = get_instruction(&env, &id).unwrap().unwrap();
     assert_eq!(view.hub_state, HubState::Modified);
-    let accepted = sync_instruction(&env, "rules", SyncAction::AcceptHub).unwrap();
+    let accepted = sync_instruction(&env, &id, SyncAction::AcceptHub).unwrap();
     let view = accepted.instruction.unwrap();
     assert_eq!(view.hub_state, HubState::Ok);
     assert_eq!(view.installs[0].state, TargetState::Outdated);
     let pushed = sync_instruction(
       &env,
-      "rules",
+      &id,
       SyncAction::PushTargets {
         targets: None,
         force: false,
@@ -2060,11 +2017,11 @@ mod tests {
   fn shared_project_file_groups_agents_and_uninstalls_by_agent() {
     let tmp = tempfile::tempdir().unwrap();
     let env = env(tmp.path());
-    import(&env, tmp.path(), "rules", "rules\n");
+    let id = import(&env, tmp.path(), "rules", "rules\n");
     let project = tmp.path().join("proj");
     let result = install(
       &env,
-      "rules",
+      &id,
       vec![
         spec(InstallScope::Project, Some(&project), "codex"),
         spec(InstallScope::Project, Some(&project), "agents"),
@@ -2073,7 +2030,7 @@ mod tests {
       false,
     );
     assert!(result.applied);
-    let record = get_record(&env, "rules").unwrap();
+    let record = get_record(&env, &id).unwrap();
     assert_eq!(record.installs.len(), 1);
     assert!(same_path(
       Path::new(&record.installs[0].path),
@@ -2081,13 +2038,13 @@ mod tests {
     ));
     assert_eq!(record.installs[0].agent_ids, vec!["codex", "agents"]);
     // Claude Code reads CLAUDE.md, so it is not shown on the AGENTS.md install.
-    let view = get_instruction(&env, "rules").unwrap().unwrap();
+    let view = get_instruction(&env, &id).unwrap().unwrap();
     assert_eq!(view.installs[0].record.agent_ids, vec!["agents", "codex"]);
 
     let result = uninstall_instruction(
       &env,
       UninstallRequest {
-        name: "rules".to_string(),
+        name: id.clone(),
         targets: vec![spec(InstallScope::Project, Some(&project), "codex")],
         paths: vec![],
         force: false,
@@ -2099,7 +2056,7 @@ mod tests {
     let result = uninstall_instruction(
       &env,
       UninstallRequest {
-        name: "rules".to_string(),
+        name: id.clone(),
         targets: vec![],
         paths: vec![path_to_string(&project.join("AGENTS.md"))],
         force: false,
@@ -2108,20 +2065,20 @@ mod tests {
     .unwrap();
     assert!(result.applied);
     assert!(!project.join("AGENTS.md").exists());
-    assert!(get_record(&env, "rules").unwrap().installs.is_empty());
+    assert!(get_record(&env, &id).unwrap().installs.is_empty());
   }
 
   #[test]
   fn occupied_file_is_blocked_then_taken_over_with_force() {
     let tmp = tempfile::tempdir().unwrap();
     let env = env(tmp.path());
-    import(&env, tmp.path(), "a", "A\n");
-    import(&env, tmp.path(), "b", "B\n");
+    let a = import(&env, tmp.path(), "a", "A\n");
+    let b = import(&env, tmp.path(), "b", "B\n");
     let project = tmp.path().join("proj");
     assert!(
       install(
         &env,
-        "a",
+        &a,
         vec![spec(InstallScope::Project, Some(&project), "codex")],
         InstallMode::Copy,
         false
@@ -2131,7 +2088,7 @@ mod tests {
 
     let blocked = install(
       &env,
-      "b",
+      &b,
       vec![spec(InstallScope::Project, Some(&project), "codex")],
       InstallMode::Copy,
       false,
@@ -2142,27 +2099,27 @@ mod tests {
 
     let forced = install(
       &env,
-      "b",
+      &b,
       vec![spec(InstallScope::Project, Some(&project), "codex")],
       InstallMode::Copy,
       true,
     );
     assert!(forced.applied);
     assert_eq!(read(&project.join("AGENTS.md")), "B\n");
-    assert!(get_record(&env, "a").unwrap().installs.is_empty());
-    assert_eq!(get_record(&env, "b").unwrap().installs.len(), 1);
+    assert!(get_record(&env, &a).unwrap().installs.is_empty());
+    assert_eq!(get_record(&env, &b).unwrap().installs.len(), 1);
   }
 
   #[test]
   fn hand_written_file_blocks_install_until_forced() {
     let tmp = tempfile::tempdir().unwrap();
     let env = env(tmp.path());
-    import(&env, tmp.path(), "rules", "rules\n");
+    let id = import(&env, tmp.path(), "rules", "rules\n");
     let target = env.home.join(".codex/AGENTS.md");
     write(&target, "mine\n");
     let blocked = install(
       &env,
-      "rules",
+      &id,
       vec![spec(InstallScope::User, None, "codex")],
       InstallMode::Copy,
       false,
@@ -2172,7 +2129,7 @@ mod tests {
     assert_eq!(read(&target), "mine\n");
     let forced = install(
       &env,
-      "rules",
+      &id,
       vec![spec(InstallScope::User, None, "codex")],
       InstallMode::Copy,
       true,
@@ -2182,22 +2139,23 @@ mod tests {
   }
 
   #[test]
-  fn importing_an_agent_file_registers_it_as_install() {
+  fn promoting_an_agent_file_registers_it_and_takes_it_over() {
     let tmp = tempfile::tempdir().unwrap();
     let env = env(tmp.path());
     let source = env.home.join(".codex/AGENTS.md");
     write(&source, "# Codex\n");
-    import_instructions(
+    let outcome = import_instructions(
       &env,
       vec![InstructionImportItem {
-        name: "codex-rules".to_string(),
+        name: "Codex rules".to_string(),
         path: path_to_string(&source),
         source: None,
       }],
-      false,
     )
-    .unwrap();
-    let view = get_instruction(&env, "codex-rules").unwrap().unwrap();
+    .unwrap()
+    .remove(0);
+    let view = get_instruction(&env, &outcome.id).unwrap().unwrap();
+    assert_eq!(view.name, "Codex rules");
     assert_eq!(
       view.source,
       InstructionSource::Agent {
@@ -2209,77 +2167,115 @@ mod tests {
     assert_eq!(view.installs[0].record.agent_ids, vec!["codex"]);
     assert_eq!(view.installs[0].state, TargetState::InSync);
     assert!(source.is_file(), "the agent file stays in place");
-    assert!(import_instructions(
+
+    // Promoting the same file again moves the install to the new template.
+    let second = import_instructions(
       &env,
       vec![InstructionImportItem {
-        name: "Codex-Rules".to_string(),
+        name: "Codex rules".to_string(),
         path: path_to_string(&source),
         source: None,
       }],
-      false,
     )
-    .is_err());
+    .unwrap()
+    .remove(0);
+    assert!(get_record(&env, &outcome.id).unwrap().installs.is_empty());
+    assert_eq!(get_record(&env, &second.id).unwrap().installs.len(), 1);
   }
 
   #[test]
-  fn agent_files_are_adopted_on_list() {
+  fn agent_files_are_listed_with_their_template() {
     let tmp = tempfile::tempdir().unwrap();
     let env = env(tmp.path());
     let project = tmp.path().join("proj");
     write(&env.home.join(".claude/CLAUDE.md"), "# Claude\n");
     write(&project.join("AGENTS.md"), "# Proj\n");
-    // Same content as the user-level file: registered, not imported twice.
-    write(&project.join("CLAUDE.md"), "# Claude\n");
 
-    let list = list_instructions(&env).unwrap();
-    let names: Vec<&str> = list.iter().map(|item| item.name.as_str()).collect();
-    assert_eq!(names, vec!["proj-agents", "user-claude"]);
-    let claude = list.iter().find(|item| item.name == "user-claude").unwrap();
+    let files = list_instruction_files(&env).unwrap();
+    assert_eq!(files.len(), 2);
+    assert_eq!(files[0].scope, InstallScope::User);
+    assert_eq!(files[0].agent_ids, vec!["claude-code"]);
+    assert!(files[0].template.is_none());
+    assert_eq!(files[1].file_name, "AGENTS.md");
+    assert_eq!(files[1].agent_ids, vec!["agents", "codex"]);
     assert_eq!(
-      claude.source,
-      InstructionSource::Agent {
-        path: path_to_string(&env.home.join(".claude/CLAUDE.md"))
-      }
+      files[1].project_path.as_deref(),
+      Some(project.to_str().unwrap())
     );
-    assert_eq!(claude.installs.len(), 2);
-    assert!(claude
-      .installs
-      .iter()
-      .all(|install| install.state == TargetState::InSync));
-    let agents = list.iter().find(|item| item.name == "proj-agents").unwrap();
-    assert_eq!(agents.installs.len(), 1);
-    assert_eq!(agents.installs[0].record.agent_ids, vec!["agents", "codex"]);
-    assert!(project.join("AGENTS.md").is_file(), "files stay in place");
+    // Nothing was copied into the library.
+    assert!(list_instructions(&env).unwrap().is_empty());
 
-    // Listing again changes nothing; an edited file drifts instead of being re-imported.
-    write(&project.join("AGENTS.md"), "# Proj edited\n");
-    let list = list_instructions(&env).unwrap();
-    assert_eq!(list.len(), 2);
-    let agents = list.iter().find(|item| item.name == "proj-agents").unwrap();
-    assert_eq!(agents.installs[0].state, TargetState::Modified);
+    let id = import(&env, tmp.path(), "rules", "# Proj\n");
+    assert!(
+      install(
+        &env,
+        &id,
+        vec![spec(InstallScope::Project, Some(&project), "codex")],
+        InstallMode::Copy,
+        false
+      )
+      .applied
+    );
+    let files = list_instruction_files(&env).unwrap();
+    let linked = files[1].template.as_ref().unwrap();
+    assert_eq!(linked.id, id);
+    assert_eq!(linked.name, "rules");
+    assert_eq!(linked.state, TargetState::InSync);
+
+    // Editing the file in place drifts it from the template.
+    write_instruction_file(&env, &files[1].path, "# Proj edited").unwrap();
+    assert_eq!(read(&project.join("AGENTS.md")), "# Proj edited\n");
+    let files = list_instruction_files(&env).unwrap();
+    assert_eq!(
+      files[1].template.as_ref().unwrap().state,
+      TargetState::Modified
+    );
+    assert_eq!(
+      read_instruction_file(&env, &files[1].path).unwrap(),
+      "# Proj edited\n"
+    );
+    assert!(read_instruction_file(&env, &path_to_string(&env.instruction_file(&id))).is_err());
+    assert!(write_instruction_file(&env, "/etc/hosts", "x").is_err());
   }
 
   #[cfg(unix)]
   #[test]
-  fn adoption_skips_symlinks_unless_they_point_into_the_library() {
+  fn writing_a_linked_file_edits_the_template() {
     let tmp = tempfile::tempdir().unwrap();
     let env = env(tmp.path());
-    let dotfiles = tmp.path().join("dotfiles/AGENTS.md");
-    write(&dotfiles, "# Dotfiles\n");
-    let codex = env.home.join(".codex/AGENTS.md");
-    fs::create_dir_all(codex.parent().unwrap()).unwrap();
-    std::os::unix::fs::symlink(&dotfiles, &codex).unwrap();
-    import(&env, tmp.path(), "rules", "# Rules\n");
+    let id = import(&env, tmp.path(), "rules", "v1\n");
     let claude = env.home.join(".claude/CLAUDE.md");
-    fs::create_dir_all(claude.parent().unwrap()).unwrap();
-    std::os::unix::fs::symlink(env.instruction_file("rules"), &claude).unwrap();
-
-    let list = list_instructions(&env).unwrap();
-    assert_eq!(list.len(), 1, "the dotfiles link is not imported");
-    assert_eq!(list[0].installs.len(), 1);
-    assert_eq!(list[0].installs[0].record.mode, InstallMode::Symlink);
-    assert_eq!(list[0].installs[0].record.agent_ids, vec!["claude-code"]);
-    assert!(is_symlink(&codex));
+    let codex = env.home.join(".codex/AGENTS.md");
+    assert!(
+      install(
+        &env,
+        &id,
+        vec![spec(InstallScope::User, None, "claude-code")],
+        InstallMode::Symlink,
+        false
+      )
+      .applied
+    );
+    assert!(
+      install(
+        &env,
+        &id,
+        vec![spec(InstallScope::User, None, "codex")],
+        InstallMode::Copy,
+        false
+      )
+      .applied
+    );
+    write_instruction_file(&env, &path_to_string(&claude), "v2").unwrap();
+    assert_eq!(read(&env.instruction_file(&id)), "v2\n");
+    assert_eq!(read(&codex), "v2\n", "the copy that was in sync follows");
+    let view = get_instruction(&env, &id).unwrap().unwrap();
+    assert_eq!(view.hub_state, HubState::Ok);
+    assert!(!view.has_drift);
+    let files = list_instruction_files(&env).unwrap();
+    assert!(files
+      .iter()
+      .all(|file| file.template.as_ref().map(|t| t.state) == Some(TargetState::InSync)));
   }
 
   #[test]
@@ -2332,12 +2328,12 @@ mod tests {
   fn writing_content_updates_the_hash_and_pushes_copies() {
     let tmp = tempfile::tempdir().unwrap();
     let env = env(tmp.path());
-    import(&env, tmp.path(), "rules", "v1\n");
+    let id = import(&env, tmp.path(), "rules", "v1\n");
     let target = env.home.join(".claude/CLAUDE.md");
     assert!(
       install(
         &env,
-        "rules",
+        &id,
         vec![spec(InstallScope::User, None, "claude-code")],
         InstallMode::Copy,
         false
@@ -2345,39 +2341,39 @@ mod tests {
       .applied
     );
 
-    let result = write_instruction(&env, "rules", "v2").unwrap();
+    let result = write_instruction(&env, &id, "v2").unwrap();
     assert!(result.applied);
     let view = result.instruction.unwrap();
     assert_eq!(view.hub_state, HubState::Ok);
     assert_eq!(view.installs[0].state, TargetState::InSync);
     assert_eq!(read(&target), "v2\n");
-    assert_eq!(read_instruction(&env, "rules").unwrap(), "v2\n");
+    assert_eq!(read_instruction(&env, &id).unwrap(), "v2\n");
 
     // A target edited by hand is reported, not overwritten.
     write(&target, "mine\n");
-    let result = write_instruction(&env, "rules", "v3\n").unwrap();
+    let result = write_instruction(&env, &id, "v3\n").unwrap();
     assert!(!result.applied);
     assert!(result.blockers[0].contains("local changes"));
     assert_eq!(read(&target), "mine\n");
-    assert_eq!(read_instruction(&env, "rules").unwrap(), "v3\n");
+    assert_eq!(read_instruction(&env, &id).unwrap(), "v3\n");
   }
 
   #[cfg(unix)]
   #[test]
-  fn create_symlink_and_remove_keeping_installs() {
+  fn create_rename_symlink_and_remove_keeping_installs() {
     let tmp = tempfile::tempdir().unwrap();
     let env = env(tmp.path());
     let outcome = create_instruction(&env, "fresh", "").unwrap();
+    let id = outcome.id.clone();
     assert_eq!(read(Path::new(&outcome.hub_path)), "# fresh\n");
-    assert_eq!(
-      get_instruction(&env, "fresh").unwrap().unwrap().source,
-      InstructionSource::None
-    );
-    assert!(create_instruction(&env, "fresh", "again").is_err());
+    assert!(create_instruction(&env, "  ", "again").is_err());
+    let view = rename_instruction(&env, &id, "  Fresh rules ").unwrap();
+    assert_eq!(view.name, "Fresh rules");
+    assert_eq!(view.source, InstructionSource::None);
 
     let result = install(
       &env,
-      "fresh",
+      &id,
       vec![spec(InstallScope::User, None, "claude-code")],
       InstallMode::Symlink,
       false,
@@ -2386,57 +2382,105 @@ mod tests {
     let target = env.home.join(".claude/CLAUDE.md");
     assert!(is_symlink(&target));
     assert_eq!(
-      get_instruction(&env, "fresh").unwrap().unwrap().installs[0].state,
+      get_instruction(&env, &id).unwrap().unwrap().installs[0].state,
       TargetState::InSync
     );
 
-    let diff = diff_instruction(&env, "fresh", &path_to_string(&target)).unwrap();
+    let diff = diff_instruction(&env, &id, &path_to_string(&target)).unwrap();
     assert!(diff.files.is_empty());
     assert_eq!(diff.unchanged, 1);
 
-    remove_instruction(&env, "fresh", false).unwrap();
+    remove_instruction(&env, &id, false).unwrap();
     assert!(!is_symlink(&target));
     assert_eq!(read(&target), "# fresh\n");
-    assert!(get_instruction(&env, "fresh").unwrap().is_none());
-    assert!(!env.instruction_file("fresh").exists());
+    assert!(get_instruction(&env, &id).unwrap().is_none());
+    assert!(!env.instruction_file(&id).exists());
   }
 
+  #[cfg(unix)]
   #[test]
-  fn records_without_source_take_their_install_location() {
+  fn named_records_are_migrated_to_ids() {
     let tmp = tempfile::tempdir().unwrap();
     let env = env(tmp.path());
-    let outcome = create_instruction(&env, "old", "# Old\n").unwrap();
-    let target = env.home.join(".claude/CLAUDE.md");
-    assert!(
-      install(
-        &env,
-        "old",
-        vec![spec(InstallScope::User, None, "claude-code")],
-        InstallMode::Copy,
-        false
-      )
-      .applied
-    );
-    let list = list_instructions(&env).unwrap();
-    let old = list.iter().find(|item| item.name == "old").unwrap();
-    assert_eq!(old.hub_path, outcome.hub_path);
-    assert_eq!(
-      old.source,
-      InstructionSource::Agent {
-        path: path_to_string(&target)
-      }
-    );
-  }
+    let project = tmp.path().join("proj");
+    let claude = env.home.join(".claude/CLAUDE.md");
+    let agents = project.join("AGENTS.md");
+    write(&claude, "# Claude\n");
+    write(&agents, "# Proj\n");
+    // A shared template linked from one file, a mirror of one project file, and one
+    // created in the app.
+    write(&env.instruction_file("shared"), "# Claude\n");
+    write(&env.instruction_file("proj-agents"), "# Proj\n");
+    write(&env.instruction_file("notes"), "# Notes\n");
+    let codex = env.home.join(".codex/AGENTS.md");
+    fs::create_dir_all(codex.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(env.instruction_file("shared"), &codex).unwrap();
+    let record =
+      |source: InstructionSource, installs: Vec<(&Path, InstallMode)>| InstructionRecord {
+        name: String::new(),
+        source,
+        hash: hash_file(&claude).unwrap(),
+        imported_at: "t".to_string(),
+        updated_at: "t".to_string(),
+        installs: installs
+          .into_iter()
+          .map(|(path, mode)| InstallRecord {
+            scope: InstallScope::User,
+            project_path: None,
+            path: path_to_string(path),
+            mode,
+            hash: hash_file(&claude).unwrap(),
+            installed_at: "t".to_string(),
+            agent_ids: vec!["x".to_string()],
+          })
+          .collect(),
+      };
+    update_lock(&env, |lock| {
+      lock.instructions.insert(
+        "shared".to_string(),
+        record(
+          InstructionSource::Agent {
+            path: path_to_string(&claude),
+          },
+          vec![(&claude, InstallMode::Copy), (&codex, InstallMode::Symlink)],
+        ),
+      );
+      let mut mirror = record(
+        InstructionSource::Agent {
+          path: path_to_string(&agents),
+        },
+        vec![(&agents, InstallMode::Copy)],
+      );
+      mirror.hash = hash_file(&agents).unwrap();
+      mirror.installs[0].hash = mirror.hash.clone();
+      lock.instructions.insert("proj-agents".to_string(), mirror);
+      lock
+        .instructions
+        .insert("notes".to_string(), record(InstructionSource::None, vec![]));
+      Ok(())
+    })
+    .unwrap();
 
-  #[test]
-  fn untracked_library_files_are_adopted_on_list() {
-    let tmp = tempfile::tempdir().unwrap();
-    let env = env(tmp.path());
-    write(&env.instruction_file("manual"), "# Manual\n");
     let list = list_instructions(&env).unwrap();
-    assert_eq!(list.len(), 1);
-    assert_eq!(list[0].name, "manual");
-    assert_eq!(list[0].hub_state, HubState::Ok);
-    assert!(!list[0].has_drift);
+    let mut names: Vec<&str> = list.iter().map(|item| item.name.as_str()).collect();
+    names.sort();
+    assert_eq!(names, vec!["notes", "shared"]);
+    assert!(list.iter().all(|item| is_id(&item.id)));
+    assert!(!env.instruction_file("shared").exists());
+    assert!(!env.instruction_file("proj-agents").exists());
+    assert!(agents.is_file(), "the mirrored agent file stays");
+    let shared = list.iter().find(|item| item.name == "shared").unwrap();
+    assert_eq!(shared.installs.len(), 2);
+    assert!(symlink_points_to(&codex, &env.instruction_file(&shared.id)));
+    assert!(shared
+      .installs
+      .iter()
+      .all(|install| install.state == TargetState::InSync));
+    let files = list_instruction_files(&env).unwrap();
+    let proj_file = files
+      .iter()
+      .find(|file| file.path == path_to_string(&agents))
+      .unwrap();
+    assert!(proj_file.template.is_none());
   }
 }

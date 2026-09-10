@@ -3,6 +3,7 @@
   import Modal from "$lib/components/ui/Modal.svelte";
   import { t } from "../i18n";
   import { closeDiffModal, diffModal, type LibraryKind } from "../stores/modals";
+  import { instructionName } from "$lib/stores/instructions";
   import { diffSkill, type DiffAgainst, type DiffStatus, type SkillDiff } from "../api/hub";
   import { diffInstruction } from "../api/instructions";
 
@@ -13,6 +14,9 @@
   let selectedPath = $state<string | null>(null);
   let requestId = 0;
 
+  const displayName = $derived(
+    $diffModal.kind === "instruction" ? $instructionName($diffModal.name) : $diffModal.name
+  );
   const selectedFile = $derived(
     diff?.files.find((file) => file.path === selectedPath) ?? diff?.files[0] ?? null
   );
@@ -70,7 +74,7 @@
 
 <Modal
   bind:open
-  title={$diffModal.name ? `${$t("diff.title")} · ${$diffModal.name}` : $t("diff.title")}
+  title={$diffModal.name ? `${$t("diff.title")} · ${displayName}` : $t("diff.title")}
   onClose={handleClose}
   containerClass="max-w-[min(94vw,76rem)]"
 >

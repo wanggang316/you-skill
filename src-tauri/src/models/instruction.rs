@@ -1,9 +1,11 @@
-//! The instruction library: agent instruction files (`AGENTS.md`, `CLAUDE.md`, ...) kept
-//! once under `~/.youskill/instructions/<name>.md` and deployed to the file each agent
-//! reads. Install records reuse the skill types; only the unit differs (a file, not a
+//! Instruction templates kept under `~/.youskill/instructions/<id>.md` and installed to the
+//! file each agent reads (`AGENTS.md`, `CLAUDE.md`, ...), plus the view of those agent
+//! files. Install records reuse the skill types; only the unit differs (a file, not a
 //! directory).
 
-use crate::models::{HubState, InstallRecord, InstallView, LOCK_VERSION};
+use crate::models::{
+  HubState, InstallRecord, InstallScope, InstallView, TargetState, LOCK_VERSION,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -35,6 +37,9 @@ pub enum InstructionSource {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct InstructionRecord {
+  /// Display name; free text, not unique. The lock key is the id.
+  #[serde(default)]
+  pub name: String,
   #[serde(default)]
   pub source: InstructionSource,
   /// Content hash of the library file at import or last accepted change.
@@ -70,6 +75,7 @@ impl Default for InstructionLockFile {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct InstructionView {
+  pub id: String,
   pub name: String,
   pub hub_path: String,
   pub source: InstructionSource,
@@ -100,10 +106,37 @@ pub struct InstructionImportItem {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct InstructionImportOutcome {
+  pub id: String,
   pub name: String,
   pub hub_path: String,
   pub hash: String,
-  pub replaced: bool,
+}
+
+/// The template an agent file belongs to and how the file compares to it.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentFileTemplate {
+  pub id: String,
+  pub name: String,
+  pub state: TargetState,
+}
+
+/// An instruction file that exists at an agent location.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentFileView {
+  pub path: String,
+  /// `AGENTS.md`, `CLAUDE.md`, ...
+  pub file_name: String,
+  pub scope: InstallScope,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub project_path: Option<String>,
+  /// Agents that read this file.
+  pub agent_ids: Vec<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub hash: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub template: Option<AgentFileTemplate>,
 }
 
 /// Result of a mutating instruction action; see `ActionResult`.
@@ -160,8 +193,9 @@ mod tests {
   fn lock_file_round_trips_with_camel_case() {
     let mut lock = InstructionLockFile::default();
     lock.instructions.insert(
-      "team-rules".to_string(),
+      "6f1b2c3d-0000-4000-8000-000000000001".to_string(),
       InstructionRecord {
+        name: "Team rules".to_string(),
         source: InstructionSource::Agent {
           path: "/p/AGENTS.md".to_string(),
         },

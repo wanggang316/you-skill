@@ -8,8 +8,10 @@ export type AppLocation = {
   activeKey: SidebarActiveKey;
   /** Selected skill in the library (`?skill=`). */
   skill: string | null;
-  /** Selected entry on the instructions page (`?name=`). */
+  /** Selected template on the instructions page (`?id=`). */
   instruction: string | null;
+  /** Selected agent file on the instructions page (`?file=`). */
+  instructionFile: string | null;
   /** Selected install scope on the projects page (`?scope=user` or `?project=<path>`). */
   scope: ScopeRef | null;
   filter: LibraryFilter;
@@ -54,7 +56,8 @@ export const getAppLocation = (url: URL): AppLocation => {
   return {
     activeKey,
     skill: url.searchParams.get("skill") || null,
-    instruction: url.searchParams.get("name") || null,
+    instruction: url.searchParams.get("id") || null,
+    instructionFile: url.searchParams.get("file") || null,
     scope,
     filter: parseLibraryFilter(url.searchParams.get("filter")),
   };
@@ -70,12 +73,14 @@ export const buildLibraryHref = (
   return query ? `/?${query}` : "/";
 };
 
+/** The instructions page with a template (`id`) or an agent file (`file`) selected. */
 export const buildInstructionsHref = (
-  options: { name?: string | null; filter?: LibraryFilter } = {}
+  options: { id?: string | null; file?: string | null; filter?: LibraryFilter } = {}
 ): string => {
   const params = new URLSearchParams();
   if (options.filter && options.filter !== "all") params.set("filter", options.filter);
-  if (options.name) params.set("name", options.name);
+  if (options.id) params.set("id", options.id);
+  else if (options.file) params.set("file", options.file);
   const query = params.toString();
   return query ? `/instructions?${query}` : "/instructions";
 };

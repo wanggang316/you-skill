@@ -23,7 +23,7 @@
     type DetectedInstruction,
     type InstructionImportOutcome,
   } from "../api/instructions";
-  import { instructionsByName, refreshInstructions } from "../stores/instructions";
+  import { refreshInstructions } from "../stores/instructions";
   import {
     closeImportInstructionModal,
     importInstructionModal,
@@ -58,7 +58,6 @@
   // Import
   let isImporting = $state(false);
   let importError = $state("");
-  let overwriteExisting = $state(false);
   let importedOutcomes = $state<InstructionImportOutcome[] | null>(null);
   let unlistenNativeDragDrop: (() => void) | null = null;
 
@@ -66,24 +65,23 @@
     activeTab === "github" ? githubItems : activeTab === "local" ? localItems : []
   );
   const selectedItems = $derived(items.filter((item) => choices[item.path]?.selected));
-  const existingNames = $derived(
-    new Set([...$instructionsByName.keys()].map((name) => name.toLowerCase()))
-  );
   const chosenName = (item: DetectedInstruction) =>
     (choices[item.path]?.name ?? item.name).trim() || item.name;
-  const overwriteNames = $derived(
-    selectedItems.map(chosenName).filter((name) => existingNames.has(name.toLowerCase()))
-  );
   const canConfirm = $derived.by(() => {
     if (isImporting) return false;
     if (activeTab === "new") return Boolean(newName.trim());
-    if (selectedItems.length === 0) return false;
-    return overwriteNames.length === 0 || overwriteExisting;
+    return selectedItems.length > 0;
   });
 
   $effect(() => {
     const state = $importInstructionModal;
-    if (state.open && !open) resetState();
+    if (state.open && !open) {
+      resetState();
+      if (state.paths.length > 0) {
+        activeTab = "local";
+        void addLocalPaths(state.paths, state.name);
+      }
+    }
     open = state.open;
   });
 
@@ -103,7 +101,6 @@
     newContent = "";
     isImporting = false;
     importError = "";
-    overwriteExisting = false;
     importedOutcomes = null;
   }
 
@@ -112,10 +109,13 @@
     closeImportInstructionModal();
   }
 
-  function addItems(found: DetectedInstruction[], target: "github" | "local") {
+  function addItems(found: DetectedInstruction[], target: "github" | "local", name = "") {
     const next = { ...choices };
     for (const item of found) {
-      next[item.path] = next[item.path] ?? { selected: true, name: item.name };
+      next[item.path] = next[item.path] ?? {
+        selected: true,
+        name: name && found.length === 1 ? name : item.name,
+      };
     }
     choices = next;
     if (target === "github") {
@@ -289,7 +289,7 @@
     }
   }
 
-  async function addLocalPaths(raw: string[]) {
+  async function addLocalPaths(raw: string[], suggestedName = "") {
     const paths = raw
       .map((path) => (path.trim().startsWith("file://") ? pathFromUri(path.trim()) : path.trim()))
       .filter((path): path is string => Boolean(path));
@@ -301,7 +301,7 @@
     localError = "";
     try {
       const found = await detectInstructionFiles(paths);
-      addItems(found, "local");
+      addItems(found, "local", suggestedName);
       if (found.length === 0) localError = $t("instructions.import.noFilesFound");
     } catch (error) {
       localError = String(error);
@@ -314,27 +314,9 @@
   // Confirm
   // ---------------------------------------------------------------------------
 
-  function duplicateNames(): string[] {
-    const seen = new Set<string>();
-    const dupes = new Set<string>();
-    for (const item of selectedItems) {
-      const name = chosenName(item).toLowerCase();
-      if (seen.has(name)) dupes.add(name);
-      else seen.add(name);
-    }
-    return [...dupes];
-  }
-
   async function handleConfirm() {
     if (!canConfirm) return;
     importError = "";
-    if (activeTab !== "new") {
-      const dupes = duplicateNames();
-      if (dupes.length > 0) {
-        importError = $t("instructions.import.duplicateNames", { names: dupes.join(", ") });
-        return;
-      }
-    }
     isImporting = true;
     try {
       let outcomes: InstructionImportOutcome[];
@@ -346,8 +328,7 @@
             name: chosenName(item),
             path: item.path,
             source: item.source ?? null,
-          })),
-          overwriteExisting
+          }))
         );
       }
       await refreshInstructions();
@@ -361,9 +342,9 @@
   }
 
   function handleInstallNow() {
-    const names = (importedOutcomes ?? []).map((outcome) => outcome.name);
+    const ids = (importedOutcomes ?? []).map((outcome) => outcome.id);
     handleClose();
-    openInstallModal(names, { kind: "instruction" });
+    openInstallModal(ids, { kind: "instruction" });
   }
 
   const inputClass =
@@ -389,7 +370,7 @@
           <ul
             class="border-base-300 bg-base-200 max-h-48 space-y-1 overflow-y-auto rounded-xl border p-3 text-sm"
           >
-            {#each importedOutcomes as outcome (outcome.name)}
+            {#each importedOutcomes as outcome (outcome.id)}
               <li class="text-base-content flex items-center justify-between gap-3">
                 <span class="truncate">{outcome.name}</span>
                 <span class="text-base-content-faint font-mono text-[11px]">
@@ -441,12 +422,7 @@
               </div>
             {/if}
             {#if githubItems.length > 0}
-              <DetectedInstructionList
-                items={githubItems}
-                bind:choices
-                {existingNames}
-                disabled={isImporting}
-              />
+              <DetectedInstructionList items={githubItems} bind:choices disabled={isImporting} />
             {/if}
           </div>
         {:else if activeTab === "local"}
@@ -496,12 +472,7 @@
               </div>
             {/if}
             {#if localItems.length > 0}
-              <DetectedInstructionList
-                items={localItems}
-                bind:choices
-                {existingNames}
-                disabled={isImporting}
-              />
+              <DetectedInstructionList items={localItems} bind:choices disabled={isImporting} />
             {/if}
           </div>
         {:else}
@@ -532,15 +503,6 @@
               ></textarea>
             </label>
           </div>
-        {/if}
-
-        {#if activeTab !== "new" && overwriteNames.length > 0}
-          <label class="text-warning-content mt-4 flex cursor-pointer items-start gap-2 text-sm">
-            <input type="checkbox" class="mt-0.5" bind:checked={overwriteExisting} />
-            <span>
-              {$t("instructions.import.overwriteExisting", { names: overwriteNames.join(", ") })}
-            </span>
-          </label>
         {/if}
 
         {#if importError}

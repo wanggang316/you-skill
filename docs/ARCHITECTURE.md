@@ -11,8 +11,8 @@ Code is the source of truth; when this document and the code disagree, fix the d
 ~/.youskill/
   skills/<name>/          # hub: the single canonical copy of each managed skill
   .skill-lock.json        # registry of sources, hashes and install targets
-  instructions/<name>.md  # instruction library: one Markdown file per entry
-  .instruction-lock.json  # registry of instruction hashes and install targets
+  instructions/<id>.md    # instruction templates: one Markdown file per template
+  .instruction-lock.json  # registry of template names, hashes and install targets
   .trash/<name>-<stamp>/  # previous hub copy before a replacement (swept after 7 days)
 
 <config_dir>/youskill/    # app config, custom agent apps, registered projects (unchanged)
@@ -99,30 +99,34 @@ Sync actions (`sync_skill`): `pull_source`, `push_targets`, `adopt_target`, `acc
 `blockers`; the caller may retry with `force`. Hub replacements move the old copy to
 `.trash` first.
 
-## Instruction library
+## Instructions: templates and agent files
 
-Agent instruction files (`AGENTS.md`, `CLAUDE.md`, ...) get the skill treatment for single
-files. A library entry is `~/.youskill/instructions/<name>.md`; `.instruction-lock.json`
-holds `{ "instructions": { "<name>": { "source", "hash", "importedAt", "updatedAt", "installs": [...] } } }`
-with the same install records as skills. An install target is the file an agent reads in
-a scope (`global_profile_path` at user level, `<project>/<profile_path>` in a project), so
-agents that read the same file share one record. Because there is one file per agent
-location, installing where another entry is already installed is refused unless forced,
-which moves the install record over. Drift is the same three-way comparison
-(`compare_three_way`) on file hashes with push, adopt and accept. The `source` (`github`
-with repo, file path and branch; `file`; `agent` for a file taken from an agent location;
-`none` when created in the app) is recorded for display only, nothing syncs with it.
-Listing the library adopts what exists at agent locations without asking: every
-instruction file at user level and in a registered project that no install record covers
-is registered as an install of the entry with identical content, or imported under a
-generated name (`user-claude` for `~/.claude/CLAUDE.md`, `<project>-agents` for a project's
-`AGENTS.md`). Symlinks are only registered when they point into the library. Explicit
-imports come from picked files, a folder (`detect_instruction_files`, Markdown files up to
-six levels deep, skipping VCS, dependency and most hidden folders) or a GitHub repository,
-folder or file URL (`detect_instruction_github`, downloaded to a temp directory). Editing
-in the app goes through `write_instruction`, which accepts the new content as the library
-version and pushes it to copy targets that were in sync. Everything lives in
-`instruction_service`.
+Agent instruction files (`AGENTS.md`, `CLAUDE.md`, ...) are handled in two layers. The
+**agent files** themselves, at user level (`global_profile_path`) and in every registered
+project (`<project>/<profile_path>`), are listed by `list_instruction_files` and read and
+written in place (`read_instruction_file`, `write_instruction_file`, which only accept
+paths that are agent locations); nothing is copied anywhere for that. **Templates** are the
+library: `~/.youskill/instructions/<id>.md`, keyed by a generated uuid, with a free-text
+display name that need not be unique. `.instruction-lock.json` holds
+`{ "instructions": { "<id>": { "name", "source", "hash", "importedAt", "updatedAt", "installs": [...] } } }`
+with the same install records as skills (an `InstallRequest.name` carries the id). An
+install target is the file an agent reads in a scope, so agents that read the same file
+share one record. Because there is one file per agent location, installing where another
+template is already installed is refused unless forced, which moves the install record
+over; promoting an agent file to a template (`import_instructions` with the file's own
+path) registers it as an install and takes the path over from any other template. Drift
+is the same three-way comparison (`compare_three_way`) on file hashes with push, adopt and
+accept, and `list_instruction_files` reports each file's template and state. The `source`
+(`github` with repo, file path and branch; `file`; `agent` for a promoted agent file;
+`none` when created in the app) is shown, nothing syncs with it. Imports come from picked
+files or a folder (`detect_instruction_files`, Markdown files up to six levels deep,
+skipping VCS, dependency and most hidden folders) or a GitHub repository, folder or file
+URL (`detect_instruction_github`, downloaded to a temp directory). `write_instruction`
+accepts new content as the template version and pushes it to copy targets that were in
+sync; writing an agent file that is a symlink into the library does the same. Records
+from before ids (keyed by a generated name, with every agent file copied in) are migrated
+on the first listing: a record that only mirrored one agent file is dropped again, the
+rest get an id and keep their key as name. Everything lives in `instruction_service`.
 
 ## Command surface
 
@@ -131,7 +135,7 @@ version and pushes it to copy targets that were in sync. Everything lives in
 | Hub          | `list_hub_skills`, `get_hub_skill`, `import_skills`, `remove_hub_skill`, `sync_skill`, `diff_skill`, `check_source_updates`, `migrate_legacy`, `migration_status`                                                                                                              |
 | Install      | `install_skill`, `uninstall_skill`                                                                                                                                                                                                                                             |
 | Scan         | `scan_folder`, `import_scanned`                                                                                                                                                                                                                                                |
-| Instructions | `list_instructions`, `get_instruction`, `read_instruction`, `write_instruction`, `import_instructions`, `create_instruction`, `detect_instruction_files`, `detect_instruction_github`, `install_instruction`, `uninstall_instruction`, `remove_instruction`, `sync_instruction`, `diff_instruction` |
+| Instructions | `list_instructions`, `get_instruction`, `read_instruction`, `write_instruction`, `rename_instruction`, `import_instructions`, `create_instruction`, `detect_instruction_files`, `detect_instruction_github`, `install_instruction`, `uninstall_instruction`, `remove_instruction`, `sync_instruction`, `diff_instruction`, `list_instruction_files`, `read_instruction_file`, `write_instruction_file` |
 | Projects     | `list_user_projects`, `add_user_project`, `update_user_project`, `remove_user_project`, `list_workspaces`, `add_workspace`, `remove_workspace`, `scan_workspace`, `register_projects`, `list_memory_files`                                                                     |
 | Detection    | `detect_github_manual`, `detect_github_auto`, `detect_zip`, `detect_folder` (stage into a temp dir)                                                                                                                                                                            |
 | Other        | marketplace, agent apps, projects, settings, backup, file readers, translation                                                                                                                                                                                                 |
