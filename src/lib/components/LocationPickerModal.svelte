@@ -320,12 +320,12 @@
     use:portal
     role="menu"
     tabindex="-1"
-    class="border-base-300 bg-base-100 fixed z-[10020] min-w-44 rounded-xl border p-1 shadow-lg"
-    style={`left:${Math.min(menu.x, window.innerWidth - 200)}px; top:${Math.min(menu.y, window.innerHeight - 96)}px;`}
+    class="border-base-300 bg-base-100 fixed z-[10020] min-w-28 rounded-xl border p-1 shadow-lg"
+    style={`left:${Math.min(menu.x, window.innerWidth - 160)}px; top:${Math.min(menu.y, window.innerHeight - 96)}px;`}
     onmousedown={(event) => event.stopPropagation()}
   >
     <button
-      class="text-base-content hover:bg-base-200 w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition"
+      class="text-base-content hover:bg-base-200 w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] whitespace-nowrap transition"
       type="button"
       role="menuitem"
       onclick={() => {
@@ -336,7 +336,7 @@
       {$t("scope.skill.manage")}
     </button>
     <button
-      class="text-error hover:bg-error/10 w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition disabled:opacity-40"
+      class="text-error hover:bg-error/10 w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] whitespace-nowrap transition disabled:opacity-40"
       type="button"
       role="menuitem"
       disabled={item.installs.length === 0}

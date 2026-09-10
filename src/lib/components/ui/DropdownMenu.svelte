@@ -56,12 +56,12 @@
   </button>
   {#if open}
     <div
-      class="border-base-300 bg-base-100 absolute top-full right-0 z-30 mt-1 min-w-44 rounded-xl border p-1 shadow-lg"
+      class="border-base-300 bg-base-100 absolute top-full right-0 z-30 mt-1 min-w-28 rounded-xl border p-1 shadow-lg"
       role="menu"
     >
       {#each items as item (item.label)}
         <button
-          class={`w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] transition disabled:opacity-40 ${
+          class={`w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] whitespace-nowrap transition disabled:opacity-40 ${
             item.danger ? "text-error hover:bg-error/10" : "text-base-content hover:bg-base-200"
           }`}
           type="button"
