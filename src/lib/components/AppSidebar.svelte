@@ -30,7 +30,7 @@
     onOpenUpdate,
   }: {
     activeKey: SidebarActiveKey;
-    /** Icons only; labels become tooltips. */
+    /** Icons with the label underneath instead of beside. */
     collapsed?: boolean;
     hasUpdate: boolean;
     updateLoading: boolean;
@@ -38,11 +38,14 @@
     onOpenUpdate: () => void;
   } = $props();
 
+  /** Icons only is narrow but not tiny: the label goes under the icon in a smaller face. */
+  const collapsedItemClass = "flex-col gap-1 px-1 py-1.5 text-[11px] leading-4";
   const itemClass = $derived(
-    `text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px ${
-      collapsed ? "justify-center px-0" : "px-2.5"
+    `text-base-content/80 hover:bg-base-300 hover:text-base-content focus-visible:outline-primary/60 flex w-full min-w-0 items-center rounded-lg text-left font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px ${
+      collapsed ? collapsedItemClass : "gap-2.5 px-2.5 py-2 text-sm leading-5"
     }`
   );
+  const labelClass = $derived(collapsed ? "max-w-full truncate" : "min-w-0 truncate");
   const historyButtonClass =
     "text-base-content-muted hover:bg-base-300 hover:text-base-content flex size-7 items-center justify-center rounded-lg transition disabled:opacity-35 disabled:hover:bg-transparent";
   const padding = $derived(collapsed ? "px-2" : "px-2.5");
@@ -87,7 +90,7 @@
     <div class="grid gap-0.5" aria-label={$t("sidebar.skills")}>
       <button class={itemClass} type="button" onclick={onImportSkill} title={$t("import.title")}>
         <Plus size={17} strokeWidth={1.8} />
-        {#if !collapsed}<span class="min-w-0 truncate">{$t("import.title")}</span>{/if}
+        <span class={labelClass}>{$t("import.title")}</span>
       </button>
       <a
         class={itemClass}
@@ -99,7 +102,7 @@
         title={$t("sidebar.library")}
       >
         <LibraryBig size={17} strokeWidth={1.8} />
-        {#if !collapsed}<span class="min-w-0 truncate">{$t("sidebar.library")}</span>{/if}
+        <span class={labelClass}>{$t("sidebar.library")}</span>
       </a>
       <a
         class={itemClass}
@@ -111,7 +114,7 @@
         title={$t("sidebar.instructions")}
       >
         <ScrollText size={17} strokeWidth={1.8} />
-        {#if !collapsed}<span class="min-w-0 truncate">{$t("sidebar.instructions")}</span>{/if}
+        <span class={labelClass}>{$t("sidebar.instructions")}</span>
       </a>
       <a
         class={itemClass}
@@ -123,7 +126,7 @@
         title={$t("sidebar.projects")}
       >
         <FolderTree size={17} strokeWidth={1.8} />
-        {#if !collapsed}<span class="min-w-0 truncate">{$t("sidebar.projects")}</span>{/if}
+        <span class={labelClass}>{$t("sidebar.projects")}</span>
       </a>
       <a
         class={itemClass}
@@ -135,7 +138,7 @@
         title={$t("sidebar.market")}
       >
         <Store size={17} strokeWidth={1.8} />
-        {#if !collapsed}<span class="min-w-0 truncate">{$t("sidebar.market")}</span>{/if}
+        <span class={labelClass}>{$t("sidebar.market")}</span>
       </a>
     </div>
   </nav>
@@ -143,8 +146,8 @@
   <div class={`border-base-300 grid gap-0.5 border-t py-2.5 ${padding}`}>
     {#if hasUpdate}
       <button
-        class={`text-error hover:bg-base-300 focus-visible:outline-primary/60 flex w-full min-w-0 items-center gap-2.5 rounded-lg py-2 text-left text-sm leading-5 font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px disabled:cursor-default disabled:opacity-55 ${
-          collapsed ? "justify-center px-0" : "px-2.5"
+        class={`text-error hover:bg-base-300 focus-visible:outline-primary/60 flex w-full min-w-0 items-center rounded-lg text-left font-normal transition-[background-color,color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 active:translate-y-px disabled:cursor-default disabled:opacity-55 ${
+          collapsed ? collapsedItemClass : "gap-2.5 px-2.5 py-2 text-sm leading-5"
         }`}
         type="button"
         onclick={onOpenUpdate}
@@ -156,7 +159,7 @@
         {:else}
           <ArrowUpCircle size={17} strokeWidth={1.8} />
         {/if}
-        {#if !collapsed}<span class="min-w-0 truncate">{$t("header.updateAvailable")}</span>{/if}
+        <span class={labelClass}>{$t("header.updateAvailable")}</span>
       </button>
     {/if}
     <a
@@ -169,7 +172,7 @@
       title={$t("header.settings")}
     >
       <Settings size={17} strokeWidth={1.8} />
-      {#if !collapsed}<span class="min-w-0 truncate">{$t("header.settings")}</span>{/if}
+      <span class={labelClass}>{$t("header.settings")}</span>
     </a>
   </div>
 </aside>
