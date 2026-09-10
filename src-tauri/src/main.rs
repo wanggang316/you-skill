@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[cfg(target_os = "macos")]
 use tauri::Manager;
 
 mod commands;
@@ -159,10 +160,12 @@ fn main() {
     ])
     .build(tauri::generate_context!())
     .expect("error while building tauri application")
-    .run(|app_handle, event| {
-      // On macOS, clicking the Dock icon fires Reopen - show the main window
-      if let tauri::RunEvent::Reopen { .. } = event {
-        if let Some(window) = app_handle.get_webview_window("main") {
+    .run(|_app_handle, _event| {
+      // RunEvent::Reopen only exists on macOS, where clicking the Dock icon
+      // fires it - show the main window again.
+      #[cfg(target_os = "macos")]
+      if let tauri::RunEvent::Reopen { .. } = _event {
+        if let Some(window) = _app_handle.get_webview_window("main") {
           let _ = window.show();
           let _ = window.set_focus();
         }
