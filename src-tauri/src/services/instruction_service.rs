@@ -386,6 +386,7 @@ fn view_of(env: &Env, name: &str) -> Result<InstructionView, String> {
 pub fn list_instructions(env: &Env) -> Result<Vec<InstructionView>, String> {
   adopt_untracked_files(env)?;
   adopt_agent_files(env)?;
+  backfill_sources(env)?;
   let lock = read_lock(env)?;
   Ok(
     lock
@@ -447,6 +448,38 @@ fn adopt_untracked_files(env: &Env) -> Result<(), String> {
         updated_at: timestamp.clone(),
         installs: Vec::new(),
       });
+    }
+    Ok(())
+  })
+}
+
+/// Entries adopted before sources were recorded: the agent file they were taken from is
+/// their first install, the user-level one when there are several.
+fn backfill_sources(env: &Env) -> Result<(), String> {
+  let lock = read_lock(env)?;
+  let missing: Vec<(String, String)> = lock
+    .instructions
+    .iter()
+    .filter(|(_, record)| record.source == InstructionSource::None)
+    .filter_map(|(name, record)| {
+      let install = record
+        .installs
+        .iter()
+        .find(|install| install.scope == InstallScope::User)
+        .or_else(|| record.installs.first())?;
+      Some((name.clone(), install.path.clone()))
+    })
+    .collect();
+  if missing.is_empty() {
+    return Ok(());
+  }
+  update_lock(env, |lock| {
+    for (name, path) in missing {
+      if let Some(record) = lock.instructions.get_mut(&name) {
+        if record.source == InstructionSource::None {
+          record.source = InstructionSource::Agent { path };
+        }
+      }
     }
     Ok(())
   })
@@ -2366,6 +2399,33 @@ mod tests {
     assert_eq!(read(&target), "# fresh\n");
     assert!(get_instruction(&env, "fresh").unwrap().is_none());
     assert!(!env.instruction_file("fresh").exists());
+  }
+
+  #[test]
+  fn records_without_source_take_their_install_location() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let outcome = create_instruction(&env, "old", "# Old\n").unwrap();
+    let target = env.home.join(".claude/CLAUDE.md");
+    assert!(
+      install(
+        &env,
+        "old",
+        vec![spec(InstallScope::User, None, "claude-code")],
+        InstallMode::Copy,
+        false
+      )
+      .applied
+    );
+    let list = list_instructions(&env).unwrap();
+    let old = list.iter().find(|item| item.name == "old").unwrap();
+    assert_eq!(old.hub_path, outcome.hub_path);
+    assert_eq!(
+      old.source,
+      InstructionSource::Agent {
+        path: path_to_string(&target)
+      }
+    );
   }
 
   #[test]
