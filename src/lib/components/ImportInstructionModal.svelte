@@ -342,7 +342,11 @@
         outcomes = [await createInstruction(newName.trim(), newContent)];
       } else {
         outcomes = await importInstructions(
-          selectedItems.map((item) => ({ name: chosenName(item), path: item.path })),
+          selectedItems.map((item) => ({
+            name: chosenName(item),
+            path: item.path,
+            source: item.source ?? null,
+          })),
           overwriteExisting
         );
       }

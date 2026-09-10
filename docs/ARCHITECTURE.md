@@ -103,13 +103,15 @@ Sync actions (`sync_skill`): `pull_source`, `push_targets`, `adopt_target`, `acc
 
 Agent instruction files (`AGENTS.md`, `CLAUDE.md`, ...) get the skill treatment for single
 files. A library entry is `~/.youskill/instructions/<name>.md`; `.instruction-lock.json`
-holds `{ "instructions": { "<name>": { "hash", "importedAt", "updatedAt", "installs": [...] } } }`
+holds `{ "instructions": { "<name>": { "source", "hash", "importedAt", "updatedAt", "installs": [...] } } }`
 with the same install records as skills. An install target is the file an agent reads in
 a scope (`global_profile_path` at user level, `<project>/<profile_path>` in a project), so
 agents that read the same file share one record. Because there is one file per agent
 location, installing where another entry is already installed is refused unless forced,
 which moves the install record over. Drift is the same three-way comparison
-(`compare_three_way`) on file hashes with push, adopt and accept; there is no source.
+(`compare_three_way`) on file hashes with push, adopt and accept. The `source` (`github`
+with repo, file path and branch; `file`; `agent` for a file taken from an agent location;
+`none` when created in the app) is recorded for display only, nothing syncs with it.
 Listing the library adopts what exists at agent locations without asking: every
 instruction file at user level and in a registered project that no install record covers
 is registered as an install of the entry with identical content, or imported under a

@@ -18,9 +18,17 @@ import type {
 
 // ============ Types ============
 
+/** Where an instruction came from; nothing is synced with it, it is shown for context. */
+export type InstructionSource =
+  | { type: "github"; repo: string; filePath: string; branch?: string | null }
+  | { type: "file"; path: string }
+  | { type: "agent"; path: string }
+  | { type: "none" };
+
 export interface InstructionView {
   name: string;
   hubPath: string;
+  source: InstructionSource;
   /** First line of the file. */
   description?: string | null;
   hash: string;
@@ -36,6 +44,8 @@ export interface InstructionImportItem {
   name: string;
   /** Markdown file to copy into the library. */
   path: string;
+  /** Where the file came from; derived from the path when absent. */
+  source?: InstructionSource | null;
 }
 
 export interface InstructionImportOutcome {
@@ -60,6 +70,25 @@ export interface DetectedInstruction {
   /** Path relative to the folder or repository it was found in. */
   relPath: string;
   fileName: string;
+  /** Set for downloaded files, whose temp path says nothing about the origin. */
+  source?: InstructionSource | null;
+}
+
+export function instructionSourceLabel(source: InstructionSource): string {
+  switch (source.type) {
+    case "github":
+      return `${source.repo}/${source.filePath}`;
+    case "file":
+    case "agent":
+      return source.path;
+    default:
+      return "";
+  }
+}
+
+export function instructionSourceUrl(source: InstructionSource): string | null {
+  if (source.type !== "github") return null;
+  return `https://github.com/${source.repo}/blob/${source.branch || "main"}/${source.filePath}`;
 }
 
 // ============ Commands ============

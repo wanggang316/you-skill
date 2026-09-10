@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { FolderOpen, Loader2, Pencil, Plus, Trash2 } from "@lucide/svelte";
+  import { ExternalLink, FolderOpen, Loader2, Pencil, Plus, Trash2 } from "@lucide/svelte";
   import { open as openExternal } from "@tauri-apps/plugin-shell";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
@@ -9,7 +9,14 @@
   import InstallTargets from "$lib/components/library/InstallTargets.svelte";
   import DriftPanel, { type TargetAction } from "$lib/components/library/DriftPanel.svelte";
   import { t } from "$lib/i18n";
-  import { readInstruction, writeInstruction, type InstructionView } from "$lib/api/instructions";
+  import {
+    instructionSourceLabel,
+    instructionSourceUrl,
+    readInstruction,
+    writeInstruction,
+    type InstructionView,
+  } from "$lib/api/instructions";
+  import { openInFileManager } from "$lib/api/skills";
   import { applyInstructionView, refreshInstructions } from "$lib/stores/instructions";
   import type { InstallScope, InstallView, SyncAction } from "$lib/api/hub";
   import type { AgentInfo } from "$lib/api/skills";
@@ -59,6 +66,18 @@
   let saveBlockers = $state<string[]>([]);
 
   const shortHash = $derived(instruction.hash.slice(0, 10));
+  const sourceLabel = $derived(instructionSourceLabel(instruction.source));
+  const sourceUrl = $derived(instructionSourceUrl(instruction.source));
+  /** Local sources open in the file manager, GitHub ones in the browser. */
+  const sourceHref = $derived.by(() => {
+    if (sourceUrl) return sourceUrl;
+    const source = instruction.source;
+    return source.type === "file" || source.type === "agent" ? source.path : null;
+  });
+  function openSource() {
+    if (sourceUrl) void openExternal(sourceUrl);
+    else if (sourceHref) openInFileManager(sourceHref).catch(console.error);
+  }
   const html = $derived(renderMarkdownBody(content));
   const formatDate = (value: string) => {
     const date = new Date(value);
@@ -185,6 +204,25 @@
         <dl
           class="text-base-content-muted grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs"
         >
+          <dt>{$t("detail.source")}</dt>
+          <dd class="flex min-w-0 items-center gap-2">
+            <span class="tag tag-neutral shrink-0">
+              {$t(`instructions.source.${instruction.source.type}`)}
+            </span>
+            {#if sourceHref}
+              <button
+                class="text-primary inline-flex min-w-0 items-center gap-1 truncate hover:underline"
+                type="button"
+                onclick={openSource}
+                title={sourceHref}
+              >
+                <span class="truncate font-mono">{sourceLabel}</span>
+                {#if sourceUrl}
+                  <ExternalLink size={11} class="shrink-0" />
+                {/if}
+              </button>
+            {/if}
+          </dd>
           <dt>{$t("instructions.file")}</dt>
           <dd class="truncate font-mono" title={instruction.hubPath}>{instruction.hubPath}</dd>
           <dt>{$t("detail.hash")}</dt>

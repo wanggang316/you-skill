@@ -7,8 +7,8 @@
 use crate::models::{
   AgentRootMatch, DetectedInstruction, HubState, InstallMode, InstallRecord, InstallRequest,
   InstallScope, InstallTargetSpec, InstallView, InstructionActionResult, InstructionImportItem,
-  InstructionImportOutcome, InstructionLockFile, InstructionRecord, InstructionView, SkillDiff,
-  SyncAction, TargetState, UninstallRequest, LOCK_VERSION,
+  InstructionImportOutcome, InstructionLockFile, InstructionRecord, InstructionSource,
+  InstructionView, SkillDiff, SyncAction, TargetState, UninstallRequest, LOCK_VERSION,
 };
 use crate::services::diff_service::diff_files;
 use crate::services::drift_service::compare_three_way;
@@ -363,6 +363,7 @@ pub fn build_view(env: &Env, name: &str, record: &InstructionRecord) -> Instruct
   InstructionView {
     name: name.to_string(),
     hub_path: path_to_string(&env.instruction_file(name)),
+    source: record.source.clone(),
     description: probe.description,
     hash: record.hash.clone(),
     hub_hash: probe.hash,
@@ -440,6 +441,7 @@ fn adopt_untracked_files(env: &Env) -> Result<(), String> {
   update_lock(env, |lock| {
     for (name, hash) in untracked {
       lock.instructions.entry(name).or_insert(InstructionRecord {
+        source: InstructionSource::None,
         hash,
         imported_at: timestamp.clone(),
         updated_at: timestamp.clone(),
@@ -512,6 +514,7 @@ pub fn import_instructions(
       env,
       &item.name,
       Path::new(item.path.trim()),
+      item.source,
       overwrite,
       true,
     ) {
@@ -546,11 +549,13 @@ fn finish_import(
 }
 
 /// Import one file. A file that is itself an agent location is registered as an install
-/// (when `register` is set) so the library entry and the file stay linked.
+/// (when `register` is set) so the library entry and the file stay linked. Without an
+/// explicit `source`, the file itself is recorded as one.
 fn import_one(
   env: &Env,
   name: &str,
   src: &Path,
+  source: Option<InstructionSource>,
   overwrite: bool,
   register: bool,
 ) -> Result<InstructionImportOutcome, String> {
@@ -588,16 +593,29 @@ fn import_one(
   let timestamp = now_rfc3339();
   let replaced = existing.is_some();
   let src_text = path_to_string(src);
+  let source = source.unwrap_or_else(|| {
+    if auto_install.is_some() {
+      InstructionSource::Agent {
+        path: src_text.clone(),
+      }
+    } else {
+      InstructionSource::File {
+        path: src_text.clone(),
+      }
+    }
+  });
   update_lock(env, |lock| {
     let record = lock
       .instructions
       .entry(name.clone())
       .or_insert(InstructionRecord {
+        source: InstructionSource::None,
         hash: hash.clone(),
         imported_at: timestamp.clone(),
         updated_at: timestamp.clone(),
         installs: Vec::new(),
       });
+    record.source = source;
     record.hash = hash.clone();
     record.updated_at = timestamp.clone();
     if let Some(matched) = &auto_install {
@@ -657,6 +675,7 @@ pub fn create_instruction(
     lock.instructions.insert(
       name.clone(),
       InstructionRecord {
+        source: InstructionSource::None,
         hash: hash.clone(),
         imported_at: timestamp.clone(),
         updated_at: timestamp.clone(),
@@ -1474,7 +1493,7 @@ fn adopt_agent_files(env: &Env) -> Result<(), String> {
         let name = unique_name(&adopted_name(&path, &location), &used);
         used.push(name.to_lowercase());
         hub_hashes.push((name.clone(), hash));
-        import_one(env, &name, &path, false, true).map(|_| ())
+        import_one(env, &name, &path, None, false, true).map(|_| ())
       },
     };
     if let Err(err) = result {
@@ -1721,6 +1740,7 @@ fn detect_in(
   base: &Path,
   base_label: &str,
   used: &mut Vec<String>,
+  source: impl Fn(&str) -> Option<InstructionSource>,
 ) -> Result<Vec<DetectedInstruction>, String> {
   let mut items = Vec::new();
   for file in find_markdown_files(env, root)? {
@@ -1733,6 +1753,7 @@ fn detect_in(
     items.push(DetectedInstruction {
       name,
       path: path_to_string(&file),
+      source: source(&rel_path),
       rel_path,
       file_name: file
         .file_name()
@@ -1767,7 +1788,7 @@ pub fn detect_instruction_files(
       path.clone()
     };
     let label = folder_label(&base);
-    items.extend(detect_in(env, &path, &base, &label, &mut used)?);
+    items.extend(detect_in(env, &path, &base, &label, &mut used, |_| None)?);
   }
   Ok(items)
 }
@@ -1783,13 +1804,14 @@ pub async fn detect_instruction_github(
     "detect-instructions-{}-{}",
     reference.owner, reference.repo
   ))?;
-  GithubHelper::clone_repo_to(
+  let branch = GithubHelper::clone_repo_to(
     &reference.owner,
     &reference.repo,
     reference.branch.as_deref(),
     &clone_dir,
   )
   .await?;
+  let repo = format!("{}/{}", reference.owner, reference.repo);
   let root = match &reference.subpath {
     Some(subpath) => {
       let inside = clone_dir.join(subpath);
@@ -1801,7 +1823,13 @@ pub async fn detect_instruction_github(
     None => clone_dir.clone(),
   };
   let mut used: Vec<String> = Vec::new();
-  detect_in(env, &root, &clone_dir, &reference.repo, &mut used)
+  detect_in(env, &root, &clone_dir, &reference.repo, &mut used, |rel| {
+    Some(InstructionSource::Github {
+      repo: repo.clone(),
+      file_path: rel.to_string(),
+      branch: Some(branch.clone()),
+    })
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -1891,6 +1919,7 @@ mod tests {
       vec![InstructionImportItem {
         name: name.to_string(),
         path: src.to_string_lossy().to_string(),
+        source: None,
       }],
       false,
     )
@@ -1933,6 +1962,7 @@ mod tests {
     assert!(!outcome.replaced);
     let view = get_instruction(&env, "rules").unwrap().unwrap();
     assert_eq!(view.description.as_deref(), Some("Team rules"));
+    assert!(matches!(view.source, InstructionSource::File { .. }));
     assert_eq!(view.hub_state, HubState::Ok);
     assert!(view.installs.is_empty());
 
@@ -2129,11 +2159,18 @@ mod tests {
       vec![InstructionImportItem {
         name: "codex-rules".to_string(),
         path: path_to_string(&source),
+        source: None,
       }],
       false,
     )
     .unwrap();
     let view = get_instruction(&env, "codex-rules").unwrap().unwrap();
+    assert_eq!(
+      view.source,
+      InstructionSource::Agent {
+        path: path_to_string(&source)
+      }
+    );
     assert_eq!(view.installs.len(), 1);
     assert_eq!(view.installs[0].record.scope, InstallScope::User);
     assert_eq!(view.installs[0].record.agent_ids, vec!["codex"]);
@@ -2144,6 +2181,7 @@ mod tests {
       vec![InstructionImportItem {
         name: "Codex-Rules".to_string(),
         path: path_to_string(&source),
+        source: None,
       }],
       false,
     )
@@ -2164,6 +2202,12 @@ mod tests {
     let names: Vec<&str> = list.iter().map(|item| item.name.as_str()).collect();
     assert_eq!(names, vec!["proj-agents", "user-claude"]);
     let claude = list.iter().find(|item| item.name == "user-claude").unwrap();
+    assert_eq!(
+      claude.source,
+      InstructionSource::Agent {
+        path: path_to_string(&env.home.join(".claude/CLAUDE.md"))
+      }
+    );
     assert_eq!(claude.installs.len(), 2);
     assert!(claude
       .installs
@@ -2292,6 +2336,10 @@ mod tests {
     let env = env(tmp.path());
     let outcome = create_instruction(&env, "fresh", "").unwrap();
     assert_eq!(read(Path::new(&outcome.hub_path)), "# fresh\n");
+    assert_eq!(
+      get_instruction(&env, "fresh").unwrap().unwrap().source,
+      InstructionSource::None
+    );
     assert!(create_instruction(&env, "fresh", "again").is_err());
 
     let result = install(
