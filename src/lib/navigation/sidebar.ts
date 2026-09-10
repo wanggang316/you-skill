@@ -3,8 +3,8 @@ export const SIDEBAR = {
   initial: 248,
   min: 176,
   max: 360,
-  /** Width of the icons-only sidebar. */
-  collapsed: 56,
+  /** Width of the icons-only sidebar: wide enough to keep the window controls inside it. */
+  collapsed: 80,
   /** Dragging narrower than this snaps to icons only. */
   collapseBelow: 140,
 } as const;
