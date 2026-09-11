@@ -11,9 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Symlinks are marked wherever files and install targets are listed: the skill file catalog and viewer, install targets and the changes panel, the skills and memory files of an install location, and the instruction files list and detail. Hovering the marker shows the path the link points at, and a link whose target is gone is marked as broken (HAN-141).
+
 ### Changed
 
 ### Fixed
+
+- Listing a skill directory no longer fails when it holds a broken symlink, and a symlinked directory that points back at an ancestor is listed once instead of being walked forever.
 
 ### Removed
 

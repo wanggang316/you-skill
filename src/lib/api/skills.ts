@@ -58,6 +58,10 @@ export interface DetectedSkill {
 export interface SkillDirectoryEntry {
   path: string;
   is_directory: boolean;
+  /** Absolute target when the entry is a symlink, absent for a regular file or directory. */
+  link_target?: string | null;
+  /** A symlink whose target does not exist. */
+  link_broken?: boolean;
 }
 
 function normalizeDetectedSkills(

@@ -137,6 +137,9 @@ pub struct AgentFileView {
   pub hash: Option<String>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub template: Option<AgentFileTemplate>,
+  /// Where the file links to when it is a symlink, `None` for a regular file.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub link_target: Option<String>,
 }
 
 /// Result of a mutating instruction action; see `ActionResult`.

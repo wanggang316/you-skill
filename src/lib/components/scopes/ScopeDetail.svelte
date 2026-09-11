@@ -10,6 +10,7 @@
   } from "@lucide/svelte";
   import AgentBadge from "$lib/components/AgentBadge.svelte";
   import SkillIcon from "$lib/components/SkillIcon.svelte";
+  import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
   import DropdownMenu, { type MenuItem } from "$lib/components/ui/DropdownMenu.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "$lib/i18n";
@@ -318,6 +319,7 @@
                       <span class="text-base-content truncate text-[13px] font-medium">
                         {file.name}
                       </span>
+                      <SymlinkMarker target={file.linkTarget} broken={!file.exists} />
                       {#if libraryNames[file.path]}
                         <span class="tag tag-neutral shrink-0" title={$t("instructions.title")}>
                           {libraryNames[file.path]}
@@ -397,7 +399,13 @@
                   {/if}
                   <span class="flex items-center gap-2">
                     {#each installs as install (install.path)}
-                      <AgentBadge agentIds={install.agentIds} {agents} path={install.path} />
+                      <span class="inline-flex items-center gap-1">
+                        <AgentBadge agentIds={install.agentIds} {agents} path={install.path} />
+                        <SymlinkMarker
+                          target={install.linkTarget}
+                          broken={install.state === "broken_link"}
+                        />
+                      </span>
                     {/each}
                   </span>
                   <DropdownMenu

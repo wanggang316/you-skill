@@ -2,6 +2,7 @@
   import { untrack } from "svelte";
   import { FolderOpen, LayoutTemplate } from "@lucide/svelte";
   import AgentBadge from "$lib/components/AgentBadge.svelte";
+  import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
   import MarkdownEditor from "$lib/components/MarkdownEditor.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
@@ -74,6 +75,7 @@
       <h2 class="text-base-content truncate font-mono text-[1rem] font-semibold tracking-[-0.02em]">
         {file.fileName}
       </h2>
+      <SymlinkMarker target={file.linkTarget} size={13} />
       <span class="text-base-content-muted truncate text-xs">{location}</span>
     </div>
     <div class="flex shrink-0 items-center gap-1.5">
@@ -104,6 +106,10 @@
       >
         <dt>{$t("instructions.file.path")}</dt>
         <dd class="truncate font-mono" title={file.path}>{file.path}</dd>
+        {#if file.linkTarget}
+          <dt>{$t("symlink.label")}</dt>
+          <dd class="truncate font-mono" title={file.linkTarget}>{file.linkTarget}</dd>
+        {/if}
         <dt>{$t("instructions.file.agents")}</dt>
         <dd class="flex items-center">
           <AgentBadge agentIds={file.agentIds} {agents} path={file.path} />

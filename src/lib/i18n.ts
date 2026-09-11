@@ -228,6 +228,10 @@ const translations: Record<string, Dictionary> = {
     "target.agents": "Agents",
     "target.path": "Path",
 
+    "symlink.label": "Symlink",
+    "symlink.target": "Symlink to {path}",
+    "symlink.brokenTarget": "Broken symlink to {path}",
+
     "drift.hub.modified": "The library copy was edited directly.",
     "drift.hub.name_mismatch": "The SKILL.md name no longer matches the skill name.",
     "drift.hub.missing": "The library copy is missing.",
@@ -649,6 +653,10 @@ const translations: Record<string, Dictionary> = {
     "target.reinstall": "重新安装",
     "target.agents": "Agent",
     "target.path": "路径",
+
+    "symlink.label": "软链接",
+    "symlink.target": "软链接指向 {path}",
+    "symlink.brokenTarget": "软链接已失效，指向 {path}",
 
     "drift.hub.modified": "中心库副本被直接修改过。",
     "drift.hub.name_mismatch": "SKILL.md 中的 name 与 skill 名称不一致。",

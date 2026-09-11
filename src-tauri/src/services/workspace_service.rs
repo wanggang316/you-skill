@@ -11,7 +11,9 @@ use crate::services::user_projects_service::{
 };
 use crate::utils::folder::SKILL_MD;
 use crate::utils::hash::is_excluded_component;
-use crate::utils::path::{expand_home_with, normalize_dir_path, path_to_string, same_path};
+use crate::utils::path::{
+  expand_home_with, normalize_dir_path, path_to_string, same_path, symlink_target_string,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -177,6 +179,7 @@ pub fn list_memory_files(
           .map(|value| value.to_string_lossy().to_string())
           .unwrap_or_default(),
         exists: path.is_file(),
+        link_target: symlink_target_string(&path),
         path: path_to_string(&path),
         agent_ids: vec![app.id.clone()],
       }),

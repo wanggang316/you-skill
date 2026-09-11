@@ -21,7 +21,7 @@ use crate::utils::github::GithubHelper;
 use crate::utils::hash::hash_file;
 use crate::utils::path::{
   expand_home_with, is_symlink, is_within, normalize_dir_path, path_to_string, remove_path_any,
-  same_path, symlink_points_to,
+  same_path, symlink_points_to, symlink_target, symlink_target_string,
 };
 use crate::utils::time::{now_file_stamp, now_rfc3339};
 use std::collections::BTreeMap;
@@ -348,6 +348,7 @@ fn build_install_view(
     current_hash,
     project_missing,
     missing_agent_ids,
+    link_target: symlink_target_string(Path::new(&install.path)),
   }
 }
 
@@ -1444,12 +1445,7 @@ fn agent_files(env: &Env) -> Vec<(PathBuf, AgentRootMatch)> {
 
 /// Template id a symlink points to, if it points into the library at all.
 fn linked_template(env: &Env, link: &Path) -> Option<String> {
-  let raw = fs::read_link(link).ok()?;
-  let resolved = if raw.is_absolute() {
-    raw
-  } else {
-    link.parent().map(|parent| parent.join(&raw)).unwrap_or(raw)
-  };
+  let resolved = symlink_target(link)?;
   if !is_within(&resolved, &env.instructions_root) {
     return None;
   }
@@ -1512,6 +1508,7 @@ pub fn list_instruction_files(env: &Env) -> Result<Vec<AgentFileView>, String> {
         agent_ids: location.agent_ids,
         hash: hash_file(&path).ok(),
         template,
+        link_target: symlink_target_string(&path),
       }
     })
     .collect();

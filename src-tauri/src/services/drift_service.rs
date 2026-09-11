@@ -11,7 +11,7 @@ use crate::services::install_service::agents_reading;
 use crate::utils::file::FileHelper;
 use crate::utils::folder::SKILL_MD;
 use crate::utils::hash::hash_dir_cached;
-use crate::utils::path::{is_symlink, symlink_points_to};
+use crate::utils::path::{is_symlink, symlink_points_to, symlink_target_string};
 use std::path::Path;
 
 pub struct HubProbe {
@@ -180,6 +180,7 @@ pub fn build_install_view(
     current_hash,
     project_missing,
     missing_agent_ids,
+    link_target: symlink_target_string(Path::new(&install.path)),
   }
 }
 

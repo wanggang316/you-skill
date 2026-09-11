@@ -96,6 +96,8 @@ export interface AgentFileView {
   agentIds: string[];
   hash?: string | null;
   template?: AgentFileTemplate | null;
+  /** Where the file links to when it is a symlink, absent for a regular file. */
+  linkTarget?: string | null;
 }
 
 export function instructionSourceLabel(source: InstructionSource): string {

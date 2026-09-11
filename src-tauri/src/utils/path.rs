@@ -159,23 +159,34 @@ pub fn is_within(child: &Path, ancestor: &Path) -> bool {
   resolve_for_compare(child).starts_with(resolve_for_compare(ancestor))
 }
 
+/// The path a symlink points at, made absolute against the link's parent when the link
+/// stores a relative target. `None` when `link` is not a symlink or cannot be read. The
+/// result is not canonicalized, so it keeps the spelling the link holds and can be shown
+/// back to the user.
+pub fn symlink_target(link: &Path) -> Option<PathBuf> {
+  let meta = fs::symlink_metadata(link).ok()?;
+  if !meta.file_type().is_symlink() {
+    return None;
+  }
+  let raw = fs::read_link(link).ok()?;
+  if raw.is_absolute() {
+    return Some(raw);
+  }
+  let joined = match link.parent() {
+    Some(parent) => parent.join(&raw),
+    None => raw,
+  };
+  Some(lexical_normalize(&joined))
+}
+
+/// `symlink_target` as a displayable string.
+pub fn symlink_target_string(link: &Path) -> Option<String> {
+  symlink_target(link).map(|target| path_to_string(&target))
+}
+
 /// True when `link` is a symlink whose target resolves to `target`.
 pub fn symlink_points_to(link: &Path, target: &Path) -> bool {
-  let Ok(meta) = fs::symlink_metadata(link) else {
-    return false;
-  };
-  if !meta.file_type().is_symlink() {
-    return false;
-  }
-  let Ok(raw) = fs::read_link(link) else {
-    return false;
-  };
-  let resolved = if raw.is_absolute() {
-    raw
-  } else {
-    link.parent().map(|p| p.join(&raw)).unwrap_or(raw)
-  };
-  same_path(&resolved, target)
+  symlink_target(link).is_some_and(|resolved| same_path(&resolved, target))
 }
 
 pub fn is_symlink(path: &Path) -> bool {
@@ -272,6 +283,32 @@ mod tests {
     assert!(same_path(&link, &real));
     assert!(symlink_points_to(&link, &real));
     assert!(!symlink_points_to(&real, &link));
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn symlink_target_resolves_relative_links() {
+    let dir = tempfile::tempdir().unwrap();
+    let real = dir.path().join("nested/real.md");
+    fs::create_dir_all(real.parent().unwrap()).unwrap();
+    fs::write(&real, "x").unwrap();
+
+    let absolute = dir.path().join("absolute.md");
+    std::os::unix::fs::symlink(&real, &absolute).unwrap();
+    assert_eq!(symlink_target(&absolute).as_deref(), Some(real.as_path()));
+
+    let relative = dir.path().join("relative.md");
+    std::os::unix::fs::symlink("nested/real.md", &relative).unwrap();
+    assert_eq!(symlink_target(&relative).as_deref(), Some(real.as_path()));
+
+    let dangling = dir.path().join("dangling.md");
+    std::os::unix::fs::symlink("../gone.md", &dangling).unwrap();
+    assert_eq!(
+      symlink_target(&dangling),
+      dir.path().parent().map(|parent| parent.join("gone.md"))
+    );
+
+    assert_eq!(symlink_target(&real), None);
   }
 
   #[cfg(unix)]

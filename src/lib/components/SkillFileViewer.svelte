@@ -4,6 +4,7 @@
   import { ExternalLink, Languages, List, Loader2 } from "@lucide/svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import SkillDirectoryDrawer from "$lib/components/SkillDirectoryDrawer.svelte";
+  import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
   import MarkdownPreview from "$lib/components/MarkdownPreview.svelte";
   import CodePreview from "$lib/components/CodePreview.svelte";
   import ImagePreview from "$lib/components/ImagePreview.svelte";
@@ -196,6 +197,7 @@
     });
 
   const getExtension = (filePath: string) => filePath.split(".").at(-1)?.toLowerCase() || "";
+  const activeEntry = $derived(directoryEntries.find((entry) => entry.path === activeFilePath));
   const isTranslatableMarkdown = $derived(fileViewMode === "markdown");
   const translateButtonLabel = $derived.by(() => {
     if (showingTranslated) return $t("detail.showOriginal");
@@ -611,6 +613,11 @@
   >
     <div class="text-base-content-subtle flex min-w-0 items-center gap-2">
       <span class="truncate" title={activeFilePath}>{activeFilePath}</span>
+      <SymlinkMarker
+        target={activeEntry?.link_target}
+        broken={activeEntry?.link_broken ?? false}
+        size={13}
+      />
     </div>
     <div class="flex shrink-0 items-center gap-1.5">
       {#if isTranslatableMarkdown}

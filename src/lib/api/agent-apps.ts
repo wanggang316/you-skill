@@ -18,6 +18,8 @@ export interface MemoryFile {
   name: string;
   agentIds: string[];
   exists: boolean;
+  /** Where the file links to when it is a symlink, absent for a regular file. */
+  linkTarget?: string | null;
 }
 
 // ============ Agent Apps ============
