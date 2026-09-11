@@ -78,6 +78,11 @@ export interface DiffModalState {
   against: DiffAgainst;
 }
 
+/** The registered scan paths, listed for scanning and management. */
+export interface ScanRootsModalState {
+  open: boolean;
+}
+
 export const importModal = writable<ImportModalState>({
   open: false,
   initialTab: "github",
@@ -138,6 +143,16 @@ export const forceModal = writable<ForceModalState>({
   onConfirm: null,
   onCancel: null,
 });
+
+export const scanRootsModal = writable<ScanRootsModalState>({ open: false });
+
+export function openScanRootsModal(): void {
+  scanRootsModal.set({ open: true });
+}
+
+export function closeScanRootsModal(): void {
+  scanRootsModal.set({ open: false });
+}
 
 export function openImportModal(options?: { tab?: ImportTab; folder?: string | null }): void {
   importModal.set({

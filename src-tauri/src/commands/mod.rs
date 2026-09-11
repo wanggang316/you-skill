@@ -2,6 +2,7 @@ pub mod agent_apps;
 pub mod hub;
 pub mod instructions;
 pub mod remote;
+pub mod scan_roots;
 pub mod settings;
 pub mod skill;
 pub mod user_projects;

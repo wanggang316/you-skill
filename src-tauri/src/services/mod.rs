@@ -13,6 +13,7 @@ pub mod instruction_service;
 pub mod lock_service;
 pub mod migration_service;
 pub mod remote_service;
+pub mod scan_roots_service;
 pub mod scan_service;
 pub mod skill_service;
 pub mod source_service;

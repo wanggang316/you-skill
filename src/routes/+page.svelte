@@ -32,9 +32,9 @@
   } from "$lib/stores/hub";
   import { homePath } from "$lib/stores/env";
   import {
-    openImportModal,
     openInstallModal,
     openLocationPickerModal,
+    openScanRootsModal,
     performAction,
   } from "$lib/stores/modals";
   import { userProjects } from "$lib/stores/user-projects";
@@ -274,7 +274,7 @@
       {filter}
       onSelect={handleSelect}
       onRefresh={() => refreshHub().catch(console.error)}
-      onScan={() => openImportModal({ tab: "folder" })}
+      onScan={() => openScanRootsModal()}
       onFilterChange={(next) => navigate({ filter: next })}
     />
 

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Symlinks are marked wherever files and install targets are listed: the skill file catalog and viewer, install targets and the changes panel, the skills and memory files of an install location, and the instruction files list and detail. Hovering the marker shows the path the link points at, and a link whose target is gone is marked as broken (HAN-141).
 - Instruction files that only import another file with Claude Code's `@` syntax (a `CLAUDE.md` holding `@AGENTS.md`) get a reference marker in the same places; hovering it shows the imported files, and the file detail lists them.
+- Added registered scan paths: the library scan button now opens a panel listing the folders you scan for skills, with the last scan time and how many skills it found, plus the agent skills directories found on this machine as one-click suggestions. The panel also states the scan rules that were previously invisible: folders holding a `SKILL.md`, up to 6 levels deep, skipping `.git` and `node_modules`.
 
 ### Changed
 

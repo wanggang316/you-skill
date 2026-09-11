@@ -27,6 +27,7 @@ use commands::{
     write_instruction_file,
   },
   remote::{fetch_remote_skills, fetch_skills_by_names, record_skill_install},
+  scan_roots::{add_scan_root, list_scan_roots, remove_scan_root, suggest_scan_roots},
   settings::{
     backup_skills, get_settings, list_openrouter_models, open_backup_folder, set_backup_folder,
     update_settings,
@@ -117,6 +118,10 @@ fn main() {
       check_source_updates,
       scan_folder,
       import_scanned,
+      list_scan_roots,
+      add_scan_root,
+      remove_scan_root,
+      suggest_scan_roots,
       migrate_legacy,
       migration_status,
       set_backup_folder,

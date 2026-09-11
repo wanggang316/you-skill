@@ -8,7 +8,8 @@ use crate::services::env::Env;
 use crate::services::lock_service::store;
 use crate::services::scan_service::DEFAULT_SCAN_DEPTH;
 use crate::services::{
-  diff_service, hub_service, install_service, migration_service, scan_service, source_service,
+  diff_service, hub_service, install_service, migration_service, scan_roots_service, scan_service,
+  source_service,
 };
 use crate::utils::folder::{is_staged_temp_path, sweep_temp_dirs};
 use crate::utils::github::GithubHelper;
@@ -198,7 +199,12 @@ pub async fn check_source_updates(names: Option<Vec<String>>) -> Result<Vec<Sour
 pub async fn scan_folder(path: String, max_depth: Option<usize>) -> Result<Vec<ScanItem>, String> {
   let env = Env::current()?;
   blocking("scan_folder", move || {
-    scan_service::scan_folder(&env, &path, max_depth.unwrap_or(DEFAULT_SCAN_DEPTH))
+    let items = scan_service::scan_folder(&env, &path, max_depth.unwrap_or(DEFAULT_SCAN_DEPTH))?;
+    // Keeps the registered scan paths current whichever entry point started the scan.
+    if let Err(err) = scan_roots_service::touch_scan_root(&path, items.len()) {
+      tracing::warn!("recording the scan of '{}' failed: {}", path, err);
+    }
+    Ok(items)
   })
   .await
 }
