@@ -17,10 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Scan results are now grouped by skill name and split into what the library does not have yet, what it already holds, and what needs no decision. Each folder carries one action instead of a checkbox plus a dropdown, and only one folder per name can go into the library, so several copies of the same skill can no longer overwrite each other in one import. The remaining copies can be recorded as install locations instead.
+
 ### Fixed
 
 - Listing a skill directory no longer fails when it holds a broken symlink, and a symlinked directory that points back at an ancestor is listed once instead of being walked forever.
 - An instruction file that is a symlink (such as `CLAUDE.md -> AGENTS.md`) is listed as its own entry with the agents that read it, instead of being merged into the file it points at.
+- Importing several folders holding the same skill name no longer breaks the result list with a duplicate-key error.
 
 ### Removed
 

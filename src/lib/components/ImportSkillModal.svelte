@@ -1,12 +1,18 @@
 <script lang="ts">
   import { AlertCircle, CheckCircle2, FileArchive, Folder, Github, Loader2 } from "@lucide/svelte";
-  import { get } from "svelte/store";
   import Modal from "$lib/components/ui/Modal.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import SegmentedTabs from "$lib/components/ui/SegmentedTabs.svelte";
   import DetectedSkillList from "./DetectedSkillList.svelte";
-  import ScanResultList, { type ScanChoice } from "./ScanResultList.svelte";
+  import ScanResultList from "./ScanResultList.svelte";
   import { t } from "../i18n";
+  import {
+    canRegister,
+    defaultActions,
+    groupScanItems,
+    type ScanAction,
+    type ScanGroup,
+  } from "../scan";
   import {
     importScanned,
     importSkills,
@@ -51,7 +57,7 @@
   let folderName = $state("");
   let isScanning = $state(false);
   let scanItems = $state<ScanItem[]>([]);
-  let scanChoices = $state<Record<string, ScanChoice>>({});
+  let scanActions = $state<Record<string, ScanAction>>({});
   let folderError = $state("");
   let isFolderDragOver = $state(false);
   let suppressFolderClick = $state(false);
@@ -70,7 +76,7 @@
     selectedDetected.map((skill) => skill.name).filter((name) => $hubSkillsByName.has(name))
   );
   const selectedScanCount = $derived(
-    scanItems.filter((item) => scanChoices[item.path]?.selected).length
+    scanItems.filter((item) => (scanActions[item.path] ?? "ignore") !== "ignore").length
   );
   const canConfirm = $derived.by(() => {
     if (isImporting) return false;
@@ -109,7 +115,7 @@
     folderName = "";
     isScanning = false;
     scanItems = [];
-    scanChoices = {};
+    scanActions = {};
     folderError = "";
     isImporting = false;
     importError = "";
@@ -403,31 +409,6 @@
     }
   }
 
-  function defaultChoice(item: ScanItem): ScanChoice {
-    const known = get(hubSkillsByName).get(item.name);
-    const alreadyRegistered = Boolean(
-      known?.installs.some((install) => install.path === item.path)
-    );
-    switch (item.status) {
-      case "new":
-        return { selected: true, resolution: "import", registerInstall: Boolean(item.inAgentRoot) };
-      case "different":
-        return {
-          selected: true,
-          resolution: "adopt_into_hub",
-          registerInstall: Boolean(item.inAgentRoot),
-        };
-      case "identical":
-        return {
-          selected: Boolean(item.inAgentRoot) && !alreadyRegistered,
-          resolution: "import",
-          registerInstall: Boolean(item.inAgentRoot),
-        };
-      default:
-        return { selected: false, resolution: "skip", registerInstall: false };
-    }
-  }
-
   async function applyFolderPath(path: string) {
     const normalized = normalizeDroppedPath(path);
     if (!normalized) {
@@ -440,13 +421,11 @@
     folderName = baseName(normalized);
     isScanning = true;
     scanItems = [];
-    scanChoices = {};
+    scanActions = {};
     try {
       const items = await scanFolder(normalized);
       scanItems = items;
-      const choices: Record<string, ScanChoice> = {};
-      for (const item of items) choices[item.path] = defaultChoice(item);
-      scanChoices = choices;
+      scanActions = defaultActions(groupScanItems(items));
       if (items.length === 0) folderError = $t("import.folder.empty");
     } catch (error) {
       folderError = String(error);
@@ -506,19 +485,29 @@
     }));
   }
 
+  function resolutionOf(group: ScanGroup, action: ScanAction): ScanDecision["resolution"] {
+    if (action === "to_hub") return group.inHub ? "adopt_into_hub" : "import";
+    if (action === "push") return "push_from_hub";
+    return action === "register" ? "register_only" : "skip";
+  }
+
   function buildScanDecisions(): ScanDecision[] {
-    return scanItems
-      .filter((item) => scanChoices[item.path]?.selected)
-      .map((item) => {
-        const choice = scanChoices[item.path];
-        return {
+    const { fresh, known } = groupScanItems(scanItems);
+    const decisions: ScanDecision[] = [];
+    for (const group of [...fresh, ...known]) {
+      for (const item of group.items) {
+        const action = scanActions[item.path] ?? "ignore";
+        if (action === "ignore") continue;
+        decisions.push({
           name: item.name,
           path: item.path,
-          resolution: choice.resolution,
-          registerInstall: choice.registerInstall,
+          resolution: resolutionOf(group, action),
+          registerInstall: canRegister(item),
           source: item.sourceHint ?? null,
-        };
-      });
+        });
+      }
+    }
+    return decisions;
   }
 
   async function handleConfirm() {
@@ -553,7 +542,7 @@
   }
 
   function handleInstallNow() {
-    const names = (importedOutcomes ?? []).map((outcome) => outcome.name);
+    const names = [...new Set((importedOutcomes ?? []).map((outcome) => outcome.name))];
     handleClose();
     openInstallModal(names);
   }
@@ -573,7 +562,7 @@
           <ul
             class="border-base-300 bg-base-200 max-h-48 space-y-1 overflow-y-auto rounded-xl border p-3 text-sm"
           >
-            {#each importedOutcomes as outcome (outcome.name)}
+            {#each importedOutcomes as outcome}
               <li class="text-base-content flex items-center justify-between gap-3">
                 <span class="truncate">{outcome.name}</span>
                 <span class="text-base-content-faint font-mono text-[11px]">
@@ -742,7 +731,7 @@
             {#if scanItems.length > 0}
               <ScanResultList
                 items={scanItems}
-                bind:choices={scanChoices}
+                bind:actions={scanActions}
                 rootPath={selectedFolderPath}
                 disabled={isImporting}
               />

@@ -528,7 +528,18 @@ pub enum ScanResolution {
   Import,
   AdoptIntoHub,
   PushFromHub,
+  /// Leave the hub alone and only record this folder as an install location. The skill has
+  /// to be in the hub already, or arrive there through another decision of the same batch.
+  RegisterOnly,
   Skip,
+}
+
+impl ScanResolution {
+  /// Whether the resolution writes to the hub. Those run before the register-only decisions
+  /// of the same skill, so the install records get the right merge base.
+  pub fn writes_hub(self) -> bool {
+    matches!(self, Self::Import | Self::AdoptIntoHub)
+  }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

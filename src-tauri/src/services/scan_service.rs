@@ -130,6 +130,10 @@ pub fn import_scanned(
 ) -> Result<Vec<ImportOutcome>, String> {
   let mut outcomes = Vec::new();
   let mut errors = Vec::new();
+  let mut decisions = decisions;
+  // A register-only decision reads the hub copy as its merge base, so let whichever
+  // decision writes that copy run first.
+  decisions.sort_by_key(|decision| !decision.resolution.writes_hub());
 
   for decision in decisions {
     match import_one_decision(env, &decision) {
@@ -165,6 +169,15 @@ fn import_one_decision(
 
   let outcome = match resolution {
     ScanResolution::Skip => unreachable!(),
+    ScanResolution::RegisterOnly => {
+      if !exists {
+        return Err("Skill is not in the hub".to_string());
+      }
+      if in_agent_root.is_none() {
+        return Err("Folder is not an agent skills directory".to_string());
+      }
+      None
+    },
     ScanResolution::Import => {
       let source = decision.source.clone().unwrap_or(SkillSource::Folder {
         path: path_to_string(&dir),
@@ -218,8 +231,9 @@ fn import_one_decision(
     },
   };
 
+  let register = decision.register_install || resolution == ScanResolution::RegisterOnly;
   if let Some(matched) = in_agent_root {
-    if decision.register_install && store(env).get(&name)?.is_some() {
+    if register && store(env).get(&name)?.is_some() {
       let _ops = ops_guard();
       register_existing_install(
         env,
@@ -365,6 +379,85 @@ mod tests {
     assert!(fs::read_to_string(claude.join("foo/SKILL.md"))
       .unwrap()
       .ends_with("F3"));
+  }
+
+  #[test]
+  fn register_only_adds_a_second_copy_of_a_skill_imported_in_the_same_batch() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let user_dir = env.home.join(".claude/skills/dup");
+    let project_dir = tmp.path().join("proj/.claude/skills/dup");
+    write(&user_dir, "SKILL.md", "---\nname: dup\n---\nUSER");
+    write(&project_dir, "SKILL.md", "---\nname: dup\n---\nPROJECT");
+
+    let decision = |path: &Path, resolution: ScanResolution| ScanDecision {
+      name: "dup".to_string(),
+      path: path_to_string(path),
+      resolution,
+      register_install: false,
+      source: None,
+    };
+    // Register-only comes first on purpose: the batch has to run it after the import, or it
+    // has no hub copy to use as a merge base.
+    let outcomes = import_scanned(
+      &env,
+      vec![
+        decision(&project_dir, ScanResolution::RegisterOnly),
+        decision(&user_dir, ScanResolution::Import),
+      ],
+    )
+    .unwrap();
+
+    assert_eq!(outcomes.len(), 1);
+    assert!(fs::read_to_string(env.hub_dir("dup").join("SKILL.md"))
+      .unwrap()
+      .ends_with("USER"));
+    let view = get_hub_skill(&env, "dup").unwrap().unwrap();
+    assert_eq!(view.installs.len(), 2);
+    let install = |path: &Path| {
+      view
+        .installs
+        .iter()
+        .find(|install| same_path(Path::new(&install.record.path), path))
+        .unwrap()
+    };
+    assert_eq!(install(&user_dir).state, TargetState::InSync);
+    assert_eq!(install(&project_dir).state, TargetState::Modified);
+  }
+
+  #[test]
+  fn register_only_without_a_hub_copy_fails_without_stopping_the_batch() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let orphan = env.home.join(".claude/skills/orphan");
+    let other = env.home.join(".claude/skills/other");
+    write(&orphan, "SKILL.md", "---\nname: orphan\n---\n");
+    write(&other, "SKILL.md", "---\nname: other\n---\n");
+
+    let outcomes = import_scanned(
+      &env,
+      vec![
+        ScanDecision {
+          name: "orphan".to_string(),
+          path: path_to_string(&orphan),
+          resolution: ScanResolution::RegisterOnly,
+          register_install: false,
+          source: None,
+        },
+        ScanDecision {
+          name: "other".to_string(),
+          path: path_to_string(&other),
+          resolution: ScanResolution::Import,
+          register_install: true,
+          source: None,
+        },
+      ],
+    )
+    .unwrap();
+
+    assert_eq!(outcomes.len(), 1);
+    assert_eq!(outcomes[0].name, "other");
+    assert!(get_hub_skill(&env, "orphan").unwrap().is_none());
   }
 
   #[test]

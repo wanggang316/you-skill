@@ -1,33 +1,36 @@
 <script lang="ts">
+  import { ChevronDown, ChevronRight } from "@lucide/svelte";
   import { t } from "../i18n";
-  import type { ScanItem, ScanResolution } from "../api/hub";
-
-  export interface ScanChoice {
-    selected: boolean;
-    resolution: ScanResolution;
-    registerInstall: boolean;
-  }
+  import type { ScanItem } from "../api/hub";
+  import {
+    actionsFor,
+    copyRelation,
+    groupScanItems,
+    hubBound,
+    preferredHubCopy,
+    withAction,
+    type ScanAction,
+    type ScanGroup,
+  } from "../scan";
 
   let {
     items = [],
-    choices = $bindable<Record<string, ScanChoice>>({}),
+    actions = $bindable<Record<string, ScanAction>>({}),
     rootPath = "",
     disabled = false,
   }: {
     items?: ScanItem[];
-    choices?: Record<string, ScanChoice>;
+    actions?: Record<string, ScanAction>;
     rootPath?: string;
     disabled?: boolean;
   } = $props();
 
-  const selectableItems = $derived(items.filter((item) => isSelectable(item)));
-  const allSelected = $derived(
-    selectableItems.length > 0 && selectableItems.every((item) => choices[item.path]?.selected)
-  );
+  let inertOpen = $state(false);
 
-  function isSelectable(item: ScanItem): boolean {
-    return item.status !== "hub" && item.status !== "invalid_name" && item.status !== "linked";
-  }
+  const sections = $derived(groupScanItems(items));
+  const allFreshChosen = $derived(
+    sections.fresh.length > 0 && sections.fresh.every((group) => hubBound(group, actions))
+  );
 
   function relativePath(path: string): string {
     if (rootPath && path.startsWith(rootPath)) {
@@ -37,126 +40,141 @@
     return path;
   }
 
-  function statusClass(item: ScanItem): string {
-    switch (item.status) {
-      case "new":
-        return "tag-success";
-      case "identical":
-      case "linked":
-        return "tag-neutral";
-      case "different":
-        return "tag-warning";
-      default:
-        return "tag-error";
-    }
+  function setAction(group: ScanGroup, item: ScanItem, action: ScanAction) {
+    actions = withAction(actions, group, item, action);
   }
 
-  function resolutionOptions(item: ScanItem): ScanResolution[] {
-    if (item.status === "new") return ["import", "skip"];
-    if (item.status === "different") return ["adopt_into_hub", "push_from_hub", "skip"];
-    return ["import", "skip"];
-  }
-
-  function toggle(item: ScanItem) {
-    if (disabled || !isSelectable(item)) return;
-    const current = choices[item.path];
-    if (!current) return;
-    choices = { ...choices, [item.path]: { ...current, selected: !current.selected } };
-  }
-
-  function toggleAll() {
+  /** Take every new skill in, or leave every one of them out. */
+  function toggleFresh() {
     if (disabled) return;
-    const next = { ...choices };
-    for (const item of selectableItems) {
-      const current = next[item.path];
-      if (current) next[item.path] = { ...current, selected: !allSelected };
+    let next = actions;
+    for (const group of sections.fresh) {
+      const bound = hubBound(group, next);
+      if (allFreshChosen) {
+        if (bound) next = withAction(next, group, bound, "ignore");
+      } else if (!bound) {
+        next = withAction(next, group, preferredHubCopy(group), "to_hub");
+      }
     }
-    choices = next;
-  }
-
-  function setResolution(item: ScanItem, resolution: ScanResolution) {
-    const current = choices[item.path];
-    if (!current) return;
-    choices = {
-      ...choices,
-      [item.path]: { ...current, resolution, selected: resolution !== "skip" },
-    };
-  }
-
-  function setRegister(item: ScanItem, registerInstall: boolean) {
-    const current = choices[item.path];
-    if (!current) return;
-    choices = { ...choices, [item.path]: { ...current, registerInstall } };
+    actions = next;
   }
 </script>
 
-<div class="space-y-2">
-  <div class="flex items-center justify-between">
-    <p class="text-base-content text-sm">{$t("import.selectSkills")}</p>
-    {#if selectableItems.length > 1}
-      <label class="text-base-content-muted inline-flex items-center gap-2 text-[13px]">
-        <input type="checkbox" checked={allSelected} onchange={toggleAll} {disabled} />
-        {$t("import.selectAll")}
-      </label>
-    {/if}
+{#snippet row(group: ScanGroup, item: ScanItem)}
+  {@const action = actions[item.path] ?? "ignore"}
+  {@const relation = copyRelation(group, item, actions)}
+  <div
+    class={`flex items-start gap-2 rounded-lg px-2.5 py-1.5 transition ${
+      action === "ignore" ? "opacity-60" : ""
+    }`}
+  >
+    <span class="min-w-0 flex-1">
+      <span class="text-base-content-subtle block truncate text-[11px]" title={item.path}>
+        {relativePath(item.path)}
+      </span>
+      <span class="flex flex-wrap items-center gap-1.5">
+        {#if group.inHub}
+          <span class={`tag ${item.status === "different" ? "tag-warning" : "tag-neutral"}`}>
+            {$t(`scan.status.${item.status}`)}
+          </span>
+        {:else if relation}
+          <span class={`tag ${relation === "same" ? "tag-neutral" : "tag-warning"}`}>
+            {$t(`scan.relation.${relation}`)}
+          </span>
+        {/if}
+        {#if item.error}
+          <span class="text-error text-[11px]">{item.error}</span>
+        {/if}
+      </span>
+    </span>
+    <select
+      class="border-base-300 bg-base-100 text-base-content h-7 shrink-0 rounded-lg border px-2 text-xs focus:outline-none"
+      value={action}
+      {disabled}
+      onchange={(event) => setAction(group, item, event.currentTarget.value as ScanAction)}
+    >
+      {#each actionsFor(group, item, actions) as option (option)}
+        <option value={option}>
+          {$t(group.inHub && option === "to_hub" ? "scan.action.adopt" : `scan.action.${option}`)}
+        </option>
+      {/each}
+    </select>
   </div>
-  <div class="border-base-300 bg-base-200 max-h-72 space-y-2 overflow-y-auto rounded-xl border p-2">
-    {#each items as item (item.path)}
-      {@const choice = choices[item.path]}
-      {@const selectable = isSelectable(item)}
-      <div
-        class={`rounded-lg px-3 py-2 text-sm transition ${
-          choice?.selected ? "bg-base-100 ring-primary/40 ring-1" : "bg-base-100/60"
-        } ${selectable ? "" : "opacity-60"}`}
-      >
-        <div class="flex items-start gap-2">
-          <input
-            type="checkbox"
-            class="mt-1"
-            checked={Boolean(choice?.selected)}
-            disabled={disabled || !selectable}
-            onchange={() => toggle(item)}
-          />
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="text-base-content font-medium">{item.name}</span>
-              <span class={`tag ${statusClass(item)}`}>{$t(`scan.status.${item.status}`)}</span>
-            </div>
-            <p class="text-base-content-subtle truncate text-[11px]" title={item.path}>
-              {relativePath(item.path)}
-            </p>
-            {#if item.error}
-              <p class="text-error mt-1 text-[11px]">{item.error}</p>
-            {/if}
-          </div>
-          {#if selectable && choice}
-            <div class="flex shrink-0 flex-col items-end gap-1">
-              <select
-                class="border-base-300 bg-base-100 text-base-content h-7 rounded-lg border px-2 text-xs focus:outline-none"
-                value={choice.resolution}
-                {disabled}
-                onchange={(event) =>
-                  setResolution(item, event.currentTarget.value as ScanResolution)}
-              >
-                {#each resolutionOptions(item) as option}
-                  <option value={option}>{$t(`scan.resolution.${option}`)}</option>
-                {/each}
-              </select>
-              {#if item.inAgentRoot}
-                <label class="text-base-content-muted inline-flex items-center gap-1 text-[11px]">
-                  <input
-                    type="checkbox"
-                    checked={choice.registerInstall}
-                    {disabled}
-                    onchange={(event) => setRegister(item, event.currentTarget.checked)}
-                  />
-                  {$t("scan.registerInstall")}
-                </label>
-              {/if}
-            </div>
-          {/if}
-        </div>
-      </div>
+{/snippet}
+
+{#snippet groupBlock(group: ScanGroup)}
+  <div class="bg-base-100 rounded-lg px-1 py-1.5">
+    <div class="flex items-center gap-2 px-2">
+      <span class="text-base-content truncate text-[13px] font-medium">{group.name}</span>
+      {#if group.items.length > 1}
+        <span class="text-base-content-faint text-[11px]">
+          {$t("scan.group.copies", { count: group.items.length })}
+        </span>
+      {/if}
+    </div>
+    {#each group.items as item (item.path)}
+      {@render row(group, item)}
     {/each}
   </div>
+{/snippet}
+
+<div class="space-y-2">
+  <div class="border-base-300 bg-base-200 max-h-72 space-y-3 overflow-y-auto rounded-xl border p-2">
+    {#if sections.fresh.length > 0}
+      <section class="space-y-1.5">
+        <div class="flex items-center justify-between gap-2 px-1">
+          <p class="text-base-content text-[12px] font-medium">
+            {$t("scan.section.fresh", { count: sections.fresh.length })}
+          </p>
+          <label class="text-base-content-muted inline-flex items-center gap-1.5 text-[11px]">
+            <input type="checkbox" checked={allFreshChosen} onchange={toggleFresh} {disabled} />
+            {$t("import.selectAll")}
+          </label>
+        </div>
+        {#each sections.fresh as group (group.name)}
+          {@render groupBlock(group)}
+        {/each}
+      </section>
+    {/if}
+
+    {#if sections.known.length > 0}
+      <section class="space-y-1.5">
+        <p class="text-base-content px-1 text-[12px] font-medium">
+          {$t("scan.section.known", { count: sections.known.length })}
+        </p>
+        {#each sections.known as group (group.name)}
+          {@render groupBlock(group)}
+        {/each}
+      </section>
+    {/if}
+
+    {#if sections.inert.length > 0}
+      <section class="space-y-1">
+        <button
+          class="text-base-content-muted hover:text-base-content flex w-full items-center gap-1 px-1 text-[12px] transition"
+          type="button"
+          onclick={() => (inertOpen = !inertOpen)}
+        >
+          {#if inertOpen}
+            <ChevronDown size={13} />
+          {:else}
+            <ChevronRight size={13} />
+          {/if}
+          {$t("scan.section.inert", { count: sections.inert.length })}
+        </button>
+        {#if inertOpen}
+          {#each sections.inert as item (item.path)}
+            <div class="flex items-center gap-2 px-2.5 py-1 opacity-70">
+              <span class="text-base-content min-w-0 flex-1 truncate text-[12px]" title={item.path}>
+                {item.name}
+                <span class="text-base-content-faint">· {relativePath(item.path)}</span>
+              </span>
+              <span class="tag tag-neutral shrink-0">{$t(`scan.status.${item.status}`)}</span>
+            </div>
+          {/each}
+        {/if}
+      </section>
+    {/if}
+  </div>
+  <p class="text-base-content-faint text-[11px]">{$t("scan.rule")}</p>
 </div>

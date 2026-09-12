@@ -152,7 +152,13 @@ export interface ScanItem {
   error?: string | null;
 }
 
-export type ScanResolution = "import" | "adopt_into_hub" | "push_from_hub" | "skip";
+export type ScanResolution =
+  | "import"
+  | "adopt_into_hub"
+  | "push_from_hub"
+  /** Record the folder as an install location, leaving the library copy untouched. */
+  | "register_only"
+  | "skip";
 
 export interface ScanDecision {
   name: string;
