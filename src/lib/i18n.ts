@@ -317,10 +317,7 @@ const translations: Record<string, Dictionary> = {
     "scan.resolution.adopt_into_hub": "Use this copy",
     "scan.resolution.push_from_hub": "Overwrite with library",
     "scan.resolution.skip": "Skip",
-    "scan.inAgentRoot.user": "User-level target of {agents}",
-    "scan.inAgentRoot.project": "Project target of {agents}",
     "scan.registerInstall": "Register as install target",
-    "scan.unregisteredProject": "Project is not in your project list",
 
     "scanRoots.title": "Scan paths",
     "scanRoots.description": "Folders you scan for skills. Pick one to scan it again.",
@@ -756,10 +753,7 @@ const translations: Record<string, Dictionary> = {
     "scan.resolution.adopt_into_hub": "以此副本为准",
     "scan.resolution.push_from_hub": "用中心库覆盖",
     "scan.resolution.skip": "跳过",
-    "scan.inAgentRoot.user": "{agents} 的用户级目录",
-    "scan.inAgentRoot.project": "{agents} 的项目目录",
     "scan.registerInstall": "登记为安装位置",
-    "scan.unregisteredProject": "该项目尚未加入项目列表",
 
     "scanRoots.title": "扫描路径",
     "scanRoots.description": "用来扫描 skill 的文件夹，点击其中一条即可重新扫描。",

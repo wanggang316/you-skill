@@ -1,7 +1,6 @@
 <script lang="ts">
   import { t } from "../i18n";
   import type { ScanItem, ScanResolution } from "../api/hub";
-  import { agentsById } from "../stores/hub";
 
   export interface ScanChoice {
     selected: boolean;
@@ -56,10 +55,6 @@
     if (item.status === "new") return ["import", "skip"];
     if (item.status === "different") return ["adopt_into_hub", "push_from_hub", "skip"];
     return ["import", "skip"];
-  }
-
-  function agentNames(ids: string[]): string {
-    return ids.map((id) => $agentsById.get(id)?.display_name ?? id).join(", ");
   }
 
   function toggle(item: ScanItem) {
@@ -130,18 +125,6 @@
             <p class="text-base-content-subtle truncate text-[11px]" title={item.path}>
               {relativePath(item.path)}
             </p>
-            {#if item.inAgentRoot}
-              <p class="text-base-content-muted mt-1 text-[11px]">
-                {item.inAgentRoot.scope === "user"
-                  ? $t("scan.inAgentRoot.user", { agents: agentNames(item.inAgentRoot.agentIds) })
-                  : $t("scan.inAgentRoot.project", {
-                      agents: agentNames(item.inAgentRoot.agentIds),
-                    })}
-                {#if item.inAgentRoot.scope === "project" && !item.inAgentRoot.registeredProject}
-                  <span class="text-warning-content"> · {$t("scan.unregisteredProject")}</span>
-                {/if}
-              </p>
-            {/if}
             {#if item.error}
               <p class="text-error mt-1 text-[11px]">{item.error}</p>
             {/if}
