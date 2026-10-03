@@ -155,6 +155,20 @@ pub fn same_path(a: &Path, b: &Path) -> bool {
   resolve_for_compare(a) == resolve_for_compare(b)
 }
 
+/// Like `same_path`, but the last component is compared as a name and never followed, so a
+/// symlink and the file it points at stay two entries (`CLAUDE.md -> AGENTS.md`).
+pub fn same_entry(a: &Path, b: &Path) -> bool {
+  if a == b {
+    return true;
+  }
+  match (a.parent(), a.file_name(), b.parent(), b.file_name()) {
+    (Some(a_parent), Some(a_name), Some(b_parent), Some(b_name)) => {
+      a_name == b_name && same_path(a_parent, b_parent)
+    },
+    _ => same_path(a, b),
+  }
+}
+
 pub fn is_within(child: &Path, ancestor: &Path) -> bool {
   resolve_for_compare(child).starts_with(resolve_for_compare(ancestor))
 }
@@ -309,6 +323,32 @@ mod tests {
     );
 
     assert_eq!(symlink_target(&real), None);
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn same_entry_keeps_a_symlinked_file_apart_from_its_target() {
+    let dir = tempfile::tempdir().unwrap();
+    let real_dir = dir.path().join("real");
+    fs::create_dir_all(&real_dir).unwrap();
+    fs::write(real_dir.join("AGENTS.md"), "x").unwrap();
+    std::os::unix::fs::symlink("AGENTS.md", real_dir.join("CLAUDE.md")).unwrap();
+    let linked_dir = dir.path().join("linked");
+    std::os::unix::fs::symlink(&real_dir, &linked_dir).unwrap();
+
+    assert!(same_path(
+      &real_dir.join("CLAUDE.md"),
+      &real_dir.join("AGENTS.md")
+    ));
+    assert!(!same_entry(
+      &real_dir.join("CLAUDE.md"),
+      &real_dir.join("AGENTS.md")
+    ));
+    // A symlinked parent directory still counts as the same place.
+    assert!(same_entry(
+      &linked_dir.join("AGENTS.md"),
+      &real_dir.join("AGENTS.md")
+    ));
   }
 
   #[cfg(unix)]

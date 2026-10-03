@@ -12,7 +12,8 @@ use crate::services::user_projects_service::{
 use crate::utils::folder::SKILL_MD;
 use crate::utils::hash::is_excluded_component;
 use crate::utils::path::{
-  expand_home_with, normalize_dir_path, path_to_string, same_path, symlink_target_string,
+  expand_home_with, normalize_dir_path, path_to_string, same_entry, same_path,
+  symlink_target_string,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -170,7 +171,7 @@ pub fn list_memory_files(
     };
     match files
       .iter_mut()
-      .find(|file| same_path(Path::new(&file.path), &path))
+      .find(|file| same_entry(Path::new(&file.path), &path))
     {
       Some(file) => file.agent_ids.push(app.id.clone()),
       None => files.push(MemoryFile {

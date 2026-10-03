@@ -30,7 +30,9 @@ The built-in `agents` app is the shared directory itself as an explicit target. 
 also carries the instruction files it reads: `profile_path` inside a project (`CLAUDE.md`
 for Claude Code, `AGENTS.md` elsewhere) and `global_profile_path` at user level
 (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`). `list_memory_files` resolves them for one
-scope and groups the agents that read the same file.
+scope and groups the agents that read the same file; a
+symlinked file (`CLAUDE.md -> AGENTS.md`) stays its own entry rather than merging into its
+target.
 
 ## Workspaces and projects
 

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Listing a skill directory no longer fails when it holds a broken symlink, and a symlinked directory that points back at an ancestor is listed once instead of being walked forever.
+- An instruction file that is a symlink (such as `CLAUDE.md -> AGENTS.md`) is listed as its own entry with the agents that read it, instead of being merged into the file it points at.
 
 ### Removed
 
