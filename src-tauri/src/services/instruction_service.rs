@@ -16,12 +16,13 @@ use crate::services::drift_service::compare_three_way;
 use crate::services::env::Env;
 use crate::services::install_service::ResolvedTarget;
 use crate::services::lock_service::ops_guard;
+use crate::services::workspace_service::references_of;
 use crate::utils::folder::create_temp_dir;
 use crate::utils::github::GithubHelper;
 use crate::utils::hash::hash_file;
 use crate::utils::path::{
   expand_home_with, is_symlink, is_within, normalize_dir_path, path_to_string, remove_path_any,
-  same_path, symlink_points_to,
+  same_entry, same_path, symlink_points_to, symlink_target, symlink_target_string,
 };
 use crate::utils::time::{now_file_stamp, now_rfc3339};
 use std::collections::BTreeMap;
@@ -348,6 +349,7 @@ fn build_install_view(
     current_hash,
     project_missing,
     missing_agent_ids,
+    link_target: symlink_target_string(Path::new(&install.path)),
   }
 }
 
@@ -1393,7 +1395,7 @@ pub fn diff_instruction(env: &Env, name: &str, path: &str) -> Result<SkillDiff, 
 fn agent_files(env: &Env) -> Vec<(PathBuf, AgentRootMatch)> {
   let mut found: Vec<(PathBuf, AgentRootMatch)> = Vec::new();
   let mut add = |path: PathBuf, location: AgentRootMatch| {
-    if let Some((_, existing)) = found.iter_mut().find(|(known, _)| same_path(known, &path)) {
+    if let Some((_, existing)) = found.iter_mut().find(|(known, _)| same_entry(known, &path)) {
       for id in location.agent_ids {
         if !existing.agent_ids.contains(&id) {
           existing.agent_ids.push(id);
@@ -1444,12 +1446,7 @@ fn agent_files(env: &Env) -> Vec<(PathBuf, AgentRootMatch)> {
 
 /// Template id a symlink points to, if it points into the library at all.
 fn linked_template(env: &Env, link: &Path) -> Option<String> {
-  let raw = fs::read_link(link).ok()?;
-  let resolved = if raw.is_absolute() {
-    raw
-  } else {
-    link.parent().map(|parent| parent.join(&raw)).unwrap_or(raw)
-  };
+  let resolved = symlink_target(link)?;
   if !is_within(&resolved, &env.instructions_root) {
     return None;
   }
@@ -1512,6 +1509,8 @@ pub fn list_instruction_files(env: &Env) -> Result<Vec<AgentFileView>, String> {
         agent_ids: location.agent_ids,
         hash: hash_file(&path).ok(),
         template,
+        link_target: symlink_target_string(&path),
+        references: references_of(&path, &env.home),
       }
     })
     .collect();
@@ -2181,6 +2180,64 @@ mod tests {
     .remove(0);
     assert!(get_record(&env, &outcome.id).unwrap().installs.is_empty());
     assert_eq!(get_record(&env, &second.id).unwrap().installs.len(), 1);
+  }
+
+  #[test]
+  fn reference_agent_file_lists_what_it_imports() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let project = tmp.path().join("proj");
+    write(&project.join("AGENTS.md"), "# Proj\n");
+    write(&project.join("CLAUDE.md"), "@AGENTS.md\n");
+
+    let files = list_instruction_files(&env).unwrap();
+    let agents_md = files.iter().find(|f| f.file_name == "AGENTS.md").unwrap();
+    let claude_md = files.iter().find(|f| f.file_name == "CLAUDE.md").unwrap();
+    assert!(agents_md.references.is_empty());
+    assert_eq!(
+      claude_md.references,
+      vec![project.join("AGENTS.md").to_string_lossy().to_string()]
+    );
+
+    let memory = crate::services::workspace_service::list_memory_files(
+      &env,
+      InstallScope::Project,
+      project.to_str(),
+    )
+    .unwrap();
+    let claude_md = memory.iter().find(|f| f.name == "CLAUDE.md").unwrap();
+    assert_eq!(claude_md.references.len(), 1);
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn symlinked_agent_file_is_listed_apart_from_its_target() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let project = tmp.path().join("proj");
+    write(&project.join("AGENTS.md"), "# Proj\n");
+    std::os::unix::fs::symlink("AGENTS.md", project.join("CLAUDE.md")).unwrap();
+
+    let files = list_instruction_files(&env).unwrap();
+    let agents_md = files.iter().find(|f| f.file_name == "AGENTS.md").unwrap();
+    let claude_md = files.iter().find(|f| f.file_name == "CLAUDE.md").unwrap();
+    assert_eq!(agents_md.agent_ids, vec!["agents", "codex"]);
+    assert!(agents_md.link_target.is_none());
+    assert_eq!(claude_md.agent_ids, vec!["claude-code"]);
+    assert_eq!(
+      claude_md.link_target.as_deref(),
+      Some(project.join("AGENTS.md").to_str().unwrap())
+    );
+
+    let memory = crate::services::workspace_service::list_memory_files(
+      &env,
+      InstallScope::Project,
+      project.to_str(),
+    )
+    .unwrap();
+    let claude_md = memory.iter().find(|f| f.name == "CLAUDE.md").unwrap();
+    assert_eq!(claude_md.agent_ids, vec!["claude-code"]);
+    assert!(claude_md.link_target.is_some());
   }
 
   #[test]

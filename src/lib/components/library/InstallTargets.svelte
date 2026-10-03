@@ -1,6 +1,7 @@
 <script lang="ts">
   import { AlertTriangle, Folder, Plus, UserRound } from "@lucide/svelte";
   import AgentBadge from "$lib/components/AgentBadge.svelte";
+  import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
   import DropdownMenu from "$lib/components/ui/DropdownMenu.svelte";
   import { t } from "$lib/i18n";
   import { baseName } from "$lib/scopes";
@@ -144,12 +145,15 @@
     </div>
     <div class="mt-2 flex flex-wrap items-center gap-3">
       {#each group.installs as install (install.path)}
-        <AgentBadge
-          agentIds={install.agentIds}
-          {agents}
-          path={install.path}
-          note={stateNote(install)}
-        />
+        <span class="inline-flex items-center gap-1">
+          <AgentBadge
+            agentIds={install.agentIds}
+            {agents}
+            path={install.path}
+            note={stateNote(install)}
+          />
+          <SymlinkMarker target={install.linkTarget} broken={install.state === "broken_link"} />
+        </span>
       {/each}
       <button
         class="border-base-300 text-base-content-muted hover:border-primary hover:text-primary flex size-6 items-center justify-center rounded-lg border border-dashed transition disabled:opacity-40"

@@ -11,7 +11,10 @@ use crate::services::user_projects_service::{
 };
 use crate::utils::folder::SKILL_MD;
 use crate::utils::hash::is_excluded_component;
-use crate::utils::path::{expand_home_with, normalize_dir_path, path_to_string, same_path};
+use crate::utils::path::{
+  expand_home_with, import_references, normalize_dir_path, path_to_string, same_entry, same_path,
+  symlink_target_string,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -168,7 +171,7 @@ pub fn list_memory_files(
     };
     match files
       .iter_mut()
-      .find(|file| same_path(Path::new(&file.path), &path))
+      .find(|file| same_entry(Path::new(&file.path), &path))
     {
       Some(file) => file.agent_ids.push(app.id.clone()),
       None => files.push(MemoryFile {
@@ -177,6 +180,8 @@ pub fn list_memory_files(
           .map(|value| value.to_string_lossy().to_string())
           .unwrap_or_default(),
         exists: path.is_file(),
+        link_target: symlink_target_string(&path),
+        references: references_of(&path, &env.home),
         path: path_to_string(&path),
         agent_ids: vec![app.id.clone()],
       }),
@@ -185,6 +190,14 @@ pub fn list_memory_files(
 
   files.sort_by(|a, b| b.exists.cmp(&a.exists).then_with(|| a.path.cmp(&b.path)));
   Ok(files)
+}
+
+/// `import_references` as displayable strings.
+pub fn references_of(file: &Path, home: &Path) -> Vec<String> {
+  import_references(file, home)
+    .iter()
+    .map(|path| path_to_string(path))
+    .collect()
 }
 
 struct Markers {

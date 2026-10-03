@@ -51,6 +51,12 @@ pub struct DetectedSkill {
 pub struct SkillDirectoryEntry {
   pub path: String,
   pub is_directory: bool,
+  /// Absolute target when the entry is a symlink, `None` for a regular file or directory.
+  #[serde(default)]
+  pub link_target: Option<String>,
+  /// A symlink whose target does not exist.
+  #[serde(default)]
+  pub link_broken: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -245,6 +251,9 @@ pub struct InstallView {
   pub project_missing: bool,
   #[serde(default)]
   pub missing_agent_ids: Vec<String>,
+  /// Where the target links to when it is a symlink on disk, whatever `mode` records.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub link_target: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]

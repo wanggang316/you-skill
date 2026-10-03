@@ -155,27 +155,93 @@ pub fn same_path(a: &Path, b: &Path) -> bool {
   resolve_for_compare(a) == resolve_for_compare(b)
 }
 
+/// Like `same_path`, but the last component is compared as a name and never followed, so a
+/// symlink and the file it points at stay two entries (`CLAUDE.md -> AGENTS.md`).
+pub fn same_entry(a: &Path, b: &Path) -> bool {
+  if a == b {
+    return true;
+  }
+  match (a.parent(), a.file_name(), b.parent(), b.file_name()) {
+    (Some(a_parent), Some(a_name), Some(b_parent), Some(b_name)) => {
+      a_name == b_name && same_path(a_parent, b_parent)
+    },
+    _ => same_path(a, b),
+  }
+}
+
 pub fn is_within(child: &Path, ancestor: &Path) -> bool {
   resolve_for_compare(child).starts_with(resolve_for_compare(ancestor))
 }
 
+/// The path a symlink points at, made absolute against the link's parent when the link
+/// stores a relative target. `None` when `link` is not a symlink or cannot be read. The
+/// result is not canonicalized, so it keeps the spelling the link holds and can be shown
+/// back to the user.
+pub fn symlink_target(link: &Path) -> Option<PathBuf> {
+  let meta = fs::symlink_metadata(link).ok()?;
+  if !meta.file_type().is_symlink() {
+    return None;
+  }
+  let raw = fs::read_link(link).ok()?;
+  if raw.is_absolute() {
+    return Some(raw);
+  }
+  let joined = match link.parent() {
+    Some(parent) => parent.join(&raw),
+    None => raw,
+  };
+  Some(lexical_normalize(&joined))
+}
+
+/// `symlink_target` as a displayable string.
+pub fn symlink_target_string(link: &Path) -> Option<String> {
+  symlink_target(link).map(|target| path_to_string(&target))
+}
+
+/// Largest instruction file still read for `import_references`; a pure reference file is a
+/// line or two.
+const REFERENCE_FILE_MAX_BYTES: u64 = 4096;
+
+/// The files a pure reference file points at: a regular file whose non-empty lines are all
+/// Claude Code imports (`@AGENTS.md`, `@~/.codex/AGENTS.md`). Relative imports resolve
+/// against the file's directory. Empty for a symlink, a file with any other content, or
+/// one that cannot be read.
+pub fn import_references(file: &Path, home: &Path) -> Vec<PathBuf> {
+  let Ok(meta) = fs::symlink_metadata(file) else {
+    return Vec::new();
+  };
+  if !meta.is_file() || meta.len() > REFERENCE_FILE_MAX_BYTES {
+    return Vec::new();
+  }
+  let Ok(content) = fs::read_to_string(file) else {
+    return Vec::new();
+  };
+  let mut references = Vec::new();
+  for line in content
+    .lines()
+    .map(str::trim)
+    .filter(|line| !line.is_empty())
+  {
+    let Some(target) = line.strip_prefix('@') else {
+      return Vec::new();
+    };
+    if target.is_empty() || target.contains(char::is_whitespace) {
+      return Vec::new();
+    }
+    let expanded = expand_home_with(target, home);
+    references.push(if expanded.is_absolute() {
+      expanded
+    } else {
+      let base = file.parent().unwrap_or(Path::new(""));
+      lexical_normalize(&base.join(expanded))
+    });
+  }
+  references
+}
+
 /// True when `link` is a symlink whose target resolves to `target`.
 pub fn symlink_points_to(link: &Path, target: &Path) -> bool {
-  let Ok(meta) = fs::symlink_metadata(link) else {
-    return false;
-  };
-  if !meta.file_type().is_symlink() {
-    return false;
-  }
-  let Ok(raw) = fs::read_link(link) else {
-    return false;
-  };
-  let resolved = if raw.is_absolute() {
-    raw
-  } else {
-    link.parent().map(|p| p.join(&raw)).unwrap_or(raw)
-  };
-  same_path(&resolved, target)
+  symlink_target(link).is_some_and(|resolved| same_path(&resolved, target))
 }
 
 pub fn is_symlink(path: &Path) -> bool {
@@ -272,6 +338,88 @@ mod tests {
     assert!(same_path(&link, &real));
     assert!(symlink_points_to(&link, &real));
     assert!(!symlink_points_to(&real, &link));
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn symlink_target_resolves_relative_links() {
+    let dir = tempfile::tempdir().unwrap();
+    let real = dir.path().join("nested/real.md");
+    fs::create_dir_all(real.parent().unwrap()).unwrap();
+    fs::write(&real, "x").unwrap();
+
+    let absolute = dir.path().join("absolute.md");
+    std::os::unix::fs::symlink(&real, &absolute).unwrap();
+    assert_eq!(symlink_target(&absolute).as_deref(), Some(real.as_path()));
+
+    let relative = dir.path().join("relative.md");
+    std::os::unix::fs::symlink("nested/real.md", &relative).unwrap();
+    assert_eq!(symlink_target(&relative).as_deref(), Some(real.as_path()));
+
+    let dangling = dir.path().join("dangling.md");
+    std::os::unix::fs::symlink("../gone.md", &dangling).unwrap();
+    assert_eq!(
+      symlink_target(&dangling),
+      dir.path().parent().map(|parent| parent.join("gone.md"))
+    );
+
+    assert_eq!(symlink_target(&real), None);
+  }
+
+  #[test]
+  fn import_references_only_for_pure_reference_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("home");
+    let project = dir.path().join("proj");
+    fs::create_dir_all(&project).unwrap();
+    let file = project.join("CLAUDE.md");
+
+    fs::write(&file, "@AGENTS.md\n").unwrap();
+    assert_eq!(
+      import_references(&file, &home),
+      vec![project.join("AGENTS.md")]
+    );
+
+    fs::write(&file, "\n@./docs/../AGENTS.md\n\n@~/.codex/AGENTS.md\n").unwrap();
+    assert_eq!(
+      import_references(&file, &home),
+      vec![project.join("AGENTS.md"), home.join(".codex/AGENTS.md")]
+    );
+
+    for not_pure in ["# Rules\n@AGENTS.md\n", "@AGENTS.md and more\n", "@\n", ""] {
+      fs::write(&file, not_pure).unwrap();
+      assert!(
+        import_references(&file, &home).is_empty(),
+        "{not_pure:?} is not a reference file"
+      );
+    }
+    assert!(import_references(&project.join("missing.md"), &home).is_empty());
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn same_entry_keeps_a_symlinked_file_apart_from_its_target() {
+    let dir = tempfile::tempdir().unwrap();
+    let real_dir = dir.path().join("real");
+    fs::create_dir_all(&real_dir).unwrap();
+    fs::write(real_dir.join("AGENTS.md"), "x").unwrap();
+    std::os::unix::fs::symlink("AGENTS.md", real_dir.join("CLAUDE.md")).unwrap();
+    let linked_dir = dir.path().join("linked");
+    std::os::unix::fs::symlink(&real_dir, &linked_dir).unwrap();
+
+    assert!(same_path(
+      &real_dir.join("CLAUDE.md"),
+      &real_dir.join("AGENTS.md")
+    ));
+    assert!(!same_entry(
+      &real_dir.join("CLAUDE.md"),
+      &real_dir.join("AGENTS.md")
+    ));
+    // A symlinked parent directory still counts as the same place.
+    assert!(same_entry(
+      &linked_dir.join("AGENTS.md"),
+      &real_dir.join("AGENTS.md")
+    ));
   }
 
   #[cfg(unix)]

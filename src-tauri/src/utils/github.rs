@@ -1,7 +1,8 @@
 use crate::models::SkillDirectoryEntry;
+use crate::utils::path::{resolve_for_compare, symlink_target_string};
 use reqwest::Client;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
 use std::io::{self, Cursor};
 use std::path::{Path, PathBuf};
@@ -260,7 +261,9 @@ impl GithubHelper {
     }
 
     let mut out = Vec::new();
-    collect_skill_directory_entries(&root, &root, &mut out)?;
+    let mut visited = HashSet::new();
+    visited.insert(resolve_for_compare(&root));
+    collect_skill_directory_entries(&root, &root, &mut visited, &mut out)?;
     Ok(out)
   }
 
@@ -329,9 +332,13 @@ fn sanitize_relative_path(path: &str) -> Result<String, String> {
   Ok(components.join("/"))
 }
 
+/// Walk a skill directory. Symlinks are reported as such instead of being followed
+/// silently; a linked directory is still listed, but only once, so a link that points at an
+/// ancestor cannot loop. A broken link stays in the listing rather than failing it.
 fn collect_skill_directory_entries(
   root: &Path,
   current: &Path,
+  visited: &mut HashSet<PathBuf>,
   out: &mut Vec<SkillDirectoryEntry>,
 ) -> Result<(), String> {
   let mut entries = Vec::new();
@@ -348,19 +355,39 @@ fn collect_skill_directory_entries(
 
   for entry in entries {
     let path = entry.path();
-    let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
     let relative = path
       .strip_prefix(root)
       .map_err(|e| e.to_string())?
       .to_string_lossy()
       .replace('\\', "/");
+    let link_target = symlink_target_string(&path);
+    // Resolved through the link, so it fails on a broken one.
+    let metadata = match fs::metadata(&path) {
+      Ok(metadata) => metadata,
+      Err(err) => {
+        if link_target.is_none() {
+          return Err(err.to_string());
+        }
+        out.push(SkillDirectoryEntry {
+          path: relative,
+          is_directory: false,
+          link_target,
+          link_broken: true,
+        });
+        continue;
+      },
+    };
 
     if metadata.is_dir() {
       out.push(SkillDirectoryEntry {
         path: relative.clone(),
         is_directory: true,
+        link_target,
+        link_broken: false,
       });
-      collect_skill_directory_entries(root, &path, out)?;
+      if visited.insert(resolve_for_compare(&path)) {
+        collect_skill_directory_entries(root, &path, visited, out)?;
+      }
       continue;
     }
 
@@ -368,6 +395,8 @@ fn collect_skill_directory_entries(
       out.push(SkillDirectoryEntry {
         path: relative,
         is_directory: false,
+        link_target,
+        link_broken: false,
       });
     }
   }
@@ -426,5 +455,63 @@ mod tests {
       "skills/foo"
     );
     assert!(GithubHelper::skill_folder_of("skills/foo").is_err());
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn directory_listing_reports_symlinks() {
+    use std::os::unix::fs::symlink;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let skill = tmp.path().join("skill");
+    fs::create_dir_all(skill.join("reference")).unwrap();
+    fs::write(skill.join("SKILL.md"), "---\nname: skill\n---\n").unwrap();
+    fs::write(skill.join("reference/notes.md"), "notes").unwrap();
+
+    let shared = tmp.path().join("shared");
+    fs::create_dir_all(&shared).unwrap();
+    fs::write(shared.join("shared.md"), "shared").unwrap();
+
+    symlink(shared.join("shared.md"), skill.join("linked.md")).unwrap();
+    symlink(&shared, skill.join("linked-dir")).unwrap();
+    symlink(tmp.path().join("gone.md"), skill.join("dangling.md")).unwrap();
+
+    let entries = GithubHelper::list_skill_directory(&skill.to_string_lossy()).unwrap();
+    let entry = |path: &str| {
+      entries
+        .iter()
+        .find(|entry| entry.path == path)
+        .unwrap_or_else(|| panic!("{path} missing from listing"))
+    };
+
+    assert!(entry("SKILL.md").link_target.is_none());
+    assert_eq!(
+      entry("linked.md").link_target.as_deref(),
+      Some(shared.join("shared.md").to_string_lossy().as_ref())
+    );
+    assert!(!entry("linked.md").link_broken);
+    assert!(entry("dangling.md").link_broken);
+    // A linked directory is marked but still walked.
+    assert!(entry("linked-dir").is_directory);
+    assert!(entry("linked-dir").link_target.is_some());
+    assert!(entries.iter().any(|e| e.path == "linked-dir/shared.md"));
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn directory_listing_stops_at_a_symlink_loop() {
+    use std::os::unix::fs::symlink;
+
+    let tmp = tempfile::tempdir().unwrap();
+    let skill = tmp.path().join("skill");
+    fs::create_dir_all(skill.join("nested")).unwrap();
+    fs::write(skill.join("SKILL.md"), "---\nname: skill\n---\n").unwrap();
+    symlink(&skill, skill.join("nested/loop")).unwrap();
+
+    let entries = GithubHelper::list_skill_directory(&skill.to_string_lossy()).unwrap();
+    assert!(entries.iter().any(|entry| entry.path == "nested/loop"));
+    assert!(!entries
+      .iter()
+      .any(|entry| entry.path.starts_with("nested/loop/nested/loop")));
   }
 }

@@ -30,7 +30,9 @@ The built-in `agents` app is the shared directory itself as an explicit target. 
 also carries the instruction files it reads: `profile_path` inside a project (`CLAUDE.md`
 for Claude Code, `AGENTS.md` elsewhere) and `global_profile_path` at user level
 (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`). `list_memory_files` resolves them for one
-scope and groups the agents that read the same file.
+scope and groups the agents that read the same file; a
+symlinked file (`CLAUDE.md -> AGENTS.md`) stays its own entry rather than merging into its
+target.
 
 ## Workspaces and projects
 
@@ -164,6 +166,13 @@ under `migration` in the lock and shown once in the library.
 - `src/lib/api/instructions.ts` and `stores/instructions.ts` do the same for the
   instruction library; the install, location, diff and remove dialogs take a `kind`
   (`skill` | `instruction`) and `confirmForce` is the shared force-confirmation helper.
+- Anything that can be a symlink on disk carries its resolved target: `linkTarget` on an
+  install view, a memory file and an agent instruction file, `link_target` (plus
+  `link_broken`) on a skill directory entry. `SymlinkMarker.svelte` renders the marker and
+  the hover that names the target; `list_skill_directory` reports links instead of
+  following them blindly, so a broken one is listed and a loop cannot be walked twice.
+  Memory and agent instruction files also carry `references`: the files a pure reference
+  file imports (every non-empty line an `@path` import), shown by `ReferenceMarker.svelte`.
 - Routes: `/` library (skill list plus skill detail), `/instructions` (instruction list plus
   detail with a content preview), `/projects` install scopes (scope list
   plus a scope detail with its agents and skills; `?scope=user` or `?project=<path>` selects

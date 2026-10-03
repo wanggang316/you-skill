@@ -1,5 +1,6 @@
 <script lang="ts">
   import { AlertTriangle } from "@lucide/svelte";
+  import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
   import { t } from "$lib/i18n";
   import { openDiffModal, type LibraryKind } from "$lib/stores/modals";
   import type { HubState, InstallView, SkillSource, SourceState, SyncAction } from "$lib/api/hub";
@@ -135,6 +136,7 @@
             <span class={`state-dot state-${install.state} shrink-0`}></span>
             <span class="text-base-content shrink-0">{$t(`target.state.${install.state}`)}</span>
             <span class="truncate text-xs" title={install.path}>{install.path}</span>
+            <SymlinkMarker target={install.linkTarget} broken={install.state === "broken_link"} />
           </p>
           <div class="flex gap-1.5">
             {#if canDiffTarget(install)}

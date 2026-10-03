@@ -9,6 +9,8 @@
     Search,
     UserRound,
   } from "@lucide/svelte";
+  import ReferenceMarker from "$lib/components/ReferenceMarker.svelte";
+  import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import SelectField from "$lib/components/ui/SelectField.svelte";
   import { t } from "$lib/i18n";
@@ -217,6 +219,8 @@
               <span class="text-base-content min-w-0 flex-1 truncate font-mono text-[12px]">
                 {file.fileName}
               </span>
+              <SymlinkMarker target={file.linkTarget} />
+              <ReferenceMarker references={file.references} />
               {#if file.template}
                 {#if file.template.state !== "in_sync"}
                   <span class="tag tag-warning shrink-0">{$t("library.tag.changed")}</span>

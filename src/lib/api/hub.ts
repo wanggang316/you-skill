@@ -58,6 +58,8 @@ export interface InstallView {
   currentHash?: string | null;
   projectMissing: boolean;
   missingAgentIds: string[];
+  /** Where the target links to when it is a symlink on disk, whatever `mode` records. */
+  linkTarget?: string | null;
 }
 
 export interface HubSkillView {

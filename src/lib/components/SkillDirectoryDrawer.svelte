@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Folder, Loader2, X } from "@lucide/svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
+  import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
   import { t } from "../i18n";
   import type { SkillDirectoryEntry } from "../api/skills";
 
@@ -85,7 +86,8 @@
             {#if entry.is_directory}
               <Folder size={14} class="shrink-0" />
             {/if}
-            {getEntryName(entry.path)}
+            <span class="min-w-0 truncate">{getEntryName(entry.path)}</span>
+            <SymlinkMarker target={entry.link_target} broken={entry.link_broken ?? false} />
           </button>
         {/each}
       {/if}
