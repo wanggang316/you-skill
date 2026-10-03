@@ -1,5 +1,6 @@
 pub mod agent_app;
 pub mod instruction;
+pub mod scan_root;
 pub mod skill;
 pub mod user_project;
 
@@ -9,6 +10,7 @@ pub use instruction::{
   InstructionImportItem, InstructionImportOutcome, InstructionLockFile, InstructionRecord,
   InstructionSource, InstructionView,
 };
+pub use scan_root::{ScanRoot, ScanRootSuggestion, ScanRootView};
 pub use skill::{
   ActionResult, AgentRootMatch, DetectedSkill, DiffAgainst, DiffHunk, DiffLine, DiffLineKind,
   DiffStatus, FileDiff, HubSkillView, HubState, ImportItem, ImportOutcome, InstallMode,

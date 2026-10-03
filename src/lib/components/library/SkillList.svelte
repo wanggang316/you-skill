@@ -5,7 +5,7 @@
   import SelectField from "$lib/components/ui/SelectField.svelte";
   import { t } from "$lib/i18n";
   import type { HubSkillView } from "$lib/api/hub";
-  import type { LibraryFilter } from "$lib/navigation/app-shell";
+  import type { LibraryFilter, LibrarySource } from "$lib/navigation/app-shell";
 
   let {
     skills = [],
@@ -15,10 +15,12 @@
     error = "",
     search = $bindable(""),
     filter = "all",
+    source = "all",
     onSelect,
     onRefresh,
     onScan,
     onFilterChange,
+    onSourceChange,
   }: {
     skills?: HubSkillView[];
     totalCount?: number;
@@ -27,13 +29,16 @@
     error?: string;
     search?: string;
     filter?: LibraryFilter;
+    source?: LibrarySource;
     onSelect: (name: string) => void;
     onRefresh: () => void;
     onScan: () => void;
     onFilterChange: (filter: LibraryFilter) => void;
+    onSourceChange: (source: LibrarySource) => void;
   } = $props();
 
   const filters: LibraryFilter[] = ["all", "changed", "uninstalled"];
+  const sources: LibrarySource[] = ["all", "local", "github", "none"];
 </script>
 
 <div class="border-base-300 flex min-h-0 min-w-0 flex-col border-r">
@@ -41,11 +46,34 @@
     class="border-base-300 flex h-12 flex-none items-center justify-between border-b px-4"
     data-window-drag-region
   >
-    <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
-      {$t("library.title")}
-    </h1>
-    <span class="text-base-content-faint text-xs">{$t("library.count", { count: totalCount })}</span
-    >
+    <div class="flex min-w-0 items-baseline gap-2">
+      <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
+        {$t("library.title")}
+      </h1>
+      <span class="text-base-content-faint shrink-0 text-xs">
+        {$t("library.count", { count: totalCount })}
+      </span>
+    </div>
+    <div class="flex shrink-0 items-center gap-1.5">
+      <IconButton
+        variant="outline"
+        onclick={onScan}
+        title={$t("library.scan")}
+        ariaLabel={$t("library.scan")}
+        class="h-8 w-8 p-0"
+      >
+        <ScanSearch size={15} />
+      </IconButton>
+      <IconButton
+        variant="outline"
+        onclick={onRefresh}
+        title={$t("library.refresh")}
+        ariaLabel={$t("library.refresh")}
+        class="h-8 w-8 p-0"
+      >
+        <RefreshCw size={15} class={loading ? "animate-spin" : ""} />
+      </IconButton>
+    </div>
   </header>
 
   <div class="border-base-300 space-y-2 border-b px-3 py-2.5">
@@ -68,24 +96,16 @@
           <option value={item}>{$t(`library.filter.${item}`)}</option>
         {/each}
       </SelectField>
-      <IconButton
-        variant="outline"
-        onclick={onScan}
-        title={$t("library.scan")}
-        ariaLabel={$t("library.scan")}
-        class="h-8 w-8 p-0"
+      <SelectField
+        value={source}
+        className="min-w-0 flex-1"
+        selectClassName="h-8 text-[12px]"
+        onchange={(event) => onSourceChange(event.currentTarget.value as LibrarySource)}
       >
-        <ScanSearch size={15} />
-      </IconButton>
-      <IconButton
-        variant="outline"
-        onclick={onRefresh}
-        title={$t("library.refresh")}
-        ariaLabel={$t("library.refresh")}
-        class="h-8 w-8 p-0"
-      >
-        <RefreshCw size={15} class={loading ? "animate-spin" : ""} />
-      </IconButton>
+        {#each sources as item}
+          <option value={item}>{$t(`library.source.${item}`)}</option>
+        {/each}
+      </SelectField>
     </div>
   </div>
 

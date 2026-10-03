@@ -13,6 +13,7 @@
   import ImportSkillModal from "$lib/components/ImportSkillModal.svelte";
   import InstallSkillModal from "$lib/components/InstallSkillModal.svelte";
   import LocationPickerModal from "$lib/components/LocationPickerModal.svelte";
+  import ScanRootsModal from "$lib/components/ScanRootsModal.svelte";
   import ScopeAgentModal from "$lib/components/ScopeAgentModal.svelte";
   import SkillPickerModal from "$lib/components/SkillPickerModal.svelte";
   import WorkspaceModal from "$lib/components/WorkspaceModal.svelte";
@@ -184,3 +185,4 @@
 <ForceConfirmModal />
 <DiffModal />
 <WorkspaceModal />
+<ScanRootsModal />

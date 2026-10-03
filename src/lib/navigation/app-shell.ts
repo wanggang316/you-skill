@@ -4,6 +4,9 @@ export type SidebarActiveKey = "library" | "instructions" | "projects" | "market
 
 export type LibraryFilter = "all" | "changed" | "uninstalled";
 
+/** Where library skills came from: GitHub, a local folder or archive, or nowhere recorded. */
+export type LibrarySource = "all" | "local" | "github" | "none";
+
 export type AppLocation = {
   activeKey: SidebarActiveKey;
   /** Selected skill in the library (`?skill=`). */
@@ -15,9 +18,12 @@ export type AppLocation = {
   /** Selected install scope on the projects page (`?scope=user` or `?project=<path>`). */
   scope: ScopeRef | null;
   filter: LibraryFilter;
+  /** Source filter of the library (`?source=`). */
+  source: LibrarySource;
 };
 
 const LIBRARY_FILTERS: LibraryFilter[] = ["all", "changed", "uninstalled"];
+const LIBRARY_SOURCES: LibrarySource[] = ["all", "local", "github", "none"];
 
 const isSettingsPath = (pathname: string) =>
   pathname === "/settings" || pathname.startsWith("/agent-apps");
@@ -31,6 +37,9 @@ const isInstructionsPath = (pathname: string) => pathname.startsWith("/instructi
 
 export const parseLibraryFilter = (value: string | null): LibraryFilter =>
   LIBRARY_FILTERS.includes(value as LibraryFilter) ? (value as LibraryFilter) : "all";
+
+export const parseLibrarySource = (value: string | null): LibrarySource =>
+  LIBRARY_SOURCES.includes(value as LibrarySource) ? (value as LibrarySource) : "all";
 
 const parseScope = (url: URL): ScopeRef | null => {
   const projectPath = url.searchParams.get("project");
@@ -60,14 +69,16 @@ export const getAppLocation = (url: URL): AppLocation => {
     instructionFile: url.searchParams.get("file") || null,
     scope,
     filter: parseLibraryFilter(url.searchParams.get("filter")),
+    source: parseLibrarySource(url.searchParams.get("source")),
   };
 };
 
 export const buildLibraryHref = (
-  options: { skill?: string | null; filter?: LibraryFilter } = {}
+  options: { skill?: string | null; filter?: LibraryFilter; source?: LibrarySource } = {}
 ): string => {
   const params = new URLSearchParams();
   if (options.filter && options.filter !== "all") params.set("filter", options.filter);
+  if (options.source && options.source !== "all") params.set("source", options.source);
   if (options.skill) params.set("skill", options.skill);
   const query = params.toString();
   return query ? `/?${query}` : "/";
