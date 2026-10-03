@@ -11,7 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Symlinks are marked wherever files and install targets are listed: the skill file catalog and viewer, install targets and the changes panel, the skills and memory files of an install location, and the instruction files list and detail. Hovering the marker shows the path the link points at, and a link whose target is gone is marked as broken (HAN-141).
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.9.1] - 2026-10-03
+
+### Added
+
+- Symlinks are marked wherever files and install targets are listed: the skill file catalog and viewer, install targets and the changes panel, the skills and memory files of an install location, and the instruction files list and detail. Hovering the marker shows the path the link points at, and a link whose target is gone is marked as broken.
 - Instruction files that only import another file with Claude Code's `@` syntax (a `CLAUDE.md` holding `@AGENTS.md`) get a reference marker in the same places; hovering it shows the imported files, and the file detail lists them.
 - Added registered scan paths: the library scan button now opens a panel listing the folders you scan for skills, with the last scan time and how many skills it found, plus the agent skills directories found on this machine as one-click suggestions. The panel also states the scan rules that were previously invisible: folders holding a `SKILL.md`, up to 6 levels deep, skipping `.git` and `node_modules`.
 - Added a source filter to the Skill Library: all sources, local (imported from a folder or an archive), GitHub, or no source.
@@ -26,8 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Listing a skill directory no longer fails when it holds a broken symlink, and a symlinked directory that points back at an ancestor is listed once instead of being walked forever.
 - An instruction file that is a symlink (such as `CLAUDE.md -> AGENTS.md`) is listed as its own entry with the agents that read it, instead of being merged into the file it points at.
 - Importing several folders holding the same skill name no longer breaks the result list with a duplicate-key error.
-
-### Removed
 
 ## [0.9.0] - 2026-09-10
 
