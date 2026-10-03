@@ -10,6 +10,7 @@
   } from "@lucide/svelte";
   import AgentBadge from "$lib/components/AgentBadge.svelte";
   import SkillIcon from "$lib/components/SkillIcon.svelte";
+  import ReferenceMarker from "$lib/components/ReferenceMarker.svelte";
   import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
   import DropdownMenu, { type MenuItem } from "$lib/components/ui/DropdownMenu.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
@@ -320,6 +321,7 @@
                         {file.name}
                       </span>
                       <SymlinkMarker target={file.linkTarget} broken={!file.exists} />
+                      <ReferenceMarker references={file.references} />
                       {#if libraryNames[file.path]}
                         <span class="tag tag-neutral shrink-0" title={$t("instructions.title")}>
                           {libraryNames[file.path]}

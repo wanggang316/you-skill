@@ -198,6 +198,47 @@ pub fn symlink_target_string(link: &Path) -> Option<String> {
   symlink_target(link).map(|target| path_to_string(&target))
 }
 
+/// Largest instruction file still read for `import_references`; a pure reference file is a
+/// line or two.
+const REFERENCE_FILE_MAX_BYTES: u64 = 4096;
+
+/// The files a pure reference file points at: a regular file whose non-empty lines are all
+/// Claude Code imports (`@AGENTS.md`, `@~/.codex/AGENTS.md`). Relative imports resolve
+/// against the file's directory. Empty for a symlink, a file with any other content, or
+/// one that cannot be read.
+pub fn import_references(file: &Path, home: &Path) -> Vec<PathBuf> {
+  let Ok(meta) = fs::symlink_metadata(file) else {
+    return Vec::new();
+  };
+  if !meta.is_file() || meta.len() > REFERENCE_FILE_MAX_BYTES {
+    return Vec::new();
+  }
+  let Ok(content) = fs::read_to_string(file) else {
+    return Vec::new();
+  };
+  let mut references = Vec::new();
+  for line in content
+    .lines()
+    .map(str::trim)
+    .filter(|line| !line.is_empty())
+  {
+    let Some(target) = line.strip_prefix('@') else {
+      return Vec::new();
+    };
+    if target.is_empty() || target.contains(char::is_whitespace) {
+      return Vec::new();
+    }
+    let expanded = expand_home_with(target, home);
+    references.push(if expanded.is_absolute() {
+      expanded
+    } else {
+      let base = file.parent().unwrap_or(Path::new(""));
+      lexical_normalize(&base.join(expanded))
+    });
+  }
+  references
+}
+
 /// True when `link` is a symlink whose target resolves to `target`.
 pub fn symlink_points_to(link: &Path, target: &Path) -> bool {
   symlink_target(link).is_some_and(|resolved| same_path(&resolved, target))
@@ -323,6 +364,36 @@ mod tests {
     );
 
     assert_eq!(symlink_target(&real), None);
+  }
+
+  #[test]
+  fn import_references_only_for_pure_reference_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("home");
+    let project = dir.path().join("proj");
+    fs::create_dir_all(&project).unwrap();
+    let file = project.join("CLAUDE.md");
+
+    fs::write(&file, "@AGENTS.md\n").unwrap();
+    assert_eq!(
+      import_references(&file, &home),
+      vec![project.join("AGENTS.md")]
+    );
+
+    fs::write(&file, "\n@./docs/../AGENTS.md\n\n@~/.codex/AGENTS.md\n").unwrap();
+    assert_eq!(
+      import_references(&file, &home),
+      vec![project.join("AGENTS.md"), home.join(".codex/AGENTS.md")]
+    );
+
+    for not_pure in ["# Rules\n@AGENTS.md\n", "@AGENTS.md and more\n", "@\n", ""] {
+      fs::write(&file, not_pure).unwrap();
+      assert!(
+        import_references(&file, &home).is_empty(),
+        "{not_pure:?} is not a reference file"
+      );
+    }
+    assert!(import_references(&project.join("missing.md"), &home).is_empty());
   }
 
   #[cfg(unix)]

@@ -16,6 +16,7 @@ use crate::services::drift_service::compare_three_way;
 use crate::services::env::Env;
 use crate::services::install_service::ResolvedTarget;
 use crate::services::lock_service::ops_guard;
+use crate::services::workspace_service::references_of;
 use crate::utils::folder::create_temp_dir;
 use crate::utils::github::GithubHelper;
 use crate::utils::hash::hash_file;
@@ -1509,6 +1510,7 @@ pub fn list_instruction_files(env: &Env) -> Result<Vec<AgentFileView>, String> {
         hash: hash_file(&path).ok(),
         template,
         link_target: symlink_target_string(&path),
+        references: references_of(&path, &env.home),
       }
     })
     .collect();
@@ -2178,6 +2180,33 @@ mod tests {
     .remove(0);
     assert!(get_record(&env, &outcome.id).unwrap().installs.is_empty());
     assert_eq!(get_record(&env, &second.id).unwrap().installs.len(), 1);
+  }
+
+  #[test]
+  fn reference_agent_file_lists_what_it_imports() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let project = tmp.path().join("proj");
+    write(&project.join("AGENTS.md"), "# Proj\n");
+    write(&project.join("CLAUDE.md"), "@AGENTS.md\n");
+
+    let files = list_instruction_files(&env).unwrap();
+    let agents_md = files.iter().find(|f| f.file_name == "AGENTS.md").unwrap();
+    let claude_md = files.iter().find(|f| f.file_name == "CLAUDE.md").unwrap();
+    assert!(agents_md.references.is_empty());
+    assert_eq!(
+      claude_md.references,
+      vec![project.join("AGENTS.md").to_string_lossy().to_string()]
+    );
+
+    let memory = crate::services::workspace_service::list_memory_files(
+      &env,
+      InstallScope::Project,
+      project.to_str(),
+    )
+    .unwrap();
+    let claude_md = memory.iter().find(|f| f.name == "CLAUDE.md").unwrap();
+    assert_eq!(claude_md.references.len(), 1);
   }
 
   #[cfg(unix)]

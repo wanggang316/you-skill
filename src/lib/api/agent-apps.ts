@@ -20,6 +20,8 @@ export interface MemoryFile {
   exists: boolean;
   /** Where the file links to when it is a symlink, absent for a regular file. */
   linkTarget?: string | null;
+  /** Files a pure reference file imports (`@AGENTS.md`), absent for any other file. */
+  references?: string[];
 }
 
 // ============ Agent Apps ============

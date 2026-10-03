@@ -231,6 +231,8 @@ const translations: Record<string, Dictionary> = {
     "symlink.label": "Symlink",
     "symlink.target": "Symlink to {path}",
     "symlink.brokenTarget": "Broken symlink to {path}",
+    "reference.label": "Imports",
+    "reference.target": "Imports {path}",
 
     "drift.hub.modified": "The library copy was edited directly.",
     "drift.hub.name_mismatch": "The SKILL.md name no longer matches the skill name.",
@@ -657,6 +659,8 @@ const translations: Record<string, Dictionary> = {
     "symlink.label": "软链接",
     "symlink.target": "软链接指向 {path}",
     "symlink.brokenTarget": "软链接已失效，指向 {path}",
+    "reference.label": "引用",
+    "reference.target": "引用 {path}",
 
     "drift.hub.modified": "中心库副本被直接修改过。",
     "drift.hub.name_mismatch": "SKILL.md 中的 name 与 skill 名称不一致。",

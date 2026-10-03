@@ -171,6 +171,8 @@ under `migration` in the lock and shown once in the library.
   `link_broken`) on a skill directory entry. `SymlinkMarker.svelte` renders the marker and
   the hover that names the target; `list_skill_directory` reports links instead of
   following them blindly, so a broken one is listed and a loop cannot be walked twice.
+  Memory and agent instruction files also carry `references`: the files a pure reference
+  file imports (every non-empty line an `@path` import), shown by `ReferenceMarker.svelte`.
 - Routes: `/` library (skill list plus skill detail), `/instructions` (instruction list plus
   detail with a content preview), `/projects` install scopes (scope list
   plus a scope detail with its agents and skills; `?scope=user` or `?project=<path>` selects
