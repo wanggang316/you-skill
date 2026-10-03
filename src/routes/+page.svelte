@@ -8,7 +8,12 @@
   import type { TargetAction } from "$lib/components/library/DriftPanel.svelte";
   import RemoveSkillModal from "$lib/components/RemoveSkillModal.svelte";
   import { t } from "$lib/i18n";
-  import { buildLibraryHref, getAppLocation, type LibraryFilter } from "$lib/navigation/app-shell";
+  import {
+    buildLibraryHref,
+    getAppLocation,
+    type LibraryFilter,
+    type LibrarySource,
+  } from "$lib/navigation/app-shell";
   import {
     installSkill,
     openInFileManager,
@@ -18,6 +23,7 @@
     type HubSkillView,
     type InstallScope,
     type InstallView,
+    type SkillSource,
     type SyncAction,
   } from "$lib/api";
   import {
@@ -49,6 +55,7 @@
   const location = $derived(getAppLocation(page.url));
   const selectedName = $derived(location.skill);
   const filter = $derived(location.filter);
+  const source = $derived(location.source);
 
   const filteredSkills = $derived.by(() => {
     const needle = search.trim().toLowerCase();
@@ -57,6 +64,7 @@
         const haystack = `${skill.name} ${skill.description ?? ""}`.toLowerCase();
         if (!haystack.includes(needle)) return false;
       }
+      if (source !== "all" && sourceKind(skill.source) !== source) return false;
       switch (filter) {
         case "changed":
           return skill.hasDrift;
@@ -84,16 +92,27 @@
     return null;
   });
 
+  /** Folder and archive imports both come from this machine. */
+  function sourceKind(value: SkillSource): LibrarySource {
+    if (value.type === "github") return "github";
+    return value.type === "none" ? "none" : "local";
+  }
+
   function isRecent(value: string | null | undefined): boolean {
     if (!value) return false;
     const time = new Date(value).getTime();
     return Number.isFinite(time) && Date.now() - time < 24 * 60 * 60 * 1000;
   }
 
-  function navigate(options: { skill?: string | null; filter?: LibraryFilter }) {
+  function navigate(options: {
+    skill?: string | null;
+    filter?: LibraryFilter;
+    source?: LibrarySource;
+  }) {
     const href = buildLibraryHref({
       skill: options.skill === undefined ? selectedName : options.skill,
       filter: options.filter ?? filter,
+      source: options.source ?? source,
     });
     goto(href, { replaceState: true, keepFocus: true, noScroll: true });
   }
@@ -272,10 +291,12 @@
       error={$hubError}
       bind:search
       {filter}
+      {source}
       onSelect={handleSelect}
       onRefresh={() => refreshHub().catch(console.error)}
       onScan={() => openScanRootsModal()}
       onFilterChange={(next) => navigate({ filter: next })}
+      onSourceChange={(next) => navigate({ source: next })}
     />
 
     {#if selectedSkill}
