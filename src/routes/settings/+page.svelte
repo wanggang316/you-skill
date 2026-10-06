@@ -4,7 +4,14 @@
   import { t } from "$lib/i18n";
   import { settings, updateSettings } from "$lib/stores/settings";
   import { get } from "svelte/store";
-  import { getSettings, setBackupFolder, openBackupFolder, backupSkills } from "$lib/api";
+  import {
+    getSettings,
+    setBackupFolder,
+    openBackupFolder,
+    backupSkills,
+    getGithubAuthStatus,
+    type GithubAuthStatus,
+  } from "$lib/api";
   import TranslateSettingsModal from "$lib/components/TranslateSettingsModal.svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import { FolderOpen, Loader2, ChevronRight, Download } from "@lucide/svelte";
@@ -50,6 +57,28 @@
   $effect(() => {
     loadAgentAppsCount();
   });
+
+  let githubStatus = $state<GithubAuthStatus | null>(null);
+  const githubSummary = $derived.by(() => {
+    if (!githubStatus) return "";
+    if (!githubStatus.gh_installed) return $t("settings.github.summaryNoGh");
+    if (githubStatus.selected_login) {
+      return $t("settings.github.summarySignedIn", { login: githubStatus.selected_login });
+    }
+    return $t("settings.github.summaryNotSignedIn");
+  });
+
+  $effect(() => {
+    loadGithubStatus();
+  });
+
+  const loadGithubStatus = async () => {
+    try {
+      githubStatus = await getGithubAuthStatus();
+    } catch (error) {
+      console.error("Failed to load GitHub status:", error);
+    }
+  };
 
   const loadAgentAppsCount = async () => {
     try {
@@ -331,6 +360,25 @@
             <button
               class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px]"
               onclick={navigateToAgentApps}
+              type="button"
+            >
+              {$t("agentApps.configButton")}
+            </button>
+          </div>
+        </div>
+
+        <!-- GitHub -->
+        <div class="bg-base-200 rounded-2xl px-4 py-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex flex-col">
+              <span class="text-base-content text-[15px]">{$t("settings.github.title")}</span>
+              {#if githubSummary}
+                <span class="text-base-content-muted text-xs">{githubSummary}</span>
+              {/if}
+            </div>
+            <button
+              class="bg-primary text-primary-content hover:bg-primary-hover rounded-lg px-3 py-1.5 text-[13px]"
+              onclick={() => goto("/settings/github")}
               type="button"
             >
               {$t("agentApps.configButton")}
