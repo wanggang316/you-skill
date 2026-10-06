@@ -116,6 +116,10 @@ const translations: Record<string, Dictionary> = {
       "The folder {path} no longer exists. Remove {name} and drop its {count} install records? No file is touched.",
     "scope.project.missingHint":
       "This folder no longer exists. Remove the project, or scan its workspace again if it was renamed.",
+    "scope.project.register": "Add to project list",
+    "scope.project.untrack": "Remove from list",
+    "scope.project.untrackConfirm":
+      "{name} is not in the project list. Drop its {count} install records so it is no longer listed? Installed files in {path} stay where they are.",
     "workspace.addTitle": "Add workspace",
     "workspace.rescanTitle": "Scan workspace again",
     "workspace.folder": "Workspace folder",
@@ -570,6 +574,10 @@ const translations: Record<string, Dictionary> = {
       "目录 {path} 已不存在。移除 {name} 并清除它的 {count} 条安装记录？不会删除任何文件。",
     "scope.project.missingHint":
       "这个目录已不存在。可以移除该项目；如果只是改了名，重新扫描工作区即可登记新目录。",
+    "scope.project.register": "加入项目列表",
+    "scope.project.untrack": "从列表移除",
+    "scope.project.untrackConfirm":
+      "{name} 不在项目列表中。清除它的 {count} 条安装记录，使其不再显示？{path} 中已安装的文件保持不变。",
     "workspace.addTitle": "添加工作区",
     "workspace.rescanTitle": "重新扫描工作区",
     "workspace.folder": "工作区目录",

@@ -28,6 +28,7 @@
     onRemoveWorkspace,
     onRemoveProject,
     onForgetProject,
+    onRegisterProject,
     onRefresh,
   }: {
     entries?: ScopeEntry[];
@@ -41,8 +42,10 @@
     onRemoveWorkspace: (workspace: UserWorkspace) => void;
     /** Take a registered project off the list; its files stay. */
     onRemoveProject: (entry: ScopeEntry) => void;
-    /** Drop a project whose folder is gone, records included. */
+    /** Drop the install records of a project whose folder is gone or that is not registered. */
     onForgetProject: (entry: ScopeEntry) => void;
+    /** Add a project that only has install records to the project list. */
+    onRegisterProject: (entry: ScopeEntry) => void;
     onRefresh: () => void;
   } = $props();
 
@@ -88,12 +91,19 @@
         { label: $t("scope.project.forget"), danger: true, onSelect: () => onForgetProject(entry) },
       ];
     }
-    if (!entry.unregistered) {
+    if (entry.unregistered) {
       return [
-        { label: $t("scope.project.remove"), danger: true, onSelect: () => onRemoveProject(entry) },
+        { label: $t("scope.project.register"), onSelect: () => onRegisterProject(entry) },
+        {
+          label: $t("scope.project.untrack"),
+          danger: true,
+          onSelect: () => onForgetProject(entry),
+        },
       ];
     }
-    return [];
+    return [
+      { label: $t("scope.project.remove"), danger: true, onSelect: () => onRemoveProject(entry) },
+    ];
   }
 
   const userEntries = $derived(entries.filter((entry) => entry.kind === "user"));
