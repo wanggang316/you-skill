@@ -422,8 +422,7 @@ const translations: Record<string, Dictionary> = {
     "settings.github.summarySignedIn": "Signed in as {login}",
     "settings.github.summaryNotSignedIn": "Not signed in",
     "settings.github.summaryNoGh": "GitHub CLI not found",
-    "settings.github.description":
-      "YouSkill uses your GitHub CLI (gh) account to download and update skills from GitHub. With a signed-in account you can manage skills in private repositories, and you get a higher GitHub API rate limit.",
+    "settings.github.description": "Use the GitHub gh CLI to manage your private skills",
     "settings.github.noGhTitle": "GitHub CLI is not installed",
     "settings.github.noGhHint":
       "Install GitHub CLI and run gh auth login in a terminal. Then refresh this page to manage private skills.",
@@ -895,8 +894,7 @@ const translations: Record<string, Dictionary> = {
     "settings.github.summarySignedIn": "已登录：{login}",
     "settings.github.summaryNotSignedIn": "未登录",
     "settings.github.summaryNoGh": "未检测到 GitHub CLI",
-    "settings.github.description":
-      "YouSkill 使用 GitHub CLI（gh）的账号从 GitHub 下载和更新 Skill。登录后即可管理私有仓库中的 Skill，并获得更高的 GitHub API 调用额度。",
+    "settings.github.description": "使用 GitHub gh CLI 管理您的私有 Skill",
     "settings.github.noGhTitle": "未安装 GitHub CLI",
     "settings.github.noGhHint":
       "安装 GitHub CLI 后，在终端执行 gh auth login 登录，然后刷新本页，即可管理私有 Skill。",
