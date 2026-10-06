@@ -38,8 +38,8 @@ use commands::{
     read_skill_relative_file_bytes, translate_skill_markdown,
   },
   user_projects::{
-    add_user_project, add_workspace, list_memory_files, list_user_projects, list_workspaces,
-    register_projects, remove_user_project, remove_workspace, scan_workspace, update_user_project,
+    add_workspace, list_memory_files, list_user_projects, list_workspaces, register_projects,
+    remove_user_project, remove_workspace, scan_workspace,
   },
 };
 use tray::setup_tray;
@@ -135,8 +135,6 @@ fn main() {
       translate_skill_markdown,
       open_in_file_manager,
       list_user_projects,
-      add_user_project,
-      update_user_project,
       remove_user_project,
       list_workspaces,
       add_workspace,

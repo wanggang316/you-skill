@@ -1,73 +1,28 @@
+//! Registered projects. A project is identified by its path; its name is only a label, so
+//! two folders with the same name in different places can both be registered.
+
 use crate::models::UserProject;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn list_user_projects() -> Result<Vec<UserProject>, String> {
   load_user_projects()
 }
 
-pub fn add_user_project(name: String, path: String) -> Result<UserProject, String> {
-  let name = name.trim().to_string();
-  let path = path.trim().to_string();
-
-  let mut projects = load_user_projects()?;
-  validate_user_project(&name, &path, &projects, None)?;
-
-  let project = UserProject {
-    name,
-    path,
-    workspace_path: None,
-  };
-  projects.push(project.clone());
-  save_user_projects(&projects)?;
-
-  Ok(project)
-}
-
-pub fn update_user_project(
-  original_name: String,
-  name: String,
-  path: String,
-) -> Result<UserProject, String> {
-  let original_name = original_name.trim().to_string();
-  let name = name.trim().to_string();
-  let path = path.trim().to_string();
-
-  let mut projects = load_user_projects()?;
-  let index = projects
-    .iter()
-    .position(|project| project.name == original_name)
-    .ok_or(format!("Project '{}' not found", original_name))?;
-
-  validate_user_project(&name, &path, &projects, Some(original_name.as_str()))?;
-
-  let project = UserProject {
-    name,
-    path,
-    workspace_path: projects[index].workspace_path.clone(),
-  };
-  projects[index] = project.clone();
-  save_user_projects(&projects)?;
-
-  Ok(project)
-}
-
-pub fn remove_user_project(name: String) -> Result<(), String> {
-  let name = name.trim().to_string();
+pub fn remove_user_project(path: &str) -> Result<(), String> {
   let mut projects = load_user_projects()?;
   let previous_len = projects.len();
-  projects.retain(|project| project.name != name);
+  projects.retain(|project| !project.path.eq_ignore_ascii_case(path));
 
   if projects.len() == previous_len {
-    return Err(format!("Project '{}' not found", name));
+    return Err(format!("Project '{}' not found", path));
   }
 
-  save_user_projects(&projects)?;
-  Ok(())
+  save_user_projects(&projects)
 }
 
-/// Add several projects at once, skipping paths that are already registered and making
-/// every name unique. Returns the projects that were added.
+/// Add several projects at once, skipping paths that are already registered. Returns the
+/// projects that were added.
 pub fn add_user_projects(items: Vec<UserProject>) -> Result<Vec<UserProject>, String> {
   let mut projects = load_user_projects()?;
   let mut added = Vec::new();
@@ -83,9 +38,13 @@ pub fn add_user_projects(items: Vec<UserProject>) -> Result<Vec<UserProject>, St
     {
       continue;
     }
-    let name = unique_name(item.name.trim(), &projects);
+    let name = item.name.trim();
     let project = UserProject {
-      name,
+      name: if name.is_empty() {
+        folder_name(&path)
+      } else {
+        name.to_string()
+      },
       path,
       workspace_path: item.workspace_path,
     };
@@ -117,24 +76,46 @@ pub fn remove_projects_of_workspace(workspace_path: &str) -> Result<usize, Strin
   Ok(removed)
 }
 
-fn unique_name(name: &str, existing: &[UserProject]) -> String {
-  let base = if name.is_empty() { "project" } else { name };
-  let taken = |candidate: &str| {
-    existing
+/// Repair records written by earlier versions and save them when anything changed.
+pub fn tidy_user_projects(workspace_paths: &[String]) -> Result<(), String> {
+  let mut projects = load_user_projects()?;
+  if tidy(&mut projects, workspace_paths) {
+    save_user_projects(&projects)?;
+  }
+  Ok(())
+}
+
+/// Drop projects of workspaces that were removed (earlier versions kept them), and name
+/// workspace projects after their folder (earlier versions added a " 2" suffix to make
+/// names unique). Returns whether anything changed.
+fn tidy(projects: &mut Vec<UserProject>, workspace_paths: &[String]) -> bool {
+  let before = projects.len();
+  projects.retain(|project| match project.workspace_path.as_deref() {
+    Some(workspace) => workspace_paths
       .iter()
-      .any(|project| project.name.eq_ignore_ascii_case(candidate))
-  };
-  if !taken(base) {
-    return base.to_string();
-  }
-  let mut index = 2;
-  loop {
-    let candidate = format!("{} {}", base, index);
-    if !taken(&candidate) {
-      return candidate;
+      .any(|path| path.eq_ignore_ascii_case(workspace)),
+    None => true,
+  });
+  let mut changed = projects.len() != before;
+
+  for project in projects.iter_mut() {
+    if project.workspace_path.is_none() {
+      continue;
     }
-    index += 1;
+    let name = folder_name(&project.path);
+    if !name.is_empty() && project.name != name {
+      project.name = name;
+      changed = true;
+    }
   }
+  changed
+}
+
+fn folder_name(path: &str) -> String {
+  Path::new(path)
+    .file_name()
+    .map(|value| value.to_string_lossy().to_string())
+    .unwrap_or_default()
 }
 
 fn user_projects_path() -> Result<PathBuf, String> {
@@ -162,85 +143,44 @@ fn save_user_projects(projects: &[UserProject]) -> Result<(), String> {
   fs::write(path, content).map_err(|e| e.to_string())
 }
 
-fn validate_user_project(
-  name: &str,
-  path: &str,
-  existing: &[UserProject],
-  current_name: Option<&str>,
-) -> Result<(), String> {
-  if name.is_empty() {
-    return Err("Project name is required".to_string());
-  }
-
-  if path.is_empty() {
-    return Err("Project path is required".to_string());
-  }
-
-  let same_project = |project: &UserProject| Some(project.name.as_str()) == current_name;
-
-  if existing
-    .iter()
-    .filter(|project| !same_project(project))
-    .any(|project| project.name.eq_ignore_ascii_case(name))
-  {
-    return Err(format!("Project name '{}' already exists", name));
-  }
-
-  if existing
-    .iter()
-    .filter(|project| !same_project(project))
-    .any(|project| project.path.eq_ignore_ascii_case(path))
-  {
-    return Err(format!("Project path '{}' already exists", path));
-  }
-
-  Ok(())
-}
-
 #[cfg(test)]
 mod tests {
-  use super::{validate_user_project, UserProject};
+  use super::{tidy, UserProject};
+
+  fn project(name: &str, path: &str, workspace: Option<&str>) -> UserProject {
+    UserProject {
+      name: name.to_string(),
+      path: path.to_string(),
+      workspace_path: workspace.map(|value| value.to_string()),
+    }
+  }
 
   #[test]
-  fn validate_rejects_duplicate_name() {
-    let existing = vec![
-      UserProject {
-        name: "Alpha".to_string(),
-        path: "/tmp/alpha".to_string(),
-        workspace_path: None,
-      },
-      UserProject {
-        name: "Beta".to_string(),
-        path: "/tmp/beta".to_string(),
-        workspace_path: None,
-      },
+  fn tidy_drops_projects_of_removed_workspaces() {
+    let mut projects = vec![
+      project("alpha", "/dev/old/alpha", Some("/dev/old")),
+      project("beta", "/dev/new/beta", Some("/dev/new")),
+      project("manual", "/tmp/manual", None),
     ];
 
-    let result = validate_user_project("alpha", "/tmp/new", &existing, None);
-    assert!(result.is_err());
+    assert!(tidy(&mut projects, &["/dev/new".to_string()]));
+    let paths: Vec<&str> = projects.iter().map(|item| item.path.as_str()).collect();
+    assert_eq!(paths, vec!["/dev/new/beta", "/tmp/manual"]);
   }
 
   #[test]
-  fn validate_rejects_duplicate_path() {
-    let existing = vec![UserProject {
-      name: "Alpha".to_string(),
-      path: "/tmp/alpha".to_string(),
-      workspace_path: None,
-    }];
+  fn tidy_names_workspace_projects_after_their_folder() {
+    let mut projects = vec![
+      project("alpha", "/dev/old/alpha", Some("/dev/old")),
+      project("alpha 2", "/dev/new/alpha", Some("/dev/new")),
+      project("Custom", "/tmp/manual", None),
+    ];
 
-    let result = validate_user_project("Gamma", "/tmp/alpha", &existing, None);
-    assert!(result.is_err());
-  }
+    let workspaces = ["/dev/old".to_string(), "/dev/new".to_string()];
+    assert!(tidy(&mut projects, &workspaces));
+    let names: Vec<&str> = projects.iter().map(|item| item.name.as_str()).collect();
+    assert_eq!(names, vec!["alpha", "alpha", "Custom"]);
 
-  #[test]
-  fn validate_allows_current_project_on_update() {
-    let existing = vec![UserProject {
-      name: "Alpha".to_string(),
-      path: "/tmp/alpha".to_string(),
-      workspace_path: None,
-    }];
-
-    let result = validate_user_project("Alpha", "/tmp/alpha", &existing, Some("Alpha"));
-    assert!(result.is_ok());
+    assert!(!tidy(&mut projects, &workspaces));
   }
 }

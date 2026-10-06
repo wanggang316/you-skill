@@ -136,7 +136,8 @@ const translations: Record<string, Dictionary> = {
     "workspace.actions": "Workspace actions",
     "workspace.rescan": "Scan again",
     "workspace.remove": "Remove workspace",
-    "workspace.removeConfirm": 'Remove the workspace "{name}"? Its projects stay in the list.',
+    "workspace.removeConfirm":
+      'Remove the workspace "{name}" and its {count} projects from the list? No file is touched.',
     "workspace.other": "Other",
     "workspace.emptyGroup": "No project yet.",
     "workspace.empty": "No project yet. Add a workspace to look for them.",
@@ -589,7 +590,7 @@ const translations: Record<string, Dictionary> = {
     "workspace.actions": "工作区操作",
     "workspace.rescan": "重新扫描",
     "workspace.remove": "移除工作区",
-    "workspace.removeConfirm": "移除工作区「{name}」？其中的项目会保留在列表中。",
+    "workspace.removeConfirm": "移除工作区「{name}」及其中的 {count} 个项目？不会删除任何文件。",
     "workspace.other": "其他",
     "workspace.emptyGroup": "暂无项目。",
     "workspace.empty": "还没有项目。添加一个工作区来查找。",

@@ -9,6 +9,11 @@ use crate::services::workspace_service::{self, DEFAULT_WORKSPACE_DEPTH};
 /// Registered projects, flagging the ones whose folder no longer exists.
 #[tauri::command]
 pub fn list_user_projects() -> Result<Vec<UserProjectView>, String> {
+  let workspace_paths: Vec<String> = workspace_service::list_workspaces()?
+    .into_iter()
+    .map(|workspace| workspace.path)
+    .collect();
+  user_projects_service::tidy_user_projects(&workspace_paths)?;
   Ok(
     user_projects_service::list_user_projects()?
       .into_iter()
@@ -21,22 +26,8 @@ pub fn list_user_projects() -> Result<Vec<UserProjectView>, String> {
 }
 
 #[tauri::command]
-pub fn add_user_project(name: String, path: String) -> Result<UserProject, String> {
-  user_projects_service::add_user_project(name, path)
-}
-
-#[tauri::command]
-pub fn update_user_project(
-  original_name: String,
-  name: String,
-  path: String,
-) -> Result<UserProject, String> {
-  user_projects_service::update_user_project(original_name, name, path)
-}
-
-#[tauri::command]
-pub fn remove_user_project(name: String) -> Result<(), String> {
-  user_projects_service::remove_user_project(name)
+pub fn remove_user_project(path: String) -> Result<(), String> {
+  user_projects_service::remove_user_project(&path)
 }
 
 #[tauri::command]
