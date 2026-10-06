@@ -11,15 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added a GitHub settings page that detects GitHub CLI (gh) accounts, lets you select the account to use, and uses it to download and update skills from private repositories
-
 ### Changed
 
 ### Fixed
 
-- Projects marked "Not in project list" now have an actions menu. Before, they had no menu and could not be removed. The menu can add the project to the project list, or drop its install records so it is no longer listed. No file is touched.
-
 ### Removed
+
+## [0.9.3] - 2026-10-06
+
+### Added
+
+- Added a GitHub settings page that detects GitHub CLI (gh) accounts, lets you select the account to use, and uses it to download and update skills from private repositories.
+
+### Fixed
+
+- Projects marked "Not in project list" now have an actions menu. Before, they had no menu and could not be removed. The menu can add the project to the project list, or drop its install records so it is no longer listed. No file is touched.
 
 ## [0.9.2] - 2026-10-06
 
