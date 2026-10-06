@@ -1,6 +1,7 @@
 use crate::models::SkillDirectoryEntry;
+use crate::services::github_auth_service;
 use crate::utils::path::{resolve_for_compare, symlink_target_string};
-use reqwest::Client;
+use reqwest::{Client, RequestBuilder, StatusCode};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
@@ -83,9 +84,10 @@ impl GithubHelper {
       }
     }
 
+    let token = github_auth_service::token_async().await;
     let mut last_error = String::new();
     for branch in &branches {
-      match Self::download_and_extract(owner, repo, branch, dest).await {
+      match Self::download_and_extract(owner, repo, branch, token.as_deref(), dest).await {
         Ok(()) => return Ok(branch.clone()),
         Err(e) => {
           last_error = e;
@@ -104,27 +106,23 @@ impl GithubHelper {
     owner: &str,
     repo: &str,
     branch: &str,
+    token: Option<&str>,
     dest: &Path,
   ) -> Result<(), String> {
-    let url = format!(
-      "https://github.com/{}/{}/archive/refs/heads/{}.zip",
-      owner, repo, branch
-    );
+    let url = Self::archive_url(owner, repo, branch, token.is_some());
 
     let client = Client::builder()
       .timeout(std::time::Duration::from_secs(60))
       .build()
       .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
-    let response = client
-      .get(&url)
-      .header("User-Agent", USER_AGENT)
+    let response = Self::with_auth(client.get(&url), token)
       .send()
       .await
       .map_err(|e| format!("Failed to download repository: {}", e))?;
 
     if !response.status().is_success() {
-      return Err(format!("HTTP error: {}", response.status()));
+      return Err(Self::status_error(response.status(), token.is_some()));
     }
 
     let bytes = response
@@ -134,6 +132,55 @@ impl GithubHelper {
 
     Self::extract_zip(&bytes, dest)?;
     Ok(())
+  }
+
+  /// The public archive URL does not accept tokens, so authenticated downloads use the
+  /// zipball API. It redirects to a signed codeload URL; reqwest drops the Authorization
+  /// header on that cross-host redirect.
+  fn archive_url(owner: &str, repo: &str, branch: &str, authenticated: bool) -> String {
+    if authenticated {
+      format!(
+        "https://api.github.com/repos/{}/{}/zipball/{}",
+        owner, repo, branch
+      )
+    } else {
+      format!(
+        "https://github.com/{}/{}/archive/refs/heads/{}.zip",
+        owner, repo, branch
+      )
+    }
+  }
+
+  fn with_auth(request: RequestBuilder, token: Option<&str>) -> RequestBuilder {
+    let request = request.header("User-Agent", USER_AGENT);
+    match token {
+      Some(token) => request
+        .bearer_auth(token)
+        .header("X-GitHub-Api-Version", "2022-11-28"),
+      None => request,
+    }
+  }
+
+  /// GitHub answers 404 for private repositories the caller cannot see, so the message
+  /// says how to get access.
+  fn status_error(status: StatusCode, authenticated: bool) -> String {
+    match (status, authenticated) {
+      (StatusCode::NOT_FOUND, false) => format!(
+        "HTTP error: {}. The repository or branch does not exist, or the repository is \
+         private. Sign in with GitHub CLI (gh auth login) to access private repositories.",
+        status
+      ),
+      (StatusCode::NOT_FOUND, true) => format!(
+        "HTTP error: {}. The repository or branch does not exist, or the selected GitHub \
+         account has no access to it.",
+        status
+      ),
+      (StatusCode::UNAUTHORIZED, true) => format!(
+        "HTTP error: {}. The GitHub CLI token is not valid. Run gh auth refresh.",
+        status
+      ),
+      _ => format!("HTTP error: {}", status),
+    }
   }
 
   fn extract_zip(bytes: &[u8], dest: &Path) -> Result<(), String> {
@@ -200,19 +247,18 @@ impl GithubHelper {
       "https://api.github.com/repos/{}/{}/git/trees/{}?recursive=1",
       owner, repo, branch
     );
+    let token = github_auth_service::token_async().await;
     let client = Client::builder()
       .timeout(std::time::Duration::from_secs(30))
       .build()
       .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
-    let resp = client
-      .get(url)
-      .header("User-Agent", USER_AGENT)
+    let resp = Self::with_auth(client.get(url), token.as_deref())
       .send()
       .await
       .map_err(|e| format!("Failed to request GitHub tree: {}", e))?;
 
     if !resp.status().is_success() {
-      return Err(format!("GitHub API returned status {}", resp.status()));
+      return Err(Self::status_error(resp.status(), token.is_some()));
     }
 
     let tree: GitTreeResponse = resp
@@ -513,5 +559,30 @@ mod tests {
     assert!(!entries
       .iter()
       .any(|entry| entry.path.starts_with("nested/loop/nested/loop")));
+  }
+
+  #[test]
+  fn archive_url_uses_zipball_api_when_authenticated() {
+    assert_eq!(
+      GithubHelper::archive_url("o", "r", "dev", false),
+      "https://github.com/o/r/archive/refs/heads/dev.zip"
+    );
+    assert_eq!(
+      GithubHelper::archive_url("o", "r", "dev", true),
+      "https://api.github.com/repos/o/r/zipball/dev"
+    );
+  }
+
+  #[test]
+  fn status_error_explains_private_repository_access() {
+    let anonymous = GithubHelper::status_error(StatusCode::NOT_FOUND, false);
+    assert!(anonymous.contains("gh auth login"));
+    let signed_in = GithubHelper::status_error(StatusCode::NOT_FOUND, true);
+    assert!(signed_in.contains("selected GitHub account"));
+    assert!(!signed_in.contains("gh auth login"));
+    assert_eq!(
+      GithubHelper::status_error(StatusCode::INTERNAL_SERVER_ERROR, true),
+      "HTTP error: 500 Internal Server Error"
+    );
   }
 }

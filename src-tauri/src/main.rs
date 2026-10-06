@@ -14,6 +14,7 @@ use commands::{
     add_user_agent_app, list_local_agent_apps, refresh_agent_apps, remove_user_agent_app,
     update_user_agent_app,
   },
+  github::{get_github_auth_status, set_github_account},
   hub::{
     check_source_updates, diff_skill, get_hub_skill, import_scanned, import_skills, install_skill,
     list_hub_skills, migrate_legacy, migration_status, remove_hub_skill, scan_folder, sync_skill,
@@ -95,6 +96,8 @@ fn main() {
       ping,
       get_settings,
       update_settings,
+      get_github_auth_status,
+      set_github_account,
       fetch_remote_skills,
       fetch_skills_by_names,
       record_skill_install,

@@ -7,6 +7,7 @@ pub mod backup_service;
 pub mod diff_service;
 pub mod drift_service;
 pub mod env;
+pub mod github_auth_service;
 pub mod hub_service;
 pub mod install_service;
 pub mod instruction_service;
