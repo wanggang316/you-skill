@@ -150,7 +150,7 @@
       }
       const failures: string[] = [];
       for (const project of stale.filter((item) => staleSelected.includes(item.path))) {
-        failures.push(...(await forgetProject(project.path, project.name)));
+        failures.push(...(await forgetProject(project.path, true)));
       }
       if (failures.length > 0) {
         error = failures.join("\n");

@@ -113,17 +113,23 @@
     }
   }
 
-  /** Its projects go too: kept, they only move to "Other" and the list looks unchanged. */
+  /**
+   * Its projects go too, and so do the install records of the ones whose folder is gone:
+   * left behind, they would show up again under "Other".
+   */
   function handleRemoveWorkspace(workspace: UserWorkspace) {
-    const count = $userProjects.filter(
-      (project) => project.workspacePath === workspace.path
-    ).length;
+    const projects = $userProjects.filter((project) => project.workspacePath === workspace.path);
     void runAction(async () => {
       const confirmed = await confirm(
-        $t("workspace.removeConfirm", { name: workspace.name, count }),
+        $t("workspace.removeConfirm", { name: workspace.name, count: projects.length }),
         { title: $t("workspace.remove"), kind: "warning" }
       );
       if (!confirmed) return;
+      const failures: string[] = [];
+      for (const project of projects.filter((item) => item.missing)) {
+        failures.push(...(await forgetProject(project.path, false)));
+      }
+      if (failures.length > 0) actionError = failures.join("\n");
       await removeWorkspace(workspace.path, true);
       await refreshWorkspaces();
       await refreshUserProjects();
@@ -137,7 +143,7 @@
         kind: "warning",
       });
       if (!confirmed) return;
-      await removeUserProject(entry.name);
+      await removeUserProject(entry.path);
       await refreshUserProjects();
     });
   }
@@ -154,7 +160,7 @@
         { title: $t("scope.project.forget"), kind: "warning" }
       );
       if (!confirmed) return;
-      const failures = await forgetProject(entry.path, entry.unregistered ? null : entry.name);
+      const failures = await forgetProject(entry.path, !entry.unregistered);
       if (failures.length > 0) actionError = failures.join("\n");
       if (selectedKey === entry.key) {
         await goto(buildScopeHref(), { replaceState: true, keepFocus: true, noScroll: true });

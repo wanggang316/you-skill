@@ -41,10 +41,7 @@ export function projectInstallCount(path: string): number {
  * file is touched) and, when it is registered, remove it from the project list. Returns
  * the records that could not be dropped.
  */
-export async function forgetProject(
-  path: string,
-  registeredName: string | null
-): Promise<string[]> {
+export async function forgetProject(path: string, registered: boolean): Promise<string[]> {
   const ref = projectRef(path);
   const failures: string[] = [];
   for (const skill of get(hubSkills)) {
@@ -59,7 +56,7 @@ export async function forgetProject(
     const result = await uninstallInstruction({ name: item.id, targets: [], paths, force: true });
     if (!result.applied) failures.push(`${item.name}: ${result.blockers.join("; ")}`);
   }
-  if (registeredName) await removeUserProject(registeredName);
+  if (registered) await removeUserProject(path);
   await Promise.all([refreshUserProjects(), refreshHub(), refreshInstructions()]);
   return failures;
 }
