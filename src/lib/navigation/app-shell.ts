@@ -26,7 +26,9 @@ const LIBRARY_FILTERS: LibraryFilter[] = ["all", "changed", "uninstalled"];
 const LIBRARY_SOURCES: LibrarySource[] = ["all", "local", "github", "none"];
 
 const isSettingsPath = (pathname: string) =>
-  pathname === "/settings" || pathname.startsWith("/agent-apps");
+  pathname === "/settings" ||
+  pathname.startsWith("/settings/") ||
+  pathname.startsWith("/agent-apps");
 
 const isMarketPath = (pathname: string) =>
   pathname === "/market" || pathname.startsWith("/skills/remote/");
