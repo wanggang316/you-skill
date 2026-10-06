@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Projects marked "Not in project list" now have an actions menu. Before, they had no menu and could not be removed. The menu can add the project to the project list, or drop its install records so it is no longer listed. No file is touched.
+
 ### Removed
 
 ## [0.9.2] - 2026-10-06

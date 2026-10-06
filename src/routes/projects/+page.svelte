@@ -38,7 +38,12 @@
     userProjects,
     workspaces,
   } from "$lib/stores/user-projects";
-  import { removeUserProject, removeWorkspace, type UserWorkspace } from "$lib/api/user-projects";
+  import {
+    registerProjects,
+    removeUserProject,
+    removeWorkspace,
+    type UserWorkspace,
+  } from "$lib/api/user-projects";
   import { listMemoryFiles, type MemoryFile } from "$lib/api/agent-apps";
   import { resolveAgents } from "$lib/agents";
   import { buildScopeEntries, parentDir, scopeKey, type ScopeEntry } from "$lib/scopes";
@@ -148,16 +153,32 @@
     });
   }
 
-  /** The folder is gone: drop the project and every record that points into it. */
+  function handleRegisterProject(entry: ScopeEntry) {
+    void runAction(async () => {
+      await registerProjects([{ name: entry.name, path: entry.path }]);
+      await refreshUserProjects();
+    });
+  }
+
+  /**
+   * Drop the project and every record that points into it: its folder is gone, or it is
+   * not registered and the records are the only reason it is listed. No file is touched.
+   */
   function handleForgetProject(entry: ScopeEntry) {
     void runAction(async () => {
+      const params = {
+        name: entry.name,
+        path: entry.path,
+        count: projectInstallCount(entry.path),
+      };
       const confirmed = await confirm(
-        $t("scope.project.forgetConfirm", {
-          name: entry.name,
-          path: entry.path,
-          count: projectInstallCount(entry.path),
-        }),
-        { title: $t("scope.project.forget"), kind: "warning" }
+        entry.missing
+          ? $t("scope.project.forgetConfirm", params)
+          : $t("scope.project.untrackConfirm", params),
+        {
+          title: $t(entry.missing ? "scope.project.forget" : "scope.project.untrack"),
+          kind: "warning",
+        }
       );
       if (!confirmed) return;
       const failures = await forgetProject(entry.path, !entry.unregistered);
@@ -320,6 +341,7 @@
       onRemoveWorkspace={handleRemoveWorkspace}
       onRemoveProject={handleRemoveProject}
       onForgetProject={handleForgetProject}
+      onRegisterProject={handleRegisterProject}
       onRefresh={() => refreshHub().catch(console.error)}
     />
 
