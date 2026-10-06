@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Removing a workspace also removes its projects from the project list. Before, the projects stayed and moved to "Other", so the list looked unchanged after the removal. No file is touched.
+- An error from a project list action now shows in the list when no location is selected.
+
 ### Removed
 
 ## [0.9.1] - 2026-10-03

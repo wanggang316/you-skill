@@ -113,14 +113,18 @@
     }
   }
 
+  /** Its projects go too: kept, they only move to "Other" and the list looks unchanged. */
   function handleRemoveWorkspace(workspace: UserWorkspace) {
+    const count = $userProjects.filter(
+      (project) => project.workspacePath === workspace.path
+    ).length;
     void runAction(async () => {
-      const confirmed = await confirm($t("workspace.removeConfirm", { name: workspace.name }), {
-        title: $t("workspace.remove"),
-        kind: "warning",
-      });
+      const confirmed = await confirm(
+        $t("workspace.removeConfirm", { name: workspace.name, count }),
+        { title: $t("workspace.remove"), kind: "warning" }
+      );
       if (!confirmed) return;
-      await removeWorkspace(workspace.path, false);
+      await removeWorkspace(workspace.path, true);
       await refreshWorkspaces();
       await refreshUserProjects();
     });
@@ -302,7 +306,7 @@
       workspaces={$workspaces}
       {selectedKey}
       loading={$hubLoading}
-      error={$hubError}
+      error={$hubError || (selected ? "" : actionError)}
       onSelect={handleSelect}
       onAddWorkspace={() => openWorkspaceModal({ mode: "add" })}
       onRescanWorkspace={(workspace) =>
