@@ -14,6 +14,8 @@ pub struct AppConfig {
   pub openrouter_api_key: Option<String>,
   pub translate_target_language: String,
   pub translate_model: String,
+  /// GitHub CLI account used for GitHub requests. `None` follows the active `gh` account.
+  pub github_account: Option<String>,
 }
 
 impl Default for AppConfig {
@@ -27,6 +29,7 @@ impl Default for AppConfig {
       openrouter_api_key: None,
       translate_target_language: String::new(),
       translate_model: String::new(),
+      github_account: None,
     }
   }
 }
