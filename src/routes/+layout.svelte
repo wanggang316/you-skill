@@ -5,6 +5,7 @@
   import { afterNavigate } from "$app/navigation";
   import { page } from "$app/state";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+  import { Tooltip } from "bits-ui";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import AppSidebar from "$lib/components/AppSidebar.svelte";
   import DiffModal from "$lib/components/DiffModal.svelte";
@@ -147,42 +148,44 @@
   });
 </script>
 
-<div
-  class={`bg-base-100 text-base-content relative grid h-dvh min-h-0 overflow-hidden ${
-    resizing ? "cursor-col-resize select-none" : ""
-  }`}
-  style={`grid-template-columns: ${sidebarWidth}px minmax(0, 1fr);`}
->
-  <AppSidebar
-    activeKey={location.activeKey}
-    collapsed={sidebarCollapsed}
-    hasUpdate={$updaterState.hasUpdate}
-    updateLoading={$updaterState.installing}
-    onImportSkill={() => openImportModal()}
-    onOpenUpdate={() => installAvailableUpdate().catch(console.error)}
-  />
-
-  <section class="flex min-h-0 min-w-0 flex-col overflow-hidden">
-    {@render children()}
-  </section>
-
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
+<Tooltip.Provider delayDuration={150} disableHoverableContent>
   <div
-    class="absolute top-0 bottom-0 z-20 w-1.5 -translate-x-1/2 cursor-col-resize"
-    style={`left: ${sidebarWidth}px;`}
-    title={$t("sidebar.resize")}
-    onpointerdown={startSidebarResize}
-    ondblclick={resetSidebarWidth}
-  ></div>
-</div>
+    class={`bg-base-100 text-base-content relative grid h-dvh min-h-0 overflow-hidden ${
+      resizing ? "cursor-col-resize select-none" : ""
+    }`}
+    style={`grid-template-columns: ${sidebarWidth}px minmax(0, 1fr);`}
+  >
+    <AppSidebar
+      activeKey={location.activeKey}
+      collapsed={sidebarCollapsed}
+      hasUpdate={$updaterState.hasUpdate}
+      updateLoading={$updaterState.installing}
+      onImportSkill={() => openImportModal()}
+      onOpenUpdate={() => installAvailableUpdate().catch(console.error)}
+    />
 
-<ImportSkillModal />
-<ImportInstructionModal />
-<InstallSkillModal />
-<SkillPickerModal />
-<LocationPickerModal />
-<ScopeAgentModal />
-<ForceConfirmModal />
-<DiffModal />
-<WorkspaceModal />
-<ScanRootsModal />
+    <section class="flex min-h-0 min-w-0 flex-col overflow-hidden">
+      {@render children()}
+    </section>
+
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div
+      class="absolute top-0 bottom-0 z-20 w-1.5 -translate-x-1/2 cursor-col-resize"
+      style={`left: ${sidebarWidth}px;`}
+      title={$t("sidebar.resize")}
+      onpointerdown={startSidebarResize}
+      ondblclick={resetSidebarWidth}
+    ></div>
+  </div>
+
+  <ImportSkillModal />
+  <ImportInstructionModal />
+  <InstallSkillModal />
+  <SkillPickerModal />
+  <LocationPickerModal />
+  <ScopeAgentModal />
+  <ForceConfirmModal />
+  <DiffModal />
+  <WorkspaceModal />
+  <ScanRootsModal />
+</Tooltip.Provider>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Search } from "@lucide/svelte";
   import { confirm } from "@tauri-apps/plugin-dialog";
+  import ContextMenu from "$lib/components/ui/ContextMenu.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import { t } from "../i18n";
@@ -27,12 +28,10 @@
     installs: InstallView[];
   };
   type Group = { key: string; label: string | null; locations: Location[] };
-  type ContextMenu = { x: number; y: number; location: Location };
 
   let open = $state(false);
   let search = $state("");
   let selected = $state<string[]>([]);
-  let menu = $state<ContextMenu | null>(null);
   let error = $state("");
 
   const skillName = $derived($locationPickerModal.skillName);
@@ -115,47 +114,15 @@
       search = "";
       // The checklist starts as the current state: checked means installed there.
       selected = [...installedKeys];
-      menu = null;
       error = "";
     }
     open = state.open;
   });
 
-  // The context menu closes on any click elsewhere, Escape or scrolling.
-  $effect(() => {
-    if (!menu) return;
-    const close = () => (menu = null);
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", onKeyDown);
-    window.addEventListener("scroll", close, true);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("scroll", close, true);
-    };
-  });
-
-  function portal(node: HTMLElement) {
-    document.body.appendChild(node);
-    return {
-      destroy() {
-        node.remove();
-      },
-    };
-  }
-
   function toggle(key: string) {
     selected = selected.includes(key)
       ? selected.filter((item) => item !== key)
       : [...selected, key];
-  }
-
-  function openMenu(event: MouseEvent, item: Location) {
-    event.preventDefault();
-    menu = { x: event.clientX, y: event.clientY, location: item };
   }
 
   function handleClose() {
@@ -271,28 +238,44 @@
           {/if}
           {#each group.locations as item (item.key)}
             {@const checked = selected.includes(item.key)}
-            <label
-              class={`mb-1.5 flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 transition ${
-                checked
-                  ? "border-primary/60 bg-primary/10"
-                  : "border-base-300 bg-base-100 hover:bg-base-200"
-              }`}
-              title={item.path}
-              oncontextmenu={(event) => openMenu(event, item)}
+            <ContextMenu
+              items={[
+                { label: $t("scope.skill.manage"), onSelect: () => manage(item) },
+                {
+                  label: $t("scope.uninstall"),
+                  danger: true,
+                  disabled: item.installs.length === 0,
+                  onSelect: () => void uninstall(item),
+                },
+              ]}
             >
-              <input
-                class="accent-primary"
-                type="checkbox"
-                {checked}
-                onchange={() => toggle(item.key)}
-              />
-              <span class="min-w-0 flex-1">
-                <span class="text-base-content block truncate text-[13px] font-medium">
-                  {item.name}
-                </span>
-                <span class="text-base-content-faint block truncate text-[11px]">{item.path}</span>
-              </span>
-            </label>
+              {#snippet trigger({ props })}
+                <label
+                  {...props}
+                  class={`mb-1.5 flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 transition ${
+                    checked
+                      ? "border-primary/60 bg-primary/10"
+                      : "border-base-300 bg-base-100 hover:bg-base-200"
+                  }`}
+                  title={item.path}
+                >
+                  <input
+                    class="accent-primary"
+                    type="checkbox"
+                    {checked}
+                    onchange={() => toggle(item.key)}
+                  />
+                  <span class="min-w-0 flex-1">
+                    <span class="text-base-content block truncate text-[13px] font-medium">
+                      {item.name}
+                    </span>
+                    <span class="text-base-content-faint block truncate text-[11px]"
+                      >{item.path}</span
+                    >
+                  </span>
+                </label>
+              {/snippet}
+            </ContextMenu>
           {/each}
         {/each}
       {/if}
@@ -314,39 +297,3 @@
     </PrimaryActionButton>
   {/snippet}
 </Modal>
-
-{#if menu}
-  {@const item = menu.location}
-  <div
-    use:portal
-    role="menu"
-    tabindex="-1"
-    class="border-base-300 bg-base-100 fixed z-[10020] min-w-28 rounded-xl border p-1 shadow-lg"
-    style={`left:${Math.min(menu.x, window.innerWidth - 160)}px; top:${Math.min(menu.y, window.innerHeight - 96)}px;`}
-    onmousedown={(event) => event.stopPropagation()}
-  >
-    <button
-      class="text-base-content hover:bg-base-200 w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] whitespace-nowrap transition"
-      type="button"
-      role="menuitem"
-      onclick={() => {
-        menu = null;
-        manage(item);
-      }}
-    >
-      {$t("scope.skill.manage")}
-    </button>
-    <button
-      class="text-error hover:bg-error/10 w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] whitespace-nowrap transition disabled:opacity-40"
-      type="button"
-      role="menuitem"
-      disabled={item.installs.length === 0}
-      onclick={() => {
-        menu = null;
-        void uninstall(item);
-      }}
-    >
-      {$t("scope.uninstall")}
-    </button>
-  </div>
-{/if}
