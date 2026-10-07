@@ -60,6 +60,14 @@
   --color-overlay-dark: oklch(21% 0.006 285.885 / 0.6);
 }
 
+/* 浮层层级：数值越大越靠上。弹出层（菜单、提示）需要显示在模态框之上 */
+:root {
+  --z-drawer: 60;
+  --z-drawer-panel: 65;
+  --z-modal: 10010;
+  --z-popover: 10020;
+}
+
 /* 浅色主题（默认） */
 :root {
   color-scheme: light;

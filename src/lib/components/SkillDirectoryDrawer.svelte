@@ -40,14 +40,14 @@
 
 {#if open}
   <button
-    class="bg-overlay animate-drawer-backdrop fixed inset-0 z-[60] border-0 p-0"
+    class="bg-overlay animate-drawer-backdrop fixed inset-0 z-(--z-drawer) border-0 p-0"
     class:animate-drawer-backdrop-close={closing}
     onclick={onClose}
     type="button"
     aria-label={$t("detail.closeCatalog")}
   ></button>
   <aside
-    class="border-base-300 bg-base-100 animate-drawer-panel fixed top-0 right-0 z-[65] h-full w-80 border-l shadow-2xl"
+    class="border-base-300 bg-base-100 animate-drawer-panel fixed top-0 right-0 z-(--z-drawer-panel) h-full w-80 border-l shadow-2xl"
     class:animate-drawer-panel-close={closing}
   >
     <div class="border-base-300 flex items-center justify-between border-b px-4 py-3">

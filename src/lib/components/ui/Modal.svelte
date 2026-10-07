@@ -54,7 +54,7 @@
 {#if open}
   <div
     bind:this={modalElement}
-    class="animate-backdrop fixed inset-0 z-[10010] flex items-center justify-center p-4"
+    class="animate-backdrop fixed inset-0 z-(--z-modal) flex items-center justify-center p-4"
     style="background-color: var(--overlay);"
     class:animate-backdrop-close={closing}
     role="dialog"
