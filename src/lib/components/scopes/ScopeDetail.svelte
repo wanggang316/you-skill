@@ -12,7 +12,8 @@
   import SkillIcon from "$lib/components/SkillIcon.svelte";
   import ReferenceMarker from "$lib/components/ReferenceMarker.svelte";
   import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
-  import DropdownMenu, { type MenuItem } from "$lib/components/ui/DropdownMenu.svelte";
+  import DropdownMenu from "$lib/components/ui/DropdownMenu.svelte";
+  import type { MenuItem } from "$lib/components/ui/menu";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "$lib/i18n";
   import { resolveAgents } from "$lib/agents";

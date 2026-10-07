@@ -1,12 +1,7 @@
 <script lang="ts">
   import { MoreHorizontal } from "@lucide/svelte";
-
-  export type MenuItem = {
-    label: string;
-    danger?: boolean;
-    disabled?: boolean;
-    onSelect: () => void;
-  };
+  import { DropdownMenu } from "bits-ui";
+  import { menuContentClass, menuItemClass, type MenuItem } from "./menu";
 
   let {
     items = [],
@@ -17,65 +12,29 @@
     label?: string;
     disabled?: boolean;
   } = $props();
-
-  let open = $state(false);
-  let root = $state<HTMLDivElement>();
-
-  $effect(() => {
-    if (!open) return;
-    const onPointerDown = (event: MouseEvent) => {
-      if (root && event.target instanceof Node && !root.contains(event.target)) open = false;
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") open = false;
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  });
 </script>
 
-<div class="relative" bind:this={root}>
-  <button
-    class="border-base-300 text-base-content-muted hover:bg-base-200 hover:text-base-content flex size-7 items-center justify-center rounded-lg border transition disabled:opacity-40"
-    type="button"
+<DropdownMenu.Root>
+  <DropdownMenu.Trigger
+    class="border-base-300 text-base-content-muted hover:bg-base-200 hover:text-base-content data-[state=open]:bg-base-200 flex size-7 items-center justify-center rounded-lg border transition disabled:opacity-40"
     title={label}
     aria-label={label}
-    aria-haspopup="menu"
-    aria-expanded={open}
     disabled={disabled || items.length === 0}
-    onclick={(event) => {
-      event.stopPropagation();
-      open = !open;
-    }}
+    onclick={(event) => event.stopPropagation()}
   >
     <MoreHorizontal size={15} />
-  </button>
-  {#if open}
-    <div
-      class="border-base-300 bg-base-100 absolute top-full right-0 z-30 mt-1 min-w-28 rounded-xl border p-1 shadow-lg"
-      role="menu"
-    >
+  </DropdownMenu.Trigger>
+  <DropdownMenu.Portal>
+    <DropdownMenu.Content class={menuContentClass} align="end" sideOffset={4} collisionPadding={8}>
       {#each items as item (item.label)}
-        <button
-          class={`w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] whitespace-nowrap transition disabled:opacity-40 ${
-            item.danger ? "text-error hover:bg-error/10" : "text-base-content hover:bg-base-200"
-          }`}
-          type="button"
-          role="menuitem"
+        <DropdownMenu.Item
+          class={menuItemClass(item.danger)}
           disabled={item.disabled}
-          onclick={(event) => {
-            event.stopPropagation();
-            open = false;
-            item.onSelect();
-          }}
+          onSelect={item.onSelect}
         >
           {item.label}
-        </button>
+        </DropdownMenu.Item>
       {/each}
-    </div>
-  {/if}
-</div>
+    </DropdownMenu.Content>
+  </DropdownMenu.Portal>
+</DropdownMenu.Root>

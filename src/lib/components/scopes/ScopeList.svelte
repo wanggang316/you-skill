@@ -10,7 +10,8 @@
     RefreshCw,
     UserRound,
   } from "@lucide/svelte";
-  import DropdownMenu, { type MenuItem } from "$lib/components/ui/DropdownMenu.svelte";
+  import DropdownMenu from "$lib/components/ui/DropdownMenu.svelte";
+  import type { MenuItem } from "$lib/components/ui/menu";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "$lib/i18n";
   import type { UserWorkspace } from "$lib/api/user-projects";
@@ -191,7 +192,9 @@
     {#if menu.length > 0}
       <div
         class={`absolute top-1.5 right-2 transition ${
-          entry.missing ? "" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+          entry.missing
+            ? ""
+            : "opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-data-[state=open]:opacity-100"
         }`}
       >
         <DropdownMenu label={$t("scope.project.actions")} items={menu} />
