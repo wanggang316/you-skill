@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+### Fixed
+
+### Removed
+
+## [0.9.4] - 2026-10-08
+
+### Changed
+
 - Markdown previews use a smaller, denser type scale: 14px body text, lighter headings, a quiet blockquote, and smaller code blocks and tables.
 - The instruction editor fills the content area down to the bottom margin, instead of a fixed height.
 
@@ -21,9 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Markdown lists show their bullets and numbers again, nested lists use distinct markers, and task lists show checkboxes. Strikethrough, images, `kbd`, `mark` and `details` also get styles.
 - Markdown tables keep the column alignment set in the source.
 - Code blocks without a language are no longer colored by guessed syntax, and code block labels keep their capitalization.
-- Action menus ("..."), right-click menus and agent hover cards now stay inside the window. Before, a menu near the bottom of a list could go off screen or be cut off. Now it opens above its button when there is not enough space below. You can also use the arrow keys and Enter in menus.
-
-### Removed
+- Action menus ("..."), right-click menus and agent hover cards stay inside the window: near the bottom of a list they open upward instead of going off screen. Menus also respond to the arrow keys and Enter.
 
 ## [0.9.3] - 2026-10-06
 
