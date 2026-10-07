@@ -386,7 +386,6 @@ button {
   font-size: 0.75rem;
   line-height: 1;
   color: color-mix(in oklch, var(--base-content) 80%, transparent);
-  text-transform: lowercase;
   letter-spacing: 0.04em;
 }
 
@@ -525,7 +524,7 @@ pre.code-block--compact {
 }
 
 .markdown-content li::marker {
-  color: var(--base-content-faint);
+  color: var(--base-content-muted);
 }
 
 .markdown-content li > p {
@@ -635,7 +634,8 @@ pre.code-block--compact {
 
 .markdown-content table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   margin: 1rem 0;
   border: 1px solid var(--base-300);
   border-radius: 0.5rem;
@@ -645,8 +645,13 @@ pre.code-block--compact {
 .markdown-content th,
 .markdown-content td {
   padding: 0.75rem;
-  text-align: left;
   border-bottom: 1px solid var(--base-300);
+}
+
+/* Keep the GFM column alignment that marked writes to the align attribute. */
+.markdown-content th:not([align]),
+.markdown-content td:not([align]) {
+  text-align: left;
 }
 
 .markdown-content th {
