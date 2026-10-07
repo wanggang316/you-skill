@@ -67,7 +67,8 @@
     "border-base-300 text-base-content hover:bg-base-200 flex h-7 items-center gap-1 rounded-lg border px-2.5 text-xs transition disabled:opacity-50";
 </script>
 
-<div class="space-y-3">
+<!-- Grows to fill a flex column parent, so the textarea reaches its bottom edge. -->
+<div class="flex flex-1 flex-col gap-3">
   <div class="flex items-center justify-end gap-1.5">
     {#if editing}
       <button class={buttonClass} type="button" onclick={cancelEdit} disabled={saving}>
@@ -110,7 +111,7 @@
 
   {#if editing}
     <textarea
-      class="border-base-300 bg-base-200 text-base-content focus:border-primary min-h-[60vh] w-full resize-y rounded-xl border px-4 py-3 font-mono text-[13px] leading-relaxed focus:outline-none"
+      class="border-base-300 bg-base-200 text-base-content focus:border-primary min-h-80 w-full flex-1 resize-none rounded-xl border px-4 py-3 font-mono text-[13px] leading-relaxed focus:outline-none"
       bind:value={draft}
       onkeydown={handleKeydown}
       disabled={saving}

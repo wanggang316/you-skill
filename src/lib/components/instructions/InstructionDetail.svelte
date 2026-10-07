@@ -321,8 +321,8 @@
       </div>
     </div>
   {:else}
-    <div class="min-h-0 flex-1 overflow-y-auto">
-      <div class="mx-auto max-w-4xl px-6 py-5">
+    <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div class="mx-auto flex w-full max-w-4xl shrink-0 grow flex-col px-6 py-5">
         <MarkdownEditor
           {content}
           loading={contentLoading}
