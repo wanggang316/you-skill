@@ -79,8 +79,10 @@ const markedRenderer = new Marked(
     langPrefix: "hljs language-",
     highlight(code, language) {
       const resolvedLanguage = resolveLanguage(language);
+      // A fence without a language is labeled "Text"; auto detection would color it anyway.
+      if (!resolvedLanguage) return escapeHtml(code);
 
-      if (resolvedLanguage && hljs.getLanguage(resolvedLanguage)) {
+      if (hljs.getLanguage(resolvedLanguage)) {
         try {
           return hljs.highlight(code, { language: resolvedLanguage }).value;
         } catch (error) {

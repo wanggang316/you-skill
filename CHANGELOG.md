@@ -13,7 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Markdown previews use a smaller, denser type scale: 14px body text, lighter headings, a quiet blockquote, and smaller code blocks and tables.
+- The instruction editor fills the content area down to the bottom margin, instead of a fixed height.
+
 ### Fixed
+
+- Markdown lists show their bullets and numbers again, nested lists use distinct markers, and task lists show checkboxes. Strikethrough, images, `kbd`, `mark` and `details` also get styles.
+- Markdown tables keep the column alignment set in the source.
+- Code blocks without a language are no longer colored by guessed syntax, and code block labels keep their capitalization.
 
 ### Removed
 

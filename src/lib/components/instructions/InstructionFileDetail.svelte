@@ -101,8 +101,8 @@
     </div>
   </header>
 
-  <div class="min-h-0 flex-1 overflow-y-auto">
-    <div class="mx-auto max-w-4xl space-y-5 px-6 py-5">
+  <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+    <div class="mx-auto flex w-full max-w-4xl shrink-0 grow flex-col gap-5 px-6 py-5">
       <dl
         class="text-base-content-muted grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-1.5 text-xs"
       >
