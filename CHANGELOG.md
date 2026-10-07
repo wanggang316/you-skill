@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Markdown lists show their bullets and numbers again, nested lists use distinct markers, and task lists show checkboxes. Strikethrough, images, `kbd`, `mark` and `details` also get styles.
 - Markdown tables keep the column alignment set in the source.
 - Code blocks without a language are no longer colored by guessed syntax, and code block labels keep their capitalization.
+- Action menus ("...") now stay inside the window. Before, a menu near the bottom of a list could go off screen or be cut off. Now it opens above its button when there is not enough space below.
 
 ### Removed
 
