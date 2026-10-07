@@ -260,61 +260,65 @@ button {
 }
 
 /* Markdown 样式 */
+/* Sizes use em so that the whole block scales from one base font size. */
 .markdown-content {
-  line-height: 1.8;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--base-content);
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
   color: var(--base-content);
 }
 
 .markdown-content h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 1.5rem 0 1rem 0;
-  color: var(--base-content);
-  border-bottom: 2px solid var(--base-300);
-  padding-bottom: 0.5rem;
+  font-size: 1.6em;
+  margin: 1.6em 0 0.7em;
+  padding-bottom: 0.35em;
+  border-bottom: 1px solid var(--base-300);
 }
 
 .markdown-content h2 {
-  font-size: 1.25rem;
-  font-weight: 500;
-  margin: 1.25rem 0 0.75rem 0;
-  color: var(--base-content);
+  font-size: 1.3em;
+  margin: 1.6em 0 0.6em;
+  padding-bottom: 0.3em;
   border-bottom: 1px solid var(--base-300);
-  padding-bottom: 0.25rem;
 }
 
 .markdown-content h3 {
-  font-size: 1.125rem;
-  font-weight: 500;
-  margin: 1rem 0 0.5rem 0;
-  color: var(--base-content);
+  font-size: 1.12em;
+  margin: 1.4em 0 0.5em;
 }
 
 .markdown-content h4 {
-  font-size: 1rem;
-  font-weight: 500;
-  margin: 0.75rem 0 0.5rem 0;
-  color: var(--base-content);
+  font-size: 1em;
+  margin: 1.2em 0 0.4em;
 }
 
 .markdown-content h5 {
-  font-size: 0.875rem;
-  font-weight: 500;
-  margin: 0.5rem 0 0.25rem 0;
-  color: var(--base-content);
+  font-size: 0.92em;
+  margin: 1.1em 0 0.4em;
 }
 
 .markdown-content h6 {
-  font-size: 0.75rem;
-  font-weight: 500;
-  margin: 0.5rem 0 0.25rem 0;
-  color: color-mix(in oklch, var(--base-content) 80%, transparent);
+  font-size: 0.85em;
+  margin: 1.1em 0 0.4em;
+  color: var(--base-content-muted);
 }
 
 .markdown-content p {
-  margin: 0.5rem 0;
-  line-height: 1.8;
-  font-weight: 400;
+  margin: 0.75em 0;
 }
 
 .markdown-content strong {
@@ -328,17 +332,17 @@ button {
 }
 
 .markdown-content code:not(.hljs) {
-  background-color: var(--base-300);
-  color: var(--base-content);
-  padding: 0.125rem 0.25rem;
-  border-radius: 0.25rem;
-  font-family: "Fira Code", "Monaco", "Consolas", "Courier New", monospace;
-  font-size: 0.875em;
+  padding: 0.15em 0.35em;
   border: 1px solid var(--base-300);
+  border-radius: 0.3rem;
+  background-color: var(--base-200);
+  color: var(--base-content);
+  font-family: "Fira Code", "Monaco", "Consolas", "Courier New", monospace;
+  font-size: 0.85em;
 }
 
 .markdown-content pre {
-  margin: 1rem 0;
+  margin: 1em 0;
   overflow-x: auto;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
@@ -362,17 +366,16 @@ button {
 
 .markdown-content pre code {
   font-family: "Fira Code", "Monaco", "Consolas", "Courier New", monospace;
-  font-size: 0.8rem;
-  line-height: 1.5;
+  font-size: 0.85em;
+  line-height: 1.6;
 }
 
 .markdown-content .markdown-code-block {
-  margin: 1.25rem 0;
-  border-radius: 0.75rem;
+  margin: 1em 0;
+  border-radius: 0.6rem;
   border: 1px solid var(--base-300);
   background-color: var(--base-200);
   overflow: hidden;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .markdown-content .markdown-code-block__header {
@@ -380,13 +383,11 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.3rem 0.9rem;
-  background-color: rgba(148, 163, 184, 0.12);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 0.25rem 0.5rem 0.25rem 0.9rem;
+  border-bottom: 1px solid var(--base-300);
   font-size: 0.75rem;
   line-height: 1;
-  color: color-mix(in oklch, var(--base-content) 80%, transparent);
-  letter-spacing: 0.04em;
+  color: var(--base-content-muted);
 }
 
 .markdown-content .markdown-code-block__language {
@@ -455,7 +456,7 @@ button {
 .markdown-content .markdown-code-block pre code {
   background: transparent;
   display: block;
-  padding: 1.1rem 1.25rem;
+  padding: 0.85rem 1rem;
 }
 
 pre.code-block {
@@ -485,8 +486,8 @@ pre.code-block--compact {
 /* Tailwind preflight removes list markers, so restore them here. */
 .markdown-content ul,
 .markdown-content ol {
-  margin: 0.75rem 0;
-  padding-left: 1.5rem;
+  margin: 0.75em 0;
+  padding-left: 1.6em;
 }
 
 .markdown-content ul {
@@ -515,12 +516,12 @@ pre.code-block--compact {
 
 .markdown-content li ul,
 .markdown-content li ol {
-  margin: 0.25rem 0;
+  margin: 0.2em 0;
 }
 
 .markdown-content li {
-  margin: 0.25rem 0;
-  line-height: 1.6;
+  margin: 0.2em 0;
+  padding-left: 0.2em;
 }
 
 .markdown-content li::marker {
@@ -528,7 +529,7 @@ pre.code-block--compact {
 }
 
 .markdown-content li > p {
-  margin: 0.25rem 0;
+  margin: 0.2em 0;
 }
 
 /* GFM task list */
@@ -539,7 +540,7 @@ pre.code-block--compact {
 
 .markdown-content li > input[type="checkbox"],
 .markdown-content li > p > input[type="checkbox"] {
-  margin: 0 0.5rem 0 -1.25rem;
+  margin: 0 0.5em 0 -1.4em;
   vertical-align: middle;
   accent-color: var(--primary);
 }
@@ -578,8 +579,8 @@ pre.code-block--compact {
 }
 
 .markdown-content details {
-  margin: 1rem 0;
-  padding: 0.5rem 1rem;
+  margin: 1em 0;
+  padding: 0.5em 1em;
   border: 1px solid var(--base-300);
   border-radius: 0.5rem;
 }
@@ -598,13 +599,10 @@ pre.code-block--compact {
 }
 
 .markdown-content blockquote {
-  border-left: 4px solid var(--primary);
-  background-color: var(--base-200);
-  margin: 1rem 0;
-  padding: 0.75rem 1rem;
-  border-radius: 0 0.25rem 0.25rem 0;
-  color: color-mix(in oklch, var(--base-content) 80%, transparent);
-  font-style: italic;
+  margin: 1em 0;
+  padding: 0.1em 1em;
+  border-left: 3px solid var(--base-300);
+  color: var(--base-content-muted);
 }
 
 .markdown-content blockquote > :first-child {
@@ -629,22 +627,23 @@ pre.code-block--compact {
 .markdown-content hr {
   border: none;
   border-top: 1px solid var(--base-300);
-  margin: 2rem 0;
+  margin: 1.75em 0;
 }
 
 .markdown-content table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  margin: 1rem 0;
+  margin: 1em 0;
   border: 1px solid var(--base-300);
   border-radius: 0.5rem;
   overflow: hidden;
+  font-size: 0.95em;
 }
 
 .markdown-content th,
 .markdown-content td {
-  padding: 0.75rem;
+  padding: 0.5em 0.85em;
   border-bottom: 1px solid var(--base-300);
 }
 
