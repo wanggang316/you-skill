@@ -186,7 +186,8 @@ mod platform {
       .parent()
       .ok_or("Install path has no parent directory")?;
     fs::create_dir_all(dir).map_err(|e| format!("Failed to create {}: {}", dir.display(), e))?;
-    fs::copy(bundled, install).map_err(|e| format!("Failed to copy to {}: {}", install.display(), e))?;
+    fs::copy(bundled, install)
+      .map_err(|e| format!("Failed to copy to {}: {}", install.display(), e))?;
     add_to_user_path(&dir.display().to_string())
   }
 
