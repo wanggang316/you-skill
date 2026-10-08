@@ -8,6 +8,7 @@ the relevant docs in parallel.
 
 - README.md
 - docs/ARCHITECTURE.md (storage layout, lock file, drift model, command surface)
+- docs/CLI.md (command line interface, crate layout, cross-process lock)
 
 ## Code Quality
 
