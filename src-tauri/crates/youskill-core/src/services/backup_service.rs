@@ -1,5 +1,5 @@
 use crate::config::{load_config, save_config};
-use crate::utils::path::{youskill_root, TRASH_DIR};
+use crate::utils::path::{youskill_root, OPS_LOCK_FILE, TRASH_DIR};
 use chrono::Local;
 use std::fs;
 use std::path::Path;
@@ -128,7 +128,9 @@ fn add_dir_to_zip<P: AsRef<Path>>(
       .to_string_lossy()
       .to_string();
 
-    if current_path == base_path && entry.file_name() == TRASH_DIR {
+    if current_path == base_path
+      && (entry.file_name() == TRASH_DIR || entry.file_name() == OPS_LOCK_FILE)
+    {
       continue;
     }
 
