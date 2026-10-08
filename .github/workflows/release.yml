@@ -120,8 +120,67 @@ jobs:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
 
+  build-cli:
+    needs: create-release
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "macos-latest"
+            target: "aarch64-apple-darwin"
+            archive: "tar.gz"
+          - platform: "macos-latest"
+            target: "x86_64-apple-darwin"
+            archive: "tar.gz"
+          - platform: "windows-latest"
+            target: "x86_64-pc-windows-msvc"
+            archive: "zip"
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: cli-${{ matrix.target }}
+
+      - name: Build youskill
+        run: cargo build --release -p youskill-cli --target ${{ matrix.target }}
+        working-directory: src-tauri
+
+      - name: Package (unix)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          ASSET="youskill-${{ github.ref_name }}-${{ matrix.target }}.tar.gz"
+          tar -C "src-tauri/target/${{ matrix.target }}/release" -czf "$ASSET" youskill
+          echo "ASSET=$ASSET" >> "$GITHUB_ENV"
+
+      - name: Package (windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $asset = "youskill-${{ github.ref_name }}-${{ matrix.target }}.zip"
+          Compress-Archive -Path "src-tauri/target/${{ matrix.target }}/release/youskill.exe" -DestinationPath $asset
+          "ASSET=$asset" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" "$ASSET" --clobber
+
   publish-release:
-    needs: [create-release, build-tauri]
+    needs: [create-release, build-tauri, build-cli]
     permissions:
       contents: write
     runs-on: ubuntu-latest

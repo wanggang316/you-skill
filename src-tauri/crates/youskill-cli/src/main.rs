@@ -4,7 +4,7 @@
 mod commands;
 mod output;
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use output::{Ctx, EXIT_ERROR};
 use std::process::exit;
 
@@ -57,6 +57,11 @@ enum Command {
   Agents(commands::agents::Args),
   /// Registered projects.
   Projects(commands::projects::Args),
+  /// Print a shell completion script, e.g. `youskill completions zsh > ~/.zfunc/_youskill`.
+  Completions {
+    #[arg(value_enum)]
+    shell: clap_complete::Shell,
+  },
 }
 
 fn main() {
@@ -89,6 +94,15 @@ fn main() {
     Command::Scan(args) => commands::scan::run(&ctx, args),
     Command::Agents(args) => commands::agents::run(&ctx, args),
     Command::Projects(args) => commands::projects::run(&ctx, args),
+    Command::Completions { shell } => {
+      clap_complete::generate(
+        shell,
+        &mut Cli::command(),
+        "youskill",
+        &mut std::io::stdout(),
+      );
+      Ok(output::EXIT_OK)
+    },
   };
   match result {
     Ok(code) => exit(code),

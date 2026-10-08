@@ -88,6 +88,7 @@ Global flags: `--json` (machine output, camelCase, the same view structs the app
 | `youskill scan <dir> [--depth <n>] [--import] [--register]`                              | `scan_service::scan_folder`, `import_scanned`                                                  | Lists every skill folder with its status. `--import` takes new skills into the hub (the first folder per name becomes the hub copy, further copies inside agent directories are registered as installs); `--register` records copies of known skills inside agent directories as installs. Content conflicts (`different`) are left to `sync`.                              |
 | `youskill agents [--all]`                                                                | `agent_apps_service::local_agent_apps`                                                         | Detected agents by default; `--all` includes undetected ones.                                                                                                                                                                                                                                                                                                               |
 | `youskill projects [list] \| add <path> [--name <n>] \| remove <path>`                   | `user_projects_service`                                                                        | `list` tidies projects of removed workspaces first, like the app.                                                                                                                                                                                                                                                                                                           |
+| `youskill completions <shell>`                                                           | `clap_complete`                                                                                | bash, zsh, fish, elvish, powershell.                                                                                                                                                                                                                                                                                                                                        |
 
 Confirmations: only `remove` asks, once per skill, when stdin is a terminal. Without a
 terminal and without `-y` it exits 2 and says so. Actions that would discard local edits
@@ -116,17 +117,17 @@ the app and the CLI cannot disagree about a state.
 
 ## Distribution
 
-1. The release workflow builds `youskill` for macOS (arm64, x64) and Windows (x64) and
-   attaches the archives to the same GitHub release as the installers. A Homebrew tap
-   follows once the binary is stable.
+1. The release workflow (`build-cli` job) builds `youskill` for macOS (arm64, x64) and
+   Windows (x64) and attaches `youskill-<tag>-<target>.tar.gz|zip` to the same GitHub
+   release as the installers. A Homebrew tap follows once the binary is stable.
 2. Later: the app bundles the binary as a Tauri `externalBin` and offers
    "Install command line tool" in settings, which links it into `/usr/local/bin`.
 
 ## Milestones
 
-| Milestone | Content                                                                                                                                         | Verification                                                                                                              |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| M0 (done) | Workspace split into `youskill-core` and the app; no behavior change. `tauri::async_runtime` replaced by `tokio` in core.                       | `npm run check`, `npm run test`, app smoke test.                                                                          |
-| M1 (done) | Cross-process lock. CLI binary with read-only commands: `list`, `show`, `status`, `diff`, `agents`, `projects list`.                            | Unit test that the ops lock is held on the file; integration tests with a temp `HOME`.                                    |
-| M2 (done) | Mutating commands: `import`, `install`, `uninstall`, `remove`, `update`, `sync`, `scan`, `projects add/remove`. App refreshes on focus.         | Integration tests per command, including blocked and forced paths, and two processes installing at once losing no record. |
-| M3        | `completions`, release artifacts, Homebrew tap, "Install command line tool" in the app. Instruction commands (`instructions list/install/...`). | Release pipeline run.                                                                                                     |
+| Milestone | Content                                                                                                                                                                               | Verification                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| M0 (done) | Workspace split into `youskill-core` and the app; no behavior change. `tauri::async_runtime` replaced by `tokio` in core.                                                             | `npm run check`, `npm run test`, app smoke test.                                                                          |
+| M1 (done) | Cross-process lock. CLI binary with read-only commands: `list`, `show`, `status`, `diff`, `agents`, `projects list`.                                                                  | Unit test that the ops lock is held on the file; integration tests with a temp `HOME`.                                    |
+| M2 (done) | Mutating commands: `import`, `install`, `uninstall`, `remove`, `update`, `sync`, `scan`, `projects add/remove`. App refreshes on focus.                                               | Integration tests per command, including blocked and forced paths, and two processes installing at once losing no record. |
+| M3        | `completions` and release artifacts (done, pipeline not yet run). Open: Homebrew tap, "Install command line tool" in the app, instruction commands (`instructions list/install/...`). | Release pipeline run.                                                                                                     |
