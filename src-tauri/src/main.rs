@@ -8,6 +8,7 @@ mod tray;
 use youskill_core::{config, models, services, utils};
 
 use commands::{
+  cli::{cli_status, install_cli, uninstall_cli},
   agent_apps::{
     add_user_agent_app, list_local_agent_apps, refresh_agent_apps, remove_user_agent_app,
     update_user_agent_app,
@@ -94,6 +95,9 @@ fn main() {
       ping,
       get_settings,
       update_settings,
+      cli_status,
+      install_cli,
+      uninstall_cli,
       get_github_auth_status,
       set_github_account,
       fetch_remote_skills,

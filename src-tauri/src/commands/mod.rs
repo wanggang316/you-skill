@@ -1,4 +1,5 @@
 pub mod agent_apps;
+pub mod cli;
 pub mod github;
 pub mod hub;
 pub mod instructions;

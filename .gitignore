@@ -27,6 +27,9 @@ src-tauri/target
 # Tauri generated schemas
 src-tauri/gen/schemas/
 
+# CLI binary staged for bundle.externalBin
+src-tauri/binaries/
+
 /.svelte-kit
 /build
 /package
