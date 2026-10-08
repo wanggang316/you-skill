@@ -123,7 +123,10 @@ the app and the CLI cannot disagree about a state.
 
 1. The release workflow (`build-cli` job) builds `youskill` for macOS (arm64, x64) and
    Windows (x64) and attaches `youskill-<tag>-<target>.tar.gz|zip` to the same GitHub
-   release as the installers. A Homebrew tap follows once the binary is stable.
+   release as the installers. Homebrew: after a release, `scripts/homebrew-formula.sh
+<version>` prints the formula with the archive checksums; commit it as
+   `Formula/youskill.rb` in `wanggang316/homebrew-tap`
+   (`brew install wanggang316/tap/youskill`).
 2. The app bundles the binary as a Tauri `externalBin`: `scripts/build-cli.mjs` runs
    before `tauri dev` and `tauri build` (`YOUSKILL_CLI_TARGET` selects the triple in CI)
    and stages `src-tauri/binaries/youskill-<triple>`, which Tauri places next to the app
@@ -134,9 +137,9 @@ the app and the CLI cannot disagree about a state.
 
 ## Milestones
 
-| Milestone | Content                                                                                                                                                | Verification                                                                                                              |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| M0 (done) | Workspace split into `youskill-core` and the app; no behavior change. `tauri::async_runtime` replaced by `tokio` in core.                              | `npm run check`, `npm run test`, app smoke test.                                                                          |
-| M1 (done) | Cross-process lock. CLI binary with read-only commands: `list`, `show`, `status`, `diff`, `agents`, `projects list`.                                   | Unit test that the ops lock is held on the file; integration tests with a temp `HOME`.                                    |
-| M2 (done) | Mutating commands: `import`, `install`, `uninstall`, `remove`, `update`, `sync`, `scan`, `projects add/remove`. App refreshes on focus.                | Integration tests per command, including blocked and forced paths, and two processes installing at once losing no record. |
-| M3        | `completions`, release artifacts, `instructions` commands and "Install command line tool" in the app (done; pipeline not yet run). Open: Homebrew tap. | Release pipeline run.                                                                                                     |
+| Milestone | Content                                                                                                                                                                                                             | Verification                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| M0 (done) | Workspace split into `youskill-core` and the app; no behavior change. `tauri::async_runtime` replaced by `tokio` in core.                                                                                           | `npm run check`, `npm run test`, app smoke test.                                                                          |
+| M1 (done) | Cross-process lock. CLI binary with read-only commands: `list`, `show`, `status`, `diff`, `agents`, `projects list`.                                                                                                | Unit test that the ops lock is held on the file; integration tests with a temp `HOME`.                                    |
+| M2 (done) | Mutating commands: `import`, `install`, `uninstall`, `remove`, `update`, `sync`, `scan`, `projects add/remove`. App refreshes on focus.                                                                             | Integration tests per command, including blocked and forced paths, and two processes installing at once losing no record. |
+| M3        | `completions`, release artifacts, `instructions` commands, "Install command line tool" in the app and the Homebrew formula script (done). The release pipeline and the tap formula are exercised with the next tag. | Release pipeline run, `brew install` from the tap.                                                                        |
