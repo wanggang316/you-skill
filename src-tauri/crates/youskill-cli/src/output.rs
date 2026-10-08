@@ -1,16 +1,22 @@
-//! Output helpers shared by every command: the global flags, exit codes, JSON and tables.
+//! Output helpers shared by every command: the global flags, exit codes, JSON, tables and
+//! confirmations.
 
 use serde::Serialize;
-use youskill_core::models::SkillSource;
+use std::io::{self, BufRead, IsTerminal, Write};
+use youskill_core::models::{ActionResult, SkillSource};
 
 pub const EXIT_OK: i32 = 0;
 pub const EXIT_ERROR: i32 = 1;
+/// An action was refused because it would discard local changes, or a confirmation was
+/// needed and stdin is not a terminal.
+pub const EXIT_BLOCKED: i32 = 2;
 /// `status --exit-code` found drift.
 pub const EXIT_DRIFT: i32 = 3;
 
 /// Global flags, passed to every command.
 pub struct Ctx {
   pub json: bool,
+  pub yes: bool,
   pub quiet: bool,
 }
 
@@ -20,6 +26,26 @@ impl Ctx {
     if !self.quiet && !self.json {
       println!("{}", line);
     }
+  }
+
+  /// Ask a yes/no question. `--yes` answers it; without a terminal on stdin the answer is
+  /// no, and the caller reports why it stopped.
+  pub fn confirm(&self, question: &str) -> bool {
+    if self.yes {
+      return true;
+    }
+    let stdin = io::stdin();
+    if !stdin.is_terminal() {
+      eprintln!("{} (needs a terminal or --yes)", question);
+      return false;
+    }
+    eprint!("{} [y/N] ", question);
+    let _ = io::stderr().flush();
+    let mut line = String::new();
+    if stdin.lock().read_line(&mut line).is_err() {
+      return false;
+    }
+    matches!(line.trim(), "y" | "Y" | "yes" | "YES")
   }
 }
 
@@ -57,6 +83,28 @@ pub fn source_label(source: &SkillSource) -> String {
     SkillSource::Zip { path } => path.clone(),
     SkillSource::None => "-".to_string(),
   }
+}
+
+/// Report one mutating action: blockers go to stderr with exit 2, an applied action prints
+/// `label` and the resulting target states. With `--json` the `ActionResult` is printed as
+/// is and the exit code is the only difference.
+pub fn report_action(ctx: &Ctx, label: &str, result: &ActionResult) -> Result<i32, String> {
+  if ctx.json {
+    emit_json(result)?;
+  } else if result.applied {
+    ctx.say(label);
+  } else {
+    eprintln!("{}: blocked", label);
+    for blocker in &result.blockers {
+      eprintln!("  - {}", blocker);
+    }
+    eprintln!("Retry with --force to discard the local changes.");
+  }
+  Ok(if result.applied {
+    EXIT_OK
+  } else {
+    EXIT_BLOCKED
+  })
 }
 
 /// A fixed-width table. Columns are sized to their widest cell; the last column is not

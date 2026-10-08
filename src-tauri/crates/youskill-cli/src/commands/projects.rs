@@ -1,7 +1,8 @@
 use crate::output::{emit_json, Ctx, Table, EXIT_OK};
 use clap::Subcommand;
-use youskill_core::models::UserProjectView;
+use youskill_core::models::{UserProject, UserProjectView};
 use youskill_core::services::{user_projects_service, workspace_service};
+use youskill_core::utils::path::path_to_string;
 
 #[derive(clap::Args)]
 pub struct Args {
@@ -13,11 +14,22 @@ pub struct Args {
 enum ProjectsCommand {
   /// List registered projects (the default).
   List,
+  /// Register a project folder.
+  Add {
+    path: String,
+    /// Display name; the folder name when omitted.
+    #[arg(long)]
+    name: Option<String>,
+  },
+  /// Remove a project from the list. Installed skills stay on disk.
+  Remove { path: String },
 }
 
 pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
   match args.command.unwrap_or(ProjectsCommand::List) {
     ProjectsCommand::List => list(ctx),
+    ProjectsCommand::Add { path, name } => add(ctx, &path, name),
+    ProjectsCommand::Remove { path } => remove(ctx, &path),
   }
 }
 
@@ -61,5 +73,37 @@ fn list(ctx: &Ctx) -> Result<i32, String> {
     ]);
   }
   table.print();
+  Ok(EXIT_OK)
+}
+
+fn add(ctx: &Ctx, path: &str, name: Option<String>) -> Result<i32, String> {
+  let dir = super::absolute(path)?;
+  if !dir.is_dir() {
+    return Err(format!("Directory does not exist: {}", dir.display()));
+  }
+  let added = user_projects_service::add_user_projects(vec![UserProject {
+    name: name.unwrap_or_default(),
+    path: path_to_string(&dir),
+    workspace_path: None,
+  }])?;
+  if ctx.json {
+    emit_json(&added)?;
+    return Ok(EXIT_OK);
+  }
+  match added.first() {
+    Some(project) => ctx.say(&format!("Added '{}' ({})", project.name, project.path)),
+    None => ctx.say(&format!("{} is already registered", dir.display())),
+  }
+  Ok(EXIT_OK)
+}
+
+fn remove(ctx: &Ctx, path: &str) -> Result<i32, String> {
+  let dir = path_to_string(&super::absolute(path)?);
+  user_projects_service::remove_user_project(&dir)?;
+  if ctx.json {
+    println!("{}", serde_json::json!({ "removed": dir }));
+  } else {
+    ctx.say(&format!("Removed {}", dir));
+  }
   Ok(EXIT_OK)
 }

@@ -37,7 +37,12 @@ impl Home {
   }
 
   fn cmd(&self) -> Command {
-    let mut cmd = Command::cargo_bin("youskill").expect("youskill binary");
+    Command::from_std(self.raw_cmd())
+  }
+
+  /// The binary as a plain `std::process::Command`, for tests that spawn it themselves.
+  fn raw_cmd(&self) -> std::process::Command {
+    let mut cmd = std::process::Command::new(assert_cmd::cargo::cargo_bin("youskill"));
     cmd.env_clear();
     cmd.env("PATH", std::env::var_os("PATH").unwrap_or_default());
     cmd.env("HOME", self.path());
@@ -289,4 +294,349 @@ fn agents_and_projects_list() {
     .assert()
     .success()
     .stdout(predicate::str::starts_with("[]"));
+}
+
+// ---------------------------------------------------------------------------
+// Mutating commands
+// ---------------------------------------------------------------------------
+
+/// Make `claude-code` and `agents` detectable: their user-level roots' parents exist.
+fn with_agents(home: &Home) {
+  fs::create_dir_all(home.path().join(".claude")).unwrap();
+  fs::create_dir_all(home.path().join(".agents")).unwrap();
+}
+
+fn show_json(home: &Home, name: &str) -> serde_json::Value {
+  let output = home
+    .cmd()
+    .args(["show", name, "--json"])
+    .assert()
+    .success()
+    .get_output()
+    .stdout
+    .clone();
+  serde_json::from_slice(&output).unwrap()
+}
+
+#[test]
+fn install_and_uninstall_user_level() {
+  let home = Home::new();
+  with_agents(&home);
+  home.add_hub_skill("demo", Vec::new());
+
+  home
+    .cmd()
+    .args(["install", "demo", "-a", "claude-code", "--mode", "copy"])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains(
+      "Installed 'demo' to user level (claude-code)",
+    ));
+  let target = home.path().join(".claude").join("skills").join("demo");
+  assert!(target.join("SKILL.md").is_file());
+  let view = show_json(&home, "demo");
+  let installs = view["installs"].as_array().unwrap();
+  assert_eq!(installs.len(), 1);
+  assert_eq!(installs[0]["state"], "in_sync");
+  assert_eq!(installs[0]["agentIds"][0], "claude-code");
+
+  // Unknown agent ids are rejected before anything is written.
+  home
+    .cmd()
+    .args(["install", "demo", "-a", "nope"])
+    .assert()
+    .code(1)
+    .stderr(predicate::str::contains(
+      "Unknown or undetected agent app 'nope'",
+    ));
+
+  // A locally edited copy is not deleted without --force.
+  fs::write(target.join("SKILL.md"), "---\nname: demo\n---\nedited\n").unwrap();
+  home
+    .cmd()
+    .args(["uninstall", "demo", "-a", "claude-code"])
+    .assert()
+    .code(2)
+    .stderr(predicate::str::contains("has local changes"));
+  assert!(target.is_dir());
+  home
+    .cmd()
+    .args(["uninstall", "demo", "-a", "claude-code", "--force"])
+    .assert()
+    .success();
+  assert!(!target.exists());
+  assert!(show_json(&home, "demo")["installs"]
+    .as_array()
+    .unwrap()
+    .is_empty());
+}
+
+#[test]
+fn install_into_a_project_registers_it() {
+  let home = Home::new();
+  with_agents(&home);
+  home.add_hub_skill("demo", Vec::new());
+  let project = home.path().join("work").join("app");
+  fs::create_dir_all(&project).unwrap();
+
+  home
+    .cmd()
+    .args([
+      "install",
+      "demo",
+      "-a",
+      "claude-code,agents",
+      "--mode",
+      "symlink",
+      "--project",
+      project.to_str().unwrap(),
+    ])
+    .assert()
+    .success();
+  assert!(project.join(".claude/skills/demo").is_symlink());
+  assert!(project.join(".agents/skills/demo").is_symlink());
+  home
+    .cmd()
+    .args(["projects", "list"])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains(project.to_str().unwrap()));
+
+  // `-p` without a value means the current directory.
+  home
+    .cmd()
+    .current_dir(&project)
+    .args(["uninstall", "demo", "-a", "all", "-p"])
+    .assert()
+    .success();
+  assert!(!project.join(".claude/skills/demo").exists());
+  assert!(show_json(&home, "demo")["installs"]
+    .as_array()
+    .unwrap()
+    .is_empty());
+
+  home
+    .cmd()
+    .args(["projects", "remove", project.to_str().unwrap()])
+    .assert()
+    .success();
+  home
+    .cmd()
+    .args(["projects", "--json"])
+    .assert()
+    .success()
+    .stdout(predicate::str::starts_with("[]"));
+}
+
+#[test]
+fn concurrent_installs_keep_every_record() {
+  let home = Home::new();
+  with_agents(&home);
+  home.add_hub_skill("demo", Vec::new());
+
+  // Two processes write the same lock record at once; the ops lock serializes them.
+  let mut first = home
+    .raw_cmd()
+    .args(["install", "demo", "-a", "claude-code"])
+    .spawn()
+    .unwrap();
+  let mut second = home
+    .raw_cmd()
+    .args(["install", "demo", "-a", "agents"])
+    .spawn()
+    .unwrap();
+  assert!(first.wait().unwrap().success());
+  assert!(second.wait().unwrap().success());
+
+  let view = show_json(&home, "demo");
+  let mut ids: Vec<String> = view["installs"]
+    .as_array()
+    .unwrap()
+    .iter()
+    .flat_map(|install| install["agentIds"].as_array().unwrap().clone())
+    .map(|id| id.as_str().unwrap().to_string())
+    .collect();
+  ids.sort();
+  assert_eq!(ids, vec!["agents".to_string(), "claude-code".to_string()]);
+}
+
+#[test]
+fn remove_needs_confirmation_or_yes() {
+  let home = Home::new();
+  with_agents(&home);
+  home.add_hub_skill("demo", Vec::new());
+  home
+    .cmd()
+    .args(["install", "demo", "-a", "claude-code"])
+    .assert()
+    .success();
+  let target = home.path().join(".claude/skills/demo");
+
+  home
+    .cmd()
+    .args(["remove", "demo"])
+    .assert()
+    .code(2)
+    .stderr(predicate::str::contains("needs a terminal or --yes"));
+  assert!(home.hub().join("demo").is_dir());
+
+  home
+    .cmd()
+    .args(["remove", "demo", "-y"])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("Removed 'demo'"));
+  assert!(!home.hub().join("demo").exists());
+  assert!(!target.exists());
+  home.cmd().args(["show", "demo"]).assert().code(1);
+}
+
+#[test]
+fn sync_push_and_adopt_targets() {
+  let home = Home::new();
+  with_agents(&home);
+  home.add_hub_skill("demo", Vec::new());
+  home
+    .cmd()
+    .args(["install", "demo", "-a", "claude-code", "--mode", "copy"])
+    .assert()
+    .success();
+  let target = home.path().join(".claude/skills/demo");
+  let hub = home.hub().join("demo");
+
+  // Hub moves on: the target is outdated and push brings it up to date.
+  fs::write(hub.join("extra.md"), "new\n").unwrap();
+  home
+    .cmd()
+    .args(["sync", "demo", "accept-hub"])
+    .assert()
+    .success();
+  assert_eq!(show_json(&home, "demo")["installs"][0]["state"], "outdated");
+  home
+    .cmd()
+    .args(["sync", "demo", "push-targets"])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("pushed to targets"));
+  assert!(target.join("extra.md").is_file());
+  assert_eq!(show_json(&home, "demo")["installs"][0]["state"], "in_sync");
+
+  // Target edited: adopt takes it into the hub.
+  fs::write(target.join("extra.md"), "edited\n").unwrap();
+  home
+    .cmd()
+    .args(["sync", "demo", "adopt-target"])
+    .assert()
+    .code(1)
+    .stderr(predicate::str::contains("exactly one --target"));
+  home
+    .cmd()
+    .args([
+      "sync",
+      "demo",
+      "adopt-target",
+      "--target",
+      target.to_str().unwrap(),
+    ])
+    .assert()
+    .success();
+  assert_eq!(
+    fs::read_to_string(hub.join("extra.md")).unwrap(),
+    "edited\n"
+  );
+
+  // Both sides changed: push is blocked until forced.
+  fs::write(hub.join("extra.md"), "hub\n").unwrap();
+  home
+    .cmd()
+    .args(["sync", "demo", "accept-hub"])
+    .assert()
+    .success();
+  fs::write(target.join("extra.md"), "target\n").unwrap();
+  home
+    .cmd()
+    .args(["sync", "demo", "push-targets"])
+    .assert()
+    .code(2)
+    .stderr(predicate::str::contains("blocked"));
+  home
+    .cmd()
+    .args(["sync", "demo", "push-targets", "--force", "--json"])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("\"applied\": true"));
+  assert_eq!(
+    fs::read_to_string(target.join("extra.md")).unwrap(),
+    "hub\n"
+  );
+}
+
+#[test]
+fn import_from_folder_and_scan() {
+  let home = Home::new();
+  with_agents(&home);
+  let source = home.path().join("src").join("skills");
+  home.write_skill(&source.join("alpha"), "alpha", "A");
+  home.write_skill(&source.join("beta"), "beta", "B");
+
+  home
+    .cmd()
+    .args(["import", source.to_str().unwrap(), "--pick", "alpha"])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("alpha"))
+    .stdout(predicate::str::contains("imported"))
+    .stdout(predicate::str::contains("beta").not());
+  let view = show_json(&home, "alpha");
+  assert_eq!(view["source"]["type"], "folder");
+  assert_eq!(
+    view["source"]["path"],
+    source.join("alpha").to_str().unwrap()
+  );
+
+  home
+    .cmd()
+    .args(["import", source.to_str().unwrap(), "--pick", "alpha"])
+    .assert()
+    .code(1)
+    .stderr(predicate::str::contains("already exists"));
+  home
+    .cmd()
+    .args(["import", "--pick", "nope", source.to_str().unwrap()])
+    .assert()
+    .code(1)
+    .stderr(predicate::str::contains("None of the picked names"));
+
+  // A copy inside an agent directory scans as new and imports as that agent's install.
+  let claude_copy = home.path().join(".claude/skills/beta");
+  fs::create_dir_all(&claude_copy).unwrap();
+  fs::copy(source.join("beta/SKILL.md"), claude_copy.join("SKILL.md")).unwrap();
+  home
+    .cmd()
+    .args(["scan", home.path().to_str().unwrap()])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("beta"))
+    .stdout(predicate::str::contains("new"))
+    .stdout(predicate::str::contains("--import"));
+  home
+    .cmd()
+    .args([
+      "scan",
+      claude_copy.parent().unwrap().to_str().unwrap(),
+      "--import",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("Imported 1: beta"));
+  let view = show_json(&home, "beta");
+  assert_eq!(view["installs"][0]["agentIds"][0], "claude-code");
+  assert_eq!(view["installs"][0]["state"], "in_sync");
+
+  home
+    .cmd()
+    .args(["update", "--check"])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("No skills with a GitHub source."));
 }
