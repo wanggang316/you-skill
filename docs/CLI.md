@@ -59,47 +59,49 @@ appear without a restart.
 ## Environment
 
 The CLI resolves paths exactly as the app does: `dirs_next::home_dir()` and
-`dirs_next::config_dir()`. Integration tests isolate a run by setting `HOME` (and
-`USERPROFILE` on Windows) to a temporary directory; no YouSkill-specific override exists.
+`dirs_next::config_dir()`. Integration tests (`crates/youskill-cli/tests/cli.rs`) isolate
+a run by setting `HOME`, `XDG_CONFIG_HOME` (and `USERPROFILE`, `APPDATA` on Windows) to a
+temporary directory; no YouSkill-specific override exists. Agent apps are detected the
+same way too, so a test that installs creates `~/.claude` or `~/.agents` first.
 
 Registered projects, agent apps, scan roots and settings are read from the same config
-directory as the app (`<config_dir>/youskill`), so an install targeted with
-`--project <path>` is recorded on the project the app shows.
+directory as the app (`<config_dir>/youskill`). `install -p <path>` registers the project
+when it is not in the list yet, so the app shows the install under that project.
 
 ## Command surface
 
 Global flags: `--json` (machine output, camelCase, the same view structs the app uses),
-`-y, --yes` (skip confirmations), `-q, --quiet`.
+`-y, --yes` (answer every confirmation), `-q, --quiet`.
 
-| Command | Service | Notes |
-| --- | --- | --- |
-| `youskill list [--state <s>,...]` | `hub_service::list_hub_skills` | Runs `ensure_migrated` and the trash sweep first, like the app. States filter on hub, target or source state. |
-| `youskill show <name>` | `hub_service::get_hub_skill` | Source, hub state, install matrix with target states. |
-| `youskill status [--exit-code]` | `list_hub_skills` | One line per skill that is not fully in sync. `--exit-code` returns 3 when any drift exists. |
-| `youskill import <url\|zip\|dir>... [--pick <name>,...] [--overwrite]` | `skill_service::detect_*`, `source_service::detect_github_*`, `hub_service::import_skills` | A source that yields several skills imports all of them unless `--pick` narrows it; `--overwrite` replaces an existing hub copy (old copy goes to `.trash`). |
-| `youskill install <name>... -a <agent>,... [-p [path]] [--mode copy\|symlink] [--force]` | `install_service::install_skill` | `-p` without a value means the current directory. `--mode` defaults to `sync_mode` from settings. `-a all` means every detected agent. |
-| `youskill uninstall <name>... -a <agent>,... [-p [path]]` | `install_service::uninstall_skill` | Files are removed only when no agent is left on the record. |
-| `youskill remove <name>... [--keep-targets]` | `hub_service::remove_hub_skill` | Removes the hub copy and every copy install; symlink targets are always removed because they would break. |
-| `youskill update [--check] [name...]` | `source_service::check_source_updates`, `sync_skill(pull_source)` | No names means every skill with a checkable source. `--check` only refreshes the source state. |
-| `youskill sync <name> <action> [--target <path>] [--force]` | `hub_service::sync_skill` | Actions: `pull-source`, `push-targets`, `adopt-target`, `accept-hub`, `push-source`. A blocked action prints the blockers and exits 2 unless `--force`. |
-| `youskill diff <name> [--target <path> \| --source]` | `diff_service::diff_skill` | Unified diff on stdout; exits 0 when identical, 1 when different, like `diff(1)`. |
-| `youskill scan <dir> [--depth <n>] [--import] [--register]` | `scan_service::scan_folder`, `import_scanned` | Prints what was found grouped by name. `--import` takes new skills into the hub; `--register` records known copies as installs. |
-| `youskill agents [--all]` | `agent_apps_service::local_agent_apps` | Detected agents by default; `--all` includes undetected ones. |
-| `youskill projects list\|add <path>\|remove <path>` | `user_projects_service` | |
-| `youskill completions <shell>` | `clap_complete` | |
+| Command                                                                                  | Service                                                                                        | Notes                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `youskill list [--state <s>,...]`                                                        | `hub_service::list_hub_skills`                                                                 | Runs `ensure_migrated` and the trash sweep first, like the app. States filter on hub, target or source state.                                                                                                                                                                                                                                                               |
+| `youskill show <name>`                                                                   | `hub_service::get_hub_skill`                                                                   | Source, hub state, install matrix with target states.                                                                                                                                                                                                                                                                                                                       |
+| `youskill status [--exit-code]`                                                          | `list_hub_skills`                                                                              | One line per skill that is not fully in sync. `--exit-code` returns 3 when any drift exists.                                                                                                                                                                                                                                                                                |
+| `youskill import <github\|zip\|dir>... [--pick <name>,...] [--overwrite]`                | `skill_service::detect_folder\|detect_zip\|detect_github_manual`, `hub_service::import_skills` | A folder is `Folder` source (the skill's own directory), an archive `Zip`, anything else is parsed as a GitHub reference (`owner/repo`, URL, `.../tree/<branch>/<path>`). Every skill found is imported unless `--pick` narrows it; `--overwrite` replaces an existing hub copy (old copy goes to `.trash`). GitHub imports record the tree sha so `update` has a baseline. |
+| `youskill install <name>... -a <agent>,... [-p [path]] [--mode copy\|symlink] [--force]` | `install_service::install_skill`                                                               | `-p` without a value means the current directory (put it last, or write `--project=<path>`). `--mode` defaults to `sync_mode` from settings. `-a all` means every detected agent with a directory in that scope.                                                                                                                                                            |
+| `youskill uninstall <name>... -a <agent>,... [-p [path]] [--force]`                      | `install_service::uninstall_skill`                                                             | Files are removed only when no agent is left on the record; a modified copy needs `--force`. `-a all` means every agent recorded in that scope.                                                                                                                                                                                                                             |
+| `youskill remove <name>... [--keep-targets]`                                             | `hub_service::remove_hub_skill`                                                                | Asks once. Removes the hub copy and every install; with `--keep-targets` copies stay as unmanaged skills and symlinks are turned into copies first.                                                                                                                                                                                                                         |
+| `youskill update [--check] [--force] [name...]`                                          | `source_service::check_source_updates`, `pull_github_source`                                   | GitHub sources only. No names means every one. `--check` only refreshes the source state; otherwise every `update_available` skill is pulled and pushed to its in-sync targets. A folder source is pulled with `sync <name> pull-source`.                                                                                                                                   |
+| `youskill sync <name> <action> [--target <path>]... [--force]`                           | `hub_service::sync_skill`, `source_service::pull_github_source`                                | Actions: `pull-source`, `push-targets`, `adopt-target` (exactly one `--target`), `accept-hub`, `push-source`. A blocked action prints the blockers and exits 2 unless `--force`.                                                                                                                                                                                            |
+| `youskill diff <name> --target <path> \| --source`                                       | `diff_service::diff_hub_against`                                                               | Unified diff on stdout (`a/` is the hub); exits 0 when identical, 1 when different, like `diff(1)`. A GitHub source is downloaded to a temp directory first.                                                                                                                                                                                                                |
+| `youskill scan <dir> [--depth <n>] [--import] [--register]`                              | `scan_service::scan_folder`, `import_scanned`                                                  | Lists every skill folder with its status. `--import` takes new skills into the hub (the first folder per name becomes the hub copy, further copies inside agent directories are registered as installs); `--register` records copies of known skills inside agent directories as installs. Content conflicts (`different`) are left to `sync`.                              |
+| `youskill agents [--all]`                                                                | `agent_apps_service::local_agent_apps`                                                         | Detected agents by default; `--all` includes undetected ones.                                                                                                                                                                                                                                                                                                               |
+| `youskill projects [list] \| add <path> [--name <n>] \| remove <path>`                   | `user_projects_service`                                                                        | `list` tidies projects of removed workspaces first, like the app.                                                                                                                                                                                                                                                                                                           |
 
-Confirmations: `remove`, `uninstall` with files to delete, and any `--force` action ask
-once when stdin is a terminal. Without a terminal and without `-y` they exit 2 and print
-what they would have done.
+Confirmations: only `remove` asks, once per skill, when stdin is a terminal. Without a
+terminal and without `-y` it exits 2 and says so. Actions that would discard local edits
+do not ask: the service returns blockers, the command prints them and exits 2, and
+`--force` is the explicit way through, exactly as the app's force confirmation.
 
 ## Exit codes
 
-| Code | Meaning |
-| --- | --- |
-| 0 | Success. For `diff`: no difference. |
-| 1 | Error (invalid input, I/O, network). For `diff`: files differ. |
-| 2 | Blocked: an action returned `applied: false` with blockers, or a confirmation was needed and stdin is not a terminal. |
-| 3 | Drift detected (`status --exit-code` only). |
+| Code | Meaning                                                                                                               |
+| ---- | --------------------------------------------------------------------------------------------------------------------- |
+| 0    | Success. For `diff`: no difference.                                                                                   |
+| 1    | Error (invalid input, I/O, network). For `diff`: files differ.                                                        |
+| 2    | Blocked: an action returned `applied: false` with blockers, or a confirmation was needed and stdin is not a terminal. |
+| 3    | Drift detected (`status --exit-code` only).                                                                           |
 
 Errors go to stderr as one line; with `--json` the same message is wrapped as
 `{"error": "..."}`.
@@ -122,9 +124,9 @@ the app and the CLI cannot disagree about a state.
 
 ## Milestones
 
-| Milestone | Content | Verification |
-| --- | --- | --- |
-| M0 | Workspace split into `youskill-core` and the app; no behavior change. `tauri::async_runtime` replaced by `tokio` in core. | `npm run check`, `npm run test`, app smoke test. |
-| M1 | Cross-process lock. CLI binary with read-only commands: `list`, `show`, `status`, `diff`, `agents`, `projects list`. | Two processes installing concurrently lose no record. Integration tests with a temp `HOME`. |
-| M2 | Mutating commands: `import`, `install`, `uninstall`, `remove`, `update`, `sync`, `scan`, `projects add/remove`. App refreshes on focus. | Integration tests per command, including blocked and forced paths. |
-| M3 | `completions`, release artifacts, Homebrew tap, "Install command line tool" in the app. Instruction commands (`instructions list/install/...`). | Release pipeline run. |
+| Milestone | Content                                                                                                                                         | Verification                                                                                                              |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| M0 (done) | Workspace split into `youskill-core` and the app; no behavior change. `tauri::async_runtime` replaced by `tokio` in core.                       | `npm run check`, `npm run test`, app smoke test.                                                                          |
+| M1 (done) | Cross-process lock. CLI binary with read-only commands: `list`, `show`, `status`, `diff`, `agents`, `projects list`.                            | Unit test that the ops lock is held on the file; integration tests with a temp `HOME`.                                    |
+| M2 (done) | Mutating commands: `import`, `install`, `uninstall`, `remove`, `update`, `sync`, `scan`, `projects add/remove`. App refreshes on focus.         | Integration tests per command, including blocked and forced paths, and two processes installing at once losing no record. |
+| M3        | `completions`, release artifacts, Homebrew tap, "Install command line tool" in the app. Instruction commands (`instructions list/install/...`). | Release pipeline run.                                                                                                     |

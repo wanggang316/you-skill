@@ -118,6 +118,18 @@
     }
 
     let unlistenOpenInstallModal: UnlistenFn | null = null;
+    let unlistenFocus: UnlistenFn | null = null;
+    let lastFocusRefresh = 0;
+
+    // The CLI edits the same hub; pick up its changes when the window comes back.
+    const refreshOnFocus = () => {
+      const now = Date.now();
+      if (now - lastFocusRefresh < 2000) return;
+      lastFocusRefresh = now;
+      refreshHub().catch(console.error);
+      refreshInstructions().catch(console.error);
+      refreshUserProjects().catch(console.error);
+    };
 
     // Load shared application state without blocking the first render.
     loadSettings().catch(console.error);
@@ -137,11 +149,20 @@
         unlistenOpenInstallModal = unlisten;
       })
       .catch(console.error);
+    getCurrentWindow()
+      .onFocusChanged(({ payload: focused }) => {
+        if (focused) refreshOnFocus();
+      })
+      .then((unlisten) => {
+        unlistenFocus = unlisten;
+      })
+      .catch(console.error);
     document.addEventListener("mousedown", handleWindowDrag);
     document.addEventListener("keydown", handleHistoryKeys);
 
     return () => {
       unlistenOpenInstallModal?.();
+      unlistenFocus?.();
       document.removeEventListener("mousedown", handleWindowDrag);
       document.removeEventListener("keydown", handleHistoryKeys);
     };
