@@ -11,13 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `youskill` command line interface that manages the same hub as the app: `list`, `show`, `status`, `diff`, `import`, `install`, `uninstall`, `remove`, `update`, `sync`, `scan`, `agents`, `projects`, `instructions` and `completions`, with `--json` output and exit codes for scripts. Hub operations are now serialized across processes through `~/.youskill/.ops.lock`, and the app reloads its lists when its window regains focus, so the app and the CLI can run at the same time. The app bundles the tool and Settings offers to install it on the PATH; releases also carry standalone `youskill` archives for macOS and Windows. See `docs/CLI.md`.
-
 ### Changed
 
 ### Fixed
 
 ### Removed
+
+## [0.9.5] - 2026-10-08
+
+### Added
+
+- `youskill` command line interface that manages the same hub as the app: `list`, `show`, `status`, `diff`, `import`, `install`, `uninstall`, `remove`, `update`, `sync`, `scan`, `agents`, `projects` and `instructions`, with `--json` output and exit codes for scripts. See `docs/CLI.md`.
+- Shell completions for bash, zsh, fish, elvish and PowerShell through `youskill completions <shell>`.
+- The app bundles the command line tool, and Settings offers to install it on the PATH. Releases also carry standalone `youskill` archives for macOS and Windows.
+
+### Changed
+
+- The app reloads its skill, instruction and project lists when its window regains focus, so changes made with the command line tool show up without a manual refresh.
+- Hub operations are serialized across processes through `~/.youskill/.ops.lock`, so the app and the command line tool can run at the same time without interleaving changes.
 
 ## [0.9.4] - 2026-10-08
 
