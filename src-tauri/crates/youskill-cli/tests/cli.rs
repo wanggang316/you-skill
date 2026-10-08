@@ -640,3 +640,141 @@ fn import_from_folder_and_scan() {
     .success()
     .stdout(predicate::str::contains("No skills with a GitHub source."));
 }
+
+// ---------------------------------------------------------------------------
+// Instructions
+// ---------------------------------------------------------------------------
+
+#[test]
+fn instructions_import_install_sync_and_remove() {
+  let home = Home::new();
+  with_agents(&home);
+  let rules = home.path().join("rules.md");
+  fs::write(&rules, "# Team rules\n\nBe brief.\n").unwrap();
+
+  home
+    .cmd()
+    .args(["instructions", "list"])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("No instructions in the library."));
+
+  let output = home
+    .cmd()
+    .args([
+      "instructions",
+      "import",
+      rules.to_str().unwrap(),
+      "--name",
+      "Team rules",
+      "--json",
+    ])
+    .assert()
+    .success()
+    .get_output()
+    .stdout
+    .clone();
+  let outcomes: serde_json::Value = serde_json::from_slice(&output).unwrap();
+  let id = outcomes[0]["id"].as_str().unwrap().to_string();
+  assert_eq!(outcomes[0]["name"], "Team rules");
+
+  // The template is addressable by id and by its unique name.
+  home
+    .cmd()
+    .args(["instructions", "show", &id])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("Name:         Team rules"));
+  home
+    .cmd()
+    .args(["instructions", "cat", "team rules"])
+    .assert()
+    .success()
+    .stdout(predicate::str::starts_with("# Team rules"));
+
+  home
+    .cmd()
+    .args([
+      "instructions",
+      "install",
+      "Team rules",
+      "-a",
+      "claude-code",
+      "--mode",
+      "copy",
+    ])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains(
+      "Installed 'Team rules' to user level (claude-code)",
+    ));
+  let target = home.path().join(".claude").join("CLAUDE.md");
+  assert_eq!(
+    fs::read_to_string(&target).unwrap(),
+    "# Team rules\n\nBe brief.\n"
+  );
+  home
+    .cmd()
+    .args(["instructions", "files"])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("Team rules"))
+    .stdout(predicate::str::contains("in_sync"));
+
+  // Edit the agent file, adopt it into the library.
+  fs::write(&target, "# Team rules\n\nBe brief and kind.\n").unwrap();
+  home
+    .cmd()
+    .args([
+      "instructions",
+      "diff",
+      &id,
+      "--target",
+      target.to_str().unwrap(),
+    ])
+    .assert()
+    .code(1)
+    .stdout(predicate::str::contains("+Be brief and kind."));
+  home
+    .cmd()
+    .args([
+      "instructions",
+      "sync",
+      &id,
+      "adopt-target",
+      "--target",
+      target.to_str().unwrap(),
+    ])
+    .assert()
+    .success();
+  home
+    .cmd()
+    .args(["instructions", "cat", &id])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains("Be brief and kind."));
+
+  home
+    .cmd()
+    .args(["instructions", "uninstall", &id, "-a", "all"])
+    .assert()
+    .success();
+  assert!(!target.exists());
+
+  home
+    .cmd()
+    .args(["instructions", "remove", &id])
+    .assert()
+    .code(2);
+  home
+    .cmd()
+    .args(["instructions", "remove", &id, "-y"])
+    .assert()
+    .success();
+  home
+    .cmd()
+    .args(["instructions", "show", &id])
+    .assert()
+    .code(1)
+    .stderr(predicate::str::contains("not in the library"));
+}

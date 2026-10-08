@@ -10,6 +10,10 @@
     openBackupFolder,
     backupSkills,
     getGithubAuthStatus,
+    getCliStatus,
+    installCli,
+    uninstallCli,
+    type CliStatus,
     type GithubAuthStatus,
   } from "$lib/api";
   import TranslateSettingsModal from "$lib/components/TranslateSettingsModal.svelte";
@@ -70,7 +74,60 @@
 
   $effect(() => {
     loadGithubStatus();
+    loadCliStatus();
   });
+
+  // Command line tool state
+  let cliStatus = $state<CliStatus | null>(null);
+  let cliBusy = $state(false);
+  let cliMessage = $state("");
+  let cliMessageIsError = $state(false);
+  const cliSummary = $derived.by(() => {
+    if (!cliStatus) return "";
+    if (!cliStatus.bundled_path) return $t("settings.cli.notBundled");
+    if (!cliStatus.installed) return $t("settings.cli.notInstalled");
+    if (cliStatus.current) return $t("settings.cli.installedAt", { path: cliStatus.install_path });
+    return $t("settings.cli.outdated", { path: cliStatus.install_path });
+  });
+
+  const loadCliStatus = async () => {
+    try {
+      cliStatus = await getCliStatus();
+    } catch (error) {
+      console.error("Failed to load command line tool status:", error);
+    }
+  };
+
+  const handleInstallCli = async () => {
+    cliBusy = true;
+    cliMessage = "";
+    cliMessageIsError = false;
+    try {
+      cliStatus = await installCli();
+      cliMessage = $t("settings.cli.newTerminal");
+    } catch (error) {
+      cliMessage = getErrorMessage(error, $t("settings.cli.installFailed"));
+      cliMessageIsError = true;
+      console.error("Failed to install the command line tool:", error);
+    } finally {
+      cliBusy = false;
+    }
+  };
+
+  const handleRemoveCli = async () => {
+    cliBusy = true;
+    cliMessage = "";
+    cliMessageIsError = false;
+    try {
+      cliStatus = await uninstallCli();
+    } catch (error) {
+      cliMessage = getErrorMessage(error, $t("settings.cli.removeFailed"));
+      cliMessageIsError = true;
+      console.error("Failed to remove the command line tool:", error);
+    } finally {
+      cliBusy = false;
+    }
+  };
 
   const loadGithubStatus = async () => {
     try {
@@ -450,6 +507,53 @@
           {#if backupMessage}
             <span class="mt-1.5 block text-xs text-red-500">
               {backupMessage}
+            </span>
+          {/if}
+        </div>
+
+        <!-- Command line tool -->
+        <div class="bg-base-200 rounded-2xl px-4 py-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex flex-col">
+              <span class="text-base-content text-[15px]">{$t("settings.cli.title")}</span>
+              <span class="text-base-content-muted text-xs">{$t("settings.cli.description")}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              {#if cliStatus?.installed}
+                <button
+                  class="text-base-content-muted hover:bg-base-300 hover:text-base-content rounded-lg px-3 py-1.5 text-[13px] disabled:opacity-50"
+                  onclick={handleRemoveCli}
+                  disabled={cliBusy}
+                  type="button"
+                >
+                  {$t("settings.cli.remove")}
+                </button>
+              {/if}
+              <button
+                class="bg-primary text-primary-content hover:bg-primary-hover flex items-center rounded-lg px-3 py-1.5 text-[13px] disabled:opacity-50"
+                onclick={handleInstallCli}
+                disabled={cliBusy || !cliStatus?.bundled_path || cliStatus?.current}
+                type="button"
+              >
+                {#if cliBusy}
+                  <Loader2 size={13} class="mr-1.5 animate-spin" />
+                {/if}
+                {cliBusy
+                  ? $t("settings.cli.installing")
+                  : cliStatus?.installed
+                    ? $t("settings.cli.reinstall")
+                    : $t("settings.cli.install")}
+              </button>
+            </div>
+          </div>
+          {#if cliSummary}
+            <span class="text-base-content-muted mt-1.5 block text-xs break-all">{cliSummary}</span>
+          {/if}
+          {#if cliMessage}
+            <span
+              class={`mt-1.5 block text-xs ${cliMessageIsError ? "text-red-500" : "text-base-content-muted"}`}
+            >
+              {cliMessage}
             </span>
           {/if}
         </div>

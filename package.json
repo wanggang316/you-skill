@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "build:cli": "node scripts/build-cli.mjs",
     "preview": "vite preview",
     "check": "npm run check:frontend && npm run check:backend",
     "check:frontend": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

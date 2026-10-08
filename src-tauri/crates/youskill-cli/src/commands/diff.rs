@@ -78,7 +78,7 @@ fn diff_source(env: &Env, name: &str) -> Result<SkillDiff, String> {
 }
 
 /// Unified diff with the hub on the left (`a/`) and the target or source on the right.
-fn print_unified(diff: &SkillDiff) {
+pub fn print_unified(diff: &SkillDiff) {
   if diff.files.is_empty() {
     println!(
       "{} and {} are identical ({} files).",
