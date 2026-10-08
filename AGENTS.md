@@ -29,7 +29,7 @@ the relevant docs in parallel.
 
 - `npm run format`: Apply frontend and backend formatting.
 - `npm run check`: Run frontend checks and backend strict checks (`cargo fmt --check` + `clippy -D warnings`).
-- `npm run test`: Run backend unit tests (`cargo test --manifest-path src-tauri/Cargo.toml`).
+- `npm run test`: Run backend unit tests (`cargo test --manifest-path src-tauri/Cargo.toml --workspace`).
 - Preferred local workflow after code changes: `npm run format` -> `npm run check` -> `npm run test`.
 - Before commit/PR, ensure `npm run check` and `npm run test` both pass.
 

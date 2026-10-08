@@ -6392,15 +6392,9 @@ dependencies = [
 name = "you-skill"
 version = "0.9.4"
 dependencies = [
- "chrono",
- "dirs-next",
  "image",
- "reqwest 0.12.28",
  "serde",
  "serde_json",
- "serde_yaml",
- "sha2",
- "similar",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -6408,10 +6402,27 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-shell",
  "tauri-plugin-updater",
- "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "youskill-core",
+]
+
+[[package]]
+name = "youskill-core"
+version = "0.9.4"
+dependencies = [
+ "chrono",
+ "dirs-next",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2",
+ "similar",
+ "tempfile",
+ "tokio",
+ "tracing",
  "uuid",
  "walkdir",
  "zip 2.4.2",

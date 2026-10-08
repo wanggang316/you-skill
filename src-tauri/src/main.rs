@@ -3,11 +3,9 @@
 use tauri::Manager;
 
 mod commands;
-mod config;
-mod models;
-mod services;
 mod tray;
-mod utils;
+
+use youskill_core::{config, models, services, utils};
 
 use commands::{
   agent_apps::{
