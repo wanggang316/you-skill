@@ -170,7 +170,7 @@ pub fn ensure_migrated(env: &Env) -> Result<Option<MigrationReport>, String> {
 }
 
 pub fn migrate_legacy(env: &Env) -> Result<MigrationReport, String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let mut report = MigrationReport::default();
   let legacy_root = legacy_agents_root(&env.home);
   let github_lock =

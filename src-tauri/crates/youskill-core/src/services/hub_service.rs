@@ -70,7 +70,7 @@ fn adopt_untracked_hub_dirs(env: &Env) -> Result<(), String> {
   if untracked.is_empty() {
     return Ok(());
   }
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let timestamp = now_rfc3339();
   store.update(|lock| {
     for (name, hash) in untracked {
@@ -113,7 +113,7 @@ fn prune_stale_agent_ids(env: &Env) -> Result<(), String> {
     return Ok(());
   }
 
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   store(env).update(|lock| {
     for (name, path, kept) in &changes {
       let Some(record) = lock.skills.get_mut(name) else {
@@ -183,7 +183,7 @@ pub fn import_skills(
   items: Vec<ImportItem>,
   overwrite: bool,
 ) -> Result<Vec<ImportOutcome>, String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let mut outcomes = Vec::new();
   let mut errors = Vec::new();
   let mut replaced_names = Vec::new();
@@ -328,7 +328,7 @@ pub fn pull_from_dir(
   updated_source: Option<SkillSource>,
   force: bool,
 ) -> Result<ActionResult, String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let store = store(env);
   let record = store
     .get(name)?
@@ -376,7 +376,7 @@ pub fn pull_from_dir(
 
 /// Mirror the hub copy back into a `folder` source.
 pub fn push_source(env: &Env, name: &str, force: bool) -> Result<ActionResult, String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let store = store(env);
   let record = store
     .get(name)?
@@ -409,7 +409,7 @@ pub fn push_source(env: &Env, name: &str, force: bool) -> Result<ActionResult, S
 
 /// Accept whatever is in the hub directory as the current version.
 pub fn accept_hub(env: &Env, name: &str) -> Result<ActionResult, String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let store = store(env);
   let hub_dir = env.hub_dir(name);
   if !hub_dir.is_dir() {
@@ -436,7 +436,7 @@ pub fn accept_hub(env: &Env, name: &str) -> Result<ActionResult, String> {
 /// Remove a skill from the hub. With `remove_installs = false`, symlink targets are turned
 /// into real copies first so agents keep working.
 pub fn remove_hub_skill(env: &Env, name: &str, remove_installs: bool) -> Result<(), String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let store = store(env);
   let record = store
     .get(name)?
@@ -491,11 +491,11 @@ pub fn sync_skill(env: &Env, name: &str, action: SyncAction) -> Result<ActionRes
       }
     },
     SyncAction::PushTargets { targets, force } => {
-      let _ops = ops_guard();
+      let _ops = ops_guard(env)?;
       push_targets(env, name, targets.as_deref(), force)
     },
     SyncAction::AdoptTarget { path, force } => {
-      let _ops = ops_guard();
+      let _ops = ops_guard(env)?;
       adopt_target(env, name, &path, force)
     },
     SyncAction::AcceptHub => accept_hub(env, name),

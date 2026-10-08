@@ -1,17 +1,74 @@
 use crate::models::{LockFile, SkillRecord, LOCK_VERSION};
 use crate::services::env::Env;
+use crate::utils::path::OPS_LOCK_FILE;
+use std::cell::Cell;
 use std::collections::HashMap;
-use std::fs;
+use std::fs::{self, File, OpenOptions};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
 
-/// Serializes every filesystem-mutating hub operation (import, install, sync, migrate).
+/// Serializes every filesystem-mutating hub operation (import, install, sync, migrate)
+/// inside this process. Across processes (the app and the CLI) the same is done with an
+/// advisory lock on `~/.youskill/.ops.lock`, see [`ops_guard`].
 static OPS: Mutex<()> = Mutex::new(());
+
+thread_local! {
+  /// Whether the current thread is inside an operation, so a lock-file write made from it
+  /// must not take the operation lock again.
+  static IN_OPS: Cell<bool> = const { Cell::new(false) };
+}
 
 static STORES: OnceLock<Mutex<HashMap<PathBuf, Arc<LockStore>>>> = OnceLock::new();
 
-pub fn ops_guard() -> MutexGuard<'static, ()> {
-  OPS.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+/// Holds the process mutex and the file lock of one operation. Dropping it releases both.
+pub struct OpsGuard {
+  file: File,
+  _process: MutexGuard<'static, ()>,
+}
+
+impl Drop for OpsGuard {
+  fn drop(&mut self) {
+    let _ = self.file.unlock();
+    IN_OPS.with(|flag| flag.set(false));
+  }
+}
+
+/// Take the operation lock of the hub `env` points at. Blocks until every other operation,
+/// in this process or another, has finished.
+pub fn ops_guard(env: &Env) -> Result<OpsGuard, String> {
+  ops_guard_at(&env.youskill_root)
+}
+
+/// Lock the operations of the hub rooted at `root` (`~/.youskill`). The lock file is
+/// created on demand and never holds content.
+pub fn ops_guard_at(root: &Path) -> Result<OpsGuard, String> {
+  let process = OPS.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+  fs::create_dir_all(root).map_err(|e| format!("Failed to create {}: {}", root.display(), e))?;
+  let path = root.join(OPS_LOCK_FILE);
+  let file = OpenOptions::new()
+    .create(true)
+    .truncate(false)
+    .write(true)
+    .open(&path)
+    .map_err(|e| format!("Failed to open {}: {}", path.display(), e))?;
+  file
+    .lock()
+    .map_err(|e| format!("Failed to lock {}: {}", path.display(), e))?;
+  IN_OPS.with(|flag| flag.set(true));
+  Ok(OpsGuard {
+    file,
+    _process: process,
+  })
+}
+
+/// The operation lock for a lock-file write that happens outside an operation, such as
+/// storing a source check. Returns `None` when the calling thread already holds it.
+pub fn ops_guard_unless_held(root: &Path) -> Result<Option<OpsGuard>, String> {
+  if IN_OPS.with(|flag| flag.get()) {
+    Ok(None)
+  } else {
+    ops_guard_at(root).map(Some)
+  }
 }
 
 /// One store per lock path so concurrent commands share the same write mutex.
@@ -51,9 +108,12 @@ impl LockStore {
     Ok(self.read()?.skills.get(name).cloned())
   }
 
-  /// Read-modify-write under the store mutex. The file is only rewritten when the closure
-  /// succeeds, through a temp file + rename so a crash never leaves a truncated lock.
+  /// Read-modify-write under the operation lock and the store mutex. The file is only
+  /// rewritten when the closure succeeds, through a temp file + rename so a crash never
+  /// leaves a truncated lock.
   pub fn update<T>(&self, f: impl FnOnce(&mut LockFile) -> Result<T, String>) -> Result<T, String> {
+    let root = self.path.parent().unwrap_or(Path::new("."));
+    let _ops = ops_guard_unless_held(root)?;
     let _guard = self
       .write_lock
       .lock()
@@ -153,6 +213,38 @@ mod tests {
       handle.join().unwrap();
     }
     assert_eq!(store.read().unwrap().skills.len(), 8);
+  }
+
+  #[test]
+  fn ops_guard_holds_the_file_lock_until_dropped() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.path().join(OPS_LOCK_FILE);
+    let guard = ops_guard_at(tmp.path()).unwrap();
+    assert!(path.is_file());
+
+    // A second handle stands in for another process: advisory locks are per open file.
+    let other = File::open(&path).unwrap();
+    assert!(matches!(
+      other.try_lock(),
+      Err(std::fs::TryLockError::WouldBlock)
+    ));
+
+    drop(guard);
+    assert!(other.try_lock().is_ok());
+  }
+
+  #[test]
+  fn update_inside_an_operation_does_not_take_the_lock_again() {
+    let tmp = tempfile::tempdir().unwrap();
+    let store = LockStore::new(tmp.path().join(".skill-lock.json"));
+    let _ops = ops_guard_at(tmp.path()).unwrap();
+    store
+      .update(|lock| {
+        lock.skills.insert("a".to_string(), record("1"));
+        Ok(())
+      })
+      .unwrap();
+    assert!(store.get("a").unwrap().is_some());
   }
 
   #[test]
