@@ -57,6 +57,8 @@ enum Command {
   Agents(commands::agents::Args),
   /// Registered projects.
   Projects(commands::projects::Args),
+  /// Instruction templates (AGENTS.md, CLAUDE.md, ...) and the agent files they install to.
+  Instructions(commands::instructions::Args),
   /// Print a shell completion script, e.g. `youskill completions zsh > ~/.zfunc/_youskill`.
   Completions {
     #[arg(value_enum)]
@@ -94,6 +96,7 @@ fn main() {
     Command::Scan(args) => commands::scan::run(&ctx, args),
     Command::Agents(args) => commands::agents::run(&ctx, args),
     Command::Projects(args) => commands::projects::run(&ctx, args),
+    Command::Instructions(args) => commands::instructions::run(&ctx, args),
     Command::Completions { shell } => {
       clap_complete::generate(
         shell,

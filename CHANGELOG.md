@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `youskill` command line interface that manages the same hub as the app: `list`, `show`, `status`, `diff`, `import`, `install`, `uninstall`, `remove`, `update`, `sync`, `scan`, `agents`, `projects` and `completions`, with `--json` output and exit codes for scripts. Hub operations are now serialized across processes through `~/.youskill/.ops.lock`, and the app reloads its lists when its window regains focus, so the app and the CLI can run at the same time. Releases now also carry `youskill` archives for macOS and Windows. See `docs/CLI.md`.
+- `youskill` command line interface that manages the same hub as the app: `list`, `show`, `status`, `diff`, `import`, `install`, `uninstall`, `remove`, `update`, `sync`, `scan`, `agents`, `projects`, `instructions` and `completions`, with `--json` output and exit codes for scripts. Hub operations are now serialized across processes through `~/.youskill/.ops.lock`, and the app reloads its lists when its window regains focus, so the app and the CLI can run at the same time. Releases now also carry `youskill` archives for macOS and Windows. See `docs/CLI.md`.
 
 ### Changed
 

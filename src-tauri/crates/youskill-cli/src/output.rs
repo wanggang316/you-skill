@@ -3,7 +3,7 @@
 
 use serde::Serialize;
 use std::io::{self, BufRead, IsTerminal, Write};
-use youskill_core::models::{ActionResult, SkillSource};
+use youskill_core::models::{ActionResult, InstructionActionResult, SkillSource};
 
 pub const EXIT_OK: i32 = 0;
 pub const EXIT_ERROR: i32 = 1;
@@ -85,22 +85,46 @@ pub fn source_label(source: &SkillSource) -> String {
   }
 }
 
+/// The result of a mutating action on a skill or an instruction.
+pub trait Outcome: Serialize {
+  fn applied(&self) -> bool;
+  fn blockers(&self) -> &[String];
+}
+
+impl Outcome for ActionResult {
+  fn applied(&self) -> bool {
+    self.applied
+  }
+  fn blockers(&self) -> &[String] {
+    &self.blockers
+  }
+}
+
+impl Outcome for InstructionActionResult {
+  fn applied(&self) -> bool {
+    self.applied
+  }
+  fn blockers(&self) -> &[String] {
+    &self.blockers
+  }
+}
+
 /// Report one mutating action: blockers go to stderr with exit 2, an applied action prints
-/// `label` and the resulting target states. With `--json` the `ActionResult` is printed as
-/// is and the exit code is the only difference.
-pub fn report_action(ctx: &Ctx, label: &str, result: &ActionResult) -> Result<i32, String> {
+/// `label`. With `--json` the result is printed as is and the exit code is the only
+/// difference.
+pub fn report_action<T: Outcome>(ctx: &Ctx, label: &str, result: &T) -> Result<i32, String> {
   if ctx.json {
     emit_json(result)?;
-  } else if result.applied {
+  } else if result.applied() {
     ctx.say(label);
   } else {
     eprintln!("{}: blocked", label);
-    for blocker in &result.blockers {
+    for blocker in result.blockers() {
       eprintln!("  - {}", blocker);
     }
     eprintln!("Retry with --force to discard the local changes.");
   }
-  Ok(if result.applied {
+  Ok(if result.applied() {
     EXIT_OK
   } else {
     EXIT_BLOCKED

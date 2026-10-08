@@ -42,7 +42,7 @@ pub struct Args {
 pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
   let env = Env::current()?;
   let scope = super::Scope::from_project_flag(args.project.as_deref())?;
-  let agent_ids = super::resolve_agents(&env, &args.agents, &scope)?;
+  let agent_ids = super::resolve_agents(&env, &args.agents, &scope, super::Unit::Skill)?;
   let mode = match args.mode {
     Some(mode) => InstallMode::from(mode),
     None => InstallMode::from_setting(&load_config()?.sync_mode),

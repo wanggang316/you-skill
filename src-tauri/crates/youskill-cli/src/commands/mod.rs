@@ -2,6 +2,7 @@ pub mod agents;
 pub mod diff;
 pub mod import;
 pub mod install;
+pub mod instructions;
 pub mod list;
 pub mod projects;
 pub mod remove;
@@ -131,20 +132,30 @@ impl Scope {
   }
 }
 
+/// What an install writes: a skill directory or an agent instruction file.
+#[derive(Clone, Copy)]
+pub enum Unit {
+  Skill,
+  Instruction,
+}
+
 /// The agent ids of `-a`: explicit ids are checked against the detected apps, `all` means
-/// every detected app that has a skills directory in this scope.
+/// every detected app that has a location for this unit in this scope.
 pub fn resolve_agents(
   env: &Env,
   requested: &[String],
   scope: &Scope,
+  unit: Unit,
 ) -> Result<Vec<String>, String> {
   if requested.iter().any(|id| id == "all") {
     let ids: Vec<String> = env
       .agent_apps
       .iter()
-      .filter(|app| match scope.scope {
-        InstallScope::User => app.global_path.is_some(),
-        InstallScope::Project => app.project_path.is_some(),
+      .filter(|app| match (unit, scope.scope) {
+        (Unit::Skill, InstallScope::User) => app.global_path.is_some(),
+        (Unit::Skill, InstallScope::Project) => app.project_path.is_some(),
+        (Unit::Instruction, InstallScope::User) => app.global_profile_path.is_some(),
+        (Unit::Instruction, InstallScope::Project) => app.profile_path.is_some(),
       })
       .map(|app| app.id.clone())
       .collect();
