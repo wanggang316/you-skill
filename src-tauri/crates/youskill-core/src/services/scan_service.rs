@@ -215,7 +215,7 @@ fn import_one_decision(
       if !hub_dir.is_dir() {
         return Err("Hub copy is missing".to_string());
       }
-      let _ops = ops_guard();
+      let _ops = ops_guard(env)?;
       if same_path(&dir, &hub_dir) {
         return Ok(None);
       }
@@ -234,7 +234,7 @@ fn import_one_decision(
   let register = decision.register_install || resolution == ScanResolution::RegisterOnly;
   if let Some(matched) = in_agent_root {
     if register && store(env).get(&name)?.is_some() {
-      let _ops = ops_guard();
+      let _ops = ops_guard(env)?;
       register_existing_install(
         env,
         &name,

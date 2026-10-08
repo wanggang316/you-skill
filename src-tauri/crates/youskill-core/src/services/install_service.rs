@@ -267,7 +267,7 @@ enum Plan {
 }
 
 pub fn install_skill(env: &Env, request: InstallRequest) -> Result<ActionResult, String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let name = request.name.trim().to_string();
   let store = store(env);
   let record = store
@@ -467,7 +467,7 @@ fn classify_new_target(
 }
 
 pub fn uninstall_skill(env: &Env, request: UninstallRequest) -> Result<ActionResult, String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let name = request.name.trim().to_string();
   let store = store(env);
   let record = store

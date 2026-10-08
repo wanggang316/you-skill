@@ -26,7 +26,8 @@ YouSkill is a desktop [Agent Skills](https://agentskills.io/) manager that helps
 7. Compatible with the `.agents/skills` shared directory convention (the "Agents (shared)" target).
 8. One-click backup of the whole library, multi-theme and multilingual UI.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the storage layout, lock file and drift model.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the storage layout, lock file and drift model,
+and [docs/CLI.md](docs/CLI.md) for the `youskill` command line interface.
 
 ## Preview
 

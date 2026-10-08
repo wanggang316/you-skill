@@ -231,7 +231,7 @@ pub async fn pull_github_source(
   };
 
   let tmp_path = detected.tmp_path.clone();
-  tauri::async_runtime::spawn_blocking(move || {
+  tokio::task::spawn_blocking(move || {
     pull_from_dir(
       &env,
       &name,

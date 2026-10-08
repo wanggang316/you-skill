@@ -15,7 +15,7 @@ use crate::services::diff_service::diff_files;
 use crate::services::drift_service::compare_three_way;
 use crate::services::env::Env;
 use crate::services::install_service::ResolvedTarget;
-use crate::services::lock_service::ops_guard;
+use crate::services::lock_service::{self, ops_guard};
 use crate::services::workspace_service::references_of;
 use crate::utils::folder::create_temp_dir;
 use crate::utils::github::GithubHelper;
@@ -62,11 +62,13 @@ fn get_record(env: &Env, name: &str) -> Result<InstructionRecord, String> {
     .ok_or_else(|| format!("Instruction '{}' is not in the library", name))
 }
 
-/// Read-modify-write under a process-wide mutex; written through a temp file + rename.
+/// Read-modify-write under the operation lock and a process-wide mutex; written through a
+/// temp file + rename.
 fn update_lock<T>(
   env: &Env,
   f: impl FnOnce(&mut InstructionLockFile) -> Result<T, String>,
 ) -> Result<T, String> {
+  let _ops = lock_service::ops_guard_unless_held(&env.youskill_root)?;
   let _guard = WRITE_LOCK
     .lock()
     .unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -437,7 +439,7 @@ fn migrate_named_records(env: &Env) -> Result<(), String> {
   if legacy.is_empty() {
     return Ok(());
   }
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let mut renamed: Vec<(String, String)> = Vec::new();
   let mut dropped: Vec<String> = Vec::new();
   for (key, record) in legacy {
@@ -549,7 +551,7 @@ pub fn import_instructions(
   env: &Env,
   items: Vec<InstructionImportItem>,
 ) -> Result<Vec<InstructionImportOutcome>, String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let mut outcomes = Vec::new();
   let mut errors = Vec::new();
   for item in items {
@@ -657,7 +659,7 @@ pub fn create_instruction(
   name: &str,
   content: &str,
 ) -> Result<InstructionImportOutcome, String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let name = validate_name(name)?;
   let id = new_id();
   let hub_file = env.instruction_file(&id);
@@ -706,7 +708,7 @@ pub fn rename_instruction(env: &Env, id: &str, name: &str) -> Result<Instruction
 
 /// Accept whatever is in the library file as the current version.
 pub fn accept_hub(env: &Env, name: &str) -> Result<InstructionActionResult, String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let hub_file = env.instruction_file(name);
   if !hub_file.is_file() {
     return Err(format!(
@@ -730,7 +732,7 @@ pub fn accept_hub(env: &Env, name: &str) -> Result<InstructionActionResult, Stri
 /// Remove an instruction from the library. With `remove_installs = false`, symlink targets
 /// become real files first so agents keep reading them.
 pub fn remove_instruction(env: &Env, name: &str, remove_installs: bool) -> Result<(), String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let record = get_record(env, name)?;
   let hub_file = env.instruction_file(name);
   let mut errors = Vec::new();
@@ -936,7 +938,7 @@ pub fn install_instruction(
   env: &Env,
   request: InstallRequest,
 ) -> Result<InstructionActionResult, String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let name = request.name.trim().to_string();
   let lock = read_lock(env)?;
   let record = lock
@@ -1088,7 +1090,7 @@ pub fn uninstall_instruction(
   env: &Env,
   request: UninstallRequest,
 ) -> Result<InstructionActionResult, String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   let name = request.name.trim().to_string();
   let record = get_record(env, &name)?;
   let hub_hash = hash_file(&env.instruction_file(&name)).ok();
@@ -1354,11 +1356,11 @@ pub fn sync_instruction(
 ) -> Result<InstructionActionResult, String> {
   match action {
     SyncAction::PushTargets { targets, force } => {
-      let _ops = ops_guard();
+      let _ops = ops_guard(env)?;
       push_targets(env, name, targets.as_deref(), force)
     },
     SyncAction::AdoptTarget { path, force } => {
-      let _ops = ops_guard();
+      let _ops = ops_guard(env)?;
       adopt_target(env, name, &path, force)
     },
     SyncAction::AcceptHub => accept_hub(env, name),
@@ -1827,7 +1829,7 @@ pub fn write_instruction(
   name: &str,
   content: &str,
 ) -> Result<InstructionActionResult, String> {
-  let _ops = ops_guard();
+  let _ops = ops_guard(env)?;
   get_record(env, name)?;
   let hub_file = env.instruction_file(name);
   fs::create_dir_all(&env.instructions_root).map_err(|e| e.to_string())?;

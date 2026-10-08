@@ -7,6 +7,8 @@ pub const LOCK_FILE: &str = ".skill-lock.json";
 pub const INSTRUCTIONS_DIR: &str = "instructions";
 pub const INSTRUCTION_LOCK_FILE: &str = ".instruction-lock.json";
 pub const TRASH_DIR: &str = ".trash";
+/// Advisory lock file that serializes hub operations across processes.
+pub const OPS_LOCK_FILE: &str = ".ops.lock";
 const MAX_SKILL_NAME_LEN: usize = 64;
 
 pub fn youskill_root(home: &Path) -> PathBuf {

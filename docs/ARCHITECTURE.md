@@ -18,7 +18,7 @@ Code is the source of truth; when this document and the code disagree, fix the d
 <config_dir>/youskill/    # app config, custom agent apps, registered projects (unchanged)
 ```
 
-Agent apps are defined in `src-tauri/src/services/agent_apps_service.rs`. Each app has a
+Agent apps are defined in `src-tauri/crates/youskill-core/src/services/agent_apps_service.rs`. Each app has a
 user-level skills directory and a project-level one. Apps that natively read the shared
 directories (`~/.agents/skills` and `.agents/skills`: Codex, Cursor, GitHub Copilot, VS
 Code, Gemini CLI, OpenCode, Kimi, Warp, Zed) use them as their paths, so one install
@@ -79,7 +79,7 @@ the projects page can group them; projects registered before workspaces existed 
 
 ## Content hash
 
-`src-tauri/src/utils/hash.rs::hash_dir` is the only content hash: sha256 over entries
+`src-tauri/crates/youskill-core/src/utils/hash.rs::hash_dir` is the only content hash: sha256 over entries
 sorted by relative path (`/` separators), excluding `.git`, `node_modules`, `.DS_Store`,
 `Thumbs.db`. Files contribute `rel 0x00 content 0xFF`, symlinks `rel 0x01 target 0xFF`.
 A stat-only signature caches results in memory so listing stays cheap.
@@ -142,6 +142,9 @@ rest get an id and keep their key as name. Everything lives in `instruction_serv
 | Detection    | `detect_github_manual`, `detect_github_auto`, `detect_zip`, `detect_folder` (stage into a temp dir)                                                                                                                                                                            |
 | Other        | marketplace, agent apps, projects, settings, backup, file readers, translation                                                                                                                                                                                                 |
 
+Services live in the `youskill-core` crate (`src-tauri/crates/youskill-core`), which the
+Tauri app and the `youskill` CLI (see [CLI.md](CLI.md)) both depend on; the app's
+`src-tauri/src/commands/*` are thin adapters over it.
 Services: `hub_service` (hub + lock records), `install_service` (targets), `drift_service`
 (pure state computation), `diff_service` (file-level diff of the hub against a target or
 source), `scan_service`, `migration_service`, `source_service` (network), `lock_service`
