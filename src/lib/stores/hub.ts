@@ -75,20 +75,46 @@ export function applySkillView(view: HubSkillView | null | undefined): void {
   });
 }
 
-export async function checkSourceUpdates(names?: string[]): Promise<SourceUpdate[]> {
-  if (get(sourceChecking)) return get(lastSourceCheck);
+/** Automatic checks run at most this often; the GitHub API allows 60 anonymous requests an hour. */
+const AUTO_SOURCE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+
+let sourceCheckPromise: Promise<SourceUpdate[]> | null = null;
+let lastFullSourceCheckAt = 0;
+
+export function checkSourceUpdates(names?: string[]): Promise<SourceUpdate[]> {
+  if (sourceCheckPromise) return sourceCheckPromise;
   sourceChecking.set(true);
-  try {
-    const result = await checkSourceUpdatesApi(names ?? null);
-    lastSourceCheck.set(result);
-    await refreshHub();
-    return result;
-  } catch (error) {
-    console.error("Failed to check source updates:", error);
-    return [];
-  } finally {
-    sourceChecking.set(false);
+  sourceCheckPromise = (async () => {
+    try {
+      const result = await checkSourceUpdatesApi(names ?? null);
+      lastSourceCheck.set(result);
+      await refreshHub();
+      return result;
+    } catch (error) {
+      console.error("Failed to check source updates:", error);
+      return [];
+    } finally {
+      sourceChecking.set(false);
+      sourceCheckPromise = null;
+    }
+  })();
+  return sourceCheckPromise;
+}
+
+/**
+ * Check every GitHub-sourced skill in one batched call. Automatic triggers (startup, opening
+ * the library) are throttled; `force` is for an explicit refresh.
+ */
+export async function checkAllSourceUpdates(
+  options: { force?: boolean } = {}
+): Promise<SourceUpdate[]> {
+  if (!get(hubSkills).some((skill) => skill.source.type === "github")) return [];
+  const now = Date.now();
+  if (!options.force && now - lastFullSourceCheckAt < AUTO_SOURCE_CHECK_INTERVAL_MS) {
+    return get(lastSourceCheck);
   }
+  lastFullSourceCheckAt = now;
+  return checkSourceUpdates();
 }
 
 export async function loadMigrationReport(): Promise<void> {

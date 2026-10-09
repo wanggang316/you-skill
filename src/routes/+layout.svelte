@@ -23,7 +23,12 @@
   import { readSidebarWidth, SIDEBAR, writeSidebarWidth } from "$lib/navigation/sidebar";
   import { t } from "$lib/i18n";
   import { loadHomePath } from "$lib/stores/env";
-  import { loadAgents, loadMigrationReport, refreshHub } from "$lib/stores/hub";
+  import {
+    checkAllSourceUpdates,
+    loadAgents,
+    loadMigrationReport,
+    refreshHub,
+  } from "$lib/stores/hub";
   import { refreshInstructions } from "$lib/stores/instructions";
   import { openImportModal } from "$lib/stores/modals";
   import { loadSettings } from "$lib/stores/settings";
@@ -138,7 +143,10 @@
     refreshWorkspaces().catch(console.error);
     loadHomePath().catch(console.error);
     refreshHub()
-      .then(() => loadMigrationReport())
+      .then(() => {
+        void checkAllSourceUpdates();
+        return loadMigrationReport();
+      })
       .catch(console.error);
     refreshInstructions().catch(console.error);
     ensureUpdateChecked().catch(console.error);
@@ -182,6 +190,7 @@
       hasUpdate={$updaterState.hasUpdate}
       updateLoading={$updaterState.installing}
       onImportSkill={() => openImportModal()}
+      onOpenLibrary={() => void checkAllSourceUpdates()}
       onOpenUpdate={() => installAvailableUpdate().catch(console.error)}
     />
 

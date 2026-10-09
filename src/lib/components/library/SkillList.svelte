@@ -12,6 +12,7 @@
     totalCount = 0,
     selectedName = null,
     loading = false,
+    checking = false,
     error = "",
     search = $bindable(""),
     filter = "all",
@@ -26,6 +27,8 @@
     totalCount?: number;
     selectedName?: string | null;
     loading?: boolean;
+    /** Source update check in progress. */
+    checking?: boolean;
     error?: string;
     search?: string;
     filter?: LibraryFilter;
@@ -71,7 +74,7 @@
         ariaLabel={$t("library.refresh")}
         class="h-8 w-8 p-0"
       >
-        <RefreshCw size={15} class={loading ? "animate-spin" : ""} />
+        <RefreshCw size={15} class={loading || checking ? "animate-spin" : ""} />
       </IconButton>
     </div>
   </header>
