@@ -257,6 +257,18 @@
       </div>
     {/if}
 
+    {#if replacedNames.length > 0}
+      <div
+        class="border-base-300 bg-base-200 text-base-content flex items-start gap-2 rounded-xl border px-3 py-2 text-xs"
+      >
+        <Info size={14} class="text-primary mt-0.5 shrink-0" />
+        <div class="min-w-0 flex-1">
+          <p>{$t("install.replaceHint", { count: replacedNames.length })}</p>
+          <p class="text-base-content-muted mt-1 break-words">{replacedNames.join(", ")}</p>
+        </div>
+      </div>
+    {/if}
+
     <AgentPicker
       agents={$agents}
       scope={pickerScope}
@@ -277,18 +289,6 @@
         <option value="symlink">{$t("install.mode.symlink")}</option>
       </SelectField>
     </div>
-
-    {#if replacedNames.length > 0}
-      <div
-        class="border-base-300 bg-base-200 text-base-content flex items-start gap-2 rounded-xl border px-3 py-2 text-xs"
-      >
-        <Info size={14} class="text-primary mt-0.5 shrink-0" />
-        <div class="min-w-0 flex-1">
-          <p>{$t("install.replaceHint", { count: replacedNames.length })}</p>
-          <p class="text-base-content-muted mt-1 break-words">{replacedNames.join(", ")}</p>
-        </div>
-      </div>
-    {/if}
 
     {#if error}
       <div class="text-error flex items-start gap-2 text-sm whitespace-pre-wrap">
