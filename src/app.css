@@ -671,6 +671,15 @@ pre.code-block--compact {
   border-bottom: none;
 }
 
+/* Bilingual view: `.markdown-translation` holds the translation of the block before it. */
+.markdown-translation-dashed .markdown-translation {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in oklch, var(--primary) 70%, transparent);
+  text-underline-offset: 0.3em;
+}
+
 /* 推理过程的特殊样式 - 浅色模式 */
 .reasoning-content {
   line-height: 1.5;
