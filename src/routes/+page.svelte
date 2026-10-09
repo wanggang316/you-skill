@@ -28,6 +28,7 @@
   } from "$lib/api";
   import {
     agentsById,
+    checkAllSourceUpdates,
     checkSourceUpdates,
     hubError,
     hubLoading,
@@ -232,6 +233,12 @@
     openInFileManager(selectedSkill.hubPath).catch((error) => (actionError = String(error)));
   }
 
+  function handleRefresh() {
+    refreshHub()
+      .then(() => checkAllSourceUpdates({ force: true }))
+      .catch(console.error);
+  }
+
   function handleCheckSource() {
     if (!selectedSkill) return;
     void checkSourceUpdates([selectedSkill.name]).then((updates) => {
@@ -288,12 +295,13 @@
       totalCount={$hubSkills.length}
       {selectedName}
       loading={$hubLoading}
+      checking={$sourceChecking}
       error={$hubError}
       bind:search
       {filter}
       {source}
       onSelect={handleSelect}
-      onRefresh={() => refreshHub().catch(console.error)}
+      onRefresh={handleRefresh}
       onScan={() => openScanRootsModal()}
       onFilterChange={(next) => navigate({ filter: next })}
       onSourceChange={(next) => navigate({ source: next })}

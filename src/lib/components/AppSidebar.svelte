@@ -27,6 +27,7 @@
     hasUpdate,
     updateLoading,
     onImportSkill,
+    onOpenLibrary,
     onOpenUpdate,
   }: {
     activeKey: SidebarActiveKey;
@@ -35,6 +36,7 @@
     hasUpdate: boolean;
     updateLoading: boolean;
     onImportSkill: () => void;
+    onOpenLibrary: () => void;
     onOpenUpdate: () => void;
   } = $props();
 
@@ -98,6 +100,7 @@
         class:text-base-content={activeKey === "library"}
         class:font-medium={activeKey === "library"}
         href={buildLibraryHref()}
+        onclick={onOpenLibrary}
         aria-current={activeKey === "library" ? "page" : undefined}
         title={$t("sidebar.library")}
       >
