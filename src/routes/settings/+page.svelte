@@ -16,7 +16,9 @@
     type CliStatus,
     type GithubAuthStatus,
   } from "$lib/api";
-  import TranslateSettingsModal from "$lib/components/TranslateSettingsModal.svelte";
+  import TranslateSettingsModal, {
+    type TranslateSettingsPayload,
+  } from "$lib/components/TranslateSettingsModal.svelte";
   import { open } from "@tauri-apps/plugin-dialog";
   import { FolderOpen, Loader2, ChevronRight, Download } from "@lucide/svelte";
   import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -303,17 +305,15 @@
     goto(`/agent-apps?returnTo=${returnTo}`);
   };
 
-  const handleSaveTranslateSettings = async (payload: {
-    apiKey: string;
-    targetLanguage: string;
-    model: string;
-  }) => {
+  const handleSaveTranslateSettings = async (payload: TranslateSettingsPayload) => {
     savingTranslateSettings = true;
     try {
       await updateSettings({
         openrouter_api_key: payload.apiKey || null,
         translate_target_language: payload.targetLanguage.trim(),
         translate_model: payload.model.trim(),
+        translate_display_mode: payload.displayMode,
+        translate_text_style: payload.textStyle,
       });
       translateSettingsOpen = false;
     } finally {
@@ -613,6 +613,8 @@
   apiKey={$settings.openrouter_api_key ?? ""}
   targetLanguage={$settings.translate_target_language || ""}
   model={$settings.translate_model || ""}
+  displayMode={$settings.translate_display_mode}
+  textStyle={$settings.translate_text_style}
   saving={savingTranslateSettings}
   onSave={handleSaveTranslateSettings}
 />

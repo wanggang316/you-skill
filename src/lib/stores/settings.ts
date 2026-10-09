@@ -10,6 +10,8 @@ const defaultSettings: AppSettings = {
   openrouter_api_key: null,
   translate_target_language: "",
   translate_model: "",
+  translate_display_mode: "bilingual",
+  translate_text_style: "none",
 };
 
 export const settings = writable<AppSettings>({ ...defaultSettings });
@@ -106,6 +108,9 @@ export const loadSettings = async () => {
       openrouter_api_key: remote.openrouter_api_key ?? null,
       translate_target_language: remote.translate_target_language ?? "",
       translate_model: remote.translate_model ?? "",
+      translate_display_mode:
+        remote.translate_display_mode ?? defaultSettings.translate_display_mode,
+      translate_text_style: remote.translate_text_style ?? defaultSettings.translate_text_style,
     };
     settings.set(merged);
     applyTheme(merged.theme);

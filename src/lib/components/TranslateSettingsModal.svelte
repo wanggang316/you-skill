@@ -1,3 +1,15 @@
+<script lang="ts" module>
+  import type { TranslateDisplayMode, TranslateTextStyle } from "$lib/api/settings";
+
+  export interface TranslateSettingsPayload {
+    apiKey: string;
+    targetLanguage: string;
+    model: string;
+    displayMode: TranslateDisplayMode;
+    textStyle: TranslateTextStyle;
+  }
+</script>
+
 <script lang="ts">
   import Modal from "$lib/components/ui/Modal.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
@@ -10,6 +22,8 @@
     apiKey = "",
     targetLanguage = "",
     model = "",
+    displayMode = "bilingual",
+    textStyle = "none",
     saving = false,
     onSave = async () => {},
     onCancel = () => {},
@@ -18,18 +32,18 @@
     apiKey?: string;
     targetLanguage?: string;
     model?: string;
+    displayMode?: TranslateDisplayMode;
+    textStyle?: TranslateTextStyle;
     saving?: boolean;
-    onSave?: (payload: {
-      apiKey: string;
-      targetLanguage: string;
-      model: string;
-    }) => Promise<void> | void;
+    onSave?: (payload: TranslateSettingsPayload) => Promise<void> | void;
     onCancel?: () => void;
   }>();
 
   let draftApiKey = $state("");
   let draftTargetLanguage = $state("");
   let draftModel = $state("");
+  let draftDisplayMode = $state<TranslateDisplayMode>("bilingual");
+  let draftTextStyle = $state<TranslateTextStyle>("none");
   let modelOptions = $state<OpenRouterModelOption[]>([]);
   let loadingModels = $state(false);
   let modelsError = $state("");
@@ -55,6 +69,8 @@
       draftApiKey = apiKey || "";
       draftTargetLanguage = targetLanguage || "";
       draftModel = model || "";
+      draftDisplayMode = displayMode;
+      draftTextStyle = textStyle;
     }
   });
 
@@ -86,6 +102,8 @@
       apiKey: draftApiKey.trim(),
       targetLanguage: draftTargetLanguage.trim(),
       model: draftModel.trim(),
+      displayMode: draftDisplayMode,
+      textStyle: draftTextStyle,
     });
   };
 </script>
@@ -154,6 +172,26 @@
           {$t("settings.translation.modelHint")}
         {/if}
       </p>
+    </div>
+    <div class="space-y-1.5">
+      <label class="text-base-content text-sm font-medium" for="translate-display-mode">
+        {$t("settings.translation.displayMode")}
+      </label>
+      <SelectField id="translate-display-mode" bind:value={draftDisplayMode} className="w-full">
+        <option value="bilingual">{$t("settings.translation.displayModeBilingual")}</option>
+        <option value="translation">{$t("settings.translation.displayModeTranslation")}</option>
+      </SelectField>
+    </div>
+    <div class="space-y-1.5">
+      <label class="text-base-content text-sm font-medium" for="translate-text-style">
+        {$t("settings.translation.textStyle")}
+      </label>
+      <SelectField id="translate-text-style" bind:value={draftTextStyle} className="w-full">
+        <option value="none">{$t("settings.translation.textStyleNone")}</option>
+        <option value="dashed_underline">
+          {$t("settings.translation.textStyleDashedUnderline")}
+        </option>
+      </SelectField>
     </div>
   </div>
   {#snippet footer()}

@@ -6,6 +6,9 @@
 
 import { apiCall } from "./index";
 
+export type TranslateDisplayMode = "bilingual" | "translation";
+export type TranslateTextStyle = "none" | "dashed_underline";
+
 export interface AppSettings {
   language: "en" | "zh";
   theme: "system" | "light" | "dark";
@@ -16,6 +19,8 @@ export interface AppSettings {
   openrouter_api_key?: string | null;
   translate_target_language: string;
   translate_model: string;
+  translate_display_mode: TranslateDisplayMode;
+  translate_text_style: TranslateTextStyle;
 }
 
 export type EditableSettings = Pick<
@@ -26,6 +31,8 @@ export type EditableSettings = Pick<
   | "openrouter_api_key"
   | "translate_target_language"
   | "translate_model"
+  | "translate_display_mode"
+  | "translate_text_style"
 >;
 
 /**
