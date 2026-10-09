@@ -372,7 +372,7 @@ const translations: Record<string, Dictionary> = {
     "install.noChanges": "No changes",
     "install.removeHint": "Unchecked agents will be uninstalled.",
     "install.replaceHint":
-      "{count} selected skills are already installed here. Their current installs here are removed, then the skills are installed again.",
+      "{count} selected skills are already installed here. When you apply, their current installs here will be removed and the skills installed again.",
 
     "market.title": "Marketplace",
     "market.search.placeholder": "Search the marketplace",
@@ -861,7 +861,7 @@ const translations: Record<string, Dictionary> = {
     "install.noChanges": "没有变更",
     "install.removeHint": "取消勾选的 Agent 将被卸载。",
     "install.replaceHint":
-      "所选 Skill 中有 {count} 个已安装到此位置，将覆盖原有安装（先重置，再重新安装）。",
+      "所选 Skill 中有 {count} 个已安装到此位置。点击应用后，会先移除这些 Skill 在此处的原有安装，再重新安装。",
 
     "market.title": "市场",
     "market.search.placeholder": "搜索市场",
