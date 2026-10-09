@@ -44,6 +44,8 @@ const translations: Record<string, Dictionary> = {
     "library.tag.changed": "Changed",
     "library.tag.uninstalled": "Not installed",
     "library.installCount": "{count} targets",
+    "library.group.none": "No source",
+    "library.batchInstall": "Install {count} skills",
     "sidebar.instructions": "Instructions",
     "instructions.title": "Instructions",
     "instructions.templates": "Templates",
@@ -369,6 +371,8 @@ const translations: Record<string, Dictionary> = {
     "install.applying": "Applying...",
     "install.noChanges": "No changes",
     "install.removeHint": "Unchecked agents will be uninstalled.",
+    "install.replaceHint":
+      "{count} selected skills are already installed here. Their current installs here are removed, then the skills are installed again.",
 
     "market.title": "Marketplace",
     "market.search.placeholder": "Search the marketplace",
@@ -538,6 +542,8 @@ const translations: Record<string, Dictionary> = {
     "library.tag.changed": "变更",
     "library.tag.uninstalled": "未安装",
     "library.installCount": "{count} 个目标",
+    "library.group.none": "无来源",
+    "library.batchInstall": "批量安装 {count} 个",
     "sidebar.instructions": "指令",
     "instructions.title": "指令",
     "instructions.templates": "模板",
@@ -854,6 +860,8 @@ const translations: Record<string, Dictionary> = {
     "install.applying": "应用中...",
     "install.noChanges": "没有变更",
     "install.removeHint": "取消勾选的 Agent 将被卸载。",
+    "install.replaceHint":
+      "所选 Skill 中有 {count} 个已安装到此位置，将覆盖原有安装（先重置，再重新安装）。",
 
     "market.title": "市场",
     "market.search.placeholder": "搜索市场",
