@@ -1,12 +1,13 @@
 <script lang="ts">
   import { open as openExternal } from "@tauri-apps/plugin-shell";
   import hljs from "highlight.js/lib/common";
-  import { ExternalLink, Languages, List, Loader2 } from "@lucide/svelte";
+  import { Check, ChevronDown, ExternalLink, Languages, List, Loader2 } from "@lucide/svelte";
+  import { DropdownMenu } from "bits-ui";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import SkillDirectoryDrawer from "$lib/components/SkillDirectoryDrawer.svelte";
   import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
   import MarkdownPreview from "$lib/components/MarkdownPreview.svelte";
-  import SegmentedTabs from "$lib/components/ui/SegmentedTabs.svelte";
+  import { menuContentClass, menuItemClass } from "$lib/components/ui/menu";
   import CodePreview from "$lib/components/CodePreview.svelte";
   import ImagePreview from "$lib/components/ImagePreview.svelte";
   import TranslateSettingsModal, {
@@ -208,11 +209,14 @@
   const getExtension = (filePath: string) => filePath.split(".").at(-1)?.toLowerCase() || "";
   const activeEntry = $derived(directoryEntries.find((entry) => entry.path === activeFilePath));
   const isTranslatableMarkdown = $derived(fileViewMode === "markdown");
-  const translationViewItems = $derived([
+  const translationViewItems = $derived<Array<{ value: TranslationView; label: string }>>([
     { value: "bilingual", label: $t("detail.showBilingual") },
     { value: "translation", label: $t("detail.showTranslated") },
     { value: "original", label: $t("detail.showOriginal") },
   ]);
+  const translationViewLabel = $derived(
+    translationViewItems.find((item) => item.value === translationView)?.label ?? ""
+  );
   const translatedMarkdown = $derived(
     translatedMarkdownContent ? parseMarkdown(translatedMarkdownContent) : null
   );
@@ -647,12 +651,40 @@
     </div>
     <div class="flex shrink-0 items-center gap-1.5">
       {#if isTranslatableMarkdown && translatedMarkdownContent}
-        <SegmentedTabs
-          size="sm"
-          items={translationViewItems}
-          value={translationView}
-          onChange={(value) => (translationView = value as TranslationView)}
-        />
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger
+            class="border-base-300 text-base-content hover:bg-base-200 data-[state=open]:bg-base-200 flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition"
+          >
+            <Languages size={13} />
+            {translationViewLabel}
+            <ChevronDown size={12} class="text-base-content-muted" />
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              class={menuContentClass}
+              align="end"
+              sideOffset={4}
+              collisionPadding={8}
+            >
+              <DropdownMenu.RadioGroup
+                value={translationView}
+                onValueChange={(value) => (translationView = value as TranslationView)}
+              >
+                {#each translationViewItems as item (item.value)}
+                  <DropdownMenu.RadioItem
+                    value={item.value}
+                    class={`${menuItemClass()} flex items-center justify-between gap-3`}
+                  >
+                    {#snippet children({ checked })}
+                      {item.label}
+                      <Check size={13} class={checked ? "" : "invisible"} />
+                    {/snippet}
+                  </DropdownMenu.RadioItem>
+                {/each}
+              </DropdownMenu.RadioGroup>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
       {:else if isTranslatableMarkdown}
         <button
           class="border-base-300 text-base-content hover:bg-base-200 flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition disabled:opacity-50"
