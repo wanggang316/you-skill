@@ -88,6 +88,10 @@ A stat-only signature caches results in memory so listing stays cheap.
 
 Three nodes per skill: source S, hub H, targets T. `list_hub_skills` computes everything
 offline; `check_source_updates` is the only network call and stores its result in the lock.
+It batches: the marketplace answers for the skills it indexes, then one GitHub trees request
+per repository and branch covers the rest. The app runs it for all skills at startup and when
+the library is opened from the sidebar (at most every five minutes), and on every library
+refresh (`checkAllSourceUpdates` in `stores/hub.ts`).
 
 | Node             | States                                                                                           | Rule                                                                                                                              |
 | ---------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |

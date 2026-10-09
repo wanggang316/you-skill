@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The app checks GitHub-sourced skills for updates when it starts, when the library is opened from the sidebar and when the library is refreshed. All skills are checked in one batched call; automatic checks run at most every five minutes, the refresh button always checks.
+
 ### Changed
 
 ### Fixed
