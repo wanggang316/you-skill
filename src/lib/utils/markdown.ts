@@ -224,6 +224,21 @@ function renderBilingualList(original: Tokens.List, translated: Tokens.List): st
   return renderBlocks([{ ...original, items }]);
 }
 
+/** Renders a heading with its translation on a second line, so the pair keeps one heading style. */
+function renderBilingualHeading(original: Tokens.Heading, translated: Tokens.Heading): string {
+  const inlineHtml = markedRenderer.Parser.parseInline(translated.tokens, markedRenderer.defaults);
+  const html = `<br><span class="markdown-translation">${inlineHtml}</span>`;
+  const translationToken: Tokens.Tag = {
+    type: "html",
+    raw: html,
+    text: html,
+    inLink: false,
+    inRawBlock: false,
+    block: false,
+  };
+  return renderBlocks([{ ...original, tokens: [...original.tokens, translationToken] }]);
+}
+
 /**
  * Render original and translated markdown bodies (without frontmatter) block by block:
  * each original block is followed by its translation in a `.markdown-translation` element.
@@ -242,6 +257,9 @@ export function renderBilingualMarkdown(original: string, translated: string): s
         source.items.length === target.items.length
       ) {
         return renderBilingualList(source as Tokens.List, target as Tokens.List);
+      }
+      if (source.type === "heading" && target.type === "heading") {
+        return renderBilingualHeading(source as Tokens.Heading, target as Tokens.Heading);
       }
       return renderBlocks([source]) + translationHtml(renderBlocks([target]));
     })
