@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - The app checks GitHub-sourced skills for updates when it starts, when the library is opened from the sidebar and when the library is refreshed. All skills are checked in one batched call; automatic checks run at most every five minutes, the refresh button always checks.
+- The skill library list is grouped: GitHub skills by repository owner (with the owner's avatar), local skills by the folder they were imported from, then skills without a source. Click a group header to collapse or expand it.
+- Shift+click selects several skills in the library for a batch install. Skills that are already installed at the chosen location are reset there and installed again; the install dialog lists them.
 
 ### Changed
 

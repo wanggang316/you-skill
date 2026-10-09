@@ -52,6 +52,8 @@
   let actionError = $state("");
   let removeModalOpen = $state(false);
   let migrationDismissed = $state(false);
+  /** Skills picked with Shift+click for a batch install. */
+  let checkedNames = $state<string[]>([]);
 
   const location = $derived(getAppLocation(page.url));
   const selectedName = $derived(location.skill);
@@ -135,6 +137,18 @@
       busy = false;
       await refreshHub().catch(console.error);
     }
+  }
+
+  function handleToggleChecked(name: string) {
+    checkedNames = checkedNames.includes(name)
+      ? checkedNames.filter((item) => item !== name)
+      : [...checkedNames, name];
+  }
+
+  function handleBatchInstall() {
+    const names = checkedNames.filter((name) => $hubSkills.some((skill) => skill.name === name));
+    checkedNames = [];
+    openInstallModal(names, { replace: true });
   }
 
   function handleInstall(scope: InstallScope, projectPath: string | null, lockScope = false) {
@@ -294,6 +308,7 @@
       skills={filteredSkills}
       totalCount={$hubSkills.length}
       {selectedName}
+      {checkedNames}
       loading={$hubLoading}
       checking={$sourceChecking}
       error={$hubError}
@@ -301,6 +316,9 @@
       {filter}
       {source}
       onSelect={handleSelect}
+      onToggleChecked={handleToggleChecked}
+      onBatchInstall={handleBatchInstall}
+      onClearChecked={() => (checkedNames = [])}
       onRefresh={handleRefresh}
       onScan={() => openScanRootsModal()}
       onFilterChange={(next) => navigate({ filter: next })}

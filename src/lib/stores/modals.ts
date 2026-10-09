@@ -26,6 +26,8 @@ export interface InstallModalState {
   targets: ScopeRef[];
   /** The target is fixed by where the action started; the dialog offers no scope switch. */
   lockScope: boolean;
+  /** Skills already installed at the chosen place are uninstalled there first, then installed. */
+  replace: boolean;
 }
 
 export interface LocationPickerModalState {
@@ -97,6 +99,7 @@ export const installModal = writable<InstallModalState>({
   initialProjectPath: null,
   targets: [],
   lockScope: false,
+  replace: false,
 });
 
 export const locationPickerModal = writable<LocationPickerModalState>({
@@ -173,6 +176,7 @@ export function openInstallModal(
     projectPath?: string | null;
     targets?: ScopeRef[];
     lockScope?: boolean;
+    replace?: boolean;
     kind?: LibraryKind;
   }
 ): void {
@@ -185,6 +189,7 @@ export function openInstallModal(
     initialProjectPath: options?.projectPath ?? null,
     targets: options?.targets ?? [],
     lockScope: options?.lockScope ?? false,
+    replace: options?.replace ?? false,
   });
 }
 
