@@ -138,7 +138,7 @@
 </script>
 
 <Tooltip.Provider delayDuration={150} disableHoverableContent>
-  <div class="bg-base-100 text-base-content flex h-dvh min-h-0 flex-col overflow-hidden">
+  <div class="bg-chrome text-base-content flex h-dvh min-h-0 flex-col overflow-hidden">
     <AppTopBar
       activeKey={location.activeKey}
       hasUpdate={$updaterState.hasUpdate}
@@ -148,7 +148,7 @@
       onOpenUpdate={() => installAvailableUpdate().catch(console.error)}
     />
 
-    <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-2 pb-2">
       {@render children()}
     </section>
   </div>

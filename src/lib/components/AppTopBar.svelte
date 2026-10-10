@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { Loader2, Settings, Zap } from "@lucide/svelte";
+  import { Loader2, Settings } from "@lucide/svelte";
+  import logo from "$lib/assets/logo.png";
   import { t } from "$lib/i18n";
   import {
     buildInstructionsHref,
@@ -78,7 +79,7 @@
 
 <!-- The window controls sit at the left of this row (centred by `trafficLightPosition`). -->
 <header
-  class="bg-base-100 grid h-12 flex-none grid-cols-[1fr_auto_1fr] items-center gap-4 pr-3 pl-[5.25rem]"
+  class="grid h-15 flex-none grid-cols-[1fr_auto_1fr] items-center gap-4 pr-4 pl-[5.75rem]"
   data-window-drag-region
 >
   <a
@@ -87,20 +88,22 @@
     onclick={onOpenLibrary}
     aria-label="YouSkill"
   >
+    <img
+      class="size-[26px] flex-none drop-shadow-[0_1px_1.5px_var(--color-overlay)] transition-transform duration-300 ease-out group-hover:-rotate-6"
+      src={logo}
+      alt=""
+      draggable="false"
+    />
     <span
-      class="from-base-content to-base-content/75 text-base-100 ring-base-content/10 flex size-[22px] flex-none items-center justify-center rounded-[7px] bg-gradient-to-b shadow-[0_1px_2px_0_var(--color-overlay)] ring-1 transition-transform duration-200 group-hover:-rotate-6"
-      aria-hidden="true"
+      class="text-base-content truncate pr-1 text-[16px] font-semibold tracking-[-0.03em] italic"
     >
-      <Zap size={12} strokeWidth={2.4} class="fill-current" />
-    </span>
-    <span class="text-base-content truncate text-[14px] font-semibold tracking-[-0.025em] italic">
       YouSkill
     </span>
   </a>
 
   <nav
     bind:this={nav}
-    class="bg-base-200 border-base-300 relative flex h-8 items-center rounded-full border p-[3px] shadow-[inset_0_1px_1px_0_var(--color-base-300)]"
+    class="border-base-content/[0.06] bg-base-content/[0.045] relative flex h-9 items-center rounded-full border p-[3px]"
     aria-label={$t("sidebar.navigation")}
   >
     <span
@@ -121,7 +124,7 @@
       {#each group as item (item.key)}
         {@const active = activeKey === item.key}
         <a
-          class={`focus-visible:ring-primary/50 relative z-10 flex h-full items-center rounded-full px-3.5 text-[12.5px] leading-none font-medium tracking-[-0.005em] whitespace-nowrap transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none ${
+          class={`focus-visible:ring-primary/50 relative z-10 flex h-full items-center rounded-full px-4 text-[13px] leading-none font-medium tracking-[-0.01em] whitespace-nowrap transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none ${
             active ? "text-base-100" : "text-base-content-muted hover:text-base-content"
           }`}
           href={item.href}
@@ -138,7 +141,7 @@
   <div class="flex min-w-0 items-center justify-end gap-1.5">
     {#if hasUpdate}
       <button
-        class="border-primary/25 bg-primary/8 text-primary hover:bg-primary/14 flex h-7 min-w-0 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-medium transition-colors duration-150 disabled:cursor-default disabled:opacity-60"
+        class="border-primary/25 bg-primary/8 text-primary hover:bg-primary/14 flex h-8 min-w-0 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-medium transition-colors duration-150 disabled:cursor-default disabled:opacity-60"
         type="button"
         onclick={onOpenUpdate}
         disabled={updateLoading}
@@ -158,10 +161,10 @@
       </button>
     {/if}
     <a
-      class={`flex size-8 items-center justify-center rounded-full transition-[background-color,color,transform] duration-200 active:scale-95 ${
+      class={`flex size-9 items-center justify-center rounded-full transition-[background-color,color,transform] duration-200 active:scale-95 ${
         activeKey === "settings"
-          ? "bg-base-200 text-base-content"
-          : "text-base-content-muted hover:bg-base-200 hover:text-base-content"
+          ? "bg-base-content/[0.07] text-base-content"
+          : "text-base-content-muted hover:bg-base-content/[0.06] hover:text-base-content"
       }`}
       href="/settings"
       aria-current={activeKey === "settings" ? "page" : undefined}
@@ -169,7 +172,7 @@
       aria-label={$t("header.settings")}
     >
       <Settings
-        size={16}
+        size={17}
         strokeWidth={1.7}
         class="transition-transform duration-500 ease-out hover:rotate-90"
       />

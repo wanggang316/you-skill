@@ -327,36 +327,38 @@
       onSourceChange={(next) => navigate({ source: next })}
     />
 
-    {#if selectedSkill}
-      {#key selectedSkill.name}
-        <SkillDetail
-          skill={selectedSkill}
-          projects={$userProjects}
-          agents={$agentsById}
-          homePath={$homePath}
-          {busy}
-          checkingSource={$sourceChecking}
-          {actionError}
-          onInstall={handleInstall}
-          onUninstallLocation={handleUninstallLocation}
-          onManageLocations={() => openLocationPickerModal(selectedSkill.name)}
-          onTargetAction={handleTargetAction}
-          onSync={handleSync}
-          onRemove={() => (removeModalOpen = true)}
-          onOpenDir={handleOpenDir}
-          onCheckSource={handleCheckSource}
-        />
-      {/key}
-    {:else}
-      <div class="flex min-h-0 flex-col">
-        <header class="border-base-300 h-12 flex-none border-b" data-window-drag-region></header>
-        <div
-          class="text-base-content-muted flex flex-1 items-center justify-center p-8 text-center text-sm"
-        >
-          {$t("library.selectHint")}
+    <div class="surface-panel grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)]">
+      {#if selectedSkill}
+        {#key selectedSkill.name}
+          <SkillDetail
+            skill={selectedSkill}
+            projects={$userProjects}
+            agents={$agentsById}
+            homePath={$homePath}
+            {busy}
+            checkingSource={$sourceChecking}
+            {actionError}
+            onInstall={handleInstall}
+            onUninstallLocation={handleUninstallLocation}
+            onManageLocations={() => openLocationPickerModal(selectedSkill.name)}
+            onTargetAction={handleTargetAction}
+            onSync={handleSync}
+            onRemove={() => (removeModalOpen = true)}
+            onOpenDir={handleOpenDir}
+            onCheckSource={handleCheckSource}
+          />
+        {/key}
+      {:else}
+        <div class="flex min-h-0 flex-col">
+          <header class="h-12 flex-none" data-window-drag-region></header>
+          <div
+            class="text-base-content-muted flex flex-1 items-center justify-center p-8 text-center text-sm"
+          >
+            {$t("library.selectHint")}
+          </div>
         </div>
-      </div>
-    {/if}
+      {/if}
+    </div>
   </div>
 </section>
 
