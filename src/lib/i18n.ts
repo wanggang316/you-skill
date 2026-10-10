@@ -221,6 +221,7 @@ const translations: Record<string, Dictionary> = {
     "detail.showOriginal": "Original",
     "detail.showTranslated": "Translation",
     "detail.translating": "Translating...",
+    "detail.showBilingual": "Bilingual",
     "detail.notFound": "Skill not found",
 
     "target.state.in_sync": "In sync",
@@ -469,6 +470,12 @@ const translations: Record<string, Dictionary> = {
     "settings.translation.targetLanguageValue": "Target: {language}",
     "settings.translation.modelValue": "Model: {model}",
     "settings.translation.saving": "Saving...",
+    "settings.translation.displayMode": "Display mode",
+    "settings.translation.displayModeBilingual": "Bilingual",
+    "settings.translation.displayModeTranslation": "Translation only",
+    "settings.translation.textStyle": "Translation style",
+    "settings.translation.textStyleNone": "None",
+    "settings.translation.textStyleDashedUnderline": "Dashed underline",
     "settings.translation.missingConfigTitle": "Translation settings required",
     "settings.translation.missingConfigDescription":
       "Before translating, please complete the following settings:",
@@ -716,6 +723,7 @@ const translations: Record<string, Dictionary> = {
     "detail.showOriginal": "原文",
     "detail.showTranslated": "译文",
     "detail.translating": "翻译中...",
+    "detail.showBilingual": "双语对照",
     "detail.notFound": "未找到该 skill",
 
     "target.state.in_sync": "已同步",
@@ -957,6 +965,12 @@ const translations: Record<string, Dictionary> = {
     "settings.translation.targetLanguageValue": "目标语言：{language}",
     "settings.translation.modelValue": "模型：{model}",
     "settings.translation.saving": "保存中...",
+    "settings.translation.displayMode": "显示模式",
+    "settings.translation.displayModeBilingual": "双语对照",
+    "settings.translation.displayModeTranslation": "仅译文",
+    "settings.translation.textStyle": "译文样式",
+    "settings.translation.textStyleNone": "无样式",
+    "settings.translation.textStyleDashedUnderline": "虚线下划线",
     "settings.translation.missingConfigTitle": "需要完善翻译设置",
     "settings.translation.missingConfigDescription": "翻译前请先填写以下配置：",
 

@@ -1,16 +1,25 @@
 <script lang="ts">
   import { open as openExternal } from "@tauri-apps/plugin-shell";
   import hljs from "highlight.js/lib/common";
-  import { ExternalLink, Languages, List, Loader2 } from "@lucide/svelte";
+  import { Check, ChevronDown, ExternalLink, Languages, List, Loader2 } from "@lucide/svelte";
+  import { DropdownMenu } from "bits-ui";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import SkillDirectoryDrawer from "$lib/components/SkillDirectoryDrawer.svelte";
   import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
   import MarkdownPreview from "$lib/components/MarkdownPreview.svelte";
+  import { menuContentClass, menuItemClass } from "$lib/components/ui/menu";
   import CodePreview from "$lib/components/CodePreview.svelte";
   import ImagePreview from "$lib/components/ImagePreview.svelte";
-  import TranslateSettingsModal from "$lib/components/TranslateSettingsModal.svelte";
+  import TranslateSettingsModal, {
+    type TranslateSettingsPayload,
+  } from "$lib/components/TranslateSettingsModal.svelte";
   import MissingTranslationSettingsModal from "$lib/components/MissingTranslationSettingsModal.svelte";
-  import { parseMarkdown, renderMarkdownBody } from "$lib/utils/markdown";
+  import {
+    parseMarkdown,
+    renderBilingualMarkdown,
+    renderMarkdown,
+    renderMarkdownBody,
+  } from "$lib/utils/markdown";
   import { t } from "$lib/i18n";
   import { settings, updateSettings } from "$lib/stores/settings";
   import {
@@ -30,6 +39,7 @@
     | { kind: "remote"; name: string; skill: RemoteSkill };
 
   type FileViewMode = "markdown" | "code" | "image" | "unsupported";
+  type TranslationView = "bilingual" | "translation" | "original";
 
   let {
     source,
@@ -45,7 +55,7 @@
   let content = $state("");
   let originalMarkdownContent = $state("");
   let translatedMarkdownContent = $state<string | null>(null);
-  let showingTranslated = $state(false);
+  let translationView = $state<TranslationView>("original");
   let hasFrontmatter = $state(false);
   let parsedFrontmatter = $state<Record<string, string>>({});
   let directoryOpen = $state(false);
@@ -199,11 +209,40 @@
   const getExtension = (filePath: string) => filePath.split(".").at(-1)?.toLowerCase() || "";
   const activeEntry = $derived(directoryEntries.find((entry) => entry.path === activeFilePath));
   const isTranslatableMarkdown = $derived(fileViewMode === "markdown");
-  const translateButtonLabel = $derived.by(() => {
-    if (showingTranslated) return $t("detail.showOriginal");
-    if (translatedMarkdownContent) return $t("detail.showTranslated");
-    return $t("detail.translate");
+  const translationViewItems = $derived<Array<{ value: TranslationView; label: string }>>([
+    { value: "bilingual", label: $t("detail.showBilingual") },
+    { value: "translation", label: $t("detail.showTranslated") },
+    { value: "original", label: $t("detail.showOriginal") },
+  ]);
+  const translationViewLabel = $derived(
+    translationViewItems.find((item) => item.value === translationView)?.label ?? ""
+  );
+  const translatedMarkdown = $derived(
+    translatedMarkdownContent ? parseMarkdown(translatedMarkdownContent) : null
+  );
+  const descriptionOf = (frontmatter: Record<string, unknown>): string =>
+    typeof frontmatter.description === "string" ? frontmatter.description : "";
+  const originalDescription = $derived(hasFrontmatter ? descriptionOf(parsedFrontmatter) : "");
+  const translatedDescription = $derived(
+    translatedMarkdown?.hasFrontmatter ? descriptionOf(translatedMarkdown.frontmatter) : ""
+  );
+  const markdownHtml = $derived.by(() => {
+    if (!translatedMarkdown || translationView === "original") return renderMarkdownBody(content);
+    if (translationView === "translation") return renderMarkdown(translatedMarkdown.content);
+    return renderBilingualMarkdown(content, translatedMarkdown.content);
   });
+  const markdownDescription = $derived(
+    translatedMarkdown && translationView === "translation"
+      ? translatedDescription || originalDescription
+      : originalDescription
+  );
+  const markdownTranslatedDescription = $derived(
+    translatedMarkdown &&
+      translationView === "bilingual" &&
+      translatedDescription.trim() !== originalDescription.trim()
+      ? translatedDescription
+      : ""
+  );
 
   const contentHash = (input: string): string => {
     let hash = 5381;
@@ -382,7 +421,7 @@
     content = "";
     originalMarkdownContent = "";
     translatedMarkdownContent = null;
-    showingTranslated = false;
+    translationView = "original";
     parsedFrontmatter = {};
     hasFrontmatter = false;
     renderedCode = "";
@@ -503,19 +542,14 @@
     return fields;
   };
 
+  const showTranslation = (translated: string) => {
+    translatedMarkdownContent = translated;
+    translationView = $settings.translate_display_mode;
+  };
+
   const handleTranslate = async () => {
     if (!isTranslatableMarkdown || !originalMarkdownContent || translating) return;
-
-    if (showingTranslated) {
-      showingTranslated = false;
-      applyMarkdownContent(originalMarkdownContent);
-      return;
-    }
-    if (translatedMarkdownContent) {
-      showingTranslated = true;
-      applyMarkdownContent(translatedMarkdownContent);
-      return;
-    }
+    if (translatedMarkdownContent) return;
 
     const cacheKey = [
       sourceKey,
@@ -526,9 +560,7 @@
     ].join("|");
     const cached = translationCache.get(cacheKey);
     if (cached) {
-      translatedMarkdownContent = cached;
-      showingTranslated = true;
-      applyMarkdownContent(cached);
+      showTranslation(cached);
       return;
     }
 
@@ -541,12 +573,12 @@
 
     translating = true;
     contentError = "";
+    const requestedMarkdown = originalMarkdownContent;
     try {
-      const translated = await translateSkillMarkdown(originalMarkdownContent);
-      translatedMarkdownContent = translated;
+      const translated = await translateSkillMarkdown(requestedMarkdown);
       translationCache.set(cacheKey, translated);
-      showingTranslated = true;
-      applyMarkdownContent(translated);
+      // The user can open another file while the request runs.
+      if (originalMarkdownContent === requestedMarkdown) showTranslation(translated);
     } catch (err) {
       const errorText = String(err);
       const notConfigured =
@@ -565,17 +597,15 @@
     }
   };
 
-  const handleSaveTranslateSettings = async (payload: {
-    apiKey: string;
-    targetLanguage: string;
-    model: string;
-  }) => {
+  const handleSaveTranslateSettings = async (payload: TranslateSettingsPayload) => {
     savingTranslateSettings = true;
     try {
       await updateSettings({
         openrouter_api_key: payload.apiKey || null,
         translate_target_language: payload.targetLanguage.trim(),
         translate_model: payload.model.trim(),
+        translate_display_mode: payload.displayMode,
+        translate_text_style: payload.textStyle,
       });
       translateSettingsOpen = false;
     } finally {
@@ -620,7 +650,42 @@
       />
     </div>
     <div class="flex shrink-0 items-center gap-1.5">
-      {#if isTranslatableMarkdown}
+      {#if isTranslatableMarkdown && translatedMarkdownContent}
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger
+            class="border-base-300 text-base-content hover:bg-base-200 data-[state=open]:bg-base-200 flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition"
+          >
+            <Languages size={13} />
+            {translationViewLabel}
+            <ChevronDown size={12} class="text-base-content-muted" />
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              class={menuContentClass}
+              align="end"
+              sideOffset={4}
+              collisionPadding={8}
+            >
+              <DropdownMenu.RadioGroup
+                value={translationView}
+                onValueChange={(value) => (translationView = value as TranslationView)}
+              >
+                {#each translationViewItems as item (item.value)}
+                  <DropdownMenu.RadioItem
+                    value={item.value}
+                    class={`${menuItemClass()} flex items-center justify-between gap-3`}
+                  >
+                    {#snippet children({ checked })}
+                      {item.label}
+                      <Check size={13} class={checked ? "" : "invisible"} />
+                    {/snippet}
+                  </DropdownMenu.RadioItem>
+                {/each}
+              </DropdownMenu.RadioGroup>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
+      {:else if isTranslatableMarkdown}
         <button
           class="border-base-300 text-base-content hover:bg-base-200 flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition disabled:opacity-50"
           onclick={handleTranslate}
@@ -632,7 +697,7 @@
             {$t("detail.translating")}
           {:else}
             <Languages size={13} />
-            {translateButtonLabel}
+            {$t("detail.translate")}
           {/if}
         </button>
       {/if}
@@ -696,8 +761,12 @@
           </div>
         {:else if fileViewMode === "markdown"}
           <MarkdownPreview
-            htmlContent={renderMarkdownBody(content)}
-            frontmatterDescription={hasFrontmatter ? (parsedFrontmatter.description ?? "") : ""}
+            htmlContent={markdownHtml}
+            frontmatterDescription={markdownDescription}
+            translatedDescription={markdownTranslatedDescription}
+            translationStyle={translationView === "bilingual"
+              ? $settings.translate_text_style
+              : "none"}
             onOpenExternalLink={(href) => openExternal(href)}
             onOpenRelativeLink={handleMarkdownRelativeLink}
           />
@@ -738,6 +807,8 @@
   apiKey={$settings.openrouter_api_key ?? ""}
   targetLanguage={$settings.translate_target_language || ""}
   model={$settings.translate_model || ""}
+  displayMode={$settings.translate_display_mode}
+  textStyle={$settings.translate_text_style}
   saving={savingTranslateSettings}
   onSave={handleSaveTranslateSettings}
 />

@@ -2,6 +2,11 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+pub const TRANSLATE_DISPLAY_MODES: [&str; 2] = ["bilingual", "translation"];
+pub const DEFAULT_TRANSLATE_DISPLAY_MODE: &str = TRANSLATE_DISPLAY_MODES[0];
+pub const TRANSLATE_TEXT_STYLES: [&str; 2] = ["none", "dashed_underline"];
+pub const DEFAULT_TRANSLATE_TEXT_STYLE: &str = TRANSLATE_TEXT_STYLES[0];
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct AppConfig {
@@ -14,6 +19,10 @@ pub struct AppConfig {
   pub openrouter_api_key: Option<String>,
   pub translate_target_language: String,
   pub translate_model: String,
+  /// Translated markdown display mode: "bilingual" or "translation".
+  pub translate_display_mode: String,
+  /// Translated text style: "none" or "dashed_underline".
+  pub translate_text_style: String,
   /// GitHub CLI account used for GitHub requests. `None` follows the active `gh` account.
   pub github_account: Option<String>,
 }
@@ -29,6 +38,8 @@ impl Default for AppConfig {
       openrouter_api_key: None,
       translate_target_language: String::new(),
       translate_model: String::new(),
+      translate_display_mode: DEFAULT_TRANSLATE_DISPLAY_MODE.to_string(),
+      translate_text_style: DEFAULT_TRANSLATE_TEXT_STYLE.to_string(),
       github_account: None,
     }
   }

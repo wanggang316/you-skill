@@ -1,6 +1,6 @@
 import { Marked } from "marked";
 import { markedHighlight } from "marked-highlight";
-import type { Tokens } from "marked";
+import type { Token, Tokens } from "marked";
 import hljs from "highlight.js/lib/common";
 import matter from "gray-matter";
 
@@ -144,6 +144,126 @@ export function renderMarkdown(content: string | undefined | null): string {
 
   const result = markedRenderer.parse(content);
   return typeof result === "string" ? result : "";
+}
+
+// Blocks that the translation keeps as-is, so bilingual view shows them once.
+const UNTRANSLATED_BLOCK_TYPES = new Set(["code", "hr", "html", "def"]);
+
+function lexBlocks(content: string): Token[] {
+  const tokens = markedRenderer.lexer(content);
+  const walkTokens = markedRenderer.defaults.walkTokens;
+  // `parse()` runs walkTokens (syntax highlight) itself; `lexer()` + `parser()` do not.
+  if (walkTokens) markedRenderer.walkTokens(tokens, walkTokens);
+  return tokens.filter((token) => token.type !== "space");
+}
+
+function renderBlocks(tokens: Token[]): string {
+  return markedRenderer.parser(tokens);
+}
+
+function translationHtml(innerHtml: string): string {
+  return `<div class="markdown-translation">${innerHtml}</div>`;
+}
+
+function htmlToken(html: string): Tokens.HTML {
+  return { type: "html", block: true, pre: false, raw: html, text: html };
+}
+
+function sameText(a: Token, b: Token): boolean {
+  return a.raw.trim() === b.raw.trim();
+}
+
+/**
+ * Pairs original and translated blocks by the longest common subsequence of block types.
+ * The translation normally keeps the block structure; LCS tolerates a few merged or split blocks.
+ */
+function alignBlocks(
+  original: Token[],
+  translated: Token[]
+): Array<{ original?: Token; translated?: Token }> {
+  const n = original.length;
+  const m = translated.length;
+  const lcs = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i -= 1) {
+    for (let j = m - 1; j >= 0; j -= 1) {
+      lcs[i][j] =
+        original[i].type === translated[j].type
+          ? lcs[i + 1][j + 1] + 1
+          : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    }
+  }
+  const pairs: Array<{ original?: Token; translated?: Token }> = [];
+  let i = 0;
+  let j = 0;
+  while (i < n || j < m) {
+    if (i < n && j < m && original[i].type === translated[j].type) {
+      pairs.push({ original: original[i], translated: translated[j] });
+      i += 1;
+      j += 1;
+    } else if (j >= m || (i < n && lcs[i + 1][j] >= lcs[i][j + 1])) {
+      pairs.push({ original: original[i] });
+      i += 1;
+    } else {
+      pairs.push({ translated: translated[j] });
+      j += 1;
+    }
+  }
+  return pairs;
+}
+
+/** Renders a list with the translation of each item placed inside the item. */
+function renderBilingualList(original: Tokens.List, translated: Tokens.List): string {
+  const items = original.items.map((item, index) => {
+    const translatedItem = translated.items[index];
+    if (sameText(item, translatedItem)) return item;
+    // The original item already renders the task checkbox.
+    const translatedTokens = translatedItem.tokens.filter((token) => token.type !== "checkbox");
+    const itemTranslation = translationHtml(renderBlocks(translatedTokens));
+    return { ...item, tokens: [...item.tokens, htmlToken(itemTranslation)] };
+  });
+  return renderBlocks([{ ...original, items }]);
+}
+
+/** Renders a heading with its translation on a second line, so the pair keeps one heading style. */
+function renderBilingualHeading(original: Tokens.Heading, translated: Tokens.Heading): string {
+  const inlineHtml = markedRenderer.Parser.parseInline(translated.tokens, markedRenderer.defaults);
+  const html = `<br><span class="markdown-translation">${inlineHtml}</span>`;
+  const translationToken: Tokens.Tag = {
+    type: "html",
+    raw: html,
+    text: html,
+    inLink: false,
+    inRawBlock: false,
+    block: false,
+  };
+  return renderBlocks([{ ...original, tokens: [...original.tokens, translationToken] }]);
+}
+
+/**
+ * Render original and translated markdown bodies (without frontmatter) block by block:
+ * each original block is followed by its translation in a `.markdown-translation` element.
+ */
+export function renderBilingualMarkdown(original: string, translated: string): string {
+  const pairs = alignBlocks(lexBlocks(original), lexBlocks(translated));
+  return pairs
+    .map(({ original: source, translated: target }) => {
+      if (!source) return target ? translationHtml(renderBlocks([target])) : "";
+      if (!target || UNTRANSLATED_BLOCK_TYPES.has(source.type) || sameText(source, target)) {
+        return renderBlocks([source]);
+      }
+      if (
+        source.type === "list" &&
+        target.type === "list" &&
+        source.items.length === target.items.length
+      ) {
+        return renderBilingualList(source as Tokens.List, target as Tokens.List);
+      }
+      if (source.type === "heading" && target.type === "heading") {
+        return renderBilingualHeading(source as Tokens.Heading, target as Tokens.Heading);
+      }
+      return renderBlocks([source]) + translationHtml(renderBlocks([target]));
+    })
+    .join("");
 }
 
 // Parsed frontmatter data structure
