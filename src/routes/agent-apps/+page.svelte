@@ -100,7 +100,7 @@
   </dl>
 {/snippet}
 
-<section class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+<section class="surface-panel flex h-full min-h-0 min-w-0 flex-col">
   <!-- Header -->
   <header class="border-base-300 bg-base-100 h-12 flex-none border-b" data-window-drag-region>
     <div class="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-6">

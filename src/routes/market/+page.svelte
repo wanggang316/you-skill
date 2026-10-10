@@ -133,7 +133,7 @@
   }
 </script>
 
-<section class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+<section class="surface-panel flex h-full min-h-0 min-w-0 flex-col">
   <header
     class="border-base-300 flex h-12 flex-none items-center border-b px-7"
     data-window-drag-region

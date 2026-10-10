@@ -76,15 +76,12 @@
 
   const rowClass = (selected: boolean) =>
     `mx-1.5 flex w-[calc(100%-0.75rem)] flex-col gap-1 rounded-lg px-2.5 py-2 text-left transition ${
-      selected ? "bg-base-300" : "hover:bg-base-200"
+      selected ? "bg-base-content/[0.07]" : "hover:bg-base-content/[0.045]"
     }`;
 </script>
 
-<div class="border-base-300 flex min-h-0 min-w-0 flex-col border-r">
-  <header
-    class="border-base-300 flex h-12 flex-none items-center justify-between border-b px-4"
-    data-window-drag-region
-  >
+<div class="flex min-h-0 min-w-0 flex-col">
+  <header class="flex h-12 flex-none items-center justify-between px-4" data-window-drag-region>
     <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
       {$t("instructions.title")}
     </h1>
@@ -93,11 +90,11 @@
     </span>
   </header>
 
-  <div class="border-base-300 space-y-2 border-b px-3 py-2.5">
+  <div class="space-y-2 px-3 pb-2.5">
     <div class="relative">
       <Search class="text-base-content-subtle absolute top-1/2 left-3 -translate-y-1/2" size={14} />
       <input
-        class="border-base-300 bg-base-200 text-base-content placeholder:text-base-content-subtle focus:border-base-300 h-8 w-full rounded-xl border pr-3 pl-8 text-[13px] focus:outline-none"
+        class="border-base-300 bg-base-100 text-base-content placeholder:text-base-content-subtle focus:border-base-300 h-8 w-full rounded-xl border pr-3 pl-8 text-[13px] focus:outline-none"
         placeholder={$t("instructions.search")}
         bind:value={search}
       />

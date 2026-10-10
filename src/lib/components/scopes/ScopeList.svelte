@@ -147,7 +147,7 @@
   <div class="group relative mx-1.5 mb-0.5">
     <button
       class={`flex w-full items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition ${
-        selected ? "bg-base-300" : "hover:bg-base-200"
+        selected ? "bg-base-content/[0.07]" : "hover:bg-base-content/[0.045]"
       } ${menu.length > 0 ? "pr-10" : ""}`}
       type="button"
       onclick={() => onSelect(entry)}
@@ -203,11 +203,8 @@
   </div>
 {/snippet}
 
-<div class="border-base-300 flex min-h-0 min-w-0 flex-col border-r">
-  <header
-    class="border-base-300 flex h-12 flex-none items-center justify-between border-b px-4"
-    data-window-drag-region
-  >
+<div class="flex min-h-0 min-w-0 flex-col">
+  <header class="flex h-12 flex-none items-center justify-between px-4" data-window-drag-region>
     <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
       {$t("projects.title")}
     </h1>

@@ -269,50 +269,52 @@
       onFilterChange={(next) => navigate({ filter: next })}
     />
 
-    {#if selected}
-      {#key selected.id}
-        <InstructionDetail
-          instruction={selected}
-          projects={$userProjects}
-          agents={$agentsById}
-          homePath={$homePath}
-          {busy}
-          {actionError}
-          onInstall={handleInstall}
-          onUninstallLocation={handleUninstallLocation}
-          onManageLocations={() => openLocationPickerModal(selected.id, "instruction")}
-          onTargetAction={handleTargetAction}
-          onSync={handleSync}
-          onRemove={() => (removeModalOpen = true)}
-          onOpenFile={() => reveal(selected.hubPath)}
-        />
-      {/key}
-    {:else if selectedFile}
-      {#key selectedFile.path}
-        <InstructionFileDetail
-          file={selectedFile}
-          agents={$agentsById}
-          {busy}
-          {actionError}
-          onOpenTemplate={selectTemplate}
-          onPromote={() =>
-            openImportInstructionModal({
-              paths: [selectedFile.path],
-              name: promoteName(selectedFile),
-            })}
-          onOpenFile={() => reveal(selectedFile.path)}
-        />
-      {/key}
-    {:else}
-      <div class="flex min-h-0 flex-col">
-        <header class="border-base-300 h-12 flex-none border-b" data-window-drag-region></header>
-        <div
-          class="text-base-content-muted flex flex-1 items-center justify-center p-8 text-center text-sm"
-        >
-          {$t("instructions.selectHint")}
+    <div class="surface-panel grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)]">
+      {#if selected}
+        {#key selected.id}
+          <InstructionDetail
+            instruction={selected}
+            projects={$userProjects}
+            agents={$agentsById}
+            homePath={$homePath}
+            {busy}
+            {actionError}
+            onInstall={handleInstall}
+            onUninstallLocation={handleUninstallLocation}
+            onManageLocations={() => openLocationPickerModal(selected.id, "instruction")}
+            onTargetAction={handleTargetAction}
+            onSync={handleSync}
+            onRemove={() => (removeModalOpen = true)}
+            onOpenFile={() => reveal(selected.hubPath)}
+          />
+        {/key}
+      {:else if selectedFile}
+        {#key selectedFile.path}
+          <InstructionFileDetail
+            file={selectedFile}
+            agents={$agentsById}
+            {busy}
+            {actionError}
+            onOpenTemplate={selectTemplate}
+            onPromote={() =>
+              openImportInstructionModal({
+                paths: [selectedFile.path],
+                name: promoteName(selectedFile),
+              })}
+            onOpenFile={() => reveal(selectedFile.path)}
+          />
+        {/key}
+      {:else}
+        <div class="flex min-h-0 flex-col">
+          <header class="h-12 flex-none" data-window-drag-region></header>
+          <div
+            class="text-base-content-muted flex flex-1 items-center justify-center p-8 text-center text-sm"
+          >
+            {$t("instructions.selectHint")}
+          </div>
         </div>
-      </div>
-    {/if}
+      {/if}
+    </div>
   </div>
 </section>
 

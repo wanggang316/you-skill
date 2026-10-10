@@ -117,11 +117,8 @@
   }
 </script>
 
-<div class="border-base-300 flex min-h-0 min-w-0 flex-col border-r">
-  <header
-    class="border-base-300 flex h-12 flex-none items-center justify-between border-b px-4"
-    data-window-drag-region
-  >
+<div class="flex min-h-0 min-w-0 flex-col">
+  <header class="flex h-12 flex-none items-center justify-between px-4" data-window-drag-region>
     <div class="flex min-w-0 items-baseline gap-2">
       <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
         {$t("library.title")}
@@ -161,11 +158,11 @@
     </div>
   </header>
 
-  <div class="border-base-300 space-y-2 border-b px-3 py-2.5">
+  <div class="space-y-2 px-3 pb-2.5">
     <div class="relative">
       <Search class="text-base-content-subtle absolute top-1/2 left-3 -translate-y-1/2" size={14} />
       <input
-        class="border-base-300 bg-base-200 text-base-content placeholder:text-base-content-subtle focus:border-base-300 h-8 w-full rounded-xl border pr-3 pl-8 text-[13px] focus:outline-none"
+        class="border-base-300 bg-base-100 text-base-content placeholder:text-base-content-subtle focus:border-base-300 h-8 w-full rounded-xl border pr-3 pl-8 text-[13px] focus:outline-none"
         placeholder={$t("library.search")}
         bind:value={search}
       />
@@ -250,8 +247,8 @@
                 checked
                   ? "bg-primary/10 ring-primary/40 ring-1 ring-inset"
                   : selected
-                    ? "bg-base-300"
-                    : "hover:bg-base-200"
+                    ? "bg-base-content/[0.07]"
+                    : "hover:bg-base-content/[0.045]"
               }`}
               type="button"
               onclick={(event) => handleRowClick(event, skill.name)}
@@ -288,7 +285,7 @@
   </div>
 
   {#if checkedNames.length > 0}
-    <div class="border-base-300 flex flex-none items-center gap-2 border-t px-3 py-2.5">
+    <div class="flex flex-none items-center gap-2 px-3 py-2.5">
       <PrimaryActionButton className="flex-[2] py-1.5 text-[13px]" onclick={onBatchInstall}>
         {$t("library.batchInstall", { count: checkedNames.length })}
       </PrimaryActionButton>

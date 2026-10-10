@@ -345,40 +345,42 @@
       onRefresh={() => refreshHub().catch(console.error)}
     />
 
-    {#if selected}
-      {#key selected.key}
-        <ScopeDetail
-          entry={selected}
-          agents={$agentsById}
-          {availableAgents}
-          {memoryFiles}
-          {libraryNames}
-          {busy}
-          {actionError}
-          onOpenDir={handleOpenDir}
-          onForgetProject={() => handleForgetProject(selected)}
-          onScan={() =>
-            openImportModal({
-              tab: "folder",
-              folder: selected.kind === "project" ? selected.path : null,
-            })}
-          onAddSkills={() => openSkillPickerModal(selected.ref)}
-          onAddAgent={handleAddAgent}
-          onRemoveAgents={handleRemoveAgents}
-          onOpenMemory={(file) => goto(buildInstructionsHref({ file: file.path }))}
-          onOpenSkill={(name) => goto(buildLibraryHref({ skill: name }))}
-          onSkillAction={handleSkillAction}
-        />
-      {/key}
-    {:else}
-      <div class="flex min-h-0 flex-col">
-        <header class="border-base-300 h-12 flex-none border-b" data-window-drag-region></header>
-        <div
-          class="text-base-content-muted flex flex-1 items-center justify-center p-8 text-center text-sm"
-        >
-          {$t("projects.selectHint")}
+    <div class="surface-panel grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)]">
+      {#if selected}
+        {#key selected.key}
+          <ScopeDetail
+            entry={selected}
+            agents={$agentsById}
+            {availableAgents}
+            {memoryFiles}
+            {libraryNames}
+            {busy}
+            {actionError}
+            onOpenDir={handleOpenDir}
+            onForgetProject={() => handleForgetProject(selected)}
+            onScan={() =>
+              openImportModal({
+                tab: "folder",
+                folder: selected.kind === "project" ? selected.path : null,
+              })}
+            onAddSkills={() => openSkillPickerModal(selected.ref)}
+            onAddAgent={handleAddAgent}
+            onRemoveAgents={handleRemoveAgents}
+            onOpenMemory={(file) => goto(buildInstructionsHref({ file: file.path }))}
+            onOpenSkill={(name) => goto(buildLibraryHref({ skill: name }))}
+            onSkillAction={handleSkillAction}
+          />
+        {/key}
+      {:else}
+        <div class="flex min-h-0 flex-col">
+          <header class="h-12 flex-none" data-window-drag-region></header>
+          <div
+            class="text-base-content-muted flex flex-1 items-center justify-center p-8 text-center text-sm"
+          >
+            {$t("projects.selectHint")}
+          </div>
         </div>
-      </div>
-    {/if}
+      {/if}
+    </div>
   </div>
 </section>
