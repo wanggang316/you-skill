@@ -33,9 +33,9 @@ use commands::{
     update_settings,
   },
   skill::{
-    detect_folder, detect_github_auto, detect_github_manual, detect_zip, list_skill_directory,
-    open_in_file_manager, read_skill_file, read_skill_relative_file,
-    read_skill_relative_file_bytes, translate_skill_markdown,
+    detect_folder, detect_github_auto, detect_github_manual, detect_zip,
+    get_cached_skill_translation, list_skill_directory, open_in_file_manager, read_skill_file,
+    read_skill_relative_file, read_skill_relative_file_bytes, translate_skill_markdown,
   },
   user_projects::{
     add_workspace, list_memory_files, list_user_projects, list_workspaces, register_projects,
@@ -137,6 +137,7 @@ fn main() {
       list_skill_directory,
       read_skill_relative_file,
       read_skill_relative_file_bytes,
+      get_cached_skill_translation,
       translate_skill_markdown,
       open_in_file_manager,
       list_user_projects,
