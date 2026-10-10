@@ -1,6 +1,7 @@
 [package]
 name = "youskill-core"
 version.workspace = true
+rust-version.workspace = true
 edition = "2021"
 description = "Skill hub, lock file and drift model shared by the YouSkill app and CLI"
 publish = false
