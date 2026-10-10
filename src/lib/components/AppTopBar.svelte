@@ -1,14 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import {
-    FolderTree,
-    LibraryBig,
-    Loader2,
-    ScrollText,
-    Settings,
-    Store,
-    Zap,
-  } from "@lucide/svelte";
+  import { FolderTree, LibraryBig, Loader2, ScrollText, Settings, Store } from "@lucide/svelte";
   import type { Component } from "svelte";
   import { t } from "$lib/i18n";
   import {
@@ -63,7 +55,8 @@
 
   const marketActive = $derived(activeKey === "market");
   /** Shared look of the nav track and the market button. */
-  const trackClass = "border-base-content/[0.06] bg-base-content/[0.045] border";
+  const trackClass =
+    "bg-base-100 shadow-[0_1px_2px_0_color-mix(in_oklch,var(--color-base-content)_6%,transparent)]";
 
   let nav = $state<HTMLElement | null>(null);
   /** Position of the active pill; it slides between items instead of jumping. */
@@ -104,11 +97,14 @@
     onclick={onOpenLibrary}
     aria-label="YouSkill"
   >
-    <Zap
-      size={20}
-      strokeWidth={0}
-      class="text-base-content flex-none fill-current transition-transform duration-300 ease-out group-hover:-rotate-12"
-    />
+    <svg
+      class="text-base-content h-[19px] w-auto flex-none transition-transform duration-300 ease-out group-hover:-rotate-12"
+      viewBox="0 0 433 455"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M0 263.506L265.588 0L205.547 180.705H433L153.889 455L217.987 263.506H0Z" />
+    </svg>
     <span
       class="text-base-content truncate pr-1 text-[16px] font-semibold tracking-[-0.03em] italic"
     >
@@ -119,11 +115,11 @@
   <div class="flex items-center gap-2">
     <nav
       bind:this={nav}
-      class={`${trackClass} relative flex h-11 items-center gap-1 rounded-full p-1`}
+      class={`${trackClass} relative flex h-9 items-center gap-0.5 rounded-full p-[3px]`}
       aria-label={$t("sidebar.navigation")}
     >
       <span
-        class={`bg-chrome-raised absolute top-1 bottom-1 left-0 rounded-full shadow-sm ${
+        class={`bg-base-300 absolute top-[3px] bottom-[3px] left-0 rounded-full ${
           animate
             ? "transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
             : ""
@@ -137,7 +133,7 @@
         {@const active = activeKey === item.key}
         {@const Icon = item.icon}
         <a
-          class={`focus-visible:ring-primary/50 relative z-10 flex h-full items-center gap-2 rounded-full px-4 text-sm whitespace-nowrap transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none ${
+          class={`focus-visible:ring-primary/50 relative z-10 flex h-full items-center gap-1.5 rounded-full px-3 text-[13px] whitespace-nowrap transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none ${
             active
               ? "text-base-content font-medium"
               : "text-base-content-muted hover:text-base-content"
@@ -147,14 +143,14 @@
           data-nav-key={item.key}
           aria-current={active ? "page" : undefined}
         >
-          <Icon size={16} strokeWidth={1.8} />
+          <Icon size={15} strokeWidth={1.8} />
           {item.label}
         </a>
       {/each}
     </nav>
 
     <a
-      class={`${trackClass} focus-visible:ring-primary/50 flex size-11 items-center justify-center rounded-full p-1 transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none ${
+      class={`${trackClass} focus-visible:ring-primary/50 flex size-9 items-center justify-center rounded-full p-[3px] transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none ${
         marketActive ? "text-base-content" : "text-base-content-muted hover:text-base-content"
       }`}
       href={buildMarketHref()}
@@ -164,10 +160,10 @@
     >
       <span
         class={`flex size-full items-center justify-center rounded-full transition-[background-color,box-shadow] duration-200 ${
-          marketActive ? "bg-chrome-raised shadow-sm" : ""
+          marketActive ? "bg-base-300" : ""
         }`}
       >
-        <Store size={17} strokeWidth={1.8} />
+        <Store size={16} strokeWidth={1.8} />
       </span>
     </a>
   </div>
