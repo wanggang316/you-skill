@@ -4,6 +4,7 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import SkillList from "$lib/components/library/SkillList.svelte";
+  import SplitView from "$lib/components/SplitView.svelte";
   import SkillDetail from "$lib/components/library/SkillDetail.svelte";
   import type { TargetAction } from "$lib/components/library/DriftPanel.svelte";
   import RemoveSkillModal from "$lib/components/RemoveSkillModal.svelte";
@@ -302,9 +303,7 @@
     </div>
   {/if}
 
-  <div
-    class="grid min-h-0 flex-1 grid-cols-[18rem_minmax(0,1fr)] max-[1000px]:grid-cols-[15rem_minmax(0,1fr)]"
-  >
+  <SplitView>
     <SkillList
       skills={filteredSkills}
       totalCount={$hubSkills.length}
@@ -359,7 +358,7 @@
         </div>
       {/if}
     </div>
-  </div>
+  </SplitView>
 </section>
 
 <RemoveSkillModal
