@@ -142,6 +142,10 @@ export async function openInFileManager(filePath: string): Promise<void> {
   return apiCall<void>("open_in_file_manager", { filePath });
 }
 
+export async function getCachedSkillTranslation(markdown: string): Promise<string | null> {
+  return apiCall<string | null>("get_cached_skill_translation", { markdown });
+}
+
 export async function translateSkillMarkdown(markdown: string): Promise<string> {
   return apiCall<string>("translate_skill_markdown", { markdown });
 }
