@@ -60,15 +60,17 @@
 
   let nav = $state<HTMLElement | null>(null);
   /** Position of the active pill; it slides between items instead of jumping. */
-  let indicator = $state({ left: 0, width: 0, visible: false });
+  let indicator = $state({ left: 0, width: 0 });
+  /** Hidden on pages outside the tabs (market, settings); keeps its last spot to fade out in place. */
+  let indicatorVisible = $state(false);
   /** No slide on first paint, only on later moves. */
   let animate = $state(false);
 
   function measure() {
     const active = nav?.querySelector<HTMLElement>(`[data-nav-key="${activeKey}"]`);
-    indicator = active
-      ? { left: active.offsetLeft, width: active.offsetWidth, visible: true }
-      : { ...indicator, visible: false };
+    // Only write here, never read: this runs inside an effect.
+    indicatorVisible = Boolean(active);
+    if (active) indicator = { left: active.offsetLeft, width: active.offsetWidth };
   }
 
   $effect(() => {
@@ -125,7 +127,7 @@
             : ""
         }`}
         style={`transform: translateX(${indicator.left}px); width: ${indicator.width}px; opacity: ${
-          indicator.visible ? 1 : 0
+          indicatorVisible ? 1 : 0
         };`}
         aria-hidden="true"
       ></span>
