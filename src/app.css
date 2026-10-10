@@ -38,6 +38,8 @@
 
   /* Window chrome behind the content panels: top bar and list sidebars */
   --color-chrome: oklch(96.4% 0.002 286);
+  /* Raised control on the chrome, such as the active nav item */
+  --color-chrome-raised: oklch(100% 0 0);
 
   /* 深色主题颜色 */
   --color-base-100-dark: oklch(0.2308 0 0);
@@ -62,6 +64,7 @@
   --color-error-content-dark: oklch(27% 0.105 12.094);
   --color-overlay-dark: oklch(21% 0.006 285.885 / 0.6);
   --color-chrome-dark: oklch(0.195 0 0);
+  --color-chrome-raised-dark: oklch(0.335 0 0);
 }
 
 /* 浮层层级：数值越大越靠上。弹出层（菜单、提示）需要显示在模态框之上 */
@@ -102,6 +105,8 @@
 
   /* Window chrome behind the content panels: top bar and list sidebars */
   --color-chrome: oklch(96.4% 0.002 286);
+  /* Raised control on the chrome, such as the active nav item */
+  --color-chrome-raised: oklch(100% 0 0);
 
   /* 深色主题颜色 */
   --color-base-100-dark: oklch(0.2308 0 0);
@@ -126,6 +131,7 @@
   --color-error-content-dark: oklch(27% 0.105 12.094);
   --color-overlay-dark: oklch(21% 0.006 285.885 / 0.6);
   --color-chrome-dark: oklch(0.195 0 0);
+  --color-chrome-raised-dark: oklch(0.335 0 0);
 
   /* 变量映射 */
   --base-100: var(--color-base-100);
@@ -213,6 +219,7 @@
   --color-error: var(--color-error-dark);
   --color-error-content: var(--color-error-content-dark);
   --color-chrome: var(--color-chrome-dark);
+  --color-chrome-raised: var(--color-chrome-raised-dark);
 
   /* 变量映射到深色主题 */
   --base-100: var(--color-base-100-dark);
