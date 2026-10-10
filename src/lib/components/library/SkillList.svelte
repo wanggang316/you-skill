@@ -6,6 +6,7 @@
     Folder,
     Github,
     Loader2,
+    Plus,
     RefreshCw,
     ScanSearch,
     Search,
@@ -37,6 +38,7 @@
     onClearChecked,
     onRefresh,
     onScan,
+    onImport,
     onFilterChange,
     onSourceChange,
   }: {
@@ -58,6 +60,7 @@
     onClearChecked: () => void;
     onRefresh: () => void;
     onScan: () => void;
+    onImport: () => void;
     onFilterChange: (filter: LibraryFilter) => void;
     onSourceChange: (source: LibrarySource) => void;
   } = $props();
@@ -128,6 +131,15 @@
       </span>
     </div>
     <div class="flex shrink-0 items-center gap-1.5">
+      <IconButton
+        variant="outline"
+        onclick={onImport}
+        title={$t("import.title")}
+        ariaLabel={$t("import.title")}
+        class="h-8 w-8 p-0"
+      >
+        <Plus size={15} />
+      </IconButton>
       <IconButton
         variant="outline"
         onclick={onScan}
