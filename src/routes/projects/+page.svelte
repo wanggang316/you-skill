@@ -3,6 +3,7 @@
   import { page } from "$app/state";
   import { confirm } from "@tauri-apps/plugin-dialog";
   import ScopeList from "$lib/components/scopes/ScopeList.svelte";
+  import SplitView from "$lib/components/SplitView.svelte";
   import ScopeDetail, { type ScopeSkillAction } from "$lib/components/scopes/ScopeDetail.svelte";
   import { t } from "$lib/i18n";
   import {
@@ -325,9 +326,7 @@
 </script>
 
 <section class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-  <div
-    class="grid min-h-0 flex-1 grid-cols-[18rem_minmax(0,1fr)] max-[1000px]:grid-cols-[15rem_minmax(0,1fr)]"
-  >
+  <SplitView>
     <ScopeList
       {entries}
       workspaces={$workspaces}
@@ -382,5 +381,5 @@
         </div>
       {/if}
     </div>
-  </div>
+  </SplitView>
 </section>
