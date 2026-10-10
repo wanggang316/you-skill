@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A skill file that was translated before opens with its saved translation in the display mode set in translation settings. No new translation request is sent ([HAN-217](https://linear.app/gumpw/issue/HAN-217)).
+
 ### Fixed
 
 ### Removed

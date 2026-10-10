@@ -23,6 +23,7 @@
   import { t } from "$lib/i18n";
   import { settings, updateSettings } from "$lib/stores/settings";
   import {
+    getCachedSkillTranslation,
     listSkillDirectory,
     openInFileManager,
     readSkillFile,
@@ -479,6 +480,7 @@
       if (fileViewMode === "markdown") {
         originalMarkdownContent = fetched;
         applyMarkdownContent(fetched);
+        await restoreCachedTranslation(fetched);
       } else {
         content = fetched;
         renderCode(fetched, filePath);
@@ -545,6 +547,17 @@
   const showTranslation = (translated: string) => {
     translatedMarkdownContent = translated;
     translationView = $settings.translate_display_mode;
+  };
+
+  /** Shows an earlier translation of `markdown` in the configured display mode. */
+  const restoreCachedTranslation = async (markdown: string) => {
+    try {
+      const cached = await getCachedSkillTranslation(markdown);
+      // The user can open another file while the lookup runs.
+      if (cached && originalMarkdownContent === markdown) showTranslation(cached);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleTranslate = async () => {

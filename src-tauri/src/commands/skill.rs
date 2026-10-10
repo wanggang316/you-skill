@@ -60,6 +60,15 @@ pub async fn read_skill_relative_file_bytes(
 }
 
 #[tauri::command]
+pub async fn get_cached_skill_translation(markdown: String) -> Result<Option<String>, String> {
+  tauri::async_runtime::spawn_blocking(move || {
+    translate_service::cached_skill_translation(&markdown)
+  })
+  .await
+  .map_err(|e| format!("get_cached_skill_translation join error: {}", e))?
+}
+
+#[tauri::command]
 pub async fn translate_skill_markdown(markdown: String) -> Result<String, String> {
   translate_service::translate_skill_markdown(markdown).await
 }
