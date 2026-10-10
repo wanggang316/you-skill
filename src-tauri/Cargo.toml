@@ -3,10 +3,13 @@ members = ["crates/*"]
 
 [workspace.package]
 version = "0.9.6"
+# std::fs::File::lock is stable since 1.89.
+rust-version = "1.89"
 
 [package]
 name = "you-skill"
 version.workspace = true
+rust-version.workspace = true
 description = "Skill manager desktop app"
 authors = ["gumpwang2020@gmail.com"]
 edition = "2021"
