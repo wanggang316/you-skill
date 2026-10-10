@@ -143,6 +143,7 @@
       activeKey={location.activeKey}
       hasUpdate={$updaterState.hasUpdate}
       updateLoading={$updaterState.installing}
+      latestVersion={$updaterState.latestVersion}
       onOpenLibrary={() => void checkAllSourceUpdates()}
       onOpenUpdate={() => installAvailableUpdate().catch(console.error)}
     />
