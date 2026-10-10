@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { AlertCircle } from "@lucide/svelte";
+  import { AlertCircle, Info } from "@lucide/svelte";
   import { get } from "svelte/store";
   import Modal from "$lib/components/ui/Modal.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
@@ -10,6 +10,7 @@
   import {
     installSkill,
     installedAgentIds,
+    scopedInstalls,
     uninstallSkill,
     type InstallMode,
     type InstallScope,
@@ -43,6 +44,7 @@
   const isInstruction = $derived($installModal.kind === "instruction");
   const isSingle = $derived(skillNames.length === 1);
   const locked = $derived($installModal.lockScope);
+  const replace = $derived(!isInstruction && $installModal.replace);
   const targets = $derived.by((): ScopeRef[] => {
     if (lockedTargets.length > 0) return lockedTargets;
     if (scope === "user") return [{ scope: "user", projectPath: null }];
@@ -82,6 +84,15 @@
     return installedAgentIds(view, targets[0].scope, targets[0].projectPath);
   });
 
+  /** Skills that will be reset before installing, because they are already at a target. */
+  const replacedNames = $derived.by(() => {
+    if (!replace) return [] as string[];
+    return skillNames.filter((name) => {
+      const view = $hubSkillsByName.get(name);
+      return !!view && targets.some((target) => scopedInstalls(view, target).length > 0);
+    });
+  });
+
   const hasProjects = $derived($userProjects.length > 0);
   const canApply = $derived(!applying && targets.length > 0 && hasChanges());
 
@@ -90,6 +101,8 @@
   const label = (name: string) => (isInstruction ? get(instructionName)(name) : name);
 
   function hasChanges(): boolean {
+    // Replacing rewrites existing installs, so the same agent selection still has work to do.
+    if (replace) return selectedIds.length > 0;
     const current = new Set(currentIds);
     const selected = new Set(selectedIds);
     if (selected.size !== current.size) return true;
@@ -148,6 +161,21 @@
     }));
   }
 
+  /** Uninstall every existing install of the skill at the target, then install it fresh. */
+  async function replaceAt(name: string, target: ScopeRef): Promise<string | null> {
+    const view = get(hubSkillsByName).get(name);
+    const paths = view ? scopedInstalls(view, target).map((install) => install.path) : [];
+    if (paths.length > 0) {
+      const result = await performAction((force) =>
+        uninstallSkill({ name, targets: [], paths, force })
+      );
+      if (!result.applied) return result.blockers.join("; ");
+    }
+    const request = { name, targets: specsFor(selectedIds, target), mode };
+    const result = await performAction((force) => installSkill({ ...request, force }));
+    return result.applied ? null : result.blockers.join("; ");
+  }
+
   async function handleApply() {
     if (!canApply) return;
     applying = true;
@@ -157,6 +185,11 @@
       const single = isSingle && targets.length === 1;
       for (const name of skillNames) {
         for (const target of targets) {
+          if (replace) {
+            const failure = await replaceAt(name, target);
+            if (failure) failures.push(`${name}: ${failure}`);
+            continue;
+          }
           const view = isInstruction
             ? get(instructionsById).get(name)
             : get(hubSkillsByName).get(name);
@@ -221,6 +254,18 @@
             <p class="text-base-content-muted text-sm">{$t("install.noProjects")}</p>
           {/if}
         {/if}
+      </div>
+    {/if}
+
+    {#if replacedNames.length > 0}
+      <div
+        class="border-base-300 bg-base-200 text-base-content flex items-start gap-2 rounded-xl border px-3 py-2 text-xs"
+      >
+        <Info size={14} class="text-primary mt-0.5 shrink-0" />
+        <div class="min-w-0 flex-1">
+          <p>{$t("install.replaceHint", { count: replacedNames.length })}</p>
+          <p class="text-base-content-muted mt-1 break-words">{replacedNames.join(", ")}</p>
+        </div>
       </div>
     {/if}
 
