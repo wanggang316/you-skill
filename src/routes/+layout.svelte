@@ -2,12 +2,11 @@
   import "../app.css";
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
-  import { afterNavigate } from "$app/navigation";
   import { page } from "$app/state";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { Tooltip } from "bits-ui";
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import AppSidebar from "$lib/components/AppSidebar.svelte";
+  import AppTopBar from "$lib/components/AppTopBar.svelte";
   import DiffModal from "$lib/components/DiffModal.svelte";
   import ForceConfirmModal from "$lib/components/ForceConfirmModal.svelte";
   import ImportInstructionModal from "$lib/components/ImportInstructionModal.svelte";
@@ -19,9 +18,7 @@
   import SkillPickerModal from "$lib/components/SkillPickerModal.svelte";
   import WorkspaceModal from "$lib/components/WorkspaceModal.svelte";
   import { getAppLocation } from "$lib/navigation/app-shell";
-  import { goBack, goForward, trackNavigation } from "$lib/navigation/history";
-  import { readSidebarWidth, SIDEBAR, writeSidebarWidth } from "$lib/navigation/sidebar";
-  import { t } from "$lib/i18n";
+  import { goBack, goForward } from "$lib/navigation/history";
   import { loadHomePath } from "$lib/stores/env";
   import {
     checkAllSourceUpdates,
@@ -38,43 +35,6 @@
   let { children } = $props();
 
   const location = $derived(getAppLocation(page.url));
-  let sidebarWidth = $state(readSidebarWidth());
-  let resizing = $state(false);
-  const sidebarCollapsed = $derived(sidebarWidth <= SIDEBAR.collapsed);
-
-  afterNavigate(trackNavigation);
-
-  /** Drag the sidebar edge; below the threshold it snaps to icons only. */
-  function startSidebarResize(event: PointerEvent) {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    resizing = true;
-    const handle = event.currentTarget as HTMLElement;
-    handle.setPointerCapture(event.pointerId);
-    const onMove = (move: PointerEvent) => {
-      const width = move.clientX;
-      sidebarWidth =
-        width < SIDEBAR.collapseBelow
-          ? SIDEBAR.collapsed
-          : Math.min(SIDEBAR.max, Math.max(SIDEBAR.min, width));
-    };
-    const onUp = () => {
-      resizing = false;
-      handle.releasePointerCapture(event.pointerId);
-      handle.removeEventListener("pointermove", onMove);
-      handle.removeEventListener("pointerup", onUp);
-      handle.removeEventListener("pointercancel", onUp);
-      writeSidebarWidth(sidebarWidth);
-    };
-    handle.addEventListener("pointermove", onMove);
-    handle.addEventListener("pointerup", onUp);
-    handle.addEventListener("pointercancel", onUp);
-  }
-
-  function resetSidebarWidth() {
-    sidebarWidth = SIDEBAR.initial;
-    writeSidebarWidth(sidebarWidth);
-  }
 
   /** ⌘[ and ⌘] (Ctrl on other platforms) go back and forward, like a browser. */
   const handleHistoryKeys = (event: KeyboardEvent) => {
@@ -178,34 +138,18 @@
 </script>
 
 <Tooltip.Provider delayDuration={150} disableHoverableContent>
-  <div
-    class={`bg-base-100 text-base-content relative grid h-dvh min-h-0 overflow-hidden ${
-      resizing ? "cursor-col-resize select-none" : ""
-    }`}
-    style={`grid-template-columns: ${sidebarWidth}px minmax(0, 1fr);`}
-  >
-    <AppSidebar
+  <div class="bg-base-100 text-base-content flex h-dvh min-h-0 flex-col overflow-hidden">
+    <AppTopBar
       activeKey={location.activeKey}
-      collapsed={sidebarCollapsed}
       hasUpdate={$updaterState.hasUpdate}
       updateLoading={$updaterState.installing}
-      onImportSkill={() => openImportModal()}
       onOpenLibrary={() => void checkAllSourceUpdates()}
       onOpenUpdate={() => installAvailableUpdate().catch(console.error)}
     />
 
-    <section class="flex min-h-0 min-w-0 flex-col overflow-hidden">
+    <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {@render children()}
     </section>
-
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="absolute top-0 bottom-0 z-20 w-1.5 -translate-x-1/2 cursor-col-resize"
-      style={`left: ${sidebarWidth}px;`}
-      title={$t("sidebar.resize")}
-      onpointerdown={startSidebarResize}
-      ondblclick={resetSidebarWidth}
-    ></div>
   </div>
 
   <ImportSkillModal />
