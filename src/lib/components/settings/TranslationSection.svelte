@@ -56,16 +56,15 @@
   title={$t("settings.translation.title")}
   description={$t("settings.translation.description")}
 >
-  <div class="settings-card p-4">
-    <TranslateSettingsFields
-      bind:apiKey
-      bind:targetLanguage
-      bind:model
-      bind:displayMode
-      bind:textStyle
-      idPrefix="translate-settings"
-    />
-  </div>
+  <TranslateSettingsFields
+    bind:apiKey
+    bind:targetLanguage
+    bind:model
+    bind:displayMode
+    bind:textStyle
+    idPrefix="translate-settings"
+    layout="rows"
+  />
 
   <div class="flex items-center justify-end gap-3">
     {#if error}
