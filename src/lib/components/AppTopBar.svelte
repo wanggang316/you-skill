@@ -109,10 +109,11 @@
     class="group focus-visible:ring-primary/50 flex w-fit min-w-0 items-center gap-1.5 rounded-lg focus-visible:ring-2 focus-visible:outline-none"
     href={buildLibraryHref()}
     onclick={onOpenLibrary}
+    data-icon="logo"
     aria-label="YouSkill"
   >
     <svg
-      class="text-base-content h-[25px] w-auto flex-none transition-transform duration-300 ease-out group-hover:-rotate-12"
+      class="text-base-content group-hover:text-primary h-[25px] w-auto flex-none transition-colors duration-300"
       viewBox="0 0 433 455"
       fill="currentColor"
       aria-hidden="true"
@@ -242,6 +243,11 @@
       transition: transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
+    /* Logo: the bolt strikes with a short jolt and two flickers, then stays charged. */
+    [data-icon="logo"]:hover :global(svg) {
+      animation: nav-strike 520ms ease-out;
+    }
+
     /* Library: the leaning book stands up and lifts off the shelf. */
     [data-icon="library"] :global(svg > :nth-child(3)) {
       transform-origin: 18.5px 20.5px;
@@ -296,6 +302,29 @@
     }
     to {
       stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes nav-strike {
+    0%,
+    100% {
+      transform: none;
+      opacity: 1;
+    }
+    12% {
+      transform: translate(1px, -1.5px);
+      opacity: 0.35;
+    }
+    24% {
+      transform: translate(-0.5px, 1px);
+      opacity: 1;
+    }
+    36% {
+      opacity: 0.45;
+    }
+    48% {
+      transform: none;
+      opacity: 1;
     }
   }
 
