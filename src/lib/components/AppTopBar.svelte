@@ -302,9 +302,9 @@
       animation: nav-swing 700ms ease-in-out;
     }
 
-    /* Import: the arrow drops into the tray. */
+    /* Import: the arrow keeps dropping into the tray while hovered. */
     [data-icon="import"]:hover :global(svg > :nth-child(-n + 2)) {
-      transform: translateY(2.5px);
+      animation: nav-drop 900ms ease-in-out infinite;
     }
 
     /* Settings: the gear turns. */
@@ -337,6 +337,16 @@
     }
     to {
       transform: translateX(640px) skewX(-20deg);
+    }
+  }
+
+  @keyframes nav-drop {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(1.5px);
     }
   }
 
