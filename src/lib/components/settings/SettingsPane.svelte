@@ -5,11 +5,14 @@
   let {
     title,
     description = "",
+    wide = false,
     actions,
     children,
   }: {
     title: string;
     description?: string;
+    /** Room for a two-column grid instead of a single column of rows. */
+    wide?: boolean;
     actions?: Snippet;
     children: Snippet;
   } = $props();
@@ -18,7 +21,7 @@
 <div
   class="min-h-0 overflow-y-auto [scrollbar-color:var(--scrollbar-thumb)_transparent] [scrollbar-width:thin]"
 >
-  <div class="mx-auto w-full max-w-2xl px-8 pt-8 pb-12">
+  <div class={`mx-auto w-full px-8 pt-8 pb-12 ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
     <div class="flex items-center justify-between gap-4">
       <h2 class="text-base-content truncate text-[1.25rem] font-semibold tracking-[-0.02em]">
         {title}
