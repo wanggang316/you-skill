@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - A skill file that was translated before opens with its saved translation in the display mode set in translation settings. No new translation request is sent ([HAN-217](https://linear.app/gumpw/issue/HAN-217)).
+- The Rust workspace declares `rust-version = "1.89"`, the first release with a stable `File::lock`. An older toolchain now fails with a clear "requires rustc 1.89" error instead of E0658 ([HAN-208](https://linear.app/gumpw/issue/HAN-208)).
 
 ### Fixed
 

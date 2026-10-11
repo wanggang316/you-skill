@@ -1,6 +1,7 @@
 [package]
 name = "youskill-cli"
 version.workspace = true
+rust-version.workspace = true
 edition = "2021"
 description = "Command line interface for the YouSkill hub"
 publish = false
