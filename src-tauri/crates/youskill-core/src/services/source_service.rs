@@ -60,7 +60,9 @@ pub async fn check_source_updates(
   let mut latest: HashMap<String, String> = HashMap::new();
   let mut errors: HashMap<String, String> = HashMap::new();
 
-  // 1. Marketplace knows the tree sha for skills it indexes (cheap, no rate limit).
+  // 1. The marketplace index knows the tree sha for skills it indexes (cheap, no rate
+  // limit), but it can lag behind GitHub. Trust it only when it confirms the installed
+  // sha; a different sha must be confirmed against GitHub.
   let names_to_query: Vec<String> = candidates.iter().map(|c| c.name.clone()).collect();
   if let Ok(remote_skills) = fetch_skills_by_names(names_to_query).await {
     for remote in remote_skills {
@@ -70,7 +72,7 @@ pub async fn check_source_updates(
       let matches = candidates
         .iter()
         .find(|c| c.name == remote.name && c.repo.eq_ignore_ascii_case(remote.source.trim()));
-      if let Some(candidate) = matches {
+      if let Some(candidate) = matches.filter(|c| marketplace_confirms(c, sha)) {
         latest.insert(candidate.name.clone(), sha.clone());
       }
     }
@@ -166,6 +168,11 @@ pub async fn check_source_updates(
   )
 }
 
+/// A marketplace sha is only a shortcut when it equals the installed sha.
+fn marketplace_confirms(candidate: &Candidate, marketplace_sha: &str) -> bool {
+  candidate.remote_sha.as_deref() == Some(marketplace_sha)
+}
+
 /// Download the current version of a GitHub-sourced skill into a staged temp directory.
 pub async fn stage_github_source(
   repo: &str,
@@ -242,4 +249,34 @@ pub async fn pull_github_source(
   })
   .await
   .map_err(|e| format!("pull join error: {}", e))?
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn candidate(remote_sha: Option<&str>) -> Candidate {
+    Candidate {
+      name: "pdf".to_string(),
+      repo: "anthropics/skills".to_string(),
+      branch: "main".to_string(),
+      skill_path: "skills/pdf/SKILL.md".to_string(),
+      remote_sha: remote_sha.map(str::to_string),
+    }
+  }
+
+  #[test]
+  fn marketplace_sha_equal_to_installed_sha_is_trusted() {
+    assert!(marketplace_confirms(&candidate(Some("a")), "a"));
+  }
+
+  #[test]
+  fn marketplace_sha_different_from_installed_sha_needs_github() {
+    assert!(!marketplace_confirms(&candidate(Some("a")), "b"));
+  }
+
+  #[test]
+  fn marketplace_sha_without_installed_sha_needs_github() {
+    assert!(!marketplace_confirms(&candidate(None), "a"));
+  }
 }
