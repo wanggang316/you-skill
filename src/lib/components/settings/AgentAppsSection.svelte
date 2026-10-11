@@ -111,7 +111,7 @@
   </div>
 {/snippet}
 
-<SettingsPane title={$t("agentApps.title")} description={$t("agentApps.description")} wide>
+<SettingsPane title={$t("agentApps.title")} description={$t("agentApps.description")}>
   {#snippet actions()}
     <IconButton
       variant="outline"
