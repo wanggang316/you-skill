@@ -17,6 +17,7 @@
     <SettingsRow label={$t("settings.language")}>
       <SelectField
         value={$settings.language}
+        fit
         selectClassName={selectClass}
         onchange={(event) =>
           updateSettings({ language: event.currentTarget.value as AppSettings["language"] })}
@@ -28,6 +29,7 @@
     <SettingsRow label={$t("settings.theme")}>
       <SelectField
         value={$settings.theme}
+        fit
         selectClassName={selectClass}
         onchange={(event) =>
           updateSettings({ theme: event.currentTarget.value as AppSettings["theme"] })}
@@ -43,6 +45,7 @@
     <SettingsRow label={$t("settings.installMode")}>
       <SelectField
         value={$settings.sync_mode}
+        fit
         selectClassName={selectClass}
         onchange={(event) =>
           updateSettings({ sync_mode: event.currentTarget.value as AppSettings["sync_mode"] })}

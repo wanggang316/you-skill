@@ -53,7 +53,7 @@
     rows ? "text-base-content text-[13.5px]" : "text-base-content text-sm font-medium"
   );
   const controlClass = $derived(rows ? "w-64 shrink-0" : "w-full");
-  // Selects take the width of their longest option instead of a shared column width.
+  // Selects take the width of the selected option instead of a shared column width.
   const selectFieldClass = $derived(rows ? "shrink-0" : "w-full");
   const selectClass = $derived(rows ? "h-8 text-[13px]" : "");
   const inputClass = $derived(
@@ -94,6 +94,7 @@
     <SelectField
       id={`${idPrefix}-target-language`}
       bind:value={targetLanguage}
+      fit={rows}
       className={selectFieldClass}
       selectClassName={selectClass}
     >
@@ -161,6 +162,7 @@
     <SelectField
       id={`${idPrefix}-display-mode`}
       bind:value={displayMode}
+      fit={rows}
       className={selectFieldClass}
       selectClassName={selectClass}
     >
@@ -175,6 +177,7 @@
     <SelectField
       id={`${idPrefix}-text-style`}
       bind:value={textStyle}
+      fit={rows}
       className={selectFieldClass}
       selectClassName={selectClass}
     >
