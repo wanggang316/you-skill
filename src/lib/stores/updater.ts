@@ -10,6 +10,10 @@ type UpdaterState = {
   latestVersion: string;
   update: Update | null;
   error: string;
+  /** Bytes received by the running install. */
+  downloaded: number;
+  /** Size of the update package; 0 when the server does not send it. */
+  contentLength: number;
 };
 
 const initialState: UpdaterState = {
@@ -20,9 +24,14 @@ const initialState: UpdaterState = {
   latestVersion: "",
   update: null,
   error: "",
+  downloaded: 0,
+  contentLength: 0,
 };
 
 export const updaterState = writable<UpdaterState>({ ...initialState });
+
+/** Visibility of the update dialog, shared by every entry point. */
+export const updateDialogOpen = writable(false);
 
 let checkPromise: Promise<void> | null = null;
 
@@ -79,9 +88,7 @@ export async function ensureUpdateChecked(force = false): Promise<void> {
   }
 }
 
-export async function installAvailableUpdate(
-  onDownloadEvent?: (event: DownloadEvent) => void
-): Promise<void> {
+export async function installAvailableUpdate(): Promise<void> {
   const current = get(updaterState);
   if (current.installing) return;
 
@@ -92,11 +99,21 @@ export async function installAvailableUpdate(
   const refreshed = get(updaterState);
   if (!refreshed.update) return;
 
-  updaterState.update((state) => ({ ...state, installing: true, error: "" }));
+  updaterState.update((state) => ({
+    ...state,
+    installing: true,
+    error: "",
+    downloaded: 0,
+    contentLength: 0,
+  }));
   try {
     await refreshed.update.downloadAndInstall((event: DownloadEvent) => {
-      if (onDownloadEvent) {
-        onDownloadEvent(event);
+      if (event.event === "Started") {
+        const contentLength = event.data.contentLength ?? 0;
+        updaterState.update((state) => ({ ...state, contentLength }));
+      } else if (event.event === "Progress") {
+        const { chunkLength } = event.data;
+        updaterState.update((state) => ({ ...state, downloaded: state.downloaded + chunkLength }));
       }
     });
     await relaunch();
@@ -108,4 +125,11 @@ export async function installAvailableUpdate(
     }));
     throw error;
   }
+}
+
+/** Opens the update dialog and starts a fresh check, like Sparkle's "Check for Updates…". */
+export function openUpdateDialog(): void {
+  updateDialogOpen.set(true);
+  if (get(updaterState).installing) return;
+  ensureUpdateChecked(true).catch(console.error);
 }
