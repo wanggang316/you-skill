@@ -53,6 +53,8 @@
     rows ? "text-base-content text-[13.5px]" : "text-base-content text-sm font-medium"
   );
   const controlClass = $derived(rows ? "w-64 shrink-0" : "w-full");
+  // Selects take the width of the selected option instead of a shared column width.
+  const selectFieldClass = $derived(rows ? "shrink-0" : "w-full");
   const selectClass = $derived(rows ? "h-8 text-[13px]" : "");
   const inputClass = $derived(
     `border-base-300 bg-base-100 text-base-content focus:ring-primary w-full rounded-lg border px-3 focus:ring-2 focus:outline-none ${
@@ -92,7 +94,8 @@
     <SelectField
       id={`${idPrefix}-target-language`}
       bind:value={targetLanguage}
-      className={controlClass}
+      fit={rows}
+      className={selectFieldClass}
       selectClassName={selectClass}
     >
       <option value="">{$t("settings.selectPlaceholder")}</option>
@@ -101,11 +104,12 @@
       {/each}
     </SelectField>
   </div>
-  <div class={fieldClass}>
-    <label class={labelClass} for={`${idPrefix}-api-key`}>
+  <!-- The key is long, so it gets the full row width below its label in both layouts. -->
+  <div class={rows ? "space-y-2 px-4 py-3" : "space-y-1.5"}>
+    <label class={`${labelClass} block`} for={`${idPrefix}-api-key`}>
       {$t("settings.translation.apiKey")}
     </label>
-    <div class={controlClass}>
+    <div class="w-full">
       <input
         id={`${idPrefix}-api-key`}
         class={inputClass}
@@ -158,7 +162,8 @@
     <SelectField
       id={`${idPrefix}-display-mode`}
       bind:value={displayMode}
-      className={controlClass}
+      fit={rows}
+      className={selectFieldClass}
       selectClassName={selectClass}
     >
       <option value="bilingual">{$t("settings.translation.displayModeBilingual")}</option>
@@ -172,7 +177,8 @@
     <SelectField
       id={`${idPrefix}-text-style`}
       bind:value={textStyle}
-      className={controlClass}
+      fit={rows}
+      className={selectFieldClass}
       selectClassName={selectClass}
     >
       <option value="none">{$t("settings.translation.textStyleNone")}</option>
