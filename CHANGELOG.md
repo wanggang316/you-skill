@@ -13,12 +13,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+### Fixed
+
+### Removed
+
+## [0.9.7] - 2026-10-11
+
+### Changed
+
 - The sidebar is replaced by a top bar: the logo on the left, Skill library, Instructions and Projects as tabs in the center with Market and Import as icon buttons next to them, and Update and Settings on the right. The list pane next to the content panel can be resized by dragging its edge; double-click the edge to reset it.
 - Settings use two panes: General, Agent Apps, Translation, GitHub, Backup, Command line tool and About. Agent apps, translation settings and the GitHub account are edited in place instead of in a separate page or dialog. Click the settings button again to go back to the previous page.
 - A skill file that was translated before opens with its saved translation in the display mode set in translation settings. No new translation request is sent ([HAN-217](https://linear.app/gumpw/issue/HAN-217)).
-- The Rust workspace declares `rust-version = "1.89"`, the first release with a stable `File::lock`. An older toolchain now fails with a clear "requires rustc 1.89" error instead of E0658 ([HAN-208](https://linear.app/gumpw/issue/HAN-208)).
 
 ### Fixed
+
+- A GitHub skill no longer shows "update available" when nothing changed upstream. The marketplace index can lag behind GitHub; when its recorded version differs from the installed one, the app now confirms against GitHub before reporting an update, so a pull clears the notice instead of it coming back on the next check.
 
 ### Removed
 
