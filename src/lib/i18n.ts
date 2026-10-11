@@ -967,7 +967,7 @@ const translations: Record<string, Dictionary> = {
     "settings.github.noRepoScope":
       "该 Token 没有 repo 权限，无法访问私有仓库。请执行 gh auth refresh -s repo。",
     "settings.github.ghPath": "gh：{path}",
-    "settings.translation.title": "翻译设置",
+    "settings.translation.title": "翻译",
     "settings.translation.apiKey": "OpenRouter API Key",
     "settings.translation.model": "模型",
     "settings.translation.modelHint": "可输入搜索或从 OpenRouter 模型列表中选择。",
