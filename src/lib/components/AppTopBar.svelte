@@ -112,7 +112,7 @@
     aria-label="YouSkill"
   >
     <svg
-      class="text-base-content h-[19px] w-auto flex-none transition-transform duration-300 ease-out group-hover:-rotate-12"
+      class="text-base-content h-[22px] w-auto flex-none transition-transform duration-300 ease-out group-hover:-rotate-12"
       viewBox="0 0 433 455"
       fill="currentColor"
       aria-hidden="true"
@@ -120,7 +120,7 @@
       <path d="M0 263.506L265.588 0L205.547 180.705H433L153.889 455L217.987 263.506H0Z" />
     </svg>
     <span
-      class="text-base-content truncate pr-1 text-[16px] font-semibold tracking-[-0.03em] italic"
+      class="text-base-content truncate pr-1 text-[16px] font-medium tracking-[-0.03em] italic"
     >
       YouSkill
     </span>
