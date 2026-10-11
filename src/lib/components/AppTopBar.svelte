@@ -200,7 +200,7 @@
     </a>
 
     <button
-      class={`${trackClass} focus-visible:ring-primary/50 text-base-content-muted hover:text-base-content flex size-9 items-center justify-center rounded-full transition-[color,transform] duration-200 focus-visible:ring-2 focus-visible:outline-none active:scale-95`}
+      class={`${trackClass} focus-visible:ring-primary/50 text-base-content-muted hover:text-base-content flex size-9 cursor-pointer items-center justify-center rounded-full transition-[color,transform] duration-200 focus-visible:ring-2 focus-visible:outline-none active:scale-95`}
       type="button"
       onclick={onImport}
       data-icon="import"
@@ -214,7 +214,7 @@
   <div class="flex min-w-0 items-center justify-end gap-1.5">
     {#if hasUpdate}
       <button
-        class="border-primary/25 bg-primary/8 text-primary hover:bg-primary/14 flex h-8 min-w-0 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-medium transition-colors duration-150 disabled:cursor-default disabled:opacity-60"
+        class="border-primary/25 bg-primary/8 text-primary hover:bg-primary/14 flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-medium transition-colors duration-150 disabled:cursor-default disabled:opacity-60"
         type="button"
         onclick={onOpenUpdate}
         disabled={updateLoading}
