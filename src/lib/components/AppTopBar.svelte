@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { page } from "$app/state";
   import {
     FolderTree,
     LibraryBig,
@@ -65,6 +66,13 @@
   ]);
 
   const marketActive = $derived(activeKey === "market");
+  const settingsActive = $derived(activeKey === "settings");
+
+  /** Last page outside settings; the settings button toggles back to it. */
+  let lastOutsideSettings = $state("/");
+  $effect(() => {
+    if (!settingsActive) lastOutsideSettings = `${page.url.pathname}${page.url.search}`;
+  });
   /** Recessed track shared by the nav and the icon buttons; the active item floats above it. */
   const trackClass =
     "bg-base-content/[0.055] shadow-[inset_0_0_0_0.5px_color-mix(in_oklch,var(--color-base-content)_4%,transparent)]";
@@ -236,13 +244,13 @@
     {/if}
     <a
       class={`flex size-9 items-center justify-center rounded-full transition-[background-color,color,transform] duration-200 active:scale-95 ${
-        activeKey === "settings"
+        settingsActive
           ? "bg-base-content/[0.07] text-base-content"
           : "text-base-content-muted hover:bg-base-content/[0.06] hover:text-base-content"
       }`}
-      href="/settings"
+      href={settingsActive ? lastOutsideSettings : "/settings"}
       data-icon="settings"
-      aria-current={activeKey === "settings" ? "page" : undefined}
+      aria-current={settingsActive ? "page" : undefined}
       title={$t("header.settings")}
       aria-label={$t("header.settings")}
     >
