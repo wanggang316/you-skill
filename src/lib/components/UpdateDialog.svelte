@@ -5,12 +5,14 @@
   import appIcon from "$lib/assets/app-icon.png";
   import MarkdownPreview from "$lib/components/MarkdownPreview.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
-  import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import { t } from "$lib/i18n";
   import { installAvailableUpdate, updateDialogOpen, updaterState } from "$lib/stores/updater";
   import { renderMarkdown } from "$lib/utils/markdown";
 
-  /** Laid out like the Sparkle update windows: app icon on the left, text and actions on the right. */
+  /**
+   * Follows the Sparkle windows on macOS: progress and update windows have a
+   * "Software Update" title bar, results are shown as a narrow alert.
+   */
   let open = $state(false);
   let modal = $state<ReturnType<typeof Modal>>();
   let currentVersion = $state("");
@@ -25,16 +27,23 @@
     if (state.error) return "error";
     return "upToDate";
   });
+  const isAlert = $derived(view === "upToDate" || view === "error");
   const releaseNotes = $derived(renderMarkdown($updaterState.releaseNotes));
   const progress = $derived(
     $updaterState.contentLength > 0
       ? Math.min(100, ($updaterState.downloaded / $updaterState.contentLength) * 100)
       : null
   );
+  const containerClass = $derived(
+    `rounded-[20px]! border-base-content/10! ${
+      view === "available" ? "max-w-[600px]" : isAlert ? "max-w-[280px]" : "max-w-[420px]"
+    }`
+  );
 
-  const secondaryButtonClass =
-    "border-base-300 text-base-content hover:bg-base-200 h-8 rounded-lg border px-4 text-[13px] transition";
-  const primaryButtonClass = "h-8 rounded-lg px-4 py-0 text-[13px]";
+  const pillClass =
+    "inline-flex h-7 cursor-pointer items-center justify-center rounded-full px-5 text-[13px] transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none";
+  const secondaryClass = `${pillClass} bg-base-content/[0.07] text-base-content hover:bg-base-content/[0.11]`;
+  const primaryClass = `${pillClass} bg-primary text-primary-content hover:bg-primary-hover font-medium`;
 
   $effect(() => {
     open = $updateDialogOpen;
@@ -68,108 +77,133 @@
   bind:open
   showCloseButton={false}
   onClose={() => updateDialogOpen.set(false)}
-  containerClass={view === "available" ? "max-w-[600px]" : "max-w-[420px]"}
+  {containerClass}
 >
-  <div class="flex gap-5 px-6 pt-6 pb-5" data-update-view={view}>
-    <img class="size-16 flex-none select-none" src={appIcon} alt="" draggable="false" />
-
-    <div class="flex min-w-0 flex-1 flex-col">
-      {#if view === "checking" || view === "installing"}
-        <p class="text-base-content mt-1 text-[13px] font-semibold">
-          {view === "checking" ? $t("updater.checking") : $t("updater.downloading")}
-        </p>
-        <div class="bg-base-300 relative mt-3 h-1.5 w-full overflow-hidden rounded-full">
-          {#if progress === null}
-            <div
-              class="update-indeterminate bg-primary absolute inset-y-0 w-1/3 rounded-full"
-            ></div>
-          {:else}
-            <div
-              class="bg-primary h-full rounded-full transition-[width] duration-200"
-              style={`width: ${progress}%`}
-            ></div>
-          {/if}
-        </div>
-        {#if view === "installing" && $updaterState.contentLength > 0}
-          <p class="text-base-content-muted mt-2 font-mono text-[11px]">
-            {formatMegabytes($updaterState.downloaded)} / {formatMegabytes(
-              $updaterState.contentLength
-            )}
-          </p>
-        {/if}
-        {#if view === "checking"}
-          <div class="mt-5 flex justify-end">
-            <button class={secondaryButtonClass} type="button" onclick={close}>
-              {$t("common.cancel")}
-            </button>
-          </div>
-        {/if}
-      {:else if view === "available"}
-        <h3 class="text-base-content text-[14px] font-semibold">
-          {$t("updater.availableTitle")}
-        </h3>
-        <p class="text-base-content mt-1.5 text-[12px] leading-relaxed">
-          {$t("updater.availableBody", {
-            latest: $updaterState.latestVersion,
-            current: currentVersion,
-          })}
-        </p>
-        <p class="text-base-content mt-4 text-[12px] font-semibold">
-          {$t("updater.releaseNotes")}
-        </p>
-        <div
-          class="border-base-300 bg-base-100 mt-1.5 h-56 overflow-y-auto rounded-md border px-4 py-3"
-        >
-          {#if releaseNotes}
-            <MarkdownPreview htmlContent={releaseNotes} onOpenExternalLink={openExternal} />
-          {:else}
-            <p class="text-base-content-muted text-[12px]">{$t("updater.noReleaseNotes")}</p>
-          {/if}
-        </div>
-        {#if $updaterState.error}
-          <p class="text-error mt-2 text-[12px] break-words">
-            {$t("updater.installFailed")}
-            {$updaterState.error}
-          </p>
-        {/if}
-        <div class="mt-5 flex justify-end gap-2">
-          <button class={secondaryButtonClass} type="button" onclick={close}>
-            {$t("updater.remindLater")}
-          </button>
-          <PrimaryActionButton className={primaryButtonClass} onclick={handleInstall}>
-            {$t("updater.install")}
-          </PrimaryActionButton>
-        </div>
-      {:else}
-        <h3 class="text-base-content mt-1 text-[14px] font-semibold">
+  <div class="text-base-content text-[13px] leading-[1.45]" data-update-view={view}>
+    {#if isAlert}
+      <div class="flex flex-col px-5 pt-6 pb-5">
+        <img class="size-14 select-none" src={appIcon} alt="" draggable="false" />
+        <h3 class="mt-4 text-[14px] font-semibold">
           {view === "error" ? $t("updater.errorTitle") : $t("updater.upToDateTitle")}
         </h3>
-        <p class="text-base-content mt-1.5 text-[12px] leading-relaxed break-words">
+        <p class="mt-1.5 break-words">
           {#if view === "error"}
             {$t("updater.checkFailed")}
-            <span class="text-base-content-muted">{$updaterState.error}</span>
+            <span class="text-base-content-muted mt-1 block text-[12px]">
+              {$updaterState.error}
+            </span>
           {:else}
             {$t("updater.upToDateBody", { version: currentVersion })}
           {/if}
         </p>
-        <div class="mt-5 flex justify-end">
-          <PrimaryActionButton className={`${primaryButtonClass} min-w-20`} onclick={close}>
-            {$t("updater.ok")}
-          </PrimaryActionButton>
+        <button class={`${primaryClass} mt-5 w-full`} type="button" onclick={close}>
+          {$t("updater.ok")}
+        </button>
+      </div>
+    {:else}
+      <div class="border-base-content/10 flex h-10 items-center border-b px-5">
+        <span class="text-base-content-muted text-[13px] font-semibold">
+          {$t("updater.windowTitle")}
+        </span>
+      </div>
+
+      {#if view === "available"}
+        <div class="px-5 pt-5 pb-5">
+          <div class="flex items-center gap-4">
+            <img class="size-14 flex-none select-none" src={appIcon} alt="" draggable="false" />
+            <div class="min-w-0">
+              <h3 class="text-[15px] font-semibold">{$t("updater.availableTitle")}</h3>
+              <p class="text-base-content/80 mt-1">
+                {$t("updater.availableBody", {
+                  latest: $updaterState.latestVersion,
+                  current: currentVersion,
+                })}
+              </p>
+            </div>
+          </div>
+          <div
+            class="update-notes border-base-content/10 bg-base-100 mt-4 h-60 overflow-y-auto rounded-[10px] border px-4 py-3"
+          >
+            {#if releaseNotes}
+              <MarkdownPreview htmlContent={releaseNotes} onOpenExternalLink={openExternal} />
+            {:else}
+              <p class="text-base-content-muted">{$t("updater.noReleaseNotes")}</p>
+            {/if}
+          </div>
+          {#if $updaterState.error}
+            <p class="text-error mt-2 text-[12px] break-words">
+              {$t("updater.installFailed")}
+              {$updaterState.error}
+            </p>
+          {/if}
+          <div class="mt-4 flex justify-end gap-2.5">
+            <button class={secondaryClass} type="button" onclick={close}>
+              {$t("updater.remindLater")}
+            </button>
+            <button class={`${primaryClass} min-w-28`} type="button" onclick={handleInstall}>
+              {$t("updater.install")}
+            </button>
+          </div>
+        </div>
+      {:else}
+        <div class="flex gap-4 px-5 pt-5 pb-5">
+          <img class="size-14 flex-none select-none" src={appIcon} alt="" draggable="false" />
+          <div class="flex min-w-0 flex-1 flex-col">
+            <p class="mt-1 text-[14px] font-semibold">
+              {view === "checking" ? $t("updater.checking") : $t("updater.downloading")}
+            </p>
+            <div
+              class="bg-base-content/[0.07] relative mt-2.5 h-[5px] w-full overflow-hidden rounded-full"
+            >
+              {#if progress === null}
+                <div
+                  class="update-indeterminate bg-primary absolute inset-y-0 w-1/4 rounded-full"
+                ></div>
+              {:else}
+                <div
+                  class="bg-primary h-full rounded-full transition-[width] duration-200"
+                  style={`width: ${progress}%`}
+                ></div>
+              {/if}
+            </div>
+            {#if view === "installing" && $updaterState.contentLength > 0}
+              <p class="text-base-content-muted mt-1.5 text-[11px] tabular-nums">
+                {formatMegabytes($updaterState.downloaded)} / {formatMegabytes(
+                  $updaterState.contentLength
+                )}
+              </p>
+            {/if}
+            {#if view === "checking"}
+              <div class="mt-4 flex justify-end">
+                <button class={`${secondaryClass} min-w-24`} type="button" onclick={close}>
+                  {$t("common.cancel")}
+                </button>
+              </div>
+            {/if}
+          </div>
         </div>
       {/if}
-    </div>
+    {/if}
   </div>
 </Modal>
 
 <style>
+  .update-notes :global(.markdown-content) {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .update-notes :global(.markdown-content > :first-child) {
+    margin-top: 0;
+  }
+
   .update-indeterminate {
-    animation: update-indeterminate 1.2s ease-in-out infinite;
+    animation: update-indeterminate 1.4s ease-in-out infinite;
   }
 
   @keyframes update-indeterminate {
     from {
-      left: -33%;
+      left: -25%;
     }
     to {
       left: 100%;
