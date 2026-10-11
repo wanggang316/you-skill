@@ -16,6 +16,7 @@
   import ScanRootsModal from "$lib/components/ScanRootsModal.svelte";
   import ScopeAgentModal from "$lib/components/ScopeAgentModal.svelte";
   import SkillPickerModal from "$lib/components/SkillPickerModal.svelte";
+  import UpdateDialog from "$lib/components/UpdateDialog.svelte";
   import WorkspaceModal from "$lib/components/WorkspaceModal.svelte";
   import { getAppLocation } from "$lib/navigation/app-shell";
   import { goBack, goForward } from "$lib/navigation/history";
@@ -29,7 +30,12 @@
   import { refreshInstructions } from "$lib/stores/instructions";
   import { openImportModal } from "$lib/stores/modals";
   import { loadSettings } from "$lib/stores/settings";
-  import { ensureUpdateChecked, installAvailableUpdate, updaterState } from "$lib/stores/updater";
+  import {
+    ensureUpdateChecked,
+    installAvailableUpdate,
+    openUpdateDialog,
+    updaterState,
+  } from "$lib/stores/updater";
   import { refreshUserProjects, refreshWorkspaces } from "$lib/stores/user-projects";
 
   let { children } = $props();
@@ -83,6 +89,7 @@
     }
 
     let unlistenOpenInstallModal: UnlistenFn | null = null;
+    let unlistenCheckForUpdates: UnlistenFn | null = null;
     let unlistenFocus: UnlistenFn | null = null;
     let lastFocusRefresh = 0;
 
@@ -117,6 +124,14 @@
         unlistenOpenInstallModal = unlisten;
       })
       .catch(console.error);
+    // Sent by the "Check for Updates…" item in the macOS app menu.
+    listen("check-for-updates", () => {
+      openUpdateDialog();
+    })
+      .then((unlisten) => {
+        unlistenCheckForUpdates = unlisten;
+      })
+      .catch(console.error);
     getCurrentWindow()
       .onFocusChanged(({ payload: focused }) => {
         if (focused) refreshOnFocus();
@@ -130,6 +145,7 @@
 
     return () => {
       unlistenOpenInstallModal?.();
+      unlistenCheckForUpdates?.();
       unlistenFocus?.();
       document.removeEventListener("mousedown", handleWindowDrag);
       document.removeEventListener("keydown", handleHistoryKeys);
@@ -164,4 +180,5 @@
   <DiffModal />
   <WorkspaceModal />
   <ScanRootsModal />
+  <UpdateDialog />
 </Tooltip.Provider>

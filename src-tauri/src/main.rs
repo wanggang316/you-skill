@@ -2,6 +2,8 @@
 
 use tauri::Manager;
 
+#[cfg(target_os = "macos")]
+mod app_menu;
 mod commands;
 mod tray;
 
@@ -74,6 +76,11 @@ fn main() {
       // Setup tray icon and menu
       if let Err(e) = setup_tray(app.handle()) {
         eprintln!("Failed to setup tray: {}", e);
+      }
+
+      #[cfg(target_os = "macos")]
+      if let Err(e) = app_menu::setup_app_menu(app.handle()) {
+        eprintln!("Failed to setup app menu: {}", e);
       }
 
       // Handle window close event - hide to tray instead of quitting

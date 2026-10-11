@@ -6,12 +6,9 @@
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import { BRAND_BOLT_PATH, BRAND_BOLT_VIEW_BOX, WEBSITE_URL } from "$lib/brand";
   import { t } from "$lib/i18n";
-  import { ensureUpdateChecked, installAvailableUpdate, updaterState } from "$lib/stores/updater";
+  import { openUpdateDialog, updaterState } from "$lib/stores/updater";
 
   let currentVersion = $state("");
-  /** Result of a check started here; the shared store holds the update itself. */
-  let message = $state("");
-  let downloadProgress = $state(0);
 
   const buttonClass = "h-8 rounded-lg px-4 py-0 text-[13px]";
 
@@ -22,34 +19,6 @@
       console.error("Failed to load app version:", error);
     }
   });
-
-  async function handleCheck() {
-    message = "";
-    try {
-      await ensureUpdateChecked(true);
-      if (!$updaterState.hasUpdate) message = $t("settings.noUpdateAvailable");
-    } catch {
-      message = $t("settings.updateCheckFailed");
-    }
-  }
-
-  async function handleInstall() {
-    message = "";
-    downloadProgress = 0;
-    let total = 0;
-    let received = 0;
-    try {
-      await installAvailableUpdate((event) => {
-        if (event.event === "Started") total = event.data.contentLength ?? 0;
-        if (event.event === "Progress" && total > 0) {
-          received += event.data.chunkLength;
-          downloadProgress = Math.min(100, Math.round((received / total) * 100));
-        }
-      });
-    } catch {
-      message = $updaterState.error || $t("settings.updateInstallFailed");
-    }
-  }
 </script>
 
 <div class="flex min-h-0 flex-col items-center overflow-y-auto px-8 pt-[16vh] pb-12 text-center">
@@ -74,33 +43,15 @@
   </p>
 
   <div class="mt-7">
-    {#if $updaterState.hasUpdate}
-      <PrimaryActionButton
-        className={buttonClass}
-        onclick={handleInstall}
-        loading={$updaterState.installing}
-        loadingText={downloadProgress > 0
-          ? `${$t("settings.installingUpdate")} ${downloadProgress}%`
-          : $t("settings.installingUpdate")}
-      >
+    <PrimaryActionButton className={buttonClass} onclick={openUpdateDialog}>
+      {#if $updaterState.hasUpdate}
         <Download size={14} />
         {$t("settings.installUpdate")} v{$updaterState.latestVersion}
-      </PrimaryActionButton>
-    {:else}
-      <PrimaryActionButton
-        className={buttonClass}
-        onclick={handleCheck}
-        loading={$updaterState.checking}
-        loadingText={$t("settings.checkingUpdate")}
-      >
+      {:else}
         {$t("settings.checkUpdateBtn")}
-      </PrimaryActionButton>
-    {/if}
+      {/if}
+    </PrimaryActionButton>
   </div>
-
-  {#if message}
-    <p class="text-base-content-muted mt-3 text-xs">{message}</p>
-  {/if}
 
   <button
     class="text-base-content-muted hover:text-base-content mt-8 inline-flex cursor-pointer items-center gap-0.5 text-[12px] transition-colors"

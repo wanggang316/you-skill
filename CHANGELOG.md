@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- An update dialog in the style of Sparkle. Check Update in Settings > About and the new Check for Updates… item below About YouSkill in the macOS app menu open it. It shows the app icon, the new version, the release notes, Remind Me Later and Install Update, or that you are up to date ([HAN-225](https://linear.app/gumpw/issue/HAN-225)).
+
 ### Changed
 
 - Settings dropdowns are as wide as the selected option instead of one fixed width. All settings panes use the same content width. The OpenRouter API key field is below its label and uses the full card width, and the Chinese title of the translation pane is "翻译" ([HAN-226](https://linear.app/gumpw/issue/HAN-226)).
