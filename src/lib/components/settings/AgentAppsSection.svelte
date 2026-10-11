@@ -58,7 +58,7 @@
 
 {#snippet pathRows(app: AgentApp)}
   <dl
-    class="text-base-content-muted mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-[11px]"
+    class="text-base-content-muted mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-[10px] leading-4"
   >
     {#if app.global_path}
       <dt>{$t("agentApps.paths.userSkills")}</dt>
@@ -80,7 +80,7 @@
 {/snippet}
 
 {#snippet appRow(app: AgentApp, editable: boolean)}
-  <div class="flex items-start gap-3 px-4 py-3">
+  <div class="bg-base-200 flex items-start gap-3 rounded-xl px-3 py-2.5">
     <AgentAppIcon agentId={app.id} name={app.display_name} />
     <div class="flex min-w-0 flex-1 flex-col">
       <span class="text-base-content text-[13px] font-medium">{app.display_name}</span>
@@ -111,7 +111,7 @@
   </div>
 {/snippet}
 
-<SettingsPane title={$t("agentApps.title")} description={$t("agentApps.description")}>
+<SettingsPane title={$t("agentApps.title")} description={$t("agentApps.description")} wide>
   {#snippet actions()}
     <IconButton
       variant="outline"
@@ -136,7 +136,7 @@
     <p class="text-error text-[13px] break-all">{error}</p>
   {:else}
     {#if internalApps.length > 0}
-      <div class="settings-card">
+      <div class="grid grid-cols-2 gap-2">
         {#each internalApps as app (app.id)}
           {@render appRow(app, false)}
         {/each}
@@ -148,7 +148,7 @@
         <h3 class="text-base-content-subtle px-1 text-[11px] font-medium tracking-wide uppercase">
           {$t("agentApps.userSection")}
         </h3>
-        <div class="settings-card">
+        <div class="grid grid-cols-2 gap-2">
           {#each userApps as app (app.id)}
             {@render appRow(app, true)}
           {/each}
