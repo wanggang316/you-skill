@@ -254,6 +254,11 @@
 
 <!-- Hover motion follows what each icon shows. Lucide draws the parts as direct children of the svg. -->
 <style>
+  /* The import arrow rests a little higher than Lucide draws it, clear of the tray. */
+  [data-icon="import"] :global(svg > :nth-child(-n + 2)) {
+    transform: translateY(-1.5px);
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     [data-icon] :global(svg),
     [data-icon] :global(svg > *) {
@@ -343,10 +348,10 @@
   @keyframes nav-drop {
     0%,
     100% {
-      transform: translateY(0);
+      transform: translateY(-1.5px);
     }
     50% {
-      transform: translateY(1.5px);
+      transform: translateY(0);
     }
   }
 
