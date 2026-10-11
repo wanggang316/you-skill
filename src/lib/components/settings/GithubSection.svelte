@@ -120,7 +120,7 @@
           {@const usable = account.state === "success"}
           <button
             class={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-              usable && !selected ? "hover:bg-base-200" : ""
+              usable && !selected ? "hover:bg-base-300/60" : ""
             }`}
             disabled={!usable || saving !== null}
             onclick={() => selectAccount(account)}

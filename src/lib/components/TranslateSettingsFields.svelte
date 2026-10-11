@@ -17,6 +17,7 @@
     displayMode = $bindable<TranslateDisplayMode>("bilingual"),
     textStyle = $bindable<TranslateTextStyle>("none"),
     idPrefix = "translate",
+    layout = "stacked",
   }: {
     apiKey?: string;
     targetLanguage?: string;
@@ -25,6 +26,8 @@
     textStyle?: TranslateTextStyle;
     /** Keeps the field ids unique when two forms can exist at the same time. */
     idPrefix?: string;
+    /** `stacked`: label above the control (modal). `rows`: label left, control right (settings card). */
+    layout?: "stacked" | "rows";
   } = $props();
 
   let modelOptions = $state<OpenRouterModelOption[]>([]);
@@ -41,8 +44,29 @@
     { value: "de", label: "Deutsch (de)" },
   ];
 
-  const inputClass =
-    "border-base-300 bg-base-100 text-base-content focus:ring-primary w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none";
+  const rows = $derived(layout === "rows");
+  const containerClass = $derived(rows ? "settings-card" : "space-y-4");
+  const fieldClass = $derived(
+    rows ? "flex min-h-14 items-center justify-between gap-6 px-4 py-3" : "space-y-1.5"
+  );
+  const labelClass = $derived(
+    rows ? "text-base-content text-[13.5px]" : "text-base-content text-sm font-medium"
+  );
+  const controlClass = $derived(rows ? "w-64 shrink-0" : "w-full");
+  const selectClass = $derived(rows ? "h-8 text-[13px]" : "");
+  const inputClass = $derived(
+    `border-base-300 bg-base-100 text-base-content focus:ring-primary w-full rounded-lg border px-3 focus:ring-2 focus:outline-none ${
+      rows ? "h-8 text-[13px]" : "py-2 text-sm"
+    }`
+  );
+
+  const modelHint = $derived(
+    loadingModels
+      ? $t("settings.translation.loadingModels")
+      : modelsError
+        ? $t("settings.translation.loadModelsFailed")
+        : $t("settings.translation.modelHint")
+  );
 
   onMount(() => {
     loadingModels = true;
@@ -60,75 +84,97 @@
   });
 </script>
 
-<div class="space-y-4">
-  <div class="space-y-1.5">
-    <label class="text-base-content text-sm font-medium" for={`${idPrefix}-target-language`}>
+<div class={containerClass}>
+  <div class={fieldClass}>
+    <label class={labelClass} for={`${idPrefix}-target-language`}>
       {$t("settings.translation.targetLanguage")}
     </label>
-    <SelectField id={`${idPrefix}-target-language`} bind:value={targetLanguage} className="w-full">
+    <SelectField
+      id={`${idPrefix}-target-language`}
+      bind:value={targetLanguage}
+      className={controlClass}
+      selectClassName={selectClass}
+    >
       <option value="">{$t("settings.selectPlaceholder")}</option>
       {#each languageOptions as option}
         <option value={option.value}>{option.label}</option>
       {/each}
     </SelectField>
   </div>
-  <div class="space-y-1.5">
-    <label class="text-base-content text-sm font-medium" for={`${idPrefix}-api-key`}>
+  <div class={fieldClass}>
+    <label class={labelClass} for={`${idPrefix}-api-key`}>
       {$t("settings.translation.apiKey")}
     </label>
-    <input
-      id={`${idPrefix}-api-key`}
-      class={inputClass}
-      type="password"
-      bind:value={apiKey}
-      placeholder="sk-or-v1-..."
-      autocomplete="off"
-      required
-    />
+    <div class={controlClass}>
+      <input
+        id={`${idPrefix}-api-key`}
+        class={inputClass}
+        type="password"
+        bind:value={apiKey}
+        placeholder="sk-or-v1-..."
+        autocomplete="off"
+        required
+      />
+    </div>
   </div>
-  <div class="space-y-1.5">
-    <label class="text-base-content text-sm font-medium" for={`${idPrefix}-model`}>
-      {$t("settings.translation.model")}
-    </label>
-    <input
-      id={`${idPrefix}-model`}
-      class={inputClass}
-      type="text"
-      bind:value={model}
-      list={`${idPrefix}-model-options`}
-      placeholder="Model ID"
-      autocomplete="off"
-      required
-    />
-    <datalist id={`${idPrefix}-model-options`}>
-      {#each modelOptions as option}
-        <option value={option.id}>{option.name}</option>
-      {/each}
-    </datalist>
-    <p class="text-base-content-muted text-xs">
-      {#if loadingModels}
-        {$t("settings.translation.loadingModels")}
-      {:else if modelsError}
-        {$t("settings.translation.loadModelsFailed")}
-      {:else}
-        {$t("settings.translation.modelHint")}
-      {/if}
-    </p>
+  <div class={fieldClass}>
+    {#if rows}
+      <div class="min-w-0">
+        <label class={labelClass} for={`${idPrefix}-model`}>
+          {$t("settings.translation.model")}
+        </label>
+        <p class="text-base-content-muted mt-0.5 text-xs">{modelHint}</p>
+      </div>
+    {:else}
+      <label class={labelClass} for={`${idPrefix}-model`}>
+        {$t("settings.translation.model")}
+      </label>
+    {/if}
+    <div class={controlClass}>
+      <input
+        id={`${idPrefix}-model`}
+        class={inputClass}
+        type="text"
+        bind:value={model}
+        list={`${idPrefix}-model-options`}
+        placeholder="Model ID"
+        autocomplete="off"
+        required
+      />
+      <datalist id={`${idPrefix}-model-options`}>
+        {#each modelOptions as option}
+          <option value={option.id}>{option.name}</option>
+        {/each}
+      </datalist>
+    </div>
+    {#if !rows}
+      <p class="text-base-content-muted text-xs">{modelHint}</p>
+    {/if}
   </div>
-  <div class="space-y-1.5">
-    <label class="text-base-content text-sm font-medium" for={`${idPrefix}-display-mode`}>
+  <div class={fieldClass}>
+    <label class={labelClass} for={`${idPrefix}-display-mode`}>
       {$t("settings.translation.displayMode")}
     </label>
-    <SelectField id={`${idPrefix}-display-mode`} bind:value={displayMode} className="w-full">
+    <SelectField
+      id={`${idPrefix}-display-mode`}
+      bind:value={displayMode}
+      className={controlClass}
+      selectClassName={selectClass}
+    >
       <option value="bilingual">{$t("settings.translation.displayModeBilingual")}</option>
       <option value="translation">{$t("settings.translation.displayModeTranslation")}</option>
     </SelectField>
   </div>
-  <div class="space-y-1.5">
-    <label class="text-base-content text-sm font-medium" for={`${idPrefix}-text-style`}>
+  <div class={fieldClass}>
+    <label class={labelClass} for={`${idPrefix}-text-style`}>
       {$t("settings.translation.textStyle")}
     </label>
-    <SelectField id={`${idPrefix}-text-style`} bind:value={textStyle} className="w-full">
+    <SelectField
+      id={`${idPrefix}-text-style`}
+      bind:value={textStyle}
+      className={controlClass}
+      selectClassName={selectClass}
+    >
       <option value="none">{$t("settings.translation.textStyleNone")}</option>
       <option value="dashed_underline">
         {$t("settings.translation.textStyleDashedUnderline")}

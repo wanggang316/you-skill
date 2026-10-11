@@ -89,7 +89,7 @@
     {#if editable}
       <div class="flex shrink-0 gap-0.5">
         <button
-          class="text-base-content-muted hover:bg-base-200 hover:text-base-content rounded-md p-1.5"
+          class="text-base-content-muted hover:bg-base-300 hover:text-base-content rounded-md p-1.5"
           onclick={() => openEditModal(app)}
           type="button"
           title={$t("agentApps.edit")}

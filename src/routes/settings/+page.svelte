@@ -10,7 +10,6 @@
     SlidersHorizontal,
     SquareTerminal,
   } from "@lucide/svelte";
-  import SplitView from "$lib/components/SplitView.svelte";
   import AboutSection from "$lib/components/settings/AboutSection.svelte";
   import AgentAppsSection from "$lib/components/settings/AgentAppsSection.svelte";
   import BackupSection from "$lib/components/settings/BackupSection.svelte";
@@ -40,7 +39,8 @@
 </script>
 
 <section class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-  <SplitView>
+  <!-- A fixed, narrow nav: the topics are short and few, unlike the resizable lists. -->
+  <div class="grid min-h-0 flex-1 grid-cols-[13rem_minmax(0,1fr)]">
     <div class="flex min-h-0 min-w-0 flex-col">
       <header class="flex h-12 flex-none items-center px-4" data-window-drag-region>
         <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
@@ -88,5 +88,5 @@
         {/if}
       {/key}
     </div>
-  </SplitView>
+  </div>
 </section>

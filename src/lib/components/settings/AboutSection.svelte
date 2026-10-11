@@ -54,14 +54,14 @@
 
 <div class="flex min-h-0 flex-col items-center overflow-y-auto px-8 pt-[16vh] pb-12 text-center">
   <svg
-    class="text-base-content h-14 w-auto"
+    class="text-base-content h-10 w-auto"
     viewBox={BRAND_BOLT_VIEW_BOX}
     fill="currentColor"
     aria-hidden="true"
   >
     <path d={BRAND_BOLT_PATH} />
   </svg>
-  <h2 class="text-base-content mt-5 text-[1.6rem] font-semibold tracking-[-0.03em] italic">
+  <h2 class="text-base-content mt-4 text-[1.5rem] font-semibold tracking-[-0.03em] italic">
     YouSkill
   </h2>
   {#if currentVersion}
@@ -73,7 +73,7 @@
     {$t("settings.about.tagline")}
   </p>
 
-  <div class="mt-7 flex items-center gap-2">
+  <div class="mt-7">
     {#if $updaterState.hasUpdate}
       <PrimaryActionButton
         className={buttonClass}
@@ -96,13 +96,18 @@
         {$t("settings.checkUpdateBtn")}
       </PrimaryActionButton>
     {/if}
-    <button class="settings-button" type="button" onclick={() => openExternal(WEBSITE_URL)}>
-      {$t("settings.about.website")}
-      <ArrowUpRight size={14} />
-    </button>
   </div>
 
   {#if message}
     <p class="text-base-content-muted mt-3 text-xs">{message}</p>
   {/if}
+
+  <button
+    class="text-base-content-muted hover:text-base-content mt-8 inline-flex cursor-pointer items-center gap-0.5 text-[12px] transition-colors"
+    type="button"
+    onclick={() => openExternal(WEBSITE_URL)}
+  >
+    {$t("settings.about.website")}
+    <ArrowUpRight size={13} />
+  </button>
 </div>
