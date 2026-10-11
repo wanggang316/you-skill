@@ -9,6 +9,8 @@ type UpdaterState = {
   hasUpdate: boolean;
   latestVersion: string;
   update: Update | null;
+  /** Markdown notes of the latest version. */
+  releaseNotes: string;
   error: string;
   /** Bytes received by the running install. */
   downloaded: number;
@@ -23,6 +25,7 @@ const initialState: UpdaterState = {
   hasUpdate: false,
   latestVersion: "",
   update: null,
+  releaseNotes: "",
   error: "",
   downloaded: 0,
   contentLength: 0,
@@ -32,6 +35,9 @@ export const updaterState = writable<UpdaterState>({ ...initialState });
 
 /** Visibility of the update dialog, shared by every entry point. */
 export const updateDialogOpen = writable(false);
+
+/** Releases are tagged `v<version>`; the release body holds the changelog of that version. */
+const RELEASE_BY_TAG_URL = "https://api.github.com/repos/wanggang316/you-skill/releases/tags/v";
 
 let checkPromise: Promise<void> | null = null;
 
@@ -68,7 +74,11 @@ export async function ensureUpdateChecked(force = false): Promise<void> {
         hasUpdate: Boolean(update),
         latestVersion: update?.version ?? "",
         update: update ?? null,
+        releaseNotes: update?.body?.trim() ?? "",
       }));
+      if (update && !update.body?.trim()) {
+        void loadReleaseNotes(update.version);
+      }
     } catch (error) {
       updaterState.update((state) => ({
         ...state,
@@ -85,6 +95,23 @@ export async function ensureUpdateChecked(force = false): Promise<void> {
     await task;
   } finally {
     checkPromise = null;
+  }
+}
+
+/** The update manifest can come without notes; use the GitHub release body instead. */
+async function loadReleaseNotes(version: string): Promise<void> {
+  try {
+    const response = await fetch(`${RELEASE_BY_TAG_URL}${version}`, {
+      headers: { Accept: "application/vnd.github+json" },
+    });
+    if (!response.ok) return;
+    const release: { body?: string | null } = await response.json();
+    const notes = release.body?.trim() ?? "";
+    updaterState.update((state) =>
+      state.latestVersion === version ? { ...state, releaseNotes: notes } : state
+    );
+  } catch (error) {
+    console.error("Failed to load release notes:", error);
   }
 }
 

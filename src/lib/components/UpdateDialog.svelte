@@ -25,7 +25,7 @@
     if (state.error) return "error";
     return "upToDate";
   });
-  const releaseNotes = $derived(renderMarkdown($updaterState.update?.body));
+  const releaseNotes = $derived(renderMarkdown($updaterState.releaseNotes));
   const progress = $derived(
     $updaterState.contentLength > 0
       ? Math.min(100, ($updaterState.downloaded / $updaterState.contentLength) * 100)
