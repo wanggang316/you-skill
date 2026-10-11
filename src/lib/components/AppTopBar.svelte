@@ -10,6 +10,7 @@
     Store,
   } from "@lucide/svelte";
   import type { Component } from "svelte";
+  import { BRAND_BOLT_PATH, BRAND_BOLT_VIEW_BOX } from "$lib/brand";
   import { t } from "$lib/i18n";
   import {
     buildInstructionsHref,
@@ -63,8 +64,6 @@
     { key: "projects", href: buildScopeHref(), label: $t("sidebar.projects"), icon: FolderTree },
   ]);
 
-  const boltPath = "M0 263.506L265.588 0L205.547 180.705H433L153.889 455L217.987 263.506H0Z";
-
   const marketActive = $derived(activeKey === "market");
   /** Recessed track shared by the nav and the icon buttons; the active item floats above it. */
   const trackClass =
@@ -116,13 +115,13 @@
   >
     <svg
       class="text-base-content h-[25px] w-auto flex-none"
-      viewBox="0 0 433 455"
+      viewBox={BRAND_BOLT_VIEW_BOX}
       fill="currentColor"
       aria-hidden="true"
     >
       <defs>
         <clipPath id="brand-bolt-clip">
-          <path d={boltPath} />
+          <path d={BRAND_BOLT_PATH} />
         </clipPath>
         <linearGradient id="brand-bolt-sheen" x1="0" x2="1" y1="0" y2="0">
           <!-- Bell-shaped falloff so the band fades out softly at its edges. -->
@@ -133,7 +132,7 @@
           <stop offset="1" class="sheen-stop" stop-opacity="0" />
         </linearGradient>
       </defs>
-      <path d={boltPath} />
+      <path d={BRAND_BOLT_PATH} />
       <g clip-path="url(#brand-bolt-clip)">
         <rect class="sheen" width="340" height="455" fill="url(#brand-bolt-sheen)" />
       </g>

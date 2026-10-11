@@ -766,6 +766,16 @@ pre.code-block--compact {
     box-shadow: 0 1px 2px 0 color-mix(in oklch, var(--color-base-content) 5%, transparent);
   }
 
+  /* Bordered group of settings rows with hairlines between them. */
+  .settings-card {
+    @apply border-base-300 divide-base-300 divide-y rounded-xl border;
+  }
+
+  /* Secondary action next to a primary one in settings rows. */
+  .settings-button {
+    @apply border-base-300 bg-base-100 text-base-content hover:bg-base-200 inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[13px] transition disabled:cursor-default disabled:opacity-50;
+  }
+
   .tag {
     @apply rounded-full px-2 py-0.5 text-[10px];
   }

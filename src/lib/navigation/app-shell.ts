@@ -22,13 +22,24 @@ export type AppLocation = {
   source: LibrarySource;
 };
 
+/** Panes of the settings page, in nav order (`/settings?section=`). */
+export const SETTINGS_SECTIONS = [
+  "general",
+  "agents",
+  "translation",
+  "github",
+  "backup",
+  "cli",
+  "about",
+] as const;
+
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
 const LIBRARY_FILTERS: LibraryFilter[] = ["all", "changed", "uninstalled"];
 const LIBRARY_SOURCES: LibrarySource[] = ["all", "local", "github", "none"];
 
 const isSettingsPath = (pathname: string) =>
-  pathname === "/settings" ||
-  pathname.startsWith("/settings/") ||
-  pathname.startsWith("/agent-apps");
+  pathname === "/settings" || pathname.startsWith("/settings/");
 
 const isMarketPath = (pathname: string) =>
   pathname === "/market" || pathname.startsWith("/skills/remote/");
@@ -106,3 +117,9 @@ export const buildScopeHref = (scope?: ScopeRef | null): string => {
 };
 
 export const buildMarketHref = (): string => "/market";
+
+export const parseSettingsSection = (value: string | null): SettingsSection =>
+  SETTINGS_SECTIONS.includes(value as SettingsSection) ? (value as SettingsSection) : "general";
+
+export const buildSettingsHref = (section: SettingsSection = "general"): string =>
+  section === "general" ? "/settings" : `/settings?section=${section}`;
