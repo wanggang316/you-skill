@@ -63,6 +63,8 @@
     { key: "projects", href: buildScopeHref(), label: $t("sidebar.projects"), icon: FolderTree },
   ]);
 
+  const boltPath = "M0 263.506L265.588 0L205.547 180.705H433L153.889 455L217.987 263.506H0Z";
+
   const marketActive = $derived(activeKey === "market");
   /** Recessed track shared by the nav and the icon buttons; the active item floats above it. */
   const trackClass =
@@ -113,12 +115,25 @@
     aria-label="YouSkill"
   >
     <svg
-      class="text-base-content group-hover:text-primary h-[25px] w-auto flex-none transition-colors duration-300"
+      class="text-base-content h-[25px] w-auto flex-none"
       viewBox="0 0 433 455"
       fill="currentColor"
       aria-hidden="true"
     >
-      <path d="M0 263.506L265.588 0L205.547 180.705H433L153.889 455L217.987 263.506H0Z" />
+      <defs>
+        <clipPath id="brand-bolt-clip">
+          <path d={boltPath} />
+        </clipPath>
+        <linearGradient id="brand-bolt-sheen" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" class="sheen-stop" stop-opacity="0" />
+          <stop offset="0.5" class="sheen-stop" stop-opacity="0.6" />
+          <stop offset="1" class="sheen-stop" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={boltPath} />
+      <g clip-path="url(#brand-bolt-clip)">
+        <rect class="sheen" width="140" height="455" fill="url(#brand-bolt-sheen)" />
+      </g>
     </svg>
     <span class="text-base-content truncate pr-1 text-[16px] font-medium tracking-[-0.03em] italic">
       YouSkill
@@ -243,9 +258,12 @@
       transition: transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    /* Logo: the bolt strikes with a short jolt and two flickers, then stays charged. */
-    [data-icon="logo"]:hover :global(svg) {
-      animation: nav-strike 520ms ease-out;
+    /* Logo: a band of light passes over the bolt once. */
+    .sheen {
+      transform: translateX(-200px) skewX(-20deg);
+    }
+    [data-icon="logo"]:hover .sheen {
+      animation: nav-sheen 700ms ease-out;
     }
 
     /* Library: the leaning book stands up and lifts off the shelf. */
@@ -305,26 +323,17 @@
     }
   }
 
-  @keyframes nav-strike {
-    0%,
-    100% {
-      transform: none;
-      opacity: 1;
+  /* Light on the dark bolt, shade on the light bolt of the dark theme. */
+  .sheen-stop {
+    stop-color: var(--color-base-100);
+  }
+
+  @keyframes nav-sheen {
+    from {
+      transform: translateX(-200px) skewX(-20deg);
     }
-    12% {
-      transform: translate(1px, -1.5px);
-      opacity: 0.35;
-    }
-    24% {
-      transform: translate(-0.5px, 1px);
-      opacity: 1;
-    }
-    36% {
-      opacity: 0.45;
-    }
-    48% {
-      transform: none;
-      opacity: 1;
+    to {
+      transform: translateX(560px) skewX(-20deg);
     }
   }
 
