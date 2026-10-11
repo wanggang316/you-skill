@@ -112,7 +112,7 @@
     aria-label="YouSkill"
   >
     <svg
-      class="text-base-content h-[22px] w-auto flex-none transition-transform duration-300 ease-out group-hover:-rotate-12"
+      class="text-base-content h-[25px] w-auto flex-none transition-transform duration-300 ease-out group-hover:-rotate-12"
       viewBox="0 0 433 455"
       fill="currentColor"
       aria-hidden="true"
