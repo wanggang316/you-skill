@@ -135,7 +135,7 @@
       </defs>
       <path d={boltPath} />
       <g clip-path="url(#brand-bolt-clip)">
-        <rect class="sheen" width="240" height="455" fill="url(#brand-bolt-sheen)" />
+        <rect class="sheen" width="340" height="455" fill="url(#brand-bolt-sheen)" />
       </g>
     </svg>
     <span class="text-base-content truncate pr-1 text-[16px] font-medium tracking-[-0.03em] italic">
@@ -263,10 +263,10 @@
 
     /* Logo: a band of light passes over the bolt once. */
     .sheen {
-      transform: translateX(-300px) skewX(-20deg);
+      transform: translateX(-420px) skewX(-20deg);
     }
     [data-icon="logo"]:hover .sheen {
-      animation: nav-sheen 700ms ease-out;
+      animation: nav-sheen 1100ms ease-in-out;
     }
 
     /* Library: the leaning book stands up and lifts off the shelf. */
@@ -333,10 +333,10 @@
 
   @keyframes nav-sheen {
     from {
-      transform: translateX(-300px) skewX(-20deg);
+      transform: translateX(-420px) skewX(-20deg);
     }
     to {
-      transform: translateX(600px) skewX(-20deg);
+      transform: translateX(640px) skewX(-20deg);
     }
   }
 
