@@ -4,7 +4,6 @@
     Check,
     ChevronRight,
     Folder,
-    Github,
     Loader2,
     RefreshCw,
     ScanSearch,
@@ -12,12 +11,13 @@
     Zap,
   } from "@lucide/svelte";
   import SkillIcon from "$lib/components/SkillIcon.svelte";
+  import GithubAvatar from "$lib/components/library/GithubAvatar.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import SelectField from "$lib/components/ui/SelectField.svelte";
   import { t } from "$lib/i18n";
   import type { HubSkillView } from "$lib/api/hub";
-  import { githubAvatarUrl, groupLibrarySkills } from "$lib/library-groups";
+  import { groupLibrarySkills } from "$lib/library-groups";
   import type { LibraryFilter, LibrarySource } from "$lib/navigation/app-shell";
 
   let {
@@ -80,8 +80,6 @@
   };
 
   let collapsed = $state<string[]>(readCollapsed());
-  /** GitHub owners whose avatar failed to load; they show the GitHub icon instead. */
-  let failedAvatars = $state<string[]>([]);
 
   function setCollapsed(keys: string[]) {
     collapsed = keys;
@@ -205,17 +203,7 @@
         >
           <ChevronRight size={12} class={`shrink-0 transition ${open ? "rotate-90" : ""}`} />
           {#if group.kind === "github"}
-            {#if failedAvatars.includes(group.label)}
-              <Github size={13} class="shrink-0" />
-            {:else}
-              <img
-                class="bg-base-300 size-4 shrink-0 rounded-full"
-                src={githubAvatarUrl(group.label)}
-                alt=""
-                loading="lazy"
-                onerror={() => (failedAvatars = [...failedAvatars, group.label])}
-              />
-            {/if}
+            <GithubAvatar owner={group.label} />
           {:else if group.kind === "folder"}
             <Folder size={13} class="shrink-0" />
           {:else}

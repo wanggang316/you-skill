@@ -58,7 +58,3 @@ export function groupLibrarySkills(skills: HubSkillView[]): LibraryGroup[] {
       (a.path ?? "").localeCompare(b.path ?? "")
   );
 }
-
-export function githubAvatarUrl(owner: string): string {
-  return `https://github.com/${encodeURIComponent(owner)}.png?size=40`;
-}

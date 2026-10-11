@@ -33,3 +33,8 @@ export async function getGithubAuthStatus(): Promise<GithubAuthStatus> {
 export async function setGithubAccount(login: string | null): Promise<GithubAuthStatus> {
   return apiCall<GithubAuthStatus>("set_github_account", { login });
 }
+
+/** Avatar image bytes of a GitHub owner, served from the backend disk cache. */
+export async function getGithubAvatar(owner: string): Promise<ArrayBuffer> {
+  return apiCall<ArrayBuffer>("get_github_avatar", { owner });
+}
