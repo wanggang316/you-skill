@@ -64,9 +64,11 @@
   ]);
 
   const marketActive = $derived(activeKey === "market");
-  /** Shared look of the nav track and the market button. */
+  /** Recessed track shared by the nav and the icon buttons; the active item floats above it. */
   const trackClass =
-    "bg-base-100 shadow-[0_1px_2px_0_color-mix(in_oklch,var(--color-base-content)_6%,transparent)]";
+    "bg-base-content/[0.055] shadow-[inset_0_0_0_0.5px_color-mix(in_oklch,var(--color-base-content)_4%,transparent)]";
+  const raisedClass =
+    "bg-raised shadow-[0_1px_2px_0_color-mix(in_oklch,var(--color-base-content)_10%,transparent),0_0_0_0.5px_color-mix(in_oklch,var(--color-base-content)_8%,transparent)]";
 
   let nav = $state<HTMLElement | null>(null);
   /** Position of the active pill; it slides between items instead of jumping. */
@@ -131,7 +133,7 @@
       aria-label={$t("sidebar.navigation")}
     >
       <span
-        class={`bg-base-300 absolute top-[3px] bottom-[3px] left-0 rounded-full ${
+        class={`${raisedClass} absolute top-[3px] bottom-[3px] left-0 rounded-full ${
           animate
             ? "transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
             : ""
@@ -172,7 +174,7 @@
     >
       <span
         class={`flex size-full items-center justify-center rounded-full transition-[background-color,box-shadow] duration-200 ${
-          marketActive ? "bg-base-300" : ""
+          marketActive ? raisedClass : ""
         }`}
       >
         <Store size={16} strokeWidth={1.8} />
