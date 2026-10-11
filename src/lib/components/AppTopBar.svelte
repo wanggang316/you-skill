@@ -4,7 +4,7 @@
     FolderTree,
     LibraryBig,
     Loader2,
-    Plus,
+    Import,
     ScrollText,
     Settings,
     Store,
@@ -208,7 +208,7 @@
       title={$t("import.title")}
       aria-label={$t("import.title")}
     >
-      <Plus size={17} strokeWidth={1.8} />
+      <Import size={16} strokeWidth={1.8} />
     </button>
   </div>
 
@@ -302,9 +302,9 @@
       animation: nav-swing 700ms ease-in-out;
     }
 
-    /* Import: the plus springs out, as if something is added. */
-    [data-icon="import"]:hover :global(svg) {
-      transform: scale(1.18);
+    /* Import: the arrow drops into the tray. */
+    [data-icon="import"]:hover :global(svg > :nth-child(-n + 2)) {
+      transform: translateY(2.5px);
     }
 
     /* Settings: the gear turns. */
