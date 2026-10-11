@@ -1,6 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { FolderTree, LibraryBig, Loader2, ScrollText, Settings, Store } from "@lucide/svelte";
+  import {
+    FolderTree,
+    LibraryBig,
+    Loader2,
+    Plus,
+    ScrollText,
+    Settings,
+    Store,
+  } from "@lucide/svelte";
   import type { Component } from "svelte";
   import { t } from "$lib/i18n";
   import {
@@ -16,6 +24,7 @@
     hasUpdate,
     updateLoading,
     latestVersion = "",
+    onImport,
     onOpenLibrary,
     onOpenUpdate,
   }: {
@@ -23,6 +32,7 @@
     hasUpdate: boolean;
     updateLoading: boolean;
     latestVersion?: string;
+    onImport: () => void;
     onOpenLibrary: () => void;
     onOpenUpdate: () => void;
   } = $props();
@@ -168,6 +178,16 @@
         <Store size={16} strokeWidth={1.8} />
       </span>
     </a>
+
+    <button
+      class={`${trackClass} focus-visible:ring-primary/50 text-base-content-muted hover:text-base-content flex size-9 items-center justify-center rounded-full transition-[color,transform] duration-200 focus-visible:ring-2 focus-visible:outline-none active:scale-95`}
+      type="button"
+      onclick={onImport}
+      title={$t("import.title")}
+      aria-label={$t("import.title")}
+    >
+      <Plus size={17} strokeWidth={1.8} />
+    </button>
   </div>
 
   <div class="flex min-w-0 items-center justify-end gap-1.5">

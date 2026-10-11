@@ -40,7 +40,6 @@
   } from "$lib/stores/hub";
   import { homePath } from "$lib/stores/env";
   import {
-    openImportModal,
     openInstallModal,
     openLocationPickerModal,
     openScanRootsModal,
@@ -321,7 +320,6 @@
       onClearChecked={() => (checkedNames = [])}
       onRefresh={handleRefresh}
       onScan={() => openScanRootsModal()}
-      onImport={() => openImportModal()}
       onFilterChange={(next) => navigate({ filter: next })}
       onSourceChange={(next) => navigate({ source: next })}
     />

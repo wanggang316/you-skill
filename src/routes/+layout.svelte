@@ -144,6 +144,7 @@
       hasUpdate={$updaterState.hasUpdate}
       updateLoading={$updaterState.installing}
       latestVersion={$updaterState.latestVersion}
+      onImport={() => openImportModal()}
       onOpenLibrary={() => void checkAllSourceUpdates()}
       onOpenUpdate={() => installAvailableUpdate().catch(console.error)}
     />
