@@ -119,9 +119,7 @@
     >
       <path d="M0 263.506L265.588 0L205.547 180.705H433L153.889 455L217.987 263.506H0Z" />
     </svg>
-    <span
-      class="text-base-content truncate pr-1 text-[16px] font-medium tracking-[-0.03em] italic"
-    >
+    <span class="text-base-content truncate pr-1 text-[16px] font-medium tracking-[-0.03em] italic">
       YouSkill
     </span>
   </a>
@@ -155,6 +153,7 @@
           href={item.href}
           onclick={item.onclick}
           data-nav-key={item.key}
+          data-icon={item.key}
           aria-current={active ? "page" : undefined}
         >
           <Icon size={15} strokeWidth={1.8} />
@@ -168,6 +167,7 @@
         marketActive ? "text-base-content" : "text-base-content-muted hover:text-base-content"
       }`}
       href={buildMarketHref()}
+      data-icon="market"
       aria-current={marketActive ? "page" : undefined}
       title={$t("sidebar.market")}
       aria-label={$t("sidebar.market")}
@@ -185,6 +185,7 @@
       class={`${trackClass} focus-visible:ring-primary/50 text-base-content-muted hover:text-base-content flex size-9 items-center justify-center rounded-full transition-[color,transform] duration-200 focus-visible:ring-2 focus-visible:outline-none active:scale-95`}
       type="button"
       onclick={onImport}
+      data-icon="import"
       title={$t("import.title")}
       aria-label={$t("import.title")}
     >
@@ -222,15 +223,95 @@
           : "text-base-content-muted hover:bg-base-content/[0.06] hover:text-base-content"
       }`}
       href="/settings"
+      data-icon="settings"
       aria-current={activeKey === "settings" ? "page" : undefined}
       title={$t("header.settings")}
       aria-label={$t("header.settings")}
     >
-      <Settings
-        size={17}
-        strokeWidth={1.7}
-        class="transition-transform duration-500 ease-out hover:rotate-90"
-      />
+      <Settings size={17} strokeWidth={1.7} />
     </a>
   </div>
 </header>
+
+<!-- Hover motion follows what each icon shows. Lucide draws the parts as direct children of the svg. -->
+<style>
+  @media (prefers-reduced-motion: no-preference) {
+    [data-icon] :global(svg),
+    [data-icon] :global(svg > *) {
+      transform-box: view-box;
+      transition: transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Library: the leaning book stands up and lifts off the shelf. */
+    [data-icon="library"] :global(svg > :nth-child(3)) {
+      transform-origin: 18.5px 20.5px;
+    }
+    [data-icon="library"]:hover :global(svg > :nth-child(3)) {
+      transform: translateY(-1.5px) rotate(17deg);
+    }
+
+    /* Instructions: the text lines on the scroll are written again, top line first. */
+    [data-icon="instructions"]:hover :global(svg > :nth-child(-n + 2)) {
+      stroke-dasharray: 5;
+      animation: nav-write 360ms ease-out both;
+    }
+    [data-icon="instructions"]:hover :global(svg > :nth-child(1)) {
+      animation-delay: 120ms;
+    }
+
+    /* Projects: the folders slide out along their branches. */
+    [data-icon="projects"]:hover :global(svg > :nth-child(-n + 2)) {
+      transform: translateX(1.5px);
+    }
+    [data-icon="projects"]:hover :global(svg > :nth-child(2)) {
+      transition-delay: 60ms;
+    }
+
+    /* Market: the awning swings in the wind. */
+    [data-icon="market"] :global(svg > :nth-child(2)) {
+      transform-origin: 12px 2px;
+    }
+    [data-icon="market"]:hover :global(svg > :nth-child(2)) {
+      animation: nav-swing 700ms ease-in-out;
+    }
+
+    /* Import: the plus springs out, as if something is added. */
+    [data-icon="import"]:hover :global(svg) {
+      transform: scale(1.18);
+    }
+
+    /* Settings: the gear turns. */
+    [data-icon="settings"] :global(svg) {
+      transition-duration: 600ms;
+      transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    [data-icon="settings"]:hover :global(svg) {
+      transform: rotate(90deg);
+    }
+  }
+
+  @keyframes nav-write {
+    from {
+      stroke-dashoffset: -5;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes nav-swing {
+    0%,
+    100% {
+      transform: rotate(0);
+    }
+    25% {
+      transform: rotate(-7deg);
+    }
+    55% {
+      transform: rotate(5deg);
+    }
+    80% {
+      transform: rotate(-2deg);
+    }
+  }
+</style>
