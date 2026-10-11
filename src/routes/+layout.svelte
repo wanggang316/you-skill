@@ -149,7 +149,7 @@
       onOpenUpdate={() => installAvailableUpdate().catch(console.error)}
     />
 
-    <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-2 pt-0.5 pb-2">
+    <section class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-2 pb-2">
       {@render children()}
     </section>
   </div>
