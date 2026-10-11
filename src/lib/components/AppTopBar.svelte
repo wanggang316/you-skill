@@ -125,14 +125,17 @@
           <path d={boltPath} />
         </clipPath>
         <linearGradient id="brand-bolt-sheen" x1="0" x2="1" y1="0" y2="0">
+          <!-- Bell-shaped falloff so the band fades out softly at its edges. -->
           <stop offset="0" class="sheen-stop" stop-opacity="0" />
-          <stop offset="0.5" class="sheen-stop" stop-opacity="0.6" />
+          <stop offset="0.25" class="sheen-stop" stop-opacity="0.1" />
+          <stop offset="0.5" class="sheen-stop" stop-opacity="0.4" />
+          <stop offset="0.75" class="sheen-stop" stop-opacity="0.1" />
           <stop offset="1" class="sheen-stop" stop-opacity="0" />
         </linearGradient>
       </defs>
       <path d={boltPath} />
       <g clip-path="url(#brand-bolt-clip)">
-        <rect class="sheen" width="140" height="455" fill="url(#brand-bolt-sheen)" />
+        <rect class="sheen" width="240" height="455" fill="url(#brand-bolt-sheen)" />
       </g>
     </svg>
     <span class="text-base-content truncate pr-1 text-[16px] font-medium tracking-[-0.03em] italic">
@@ -260,7 +263,7 @@
 
     /* Logo: a band of light passes over the bolt once. */
     .sheen {
-      transform: translateX(-200px) skewX(-20deg);
+      transform: translateX(-300px) skewX(-20deg);
     }
     [data-icon="logo"]:hover .sheen {
       animation: nav-sheen 700ms ease-out;
@@ -330,10 +333,10 @@
 
   @keyframes nav-sheen {
     from {
-      transform: translateX(-200px) skewX(-20deg);
+      transform: translateX(-300px) skewX(-20deg);
     }
     to {
-      transform: translateX(560px) skewX(-20deg);
+      transform: translateX(600px) skewX(-20deg);
     }
   }
 
