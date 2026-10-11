@@ -3,6 +3,7 @@
 
 pub mod agent_apps_service;
 pub mod ai_service;
+pub mod avatar_service;
 pub mod backup_service;
 pub mod diff_service;
 pub mod drift_service;

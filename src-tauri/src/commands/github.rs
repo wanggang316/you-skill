@@ -1,3 +1,4 @@
+use crate::services::avatar_service;
 use crate::services::github_auth_service::{self, GithubAuthStatus};
 
 #[tauri::command]
@@ -12,4 +13,12 @@ pub async fn set_github_account(login: Option<String>) -> Result<GithubAuthStatu
   tokio::task::spawn_blocking(move || github_auth_service::set_account(login))
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// Returns raw image bytes; the frontend receives them as an `ArrayBuffer`.
+#[tauri::command]
+pub async fn get_github_avatar(owner: String) -> Result<tauri::ipc::Response, String> {
+  avatar_service::github_avatar(owner)
+    .await
+    .map(tauri::ipc::Response::new)
 }
