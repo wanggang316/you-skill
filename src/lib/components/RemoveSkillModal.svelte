@@ -10,6 +10,8 @@
     name = "",
     installCount = 0,
     kind = "skill",
+    title = "",
+    description = "",
     remove,
     onRemoved = () => {},
   }: {
@@ -17,6 +19,10 @@
     name?: string;
     installCount?: number;
     kind?: LibraryKind;
+    /** Overrides the default single-entry title. */
+    title?: string;
+    /** Overrides the default single-entry description. */
+    description?: string;
     /** Delete the entry; `removeInstalls` also deletes the installed copies. */
     remove: (removeInstalls: boolean) => Promise<void>;
     onRemoved?: () => void | Promise<void>;
@@ -52,13 +58,14 @@
 
 <Modal
   bind:open
-  title={$t("remove.title", { name })}
+  title={title || $t("remove.title", { name })}
   onClose={() => (open = false)}
   containerClass="max-w-md"
 >
   <div class="space-y-4 px-6 pt-2 pb-6 text-sm">
     <p class="text-base-content-muted">
-      {kind === "instruction" ? $t("instructions.remove.description") : $t("remove.description")}
+      {description ||
+        (kind === "instruction" ? $t("instructions.remove.description") : $t("remove.description"))}
     </p>
     {#if installCount > 0}
       <label class="text-base-content flex cursor-pointer items-start gap-2">
@@ -74,7 +81,7 @@
       </label>
     {/if}
     {#if error}
-      <div class="text-error flex items-start gap-2 text-sm">
+      <div class="text-error flex items-start gap-2 text-sm whitespace-pre-wrap">
         <AlertCircle size={16} class="mt-0.5 shrink-0" />
         <span>{error}</span>
       </div>
