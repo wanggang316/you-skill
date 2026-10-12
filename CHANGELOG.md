@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- GitHub owner avatars in the Skill library no longer reload each time you open the library. The app keeps them in a disk cache for 7 days and in memory while it runs, and shows the GitHub icon instead of a gray circle while an avatar loads ([HAN-228](https://linear.app/gumpw/issue/HAN-228)).
+
 ### Removed
 
 ## [0.9.7] - 2026-10-11

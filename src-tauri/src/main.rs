@@ -15,7 +15,7 @@ use commands::{
     update_user_agent_app,
   },
   cli::{cli_status, install_cli, uninstall_cli},
-  github::{get_github_auth_status, set_github_account},
+  github::{get_github_auth_status, get_github_avatar, set_github_account},
   hub::{
     check_source_updates, diff_skill, get_hub_skill, import_scanned, import_skills, install_skill,
     list_hub_skills, migrate_legacy, migration_status, remove_hub_skill, scan_folder, sync_skill,
@@ -107,6 +107,7 @@ fn main() {
       uninstall_cli,
       get_github_auth_status,
       set_github_account,
+      get_github_avatar,
       fetch_remote_skills,
       fetch_skills_by_names,
       record_skill_install,
