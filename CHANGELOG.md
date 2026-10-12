@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - An update dialog in the style of Sparkle. Check Update in Settings > About and the new Check for Updates… item below About YouSkill in the macOS app menu open it. It shows the app icon, the new version, the release notes, Remind Me Later and Install Update, or that you are up to date ([HAN-225](https://linear.app/gumpw/issue/HAN-225)).
+- Remove for skills picked with Shift+click in the Skill library. The action bar shows Remove next to Install and Cancel. It opens one dialog for all picked skills, with the option to also delete their installed copies ([HAN-231](https://linear.app/gumpw/issue/HAN-231)).
 
 ### Changed
 
