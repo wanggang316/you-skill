@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.9.8] - 2026-10-13
+
+### Added
+
 - An update dialog in the style of Sparkle. Check Update in Settings > About and the new Check for Updates… item below About YouSkill in the macOS app menu open it. It shows the app icon, the new version, the release notes, Remind Me Later and Install Update, or that you are up to date ([HAN-225](https://linear.app/gumpw/issue/HAN-225)).
 - Remove for skills picked with Shift+click in the Skill library. The action bar shows Remove next to Install and Cancel. It opens one dialog for all picked skills, with the option to also delete their installed copies ([HAN-231](https://linear.app/gumpw/issue/HAN-231)).
 - Retranslate in the translation view menu of a translated Markdown file, below a separator. It translates the file again without the cached translation, replaces the shown and cached translation, and keeps the selected view ([HAN-233](https://linear.app/gumpw/issue/HAN-233)).
@@ -23,8 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - GitHub owner avatars in the Skill library no longer reload each time you open the library. The app keeps them in a disk cache for 7 days and in memory while it runs, and shows the GitHub icon instead of a gray circle while an avatar loads ([HAN-228](https://linear.app/gumpw/issue/HAN-228)).
-
-### Removed
+- The confirm button of the remove and force dialogs is red again instead of the normal accent color.
 
 ## [0.9.7] - 2026-10-11
 
