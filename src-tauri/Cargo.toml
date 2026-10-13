@@ -2,7 +2,7 @@
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.9.8"
+version = "0.9.9"
 # std::fs::File::lock is stable since 1.89.
 rust-version = "1.89"
 

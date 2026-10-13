@@ -15,9 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Markdown preview renders bold and italic text next to CJK punctuation, for example `**“禁止变通方案”**规则` in a translation ([HAN-235](https://linear.app/gumpw/issue/HAN-235)).
-
 ### Removed
+
+## [0.9.9] - 2026-10-14
+
+### Fixed
+
+- Markdown preview renders bold and italic text next to CJK punctuation, for example `**“禁止变通方案”**规则` in a translation ([HAN-235](https://linear.app/gumpw/issue/HAN-235)).
+- A failed translation shows a notice above the file instead of failing silently. A result that is identical to the original text is treated as a failure, so a model that echoes the source no longer fills the translation cache with untranslated text ([HAN-236](https://linear.app/gumpw/issue/HAN-236)).
+- The skill file viewer shows one "open in file manager" button instead of two.
 
 ## [0.9.8] - 2026-10-13
 
