@@ -100,7 +100,7 @@
       onclick={handleRemove}
       loading={removing}
       loadingText={$t("remove.removing")}
-      className="bg-error hover:bg-error/85 text-error-content"
+      variant="danger"
     >
       {$t("remove.confirm")}
     </PrimaryActionButton>
