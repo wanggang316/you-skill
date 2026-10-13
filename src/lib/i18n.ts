@@ -221,6 +221,7 @@ const translations: Record<string, Dictionary> = {
     "detail.translating": "Translating...",
     "detail.showBilingual": "Bilingual",
     "detail.retranslate": "Retranslate",
+    "detail.translateFailed": "Translation failed",
     "detail.notFound": "Skill not found",
 
     "target.state.in_sync": "In sync",
@@ -742,6 +743,7 @@ const translations: Record<string, Dictionary> = {
     "detail.translating": "翻译中...",
     "detail.showBilingual": "双语对照",
     "detail.retranslate": "重新翻译",
+    "detail.translateFailed": "翻译失败",
     "detail.notFound": "未找到该 skill",
 
     "target.state.in_sync": "已同步",

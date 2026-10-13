@@ -71,6 +71,11 @@ fn load_translation_cache_entry(cache_dir: &Path, cache_key: &str) -> Option<Str
   Some(content)
 }
 
+/// A model can echo the source text back. Such a result is not a translation.
+fn is_untranslated(markdown: &str, translated: &str) -> bool {
+  markdown.trim() == translated.trim()
+}
+
 fn save_translation_cache_entry(
   cache_dir: &Path,
   cache_key: &str,
@@ -104,6 +109,7 @@ fn lookup_cached_translation(
   }
   let cache_key = build_translation_cache_key(model, target_language, markdown);
   load_translation_cache_entry(cache_dir, &cache_key)
+    .filter(|cached| !is_untranslated(markdown, cached))
 }
 
 /// Translates `markdown` with the configured model. When `force` is true, skips the
@@ -146,6 +152,12 @@ pub async fn translate_skill_markdown(markdown: String, force: bool) -> Result<S
     },
   ];
   let content = ai_service::chat_completion_with_openrouter(api_key, &model, messages, 0.1).await?;
+  if is_untranslated(&markdown, &content) {
+    return Err(format!(
+      "模型 {} 返回的内容与原文相同，未翻译为 {}。请检查目标语言或更换模型后重试",
+      model, target_language
+    ));
+  }
 
   let cache_key = build_translation_cache_key(&model, &target_language, &markdown);
   if let Err(error) = save_translation_cache_entry(&cache_dir, &cache_key, &content) {
@@ -204,6 +216,25 @@ mod tests {
       lookup_cached_translation(&unconfigured, dir.path(), "# Title"),
       None
     );
+  }
+
+  #[test]
+  fn lookup_ignores_untranslated_cache_entry() {
+    let dir = tempfile::tempdir().unwrap();
+    let config = translate_config();
+    let key = build_translation_cache_key("test/model", "Chinese", "# Title\n");
+    save_translation_cache_entry(dir.path(), &key, "# Title").unwrap();
+
+    assert_eq!(
+      lookup_cached_translation(&config, dir.path(), "# Title\n"),
+      None
+    );
+  }
+
+  #[test]
+  fn untranslated_ignores_surrounding_whitespace_only() {
+    assert!(is_untranslated("# Title\n", "  # Title"));
+    assert!(!is_untranslated("# Title", "# 标题"));
   }
 
   #[test]
