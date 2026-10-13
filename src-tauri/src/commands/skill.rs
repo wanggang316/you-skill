@@ -69,6 +69,6 @@ pub async fn get_cached_skill_translation(markdown: String) -> Result<Option<Str
 }
 
 #[tauri::command]
-pub async fn translate_skill_markdown(markdown: String) -> Result<String, String> {
-  translate_service::translate_skill_markdown(markdown).await
+pub async fn translate_skill_markdown(markdown: String, force: bool) -> Result<String, String> {
+  translate_service::translate_skill_markdown(markdown, force).await
 }
