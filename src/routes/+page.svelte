@@ -53,8 +53,10 @@
   let actionError = $state("");
   let removeModalOpen = $state(false);
   let migrationDismissed = $state(false);
-  /** Skills picked with Shift+click for a batch install. */
+  /** Skills picked with Shift+click for a batch install or removal. */
   let checkedNames = $state<string[]>([]);
+  /** Skills the remove modal acts on: the selected one or the checked batch. */
+  let removeNames = $state<string[]>([]);
 
   const location = $derived(getAppLocation(page.url));
   const selectedName = $derived(location.skill);
@@ -82,6 +84,12 @@
 
   const selectedSkill = $derived<HubSkillView | null>(
     selectedName ? ($hubSkills.find((skill) => skill.name === selectedName) ?? null) : null
+  );
+
+  const removeInstallCount = $derived(
+    $hubSkills
+      .filter((skill) => removeNames.includes(skill.name))
+      .reduce((total, skill) => total + skill.installs.length, 0)
   );
 
   const migrationNotice = $derived.by(() => {
@@ -150,6 +158,16 @@
     const names = checkedNames.filter((name) => $hubSkills.some((skill) => skill.name === name));
     checkedNames = [];
     openInstallModal(names, { replace: true });
+  }
+
+  function openRemoveModal(names: string[]) {
+    if (names.length === 0) return;
+    removeNames = names;
+    removeModalOpen = true;
+  }
+
+  function handleBatchRemove() {
+    openRemoveModal(checkedNames.filter((name) => $hubSkills.some((skill) => skill.name === name)));
   }
 
   function handleInstall(scope: InstallScope, projectPath: string | null, lockScope = false) {
@@ -262,14 +280,36 @@
     });
   }
 
+  /** Remove every target; on failure keep only the failed ones so a retry skips the rest. */
   async function handleRemove(removeInstalls: boolean) {
-    if (!selectedSkill) return;
-    await removeHubSkill(selectedSkill.name, removeInstalls);
+    const failures: { name: string; error: unknown }[] = [];
+    for (const name of removeNames) {
+      try {
+        await removeHubSkill(name, removeInstalls);
+      } catch (error) {
+        failures.push({ name, error });
+      }
+    }
+    if (failures.length === 0) return;
+    const removed = removeNames.filter((name) => !failures.some((item) => item.name === name));
+    if (removed.length > 0) {
+      dropRemoved(removed);
+      await refreshHub().catch(console.error);
+    }
+    removeNames = failures.map((item) => item.name);
+    throw failures.length === 1 && removed.length === 0
+      ? failures[0].error
+      : failures.map((item) => `${item.name}: ${String(item.error)}`).join("\n");
+  }
+
+  function dropRemoved(removed: string[]) {
+    checkedNames = checkedNames.filter((name) => !removed.includes(name));
+    if (selectedName && removed.includes(selectedName)) navigate({ skill: null });
   }
 
   async function handleRemoved() {
+    dropRemoved(removeNames);
     await refreshHub();
-    navigate({ skill: null });
   }
 </script>
 
@@ -317,6 +357,7 @@
       onSelect={handleSelect}
       onToggleChecked={handleToggleChecked}
       onBatchInstall={handleBatchInstall}
+      onBatchRemove={handleBatchRemove}
       onClearChecked={() => (checkedNames = [])}
       onRefresh={handleRefresh}
       onScan={() => openScanRootsModal()}
@@ -340,7 +381,7 @@
             onManageLocations={() => openLocationPickerModal(selectedSkill.name)}
             onTargetAction={handleTargetAction}
             onSync={handleSync}
-            onRemove={() => (removeModalOpen = true)}
+            onRemove={() => openRemoveModal([selectedSkill.name])}
             onOpenDir={handleOpenDir}
             onCheckSource={handleCheckSource}
           />
@@ -361,8 +402,12 @@
 
 <RemoveSkillModal
   bind:open={removeModalOpen}
-  name={selectedSkill?.name ?? ""}
-  installCount={selectedSkill?.installs.length ?? 0}
+  name={removeNames.join(", ")}
+  title={removeNames.length > 1 ? $t("remove.batchTitle", { count: removeNames.length }) : ""}
+  description={removeNames.length > 1
+    ? $t("remove.batchDescription", { count: removeNames.length })
+    : ""}
+  installCount={removeInstallCount}
   remove={handleRemove}
   onRemoved={handleRemoved}
 />

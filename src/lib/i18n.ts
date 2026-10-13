@@ -43,6 +43,7 @@ const translations: Record<string, Dictionary> = {
     "library.installCount": "{count} targets",
     "library.group.none": "No source",
     "library.batchInstall": "Install {count} skills",
+    "library.batchRemove": "Remove",
     "sidebar.instructions": "Instructions",
     "instructions.title": "Instructions",
     "instructions.templates": "Templates",
@@ -275,6 +276,8 @@ const translations: Record<string, Dictionary> = {
 
     "remove.title": "Remove {name}",
     "remove.description": "Remove this skill from the library.",
+    "remove.batchTitle": "Remove {count} skills",
+    "remove.batchDescription": "Remove the {count} selected skills from the library.",
     "remove.alsoInstalls": "Also delete the installed copies ({count})",
     "remove.keepInstallsHint":
       "Symlinked targets are turned into real copies so agents keep working.",
@@ -563,6 +566,7 @@ const translations: Record<string, Dictionary> = {
     "library.installCount": "{count} 个目标",
     "library.group.none": "无来源",
     "library.batchInstall": "批量安装 {count} 个",
+    "library.batchRemove": "删除",
     "sidebar.instructions": "指令",
     "instructions.title": "指令",
     "instructions.templates": "模板",
@@ -792,6 +796,8 @@ const translations: Record<string, Dictionary> = {
 
     "remove.title": "删除 {name}",
     "remove.description": "从中心库中删除这个 skill。",
+    "remove.batchTitle": "删除 {count} 个 skill",
+    "remove.batchDescription": "从中心库中删除选中的 {count} 个 skill。",
     "remove.alsoInstalls": "同时删除所有安装位置的副本（{count}）",
     "remove.keepInstallsHint": "软链接目标会被转换为真实副本，Agent 可以继续使用。",
     "remove.confirm": "删除",
