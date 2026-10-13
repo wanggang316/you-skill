@@ -1,7 +1,16 @@
 <script lang="ts">
   import { open as openExternal } from "@tauri-apps/plugin-shell";
   import hljs from "highlight.js/lib/common";
-  import { Check, ChevronDown, ExternalLink, Languages, List, Loader2 } from "@lucide/svelte";
+  import {
+    Check,
+    ChevronDown,
+    CircleAlert,
+    ExternalLink,
+    Languages,
+    List,
+    Loader2,
+    X,
+  } from "@lucide/svelte";
   import { DropdownMenu } from "bits-ui";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import SkillDirectoryDrawer from "$lib/components/SkillDirectoryDrawer.svelte";
@@ -71,6 +80,7 @@
   let imagePreviewUrl = $state("");
   let sourceLink = $state("");
   let translating = $state(false);
+  let translateError = $state("");
   let translateSettingsOpen = $state(false);
   let savingTranslateSettings = $state(false);
   let missingTranslationSettingsOpen = $state(false);
@@ -434,6 +444,7 @@
     fileViewMode = resolveFileViewMode(filePath);
     sourceLink = "";
     translating = false;
+    translateError = "";
     clearContentState();
     resetBinaryPreview();
     contentLoading = true;
@@ -586,7 +597,7 @@
     }
 
     translating = true;
-    contentError = "";
+    translateError = "";
     const requestedMarkdown = originalMarkdownContent;
     try {
       const translated = await translateSkillMarkdown(requestedMarkdown, force);
@@ -606,8 +617,9 @@
           ? fields
           : [$t("settings.translation.apiKey")];
         missingTranslationSettingsOpen = true;
-      } else {
-        contentError = errorText;
+      } else if (originalMarkdownContent === requestedMarkdown) {
+        // Keep the document and any earlier translation visible.
+        translateError = errorText;
       }
     } finally {
       translating = false;
@@ -748,6 +760,34 @@
       </IconButton>
     </div>
   </div>
+
+  {#if translateError}
+    <div
+      class="border-base-300 bg-base-200 text-base-content flex flex-none items-start gap-2 border-b px-6 py-2 text-xs"
+      role="alert"
+    >
+      <CircleAlert size={14} class="text-error mt-0.5 shrink-0" />
+      <p class="min-w-0 flex-1 break-words">
+        <span class="font-medium">{$t("detail.translateFailed")}:</span>
+        {translateError}
+      </p>
+      <button
+        class="text-primary hover:text-primary-hover shrink-0"
+        type="button"
+        onclick={() => handleTranslate(Boolean(translatedMarkdownContent))}
+      >
+        {$t("common.retry")}
+      </button>
+      <button
+        class="text-base-content-muted hover:text-base-content shrink-0"
+        type="button"
+        onclick={() => (translateError = "")}
+        title={$t("common.close")}
+      >
+        <X size={14} />
+      </button>
+    </div>
+  {/if}
 
   <SkillDirectoryDrawer
     open={directoryOpen}
