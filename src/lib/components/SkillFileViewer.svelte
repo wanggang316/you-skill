@@ -494,13 +494,11 @@
     }
   };
 
-  const handleOpenExternal = async () => {
-    if (source.kind === "remote") {
-      const url = buildGitHubUrl(source.skill) || source.skill.url;
-      if (url) await openExternal(url);
-      return;
-    }
-    await openInFileManager(source.rootPath);
+  // Hub skills have no such button: the host already offers "Open folder".
+  const handleOpenInBrowser = async () => {
+    if (source.kind !== "remote") return;
+    const url = buildGitHubUrl(source.skill) || source.skill.url;
+    if (url) await openExternal(url);
   };
 
   const handleOpenSource = async () => {
@@ -738,14 +736,16 @@
       >
         <List size={13} />
       </IconButton>
-      <IconButton
-        variant="outline"
-        onclick={handleOpenExternal}
-        title={source.kind === "hub" ? $t("detail.openInFileManager") : $t("detail.openInBrowser")}
-        class="h-7 w-7 rounded-lg p-0"
-      >
-        <ExternalLink size={13} />
-      </IconButton>
+      {#if source.kind === "remote"}
+        <IconButton
+          variant="outline"
+          onclick={handleOpenInBrowser}
+          title={$t("detail.openInBrowser")}
+          class="h-7 w-7 rounded-lg p-0"
+        >
+          <ExternalLink size={13} />
+        </IconButton>
+      {/if}
     </div>
   </div>
 
