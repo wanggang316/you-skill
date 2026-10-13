@@ -9,6 +9,7 @@
     className = "",
     type = "button",
     loadingText = "",
+    variant = "primary",
     children,
     ...restProps
   } = $props<
@@ -16,14 +17,21 @@
       loading?: boolean;
       className?: string;
       loadingText?: string;
+      variant?: "primary" | "danger";
       children?: Snippet;
     }
   >();
+
+  const variantClass = $derived(
+    variant === "danger"
+      ? "bg-error text-error-content hover:bg-error/85 disabled:bg-error/60"
+      : "bg-primary text-primary-content hover:bg-primary-hover disabled:bg-primary/60"
+  );
 </script>
 
 <button
   {...restProps}
-  class={`bg-primary text-primary-content hover:bg-primary-hover disabled:bg-primary/60 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm transition ${className}`}
+  class={`${variantClass} inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm transition ${className}`}
   {type}
   disabled={disabled || loading}
 >

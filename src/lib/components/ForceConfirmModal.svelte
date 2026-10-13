@@ -53,11 +53,7 @@
     >
       {$t("common.cancel")}
     </button>
-    <PrimaryActionButton
-      onclick={handleConfirm}
-      loading={busy}
-      className="bg-error hover:bg-error/85 text-error-content"
-    >
+    <PrimaryActionButton onclick={handleConfirm} loading={busy} variant="danger">
       {$t("drift.force.confirm")}
     </PrimaryActionButton>
   {/snippet}
