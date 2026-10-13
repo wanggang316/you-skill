@@ -560,9 +560,10 @@
     }
   };
 
-  const handleTranslate = async () => {
+  /** With `force`, skips both caches and replaces the shown translation. */
+  const handleTranslate = async (force = false) => {
     if (!isTranslatableMarkdown || !originalMarkdownContent || translating) return;
-    if (translatedMarkdownContent) return;
+    if (translatedMarkdownContent && !force) return;
 
     const cacheKey = [
       sourceKey,
@@ -571,7 +572,7 @@
       ($settings.translate_model || "").trim(),
       contentHash(originalMarkdownContent),
     ].join("|");
-    const cached = translationCache.get(cacheKey);
+    const cached = force ? undefined : translationCache.get(cacheKey);
     if (cached) {
       showTranslation(cached);
       return;
@@ -588,10 +589,13 @@
     contentError = "";
     const requestedMarkdown = originalMarkdownContent;
     try {
-      const translated = await translateSkillMarkdown(requestedMarkdown);
+      const translated = await translateSkillMarkdown(requestedMarkdown, force);
       translationCache.set(cacheKey, translated);
       // The user can open another file while the request runs.
-      if (originalMarkdownContent === requestedMarkdown) showTranslation(translated);
+      if (originalMarkdownContent !== requestedMarkdown) return;
+      // A retranslation keeps the view the user selected.
+      if (force) translatedMarkdownContent = translated;
+      else showTranslation(translated);
     } catch (err) {
       const errorText = String(err);
       const notConfigured =
@@ -666,10 +670,16 @@
       {#if isTranslatableMarkdown && translatedMarkdownContent}
         <DropdownMenu.Root>
           <DropdownMenu.Trigger
-            class="border-base-300 text-base-content hover:bg-base-200 data-[state=open]:bg-base-200 flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition"
+            class="border-base-300 text-base-content hover:bg-base-200 data-[state=open]:bg-base-200 flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition disabled:opacity-50"
+            disabled={translating}
           >
-            <Languages size={13} />
-            {translationViewLabel}
+            {#if translating}
+              <Loader2 size={13} class="animate-spin" />
+              {$t("detail.translating")}
+            {:else}
+              <Languages size={13} />
+              {translationViewLabel}
+            {/if}
             <ChevronDown size={12} class="text-base-content-muted" />
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
@@ -695,13 +705,17 @@
                   </DropdownMenu.RadioItem>
                 {/each}
               </DropdownMenu.RadioGroup>
+              <DropdownMenu.Separator class="bg-base-300 -mx-1 my-1 h-px" />
+              <DropdownMenu.Item class={menuItemClass()} onSelect={() => handleTranslate(true)}>
+                {$t("detail.retranslate")}
+              </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
       {:else if isTranslatableMarkdown}
         <button
           class="border-base-300 text-base-content hover:bg-base-200 flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition disabled:opacity-50"
-          onclick={handleTranslate}
+          onclick={() => handleTranslate()}
           disabled={translating || contentLoading}
           type="button"
         >
