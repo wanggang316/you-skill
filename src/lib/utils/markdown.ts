@@ -1,5 +1,6 @@
 import { Marked } from "marked";
 import { markedHighlight } from "marked-highlight";
+import markedCjkFriendly from "marked-cjk-friendly";
 import type { Token, Tokens } from "marked";
 import hljs from "highlight.js/lib/common";
 import matter from "gray-matter";
@@ -102,6 +103,9 @@ const markedRenderer = new Marked(
     },
   })
 );
+
+// CommonMark does not close `**` next to CJK punctuation (e.g. `**“foo”**bar`); translations hit this often.
+markedRenderer.use(markedCjkFriendly());
 
 markedRenderer.use({
   renderer: {
