@@ -146,6 +146,7 @@ export async function getCachedSkillTranslation(markdown: string): Promise<strin
   return apiCall<string | null>("get_cached_skill_translation", { markdown });
 }
 
-export async function translateSkillMarkdown(markdown: string): Promise<string> {
-  return apiCall<string>("translate_skill_markdown", { markdown });
+/** Translates `markdown`. Set `force` to skip the cached translation and replace it. */
+export async function translateSkillMarkdown(markdown: string, force = false): Promise<string> {
+  return apiCall<string>("translate_skill_markdown", { markdown, force });
 }

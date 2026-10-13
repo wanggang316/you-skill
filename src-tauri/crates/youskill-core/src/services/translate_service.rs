@@ -106,7 +106,9 @@ fn lookup_cached_translation(
   load_translation_cache_entry(cache_dir, &cache_key)
 }
 
-pub async fn translate_skill_markdown(markdown: String) -> Result<String, String> {
+/// Translates `markdown` with the configured model. When `force` is true, skips the
+/// cached translation and replaces it with the new result.
+pub async fn translate_skill_markdown(markdown: String, force: bool) -> Result<String, String> {
   if markdown.trim().is_empty() {
     return Ok(markdown);
   }
@@ -121,8 +123,10 @@ pub async fn translate_skill_markdown(markdown: String) -> Result<String, String
     return Err("Model 未配置，请先在设置中填写".to_string());
   }
   let cache_dir = translation_cache_dir_path()?;
-  if let Some(cached_markdown) = lookup_cached_translation(&config, &cache_dir, &markdown) {
-    return Ok(cached_markdown);
+  if !force {
+    if let Some(cached_markdown) = lookup_cached_translation(&config, &cache_dir, &markdown) {
+      return Ok(cached_markdown);
+    }
   }
 
   let api_key = config
