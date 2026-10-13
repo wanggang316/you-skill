@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Markdown preview renders bold and italic text next to CJK punctuation, for example `**“禁止变通方案”**规则` in a translation ([HAN-235](https://linear.app/gumpw/issue/HAN-235)).
+
 ### Removed
 
 ## [0.9.8] - 2026-10-13
