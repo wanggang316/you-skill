@@ -1,7 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import {
-    Check,
     ChevronRight,
     Folder,
     Loader2,
@@ -10,7 +9,6 @@
     Search,
     Zap,
   } from "@lucide/svelte";
-  import SkillIcon from "$lib/components/SkillIcon.svelte";
   import GithubAvatar from "$lib/components/library/GithubAvatar.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
@@ -220,8 +218,9 @@
           {#each group.skills as skill (skill.name)}
             {@const selected = skill.name === selectedName}
             {@const checked = checkedNames.includes(skill.name)}
+            <!-- pl-7 puts the text under the group header icon. -->
             <button
-              class={`mx-1.5 flex w-[calc(100%-0.75rem)] flex-col gap-1 rounded-lg px-2.5 py-2 text-left transition select-none ${
+              class={`mx-1.5 flex w-[calc(100%-0.75rem)] flex-col gap-1 rounded-lg py-2 pr-2.5 pl-7 text-left transition select-none ${
                 checked
                   ? "bg-primary/10 ring-primary/40 ring-1 ring-inset"
                   : selected
@@ -234,13 +233,6 @@
               aria-pressed={checkedNames.length > 0 ? checked : undefined}
             >
               <div class="flex w-full items-center gap-2">
-                <span class={`shrink-0 ${checked ? "text-primary" : "text-base-content-subtle"}`}>
-                  {#if checked}
-                    <Check size={13} />
-                  {:else}
-                    <SkillIcon source={skill.source} />
-                  {/if}
-                </span>
                 <span class="text-base-content min-w-0 flex-1 truncate text-[13px] font-medium">
                   {skill.name}
                 </span>
@@ -251,7 +243,7 @@
                 {/if}
               </div>
               {#if skill.description}
-                <p class="text-base-content-subtle line-clamp-1 pl-[1.3rem] text-[11px]">
+                <p class="text-base-content-subtle line-clamp-1 text-[11px]">
                   {skill.description}
                 </p>
               {/if}

@@ -1,8 +1,6 @@
 <script lang="ts">
   import {
-    FileText,
     Folder,
-    LayoutTemplate,
     Loader2,
     Plus,
     RefreshCw,
@@ -161,7 +159,6 @@
           aria-current={selected ? "true" : undefined}
         >
           <div class="flex w-full items-center gap-2">
-            <span class="text-base-content-subtle shrink-0"><LayoutTemplate size={13} /></span>
             <span class="text-base-content min-w-0 flex-1 truncate text-[13px] font-medium">
               {item.name}
             </span>
@@ -172,7 +169,7 @@
             {/if}
           </div>
           {#if item.description}
-            <p class="text-base-content-subtle line-clamp-1 pl-[1.3rem] text-[11px]">
+            <p class="text-base-content-subtle line-clamp-1 text-[11px]">
               {item.description}
             </p>
           {/if}
@@ -210,9 +207,7 @@
             aria-current={selected ? "true" : undefined}
             title={file.path}
           >
-            <!-- Indented under the folder heading like a file tree. -->
-            <div class="flex w-full items-center gap-2 pl-4">
-              <span class="text-base-content-subtle shrink-0"><FileText size={13} /></span>
+            <div class="flex w-full items-center gap-2">
               <span class="text-base-content min-w-0 flex-1 truncate font-mono text-[12px]">
                 {file.fileName}
               </span>
