@@ -1,12 +1,5 @@
 <script lang="ts">
-  import {
-    Folder,
-    Loader2,
-    Plus,
-    RefreshCw,
-    Search,
-    UserRound,
-  } from "@lucide/svelte";
+  import { Folder, Loader2, Plus, RefreshCw, Search, UserRound } from "@lucide/svelte";
   import ReferenceMarker from "$lib/components/ReferenceMarker.svelte";
   import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
@@ -207,7 +200,8 @@
             aria-current={selected ? "true" : undefined}
             title={file.path}
           >
-            <div class="flex w-full items-center gap-2">
+            <!-- Icon (11px) + gap (6px): puts the file name under the group label. -->
+            <div class="flex w-full items-center gap-2 pl-[1.0625rem]">
               <span class="text-base-content min-w-0 flex-1 truncate font-mono text-[12px]">
                 {file.fileName}
               </span>
