@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Keyboard shortcuts for the top bar: `1` Skill Library, `2` Instructions, `3` Projects, `M` Marketplace, `N` Import, `⌘,` Settings. Hold `⌘` for half a second to show the keys in place of the icons, and hover a button to see its key next to its name. Change or reset the keys in Settings > Keyboard Shortcuts ([HAN-239](https://linear.app/gumpw/issue/HAN-239)).
+
 ### Changed
 
 ### Fixed
