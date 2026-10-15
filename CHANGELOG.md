@@ -11,13 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Keyboard shortcuts for the top bar: `1` Skill Library, `2` Instructions, `3` Projects, `m` Marketplace, `n` Import, `⌘,` Settings. Hold `⌘` for half a second to show the keys in place of the icons, and hover a button to see its key next to its name. Change or reset the keys in Settings > Shortcuts ([HAN-239](https://linear.app/gumpw/issue/HAN-239)).
-
 ### Changed
 
 ### Fixed
 
 ### Removed
+
+## [0.9.10] - 2026-10-15
+
+### Added
+
+- Keyboard shortcuts for the top bar: `1` Skill Library, `2` Instructions, `3` Projects, `m` Marketplace, `n` Import, `⌘,` Settings. Hold `⌘` for half a second to show the keys in place of the icons, and hover a button to see its key next to its name. Change or reset the keys in Settings > Shortcuts ([HAN-239](https://linear.app/gumpw/issue/HAN-239)).
+
+### Changed
+
+- Rows in the Skill Library and Instructions lists no longer show a leading icon, and their text lines up with the group headers above them.
 
 ## [0.9.9] - 2026-10-14
 
