@@ -29,6 +29,7 @@ export const SETTINGS_SECTIONS = [
   "translation",
   "github",
   "backup",
+  "shortcuts",
   "cli",
   "about",
 ] as const;

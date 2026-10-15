@@ -6,6 +6,7 @@
     Bot,
     Github,
     Info,
+    Keyboard,
     Languages,
     SlidersHorizontal,
     SquareTerminal,
@@ -16,6 +17,7 @@
   import CliSection from "$lib/components/settings/CliSection.svelte";
   import GeneralSection from "$lib/components/settings/GeneralSection.svelte";
   import GithubSection from "$lib/components/settings/GithubSection.svelte";
+  import ShortcutsSection from "$lib/components/settings/ShortcutsSection.svelte";
   import TranslationSection from "$lib/components/settings/TranslationSection.svelte";
   import { t } from "$lib/i18n";
   import {
@@ -33,6 +35,7 @@
       { key: "translation", label: $t("settings.translation.title"), icon: Languages },
       { key: "github", label: $t("settings.github.title"), icon: Github },
       { key: "backup", label: $t("settings.section.backup"), icon: Archive },
+      { key: "shortcuts", label: $t("settings.shortcuts.title"), icon: Keyboard },
       { key: "cli", label: $t("settings.cli.title"), icon: SquareTerminal },
       { key: "about", label: $t("settings.section.about"), icon: Info },
     ]);
@@ -79,6 +82,8 @@
           <GithubSection />
         {:else if section === "backup"}
           <BackupSection />
+        {:else if section === "shortcuts"}
+          <ShortcutsSection />
         {:else if section === "cli"}
           <CliSection />
         {:else if section === "about"}
