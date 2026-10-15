@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -6,6 +7,15 @@ pub const TRANSLATE_DISPLAY_MODES: [&str; 2] = ["bilingual", "translation"];
 pub const DEFAULT_TRANSLATE_DISPLAY_MODE: &str = TRANSLATE_DISPLAY_MODES[0];
 pub const TRANSLATE_TEXT_STYLES: [&str; 2] = ["none", "dashed_underline"];
 pub const DEFAULT_TRANSLATE_TEXT_STYLE: &str = TRANSLATE_TEXT_STYLES[0];
+/// Actions of the top bar that accept a keyboard shortcut.
+pub const SHORTCUT_ACTIONS: [&str; 6] = [
+  "library",
+  "instructions",
+  "projects",
+  "market",
+  "import",
+  "settings",
+];
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
@@ -25,6 +35,8 @@ pub struct AppConfig {
   pub translate_text_style: String,
   /// GitHub CLI account used for GitHub requests. `None` follows the active `gh` account.
   pub github_account: Option<String>,
+  /// Shortcuts the user changed, by action. Actions not listed use their default key.
+  pub shortcuts: BTreeMap<String, String>,
 }
 
 impl Default for AppConfig {
@@ -41,6 +53,7 @@ impl Default for AppConfig {
       translate_display_mode: DEFAULT_TRANSLATE_DISPLAY_MODE.to_string(),
       translate_text_style: DEFAULT_TRANSLATE_TEXT_STYLE.to_string(),
       github_account: None,
+      shortcuts: BTreeMap::new(),
     }
   }
 }

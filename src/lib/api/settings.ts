@@ -21,6 +21,8 @@ export interface AppSettings {
   translate_model: string;
   translate_display_mode: TranslateDisplayMode;
   translate_text_style: TranslateTextStyle;
+  /** Changed key combinations by action; actions not listed use their default. */
+  shortcuts: Record<string, string>;
 }
 
 export type EditableSettings = Pick<
@@ -33,6 +35,7 @@ export type EditableSettings = Pick<
   | "translate_model"
   | "translate_display_mode"
   | "translate_text_style"
+  | "shortcuts"
 >;
 
 /**

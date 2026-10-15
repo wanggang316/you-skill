@@ -10,8 +10,10 @@
     Settings,
     Store,
   } from "@lucide/svelte";
-  import type { Component } from "svelte";
+  import { mergeProps, Tooltip } from "bits-ui";
+  import type { Component, Snippet } from "svelte";
   import { BRAND_BOLT_PATH, BRAND_BOLT_VIEW_BOX } from "$lib/brand";
+  import ShortcutKeys from "$lib/components/ui/ShortcutKeys.svelte";
   import { t } from "$lib/i18n";
   import {
     buildInstructionsHref,
@@ -20,6 +22,14 @@
     buildScopeHref,
     type SidebarActiveKey,
   } from "$lib/navigation/app-shell";
+  import {
+    ariaKeyShortcut,
+    HINT_KEY,
+    isBareBinding,
+    matchShortcut,
+    shortcuts,
+    type ShortcutAction,
+  } from "$lib/shortcuts";
 
   let {
     activeKey,
@@ -40,7 +50,7 @@
   } = $props();
 
   type NavItem = {
-    key: SidebarActiveKey;
+    key: SidebarActiveKey & ShortcutAction;
     href: string;
     label: string;
     icon: Component<{ size?: number; strokeWidth?: number }>;
@@ -101,16 +111,90 @@
     measure();
   });
 
+  let header = $state<HTMLElement | null>(null);
+  /** Shortcut keys replace the icons while the hint key (⌘) is held. */
+  let hintsVisible = $state(false);
+  let hintTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function hideHints() {
+    clearTimeout(hintTimer);
+    hintTimer = undefined;
+    hintsVisible = false;
+  }
+
+  const isEditable = (target: EventTarget | null) =>
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      Boolean(target.closest("input, textarea, select, [contenteditable='true']")));
+
+  /** Modals and menus own the keyboard while they are open. */
+  const overlayOpen = () => Boolean(document.querySelector("[aria-modal='true'], [role='menu']"));
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === HINT_KEY) {
+      const otherModifier =
+        event.altKey || event.shiftKey || (HINT_KEY === "Meta" ? event.ctrlKey : event.metaKey);
+      if (!event.repeat && !otherModifier && !hintTimer) {
+        hintTimer = setTimeout(() => (hintsVisible = true), 500);
+      }
+      return;
+    }
+    hideHints();
+    if (event.repeat || event.isComposing || event.defaultPrevented) return;
+
+    const action = matchShortcut(event, $shortcuts);
+    if (!action || overlayOpen()) return;
+    if (isBareBinding($shortcuts[action]) && isEditable(event.target)) return;
+    const target = header?.querySelector<HTMLElement>(`[data-shortcut="${action}"]`);
+    if (!target) return;
+    event.preventDefault();
+    target.click();
+  }
+
+  function handleKeyup(event: KeyboardEvent) {
+    if (event.key === HINT_KEY) hideHints();
+  }
+
   onMount(() => {
     const observer = new ResizeObserver(measure);
     if (nav) observer.observe(nav);
     requestAnimationFrame(() => (animate = true));
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      clearTimeout(hintTimer);
+    };
   });
 </script>
 
+<svelte:window onkeydown={handleKeydown} onkeyup={handleKeyup} onblur={hideHints} />
+
+{#snippet shortcutSlot(action: ShortcutAction, icon: Snippet)}
+  <span class="shortcut-slot relative inline-flex flex-none">
+    <span class="shortcut-icon inline-flex">{@render icon()}</span>
+    <span class="shortcut-hint absolute inset-0 flex items-center justify-center">
+      <ShortcutKeys binding={$shortcuts[action]} />
+    </span>
+  </span>
+{/snippet}
+
+{#snippet tooltipContent(label: string, action: ShortcutAction)}
+  <Tooltip.Portal>
+    <Tooltip.Content
+      class="bg-base-100 border-base-300 text-base-content pointer-events-none z-(--z-popover) flex items-center gap-2 rounded-lg border px-2 py-1 text-[12px] shadow-lg"
+      side="bottom"
+      sideOffset={8}
+      collisionPadding={8}
+    >
+      <span class="whitespace-nowrap">{label}</span>
+      <ShortcutKeys binding={$shortcuts[action]} />
+    </Tooltip.Content>
+  </Tooltip.Portal>
+{/snippet}
+
 <!-- The window controls sit at the left of this row (centred by `trafficLightPosition`). -->
 <header
+  bind:this={header}
+  data-shortcut-hints={hintsVisible}
   class="grid h-15 flex-none grid-cols-[1fr_auto_1fr] items-center gap-4 pr-4 pl-[5.75rem]"
   data-window-drag-region
 >
@@ -170,53 +254,82 @@
       {#each items as item (item.key)}
         {@const active = activeKey === item.key}
         {@const Icon = item.icon}
-        <a
-          class={`focus-visible:ring-primary/50 relative z-10 flex h-full items-center gap-1.5 rounded-full px-3 text-[13px] whitespace-nowrap transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none ${
-            active
-              ? "text-base-content font-medium"
-              : "text-base-content-muted hover:text-base-content"
-          }`}
-          href={item.href}
-          onclick={item.onclick}
-          data-nav-key={item.key}
-          data-icon={item.key}
-          aria-current={active ? "page" : undefined}
-        >
-          <Icon size={15} strokeWidth={1.8} />
-          {item.label}
-        </a>
+        <Tooltip.Root>
+          <Tooltip.Trigger>
+            {#snippet child({ props })}
+              <a
+                {...mergeProps(props, { onclick: item.onclick })}
+                class={`focus-visible:ring-primary/50 relative z-10 flex h-full items-center gap-1.5 rounded-full px-3 text-[13px] whitespace-nowrap transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none ${
+                  active
+                    ? "text-base-content font-medium"
+                    : "text-base-content-muted hover:text-base-content"
+                }`}
+                href={item.href}
+                data-nav-key={item.key}
+                data-icon={item.key}
+                data-shortcut={item.key}
+                aria-current={active ? "page" : undefined}
+                aria-keyshortcuts={ariaKeyShortcut($shortcuts[item.key])}
+              >
+                {#snippet icon()}<Icon size={15} strokeWidth={1.8} />{/snippet}
+                {@render shortcutSlot(item.key, icon)}
+                {item.label}
+              </a>
+            {/snippet}
+          </Tooltip.Trigger>
+          {@render tooltipContent(item.label, item.key)}
+        </Tooltip.Root>
       {/each}
     </nav>
 
-    <a
-      class={`${trackClass} focus-visible:ring-primary/50 flex size-9 items-center justify-center rounded-full p-[3px] transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none ${
-        marketActive ? "text-base-content" : "text-base-content-muted hover:text-base-content"
-      }`}
-      href={buildMarketHref()}
-      data-icon="market"
-      aria-current={marketActive ? "page" : undefined}
-      title={$t("sidebar.market")}
-      aria-label={$t("sidebar.market")}
-    >
-      <span
-        class={`flex size-full items-center justify-center rounded-full transition-[background-color,box-shadow] duration-200 ${
-          marketActive ? raisedClass : ""
-        }`}
-      >
-        <Store size={16} strokeWidth={1.8} />
-      </span>
-    </a>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        {#snippet child({ props })}
+          <a
+            {...props}
+            class={`${trackClass} focus-visible:ring-primary/50 flex size-9 items-center justify-center rounded-full p-[3px] transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none ${
+              marketActive ? "text-base-content" : "text-base-content-muted hover:text-base-content"
+            }`}
+            href={buildMarketHref()}
+            data-icon="market"
+            data-shortcut="market"
+            aria-current={marketActive ? "page" : undefined}
+            aria-label={$t("sidebar.market")}
+            aria-keyshortcuts={ariaKeyShortcut($shortcuts.market)}
+          >
+            <span
+              class={`flex size-full items-center justify-center rounded-full transition-[background-color,box-shadow] duration-200 ${
+                marketActive ? raisedClass : ""
+              }`}
+            >
+              {#snippet icon()}<Store size={16} strokeWidth={1.8} />{/snippet}
+              {@render shortcutSlot("market", icon)}
+            </span>
+          </a>
+        {/snippet}
+      </Tooltip.Trigger>
+      {@render tooltipContent($t("sidebar.market"), "market")}
+    </Tooltip.Root>
 
-    <button
-      class={`${trackClass} focus-visible:ring-primary/50 text-base-content-muted hover:text-base-content flex size-9 cursor-pointer items-center justify-center rounded-full transition-[color,transform] duration-200 focus-visible:ring-2 focus-visible:outline-none active:scale-95`}
-      type="button"
-      onclick={onImport}
-      data-icon="import"
-      title={$t("import.title")}
-      aria-label={$t("import.title")}
-    >
-      <Import size={16} strokeWidth={1.8} />
-    </button>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        {#snippet child({ props })}
+          <button
+            {...mergeProps(props, { onclick: onImport })}
+            class={`${trackClass} focus-visible:ring-primary/50 text-base-content-muted hover:text-base-content flex size-9 cursor-pointer items-center justify-center rounded-full transition-[color,transform] duration-200 focus-visible:ring-2 focus-visible:outline-none active:scale-95`}
+            type="button"
+            data-icon="import"
+            data-shortcut="import"
+            aria-label={$t("import.title")}
+            aria-keyshortcuts={ariaKeyShortcut($shortcuts.import)}
+          >
+            {#snippet icon()}<Import size={16} strokeWidth={1.8} />{/snippet}
+            {@render shortcutSlot("import", icon)}
+          </button>
+        {/snippet}
+      </Tooltip.Trigger>
+      {@render tooltipContent($t("import.title"), "import")}
+    </Tooltip.Root>
   </div>
 
   <div class="flex min-w-0 items-center justify-end gap-1.5">
@@ -242,20 +355,30 @@
         {/if}
       </button>
     {/if}
-    <a
-      class={`flex size-9 items-center justify-center rounded-full transition-[background-color,color,transform] duration-200 active:scale-95 ${
-        settingsActive
-          ? "bg-base-content/[0.07] text-base-content"
-          : "text-base-content-muted hover:bg-base-content/[0.06] hover:text-base-content"
-      }`}
-      href={settingsActive ? lastOutsideSettings : "/settings"}
-      data-icon="settings"
-      aria-current={settingsActive ? "page" : undefined}
-      title={$t("header.settings")}
-      aria-label={$t("header.settings")}
-    >
-      <Settings size={17} strokeWidth={1.7} />
-    </a>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        {#snippet child({ props })}
+          <a
+            {...props}
+            class={`flex size-9 items-center justify-center rounded-full transition-[background-color,color,transform] duration-200 active:scale-95 ${
+              settingsActive
+                ? "bg-base-content/[0.07] text-base-content"
+                : "text-base-content-muted hover:bg-base-content/[0.06] hover:text-base-content"
+            }`}
+            href={settingsActive ? lastOutsideSettings : "/settings"}
+            data-icon="settings"
+            data-shortcut="settings"
+            aria-current={settingsActive ? "page" : undefined}
+            aria-label={$t("header.settings")}
+            aria-keyshortcuts={ariaKeyShortcut($shortcuts.settings)}
+          >
+            {#snippet icon()}<Settings size={17} strokeWidth={1.7} />{/snippet}
+            {@render shortcutSlot("settings", icon)}
+          </a>
+        {/snippet}
+      </Tooltip.Trigger>
+      {@render tooltipContent($t("header.settings"), "settings")}
+    </Tooltip.Root>
   </div>
 </header>
 
@@ -267,6 +390,22 @@
   }
   [data-icon="import"] :global(svg > :nth-child(-n + 2)) {
     transform: translateY(-3px);
+  }
+
+  /* Holding ⌘ cross-fades each icon into its shortcut keys. */
+  .shortcut-icon,
+  .shortcut-hint {
+    transition: opacity 200ms ease;
+  }
+  .shortcut-hint {
+    opacity: 0;
+    pointer-events: none;
+  }
+  [data-shortcut-hints="true"] .shortcut-icon {
+    opacity: 0;
+  }
+  [data-shortcut-hints="true"] .shortcut-hint {
+    opacity: 1;
   }
 
   @media (prefers-reduced-motion: no-preference) {

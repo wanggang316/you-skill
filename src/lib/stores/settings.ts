@@ -12,6 +12,7 @@ const defaultSettings: AppSettings = {
   translate_model: "",
   translate_display_mode: "bilingual",
   translate_text_style: "none",
+  shortcuts: {},
 };
 
 export const settings = writable<AppSettings>({ ...defaultSettings });
@@ -111,6 +112,7 @@ export const loadSettings = async () => {
       translate_display_mode:
         remote.translate_display_mode ?? defaultSettings.translate_display_mode,
       translate_text_style: remote.translate_text_style ?? defaultSettings.translate_text_style,
+      shortcuts: remote.shortcuts ?? {},
     };
     settings.set(merged);
     applyTheme(merged.theme);
