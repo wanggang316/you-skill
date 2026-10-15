@@ -202,8 +202,8 @@
           title={group.path ?? undefined}
         >
           <ChevronRight size={12} class={`shrink-0 transition ${open ? "rotate-90" : ""}`} />
-          {#if group.kind === "github"}
-            <GithubAvatar owner={group.label} />
+          {#if group.owner}
+            <GithubAvatar owner={group.owner} />
           {:else if group.kind === "folder"}
             <Folder size={13} class="shrink-0" />
           {:else}
