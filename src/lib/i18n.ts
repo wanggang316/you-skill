@@ -448,7 +448,7 @@ const translations: Record<string, Dictionary> = {
     "settings.section.general": "General",
     "settings.section.backup": "Backup",
     "settings.section.about": "About",
-    "settings.shortcuts.title": "Keyboard Shortcuts",
+    "settings.shortcuts.title": "Shortcuts",
     "settings.shortcuts.description":
       "Hold {key} for half a second to show the shortcuts in the top bar. Click a shortcut to change it.",
     "settings.shortcuts.record": "Press keys…",
