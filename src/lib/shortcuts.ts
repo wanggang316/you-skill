@@ -136,7 +136,7 @@ export const bindingKeys = (binding: Binding): string[] => {
     if (alt) keys.push("Alt");
     if (shift) keys.push("Shift");
   }
-  keys.push(KEY_SYMBOLS[key] ?? (key.length === 1 ? key.toUpperCase() : key));
+  keys.push(KEY_SYMBOLS[key] ?? key);
   return keys;
 };
 

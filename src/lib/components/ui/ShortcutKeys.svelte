@@ -7,10 +7,10 @@
   const keys = $derived(bindingKeys(binding));
 </script>
 
-<span class="inline-flex items-center gap-0.5" aria-hidden="true">
+<span class="inline-flex items-center gap-px" aria-hidden="true">
   {#each keys as key, index (index)}
     <kbd
-      class="border-base-content/10 bg-base-content/[0.06] text-base-content-muted inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] border px-1 font-sans text-[11px] leading-none font-medium"
+      class="text-base-content-faint inline-flex min-w-[0.6em] items-center justify-center font-sans text-[12px] leading-none font-medium"
     >
       {key}
     </kbd>

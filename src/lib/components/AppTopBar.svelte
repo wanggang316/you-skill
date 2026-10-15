@@ -180,7 +180,7 @@
 {#snippet tooltipContent(label: string, action: ShortcutAction)}
   <Tooltip.Portal>
     <Tooltip.Content
-      class="bg-base-100 border-base-300 text-base-content pointer-events-none z-(--z-popover) flex items-center gap-2 rounded-lg border py-1 pr-1 pl-2 text-[12px] shadow-lg"
+      class="bg-base-100 border-base-300 text-base-content pointer-events-none z-(--z-popover) flex items-center gap-2 rounded-lg border px-2 py-1 text-[12px] shadow-lg"
       side="bottom"
       sideOffset={8}
       collisionPadding={8}
@@ -392,37 +392,20 @@
     transform: translateY(-3px);
   }
 
-  /* Holding ⌘ turns each icon into its shortcut keys. */
-  .shortcut-icon {
-    transition:
-      opacity 160ms ease,
-      transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
-      filter 160ms ease;
+  /* Holding ⌘ cross-fades each icon into its shortcut keys. */
+  .shortcut-icon,
+  .shortcut-hint {
+    transition: opacity 200ms ease;
   }
   .shortcut-hint {
     opacity: 0;
-    transform: scale(0.6);
     pointer-events: none;
-    transition:
-      opacity 160ms ease,
-      transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   [data-shortcut-hints="true"] .shortcut-icon {
     opacity: 0;
-    transform: scale(0.4) rotate(-12deg);
-    filter: blur(2px);
   }
   [data-shortcut-hints="true"] .shortcut-hint {
     opacity: 1;
-    transform: scale(1);
-    transition-delay: 60ms;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .shortcut-icon,
-    .shortcut-hint {
-      transform: none !important;
-      filter: none !important;
-    }
   }
 
   @media (prefers-reduced-motion: no-preference) {
