@@ -1,10 +1,14 @@
 use crate::config::{
   load_config, save_config, DEFAULT_TRANSLATE_DISPLAY_MODE, DEFAULT_TRANSLATE_TEXT_STYLE,
-  TRANSLATE_DISPLAY_MODES, TRANSLATE_TEXT_STYLES,
+  SHORTCUT_ACTIONS, TRANSLATE_DISPLAY_MODES, TRANSLATE_TEXT_STYLES,
 };
 use crate::services::ai_service::{self, OpenRouterModelOption};
 use crate::services::backup_service::{self, BackupResult};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+
+/// Upper bound for one stored key combination, e.g. "Mod+Alt+Shift+ArrowDown".
+const MAX_SHORTCUT_LEN: usize = 64;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SettingsPayload {
@@ -21,6 +25,8 @@ pub struct SettingsPayload {
   pub translate_display_mode: String,
   #[serde(default = "default_translate_text_style")]
   pub translate_text_style: String,
+  #[serde(default)]
+  pub shortcuts: BTreeMap<String, String>,
   pub backup_folder: Option<String>,
   pub last_backup_time: Option<String>,
 }
@@ -51,6 +57,16 @@ fn normalize_choice(value: &str, allowed: &[&str], fallback: &str) -> String {
   }
 }
 
+/// Keeps the overrides of known actions that hold a usable key combination.
+fn normalize_shortcuts(shortcuts: &BTreeMap<String, String>) -> BTreeMap<String, String> {
+  shortcuts
+    .iter()
+    .filter(|(action, _)| SHORTCUT_ACTIONS.contains(&action.as_str()))
+    .map(|(action, binding)| (action.clone(), binding.trim().to_string()))
+    .filter(|(_, binding)| !binding.is_empty() && binding.len() <= MAX_SHORTCUT_LEN)
+    .collect()
+}
+
 #[tauri::command]
 pub fn get_settings() -> Result<SettingsPayload, String> {
   let config = load_config()?;
@@ -71,6 +87,7 @@ pub fn get_settings() -> Result<SettingsPayload, String> {
       &TRANSLATE_TEXT_STYLES,
       DEFAULT_TRANSLATE_TEXT_STYLE,
     ),
+    shortcuts: normalize_shortcuts(&config.shortcuts),
     backup_folder: config.backup_folder,
     last_backup_time: config.last_backup_time,
   })
@@ -107,6 +124,7 @@ pub fn update_settings(settings: SettingsPayload) -> Result<SettingsPayload, Str
     &TRANSLATE_TEXT_STYLES,
     DEFAULT_TRANSLATE_TEXT_STYLE,
   );
+  config.shortcuts = normalize_shortcuts(&settings.shortcuts);
   save_config(&config)?;
   Ok(SettingsPayload {
     language: config.language,
@@ -125,6 +143,7 @@ pub fn update_settings(settings: SettingsPayload) -> Result<SettingsPayload, Str
       &TRANSLATE_TEXT_STYLES,
       DEFAULT_TRANSLATE_TEXT_STYLE,
     ),
+    shortcuts: normalize_shortcuts(&config.shortcuts),
     backup_folder: config.backup_folder,
     last_backup_time: config.last_backup_time,
   })
@@ -185,6 +204,20 @@ mod tests {
   }
 
   #[test]
+  fn normalize_shortcuts_drops_unknown_actions_and_blank_keys() {
+    let shortcuts = BTreeMap::from([
+      ("library".to_string(), " Mod+l ".to_string()),
+      ("market".to_string(), "  ".to_string()),
+      ("unknown".to_string(), "x".to_string()),
+      ("import".to_string(), "k".repeat(MAX_SHORTCUT_LEN + 1)),
+    ]);
+    assert_eq!(
+      normalize_shortcuts(&shortcuts),
+      BTreeMap::from([("library".to_string(), "Mod+l".to_string())])
+    );
+  }
+
+  #[test]
   fn settings_payload_defaults_translate_view_options() {
     let payload: SettingsPayload = serde_json::from_str(
       r#"{"language":"en","theme":"system","sync_mode":"copy","backup_folder":null,"last_backup_time":null}"#,
@@ -192,6 +225,7 @@ mod tests {
     .unwrap();
     assert_eq!(payload.translate_display_mode, "bilingual");
     assert_eq!(payload.translate_text_style, "none");
+    assert!(payload.shortcuts.is_empty());
   }
 
   #[test]
@@ -199,5 +233,6 @@ mod tests {
     let config: crate::config::AppConfig = serde_json::from_str(r#"{"language":"zh"}"#).unwrap();
     assert_eq!(config.translate_display_mode, "bilingual");
     assert_eq!(config.translate_text_style, "none");
+    assert!(config.shortcuts.is_empty());
   }
 }
