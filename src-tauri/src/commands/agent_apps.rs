@@ -5,7 +5,8 @@ use crate::services::agent_apps_service::{
 };
 
 /// List local agent apps (installed on system)
-#[tauri::command]
+// `async` runs it off the main thread; the window requests it during startup.
+#[tauri::command(async)]
 pub fn list_local_agent_apps() -> Result<Vec<AgentApp>, String> {
   Ok(local_agent_apps())
 }
