@@ -55,9 +55,21 @@ const applyNativeTheme = (theme: AppSettings["theme"]) => {
     });
 };
 
+/** Read by the inline script in app.html to theme the first paint before settings load. */
+const THEME_STORAGE_KEY = "youskill.theme";
+
+const cacheTheme = (theme: AppSettings["theme"]) => {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // Caching the theme is best effort.
+  }
+};
+
 const applyTheme = (theme: AppSettings["theme"]) => {
   applyNativeTheme(theme);
   applyDocumentTheme(theme);
+  cacheTheme(theme);
 };
 
 const syncSystemTheme = (theme: AppSettings["theme"]) => {

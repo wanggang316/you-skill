@@ -88,6 +88,9 @@
       return () => {};
     }
 
+    // The app shell is painted now; drop the static placeholder from app.html.
+    document.getElementById("boot-skeleton")?.remove();
+
     let unlistenOpenInstallModal: UnlistenFn | null = null;
     let unlistenCheckForUpdates: UnlistenFn | null = null;
     let unlistenFocus: UnlistenFn | null = null;
