@@ -313,15 +313,3 @@ export function renderMarkdownBody(content: string | undefined | null): string {
   const { content: body } = parseMarkdown(content);
   return renderMarkdown(body);
 }
-
-/**
- * Format frontmatter value for display
- */
-export function formatFrontmatterValue(value: unknown): string {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  if (typeof value === "string") return value;
-  if (Array.isArray(value)) return value.join(", ");
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
-}
