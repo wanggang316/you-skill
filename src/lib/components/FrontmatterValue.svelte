@@ -46,14 +46,13 @@
     {/each}
   </ul>
 {:else if node.kind === "map"}
-  <dl class="flex flex-col gap-1.5">
+  <!-- The key column takes the widest key so the values line up. -->
+  <dl class="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-1.5">
     {#each node.entries as entry (entry.key)}
-      <div class="flex gap-2">
-        <dt class="text-base-content-muted shrink-0 font-mono text-xs leading-5">{entry.key}:</dt>
-        <dd class="min-w-0 flex-1">
-          <FrontmatterValue node={entry.node} {onOpenExternalLink} />
-        </dd>
-      </div>
+      <dt class="text-base-content-muted font-mono text-xs leading-6">{entry.key}:</dt>
+      <dd class="min-w-0">
+        <FrontmatterValue node={entry.node} {onOpenExternalLink} />
+      </dd>
     {/each}
   </dl>
 {/if}
