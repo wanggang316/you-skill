@@ -1,6 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::Manager;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
+
+use tauri::webview::PageLoadEvent;
+use tauri::{AppHandle, Manager};
 
 #[cfg(target_os = "macos")]
 mod app_menu;
@@ -46,6 +50,24 @@ use commands::{
 };
 use tray::setup_tray;
 
+/// Longest wait for the first page load before the main window is shown anyway.
+const MAIN_WINDOW_SHOW_TIMEOUT: Duration = Duration::from_secs(3);
+
+static MAIN_WINDOW_SHOWN: AtomicBool = AtomicBool::new(false);
+
+/// The main window starts hidden so the native blank webview is never on screen; show it
+/// once the page (with its boot skeleton) has loaded. Later reloads must not reopen a
+/// window the user hid to the tray.
+fn show_main_window_once(app: &AppHandle) {
+  if MAIN_WINDOW_SHOWN.swap(true, Ordering::SeqCst) {
+    return;
+  }
+  if let Some(window) = app.get_webview_window("main") {
+    let _ = window.show();
+    let _ = window.set_focus();
+  }
+}
+
 #[tauri::command]
 fn ping() -> String {
   "pong".to_string()
@@ -72,7 +94,20 @@ fn main() {
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
     .plugin(tauri_plugin_process::init())
+    .on_page_load(|webview, payload| {
+      if webview.label() == "main" && payload.event() == PageLoadEvent::Finished {
+        show_main_window_once(webview.app_handle());
+      }
+    })
     .setup(|app| {
+      // Fallback for a page load that never finishes, so the window cannot stay hidden.
+      let handle = app.handle().clone();
+      std::thread::spawn(move || {
+        std::thread::sleep(MAIN_WINDOW_SHOW_TIMEOUT);
+        let main_thread_handle = handle.clone();
+        let _ = handle.run_on_main_thread(move || show_main_window_once(&main_thread_handle));
+      });
+
       // Setup tray icon and menu
       if let Err(e) = setup_tray(app.handle()) {
         eprintln!("Failed to setup tray: {}", e);
