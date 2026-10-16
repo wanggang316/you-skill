@@ -101,14 +101,14 @@
         </button>
       </div>
     {:else}
-      <div class="border-base-content/10 flex h-10 items-center border-b px-5">
+      <div class="border-base-content/10 flex h-7.5 items-center border-b px-5">
         <span class="text-base-content-muted text-[13px] font-semibold">
           {$t("updater.windowTitle")}
         </span>
       </div>
 
       {#if view === "available"}
-        <div class="px-5 pt-5 pb-5">
+        <div class="px-5 pt-4 pb-5">
           <div class="flex items-center gap-4">
             <img class="size-14 flex-none select-none" src={appIcon} alt="" draggable="false" />
             <div class="min-w-0">
@@ -146,7 +146,7 @@
           </div>
         </div>
       {:else}
-        <div class="flex gap-4 px-5 pt-5 pb-5">
+        <div class="flex gap-4 px-5 pt-4 pb-5">
           <img class="size-14 flex-none select-none" src={appIcon} alt="" draggable="false" />
           <div class="flex min-w-0 flex-1 flex-col">
             <p class="mt-1 text-[14px] font-semibold">
