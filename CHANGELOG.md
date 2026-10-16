@@ -11,13 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- The SKILL.md preview shows every frontmatter field in a table above the body, in document order. Lists and tool patterns render as chips, nested maps such as `metadata` as key-value rows, and URLs as links.
-
 ### Changed
 
 ### Fixed
 
 ### Removed
+
+## [0.9.11] - 2026-10-16
+
+### Added
+
+- The SKILL.md preview shows every frontmatter field in a table above the body, in document order. Lists and tool patterns render as chips, nested maps such as `metadata` as key-value rows, and URLs as links.
+- The Skill Library groups skills installed from GitHub by their source repository.
+
+### Changed
+
+- The app opens straight into a placeholder layout in your theme while the library loads, instead of a blank white window ([HAN-242](https://linear.app/gumpw/issue/HAN-242)).
+- The update dialog has a shorter header.
 
 ## [0.9.10] - 2026-10-15
 
