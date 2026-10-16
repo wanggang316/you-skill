@@ -56,8 +56,29 @@
 
   const filters: LibraryFilter[] = ["all", "changed", "uninstalled"];
   const sources: LibrarySource[] = ["all", "local", "github", "none"];
-  /** Name widths in percent for the placeholder rows shown while the library loads. */
-  const skeletonRows = [62, 48, 70, 55, 66, 52];
+  /**
+   * Placeholder groups shown while the library loads: label width, then name and description
+   * widths in percent per row. Keep in sync with the boot skeleton in app.html.
+   */
+  const skeletonGroups = [
+    {
+      label: 52,
+      rows: [
+        [46, 86],
+        [30, 88],
+      ],
+    },
+    {
+      label: 44,
+      rows: [
+        [54, 84],
+        [40, 90],
+        [58, 82],
+        [36, 86],
+        [50, 88],
+      ],
+    },
+  ];
 
   const groups = $derived(groupLibrarySkills(skills));
 
@@ -178,14 +199,27 @@
       <p class="text-error px-4 py-3 text-xs">{error}</p>
     {:else if loading && skills.length === 0}
       <div role="status" aria-label={$t("library.loading")}>
-        {#each skeletonRows as width}
-          <div class="mx-1.5 flex flex-col gap-1.5 py-2 pr-2.5 pl-7" aria-hidden="true">
+        {#each skeletonGroups as group}
+          <div class="flex items-center gap-1.5 px-4 pt-2 pb-1" aria-hidden="true">
+            <div class="bg-base-content/[0.06] size-3 animate-pulse rounded-full"></div>
+            <div class="bg-base-content/[0.06] size-4 animate-pulse rounded-full"></div>
             <div
-              class="bg-base-content/[0.07] h-3 animate-pulse rounded"
-              style={`width: ${width}%`}
+              class="bg-base-content/[0.06] h-[9px] animate-pulse rounded-full"
+              style={`width: ${group.label}%`}
             ></div>
-            <div class="bg-base-content/[0.05] h-2.5 w-[85%] animate-pulse rounded"></div>
           </div>
+          {#each group.rows as [name, description]}
+            <div class="mx-1.5 flex flex-col gap-1 py-2 pr-2.5 pl-7" aria-hidden="true">
+              <div
+                class="bg-base-content/[0.09] my-[4.5px] h-[11px] animate-pulse rounded-full"
+                style={`width: ${name}%`}
+              ></div>
+              <div
+                class="bg-base-content/[0.06] my-[3.5px] h-[9px] animate-pulse rounded-full"
+                style={`width: ${description}%`}
+              ></div>
+            </div>
+          {/each}
         {/each}
       </div>
     {:else if skills.length === 0}
