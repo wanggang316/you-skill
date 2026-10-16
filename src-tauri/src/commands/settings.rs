@@ -67,7 +67,8 @@ fn normalize_shortcuts(shortcuts: &BTreeMap<String, String>) -> BTreeMap<String,
     .collect()
 }
 
-#[tauri::command]
+// `async` runs it off the main thread; the window requests it during startup.
+#[tauri::command(async)]
 pub fn get_settings() -> Result<SettingsPayload, String> {
   let config = load_config()?;
   Ok(SettingsPayload {
