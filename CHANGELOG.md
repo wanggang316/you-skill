@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The SKILL.md preview shows every frontmatter field in a table above the body, in document order. Lists and tool patterns render as chips, nested maps such as `metadata` as key-value rows, and URLs as links.
+
 ### Changed
 
 ### Fixed

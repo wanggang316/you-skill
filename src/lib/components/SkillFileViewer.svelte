@@ -67,7 +67,7 @@
   let translatedMarkdownContent = $state<string | null>(null);
   let translationView = $state<TranslationView>("original");
   let hasFrontmatter = $state(false);
-  let parsedFrontmatter = $state<Record<string, string>>({});
+  let parsedFrontmatter = $state<Record<string, unknown>>({});
   let directoryOpen = $state(false);
   let directoryClosing = $state(false);
   let directoryLoading = $state(false);
@@ -242,10 +242,11 @@
     if (translationView === "translation") return renderMarkdown(translatedMarkdown.content);
     return renderBilingualMarkdown(content, translatedMarkdown.content);
   });
-  const markdownDescription = $derived(
-    translatedMarkdown && translationView === "translation"
-      ? translatedDescription || originalDescription
-      : originalDescription
+  // In translated view the table shows the translated description; the other fields stay as written.
+  const markdownFrontmatter = $derived(
+    translatedMarkdown && translationView === "translation" && translatedDescription
+      ? { ...parsedFrontmatter, description: translatedDescription }
+      : parsedFrontmatter
   );
   const markdownTranslatedDescription = $derived(
     translatedMarkdown &&
@@ -265,7 +266,7 @@
 
   const applyMarkdownContent = (markdown: string) => {
     const parsed = parseMarkdown(markdown);
-    parsedFrontmatter = parsed.frontmatter as Record<string, string>;
+    parsedFrontmatter = parsed.frontmatter;
     hasFrontmatter = parsed.hasFrontmatter;
     content = parsed.content;
   };
@@ -829,7 +830,7 @@
         {:else if fileViewMode === "markdown"}
           <MarkdownPreview
             htmlContent={markdownHtml}
-            frontmatterDescription={markdownDescription}
+            frontmatter={markdownFrontmatter}
             translatedDescription={markdownTranslatedDescription}
             translationStyle={translationView === "bilingual"
               ? $settings.translate_text_style

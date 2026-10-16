@@ -1,17 +1,19 @@
 <script lang="ts">
   import type { TranslateTextStyle } from "$lib/api/settings";
+  import FrontmatterTable from "./FrontmatterTable.svelte";
 
   let {
     htmlContent = "",
-    frontmatterDescription = "",
+    frontmatter = {},
     translatedDescription = "",
     translationStyle = "none",
     onOpenExternalLink,
     onOpenRelativeLink,
   }: {
     htmlContent?: string;
-    frontmatterDescription?: string;
-    /** Shown under `frontmatterDescription` in bilingual view. */
+    /** Frontmatter fields shown as a table above the body, in document order. */
+    frontmatter?: Record<string, unknown>;
+    /** Shown under the `description` field in bilingual view. */
     translatedDescription?: string;
     /** Style of `.markdown-translation` elements in bilingual view. */
     translationStyle?: TranslateTextStyle;
@@ -84,20 +86,7 @@
 </script>
 
 <div class:markdown-translation-dashed={translationStyle === "dashed_underline"}>
-  {#if frontmatterDescription}
-    <div class="border-base-300 bg-base-200 mb-6 overflow-hidden rounded-xl border">
-      <div class="flex flex-col gap-3 p-4">
-        <div class="flex flex-col gap-1">
-          <span class="text-base-content text-sm leading-6">{frontmatterDescription}</span>
-          {#if translatedDescription}
-            <span class="markdown-translation text-base-content text-sm leading-6">
-              {translatedDescription}
-            </span>
-          {/if}
-        </div>
-      </div>
-    </div>
-  {/if}
+  <FrontmatterTable {frontmatter} {translatedDescription} {onOpenExternalLink} />
 
   <div class="markdown-content" use:bindInteractions>
     {@html htmlContent}
