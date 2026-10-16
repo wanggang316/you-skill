@@ -26,11 +26,12 @@
             class:bg-base-100={index % 2 === 0}
             class:bg-base-200={index % 2 === 1}
           >
+            <!-- `w-px` + nowrap sizes the column to the widest key; the span caps very long keys. -->
             <th
-              class="border-base-300 w-44 border-r px-4 py-3 text-center align-middle font-semibold break-words"
+              class="border-base-300 w-px border-r px-4 py-3 text-center align-middle font-semibold whitespace-nowrap"
               scope="row"
             >
-              {entry.key}
+              <span class="inline-block max-w-48 break-words whitespace-normal">{entry.key}</span>
             </th>
             <td class="px-4 py-3 align-middle">
               <FrontmatterValue node={entry.node} {onOpenExternalLink} />
