@@ -1,14 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import {
-    ChevronRight,
-    Folder,
-    Loader2,
-    RefreshCw,
-    ScanSearch,
-    Search,
-    Zap,
-  } from "@lucide/svelte";
+  import { ChevronRight, Folder, RefreshCw, ScanSearch, Search, Zap } from "@lucide/svelte";
   import GithubAvatar from "$lib/components/library/GithubAvatar.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
@@ -64,6 +56,8 @@
 
   const filters: LibraryFilter[] = ["all", "changed", "uninstalled"];
   const sources: LibrarySource[] = ["all", "local", "github", "none"];
+  /** Name widths in percent for the placeholder rows shown while the library loads. */
+  const skeletonRows = [62, 48, 70, 55, 66, 52];
 
   const groups = $derived(groupLibrarySkills(skills));
 
@@ -183,9 +177,16 @@
     {#if error}
       <p class="text-error px-4 py-3 text-xs">{error}</p>
     {:else if loading && skills.length === 0}
-      <div class="text-base-content-muted flex items-center justify-center gap-2 py-10 text-xs">
-        <Loader2 size={16} class="animate-spin" />
-        {$t("library.loading")}
+      <div role="status" aria-label={$t("library.loading")}>
+        {#each skeletonRows as width}
+          <div class="mx-1.5 flex flex-col gap-1.5 py-2 pr-2.5 pl-7" aria-hidden="true">
+            <div
+              class="bg-base-content/[0.07] h-3 animate-pulse rounded"
+              style={`width: ${width}%`}
+            ></div>
+            <div class="bg-base-content/[0.05] h-2.5 w-[85%] animate-pulse rounded"></div>
+          </div>
+        {/each}
       </div>
     {:else if skills.length === 0}
       <p class="text-base-content-muted px-4 py-8 text-center text-xs">
