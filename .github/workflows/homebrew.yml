@@ -1,0 +1,80 @@
+name: Homebrew
+
+# Publishes Formula/youskill.rb (CLI) and Casks/youskill.rb (app) to
+# wanggang316/homebrew-tap. release.yml calls this after the release is
+# published, so every asset the tap points to is downloadable. A release
+# published with GITHUB_TOKEN does not trigger `release: published` in other
+# workflows, so this is a reusable workflow and not a release event listener.
+#
+# Required secret on this repository:
+#   HOMEBREW_TAP_TOKEN   PAT with contents:write on wanggang316/homebrew-tap.
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Published release tag (vX.Y.Z)"
+        required: true
+        type: string
+    secrets:
+      HOMEBREW_TAP_TOKEN:
+        required: false
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Published release tag (vX.Y.Z)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  update-tap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: meta
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::tag must be vX.Y.Z (got: $TAG)"
+            exit 1
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Render formula and cask
+        run: |
+          ./scripts/homebrew.sh "${{ steps.meta.outputs.version }}" "$RUNNER_TEMP/rendered"
+          cat "$RUNNER_TEMP/rendered/Formula/youskill.rb" "$RUNNER_TEMP/rendered/Casks/youskill.rb"
+
+      - name: Push to wanggang316/homebrew-tap
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          : "${TAP_TOKEN:?secret HOMEBREW_TAP_TOKEN is not set on this repository}"
+
+          TAP_DIR="$RUNNER_TEMP/tap"
+          git clone --depth 1 \
+            "https://x-access-token:${TAP_TOKEN}@github.com/wanggang316/homebrew-tap.git" \
+            "$TAP_DIR"
+          mkdir -p "$TAP_DIR/Formula" "$TAP_DIR/Casks"
+          cp "$RUNNER_TEMP/rendered/Formula/youskill.rb" "$TAP_DIR/Formula/youskill.rb"
+          cp "$RUNNER_TEMP/rendered/Casks/youskill.rb" "$TAP_DIR/Casks/youskill.rb"
+
+          cd "$TAP_DIR"
+          git config user.name "youskill release bot"
+          git config user.email "noreply@youskill.app"
+          git add Formula/youskill.rb Casks/youskill.rb
+          if git diff --cached --quiet; then
+            echo "::notice::tap already has youskill ${VERSION}"
+            exit 0
+          fi
+          git commit -m "youskill ${VERSION}"
+          git push origin HEAD
