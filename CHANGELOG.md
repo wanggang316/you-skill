@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.9.12] - 2026-10-18
+
+### Breaking Changes
+
+### Added
+
 - Homebrew install: `brew install --cask wanggang316/tap/youskill` for the app and `brew install wanggang316/tap/youskill` for the command line tool. The release workflow publishes both to `wanggang316/homebrew-tap` after each release.
 
 ### Changed
@@ -18,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On macOS, the top bar and list sidebars use the native translucent sidebar material, so the desktop shows through with a blur.
 
 ### Fixed
+
+- Dragging the window by its top bar keeps the arrow pointer and no longer selects text.
 
 ### Removed
 
