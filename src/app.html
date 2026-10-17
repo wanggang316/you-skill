@@ -21,6 +21,10 @@
           (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
         if (dark) root.dataset.theme = "dark";
         else delete root.dataset.theme;
+        // Only the macOS app window is transparent over a native sidebar material.
+        if ("__TAURI_INTERNALS__" in window && /Mac/.test(navigator.userAgent)) {
+          root.dataset.vibrancy = "";
+        }
         if (Number.isFinite(listWidth) && listWidth > 0) {
           root.style.setProperty(
             "--boot-list-width",
@@ -48,6 +52,9 @@
         --boot-panel: oklch(0.2308 0 0);
         --boot-border: oklch(0.3268 0.0055 236.68);
         --boot-raised: oklch(0.3268 0.0055 236.68);
+      }
+      :root[data-vibrancy] {
+        --boot-chrome: transparent;
       }
       #boot-skeleton {
         --boot-text: color-mix(in oklch, var(--boot-content) 9%, transparent);

@@ -255,6 +255,17 @@
   --scrollbar-thumb-hover: oklch(44% 0.01 260);
 }
 
+/* macOS: the window is transparent over a native sidebar material (see app.html). Let it show
+   through the chrome; content panels keep their opaque surface. */
+:root[data-vibrancy] {
+  --color-chrome: transparent;
+  background-color: transparent;
+}
+
+:root[data-vibrancy] body {
+  background-color: transparent;
+}
+
 [data-theme="dark"] .shadow-2xl {
   --tw-shadow: 0 32px 64px -28px color-mix(in oklch, var(--overlay) 10%, var(--base-100) 5%);
   --tw-shadow-colored: 0 32px 64px -28px color-mix(in oklch, var(--overlay) 10%, var(--base-100) 5%);

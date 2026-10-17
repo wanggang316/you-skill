@@ -4,7 +4,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use tauri::webview::PageLoadEvent;
-use tauri::{AppHandle, Manager};
+#[cfg(target_os = "macos")]
+use tauri::window::{Effect, EffectState, EffectsBuilder};
+use tauri::{App, AppHandle, Manager, WebviewWindow, WebviewWindowBuilder};
 
 #[cfg(target_os = "macos")]
 mod app_menu;
@@ -68,6 +70,29 @@ fn show_main_window_once(app: &AppHandle) {
   }
 }
 
+/// The main window is declared in `tauri.conf.json` with `create: false` and built here, so
+/// macOS alone gets a transparent window behind the native sidebar material. Other platforms
+/// keep an opaque window: a transparent one without a supported effect would show the desktop.
+fn build_main_window(app: &App) -> tauri::Result<WebviewWindow> {
+  let config = app
+    .config()
+    .app
+    .windows
+    .iter()
+    .find(|window| window.label == "main")
+    .cloned()
+    .expect("main window must be declared in tauri.conf.json");
+  let builder = WebviewWindowBuilder::from_config(app.handle(), &config)?;
+  #[cfg(target_os = "macos")]
+  let builder = builder.transparent(true).effects(
+    EffectsBuilder::new()
+      .effect(Effect::Sidebar)
+      .state(EffectState::FollowsWindowActiveState)
+      .build(),
+  );
+  builder.build()
+}
+
 #[tauri::command]
 fn ping() -> String {
   "pong".to_string()
@@ -100,6 +125,8 @@ fn main() {
       }
     })
     .setup(|app| {
+      let main_window = build_main_window(app)?;
+
       // Fallback for a page load that never finishes, so the window cannot stay hidden.
       let handle = app.handle().clone();
       std::thread::spawn(move || {
@@ -119,7 +146,6 @@ fn main() {
       }
 
       // Handle window close event - hide to tray instead of quitting
-      let main_window = app.get_webview_window("main").unwrap();
       let window_clone = main_window.clone();
 
       main_window.on_window_event(move |event| {

@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "create": false,
         "title": "YouSkill",
         "hiddenTitle": true,
         "titleBarStyle": "Overlay",
@@ -26,6 +27,7 @@
         "visible": false
       }
     ],
+    "macOSPrivateApi": true,
     "security": {
       "csp": null,
       "capabilities": ["default"]
