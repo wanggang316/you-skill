@@ -71,6 +71,8 @@
     if (!target.closest("[data-window-drag-region]")) return;
     if (target.closest(dragExcludedSelector)) return;
 
+    // Without this WebKit starts a text selection and shows the I-beam for the whole drag.
+    event.preventDefault();
     getCurrentWindow()
       .startDragging()
       .catch((error) => {
