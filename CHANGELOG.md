@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- On macOS, the top bar and list sidebars use the native translucent sidebar material, so the desktop shows through with a blur.
+
 ### Fixed
 
 ### Removed
