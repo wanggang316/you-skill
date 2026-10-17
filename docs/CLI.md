@@ -123,10 +123,13 @@ the app and the CLI cannot disagree about a state.
 
 1. The release workflow (`build-cli` job) builds `youskill` for macOS (arm64, x64) and
    Windows (x64) and attaches `youskill-<tag>-<target>.tar.gz|zip` to the same GitHub
-   release as the installers. Homebrew: after a release, `scripts/homebrew-formula.sh
-<version>` prints the formula with the archive checksums; commit it as
-   `Formula/youskill.rb` in `wanggang316/homebrew-tap`
-   (`brew install wanggang316/tap/youskill`).
+   release as the installers. Homebrew: after the release is published, the `homebrew`
+   job (`.github/workflows/homebrew.yml`) runs `scripts/homebrew.sh <version> <dir>`,
+   which writes `Formula/youskill.rb` (CLI) and `Casks/youskill.rb` (app) with the asset
+   checksums, and pushes both to `wanggang316/homebrew-tap`
+   (`brew install wanggang316/tap/youskill`, `brew install --cask wanggang316/tap/youskill`).
+   The job needs the `HOMEBREW_TAP_TOKEN` secret. Run the workflow by hand with a tag to
+   republish a release.
 2. The app bundles the binary as a Tauri `externalBin`: `scripts/build-cli.mjs` runs
    before `tauri dev` and `tauri build` (`YOUSKILL_CLI_TARGET` selects the triple in CI)
    and stages `src-tauri/binaries/youskill-<triple>`, which Tauri places next to the app

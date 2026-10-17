@@ -36,6 +36,20 @@
 
 ## 下载安装
 
+### Homebrew（macOS）
+
+```bash
+# App
+brew install --cask wanggang316/tap/youskill
+
+# Command line tool only
+brew install wanggang316/tap/youskill
+```
+
+App 会自动更新。App 内置 `youskill` 命令行工具，可在「设置 > 命令行工具」中一键安装，使用 App 时无需再装 formula。
+
+### 安装包
+
 从 [Releases](https://github.com/wanggang316/you-skill/releases) 页面下载对应平台的安装包：
 
 - **macOS**: `YouSkill_x.x.x_aarch64.dmg` (Apple Silicon) / `YouSkill_x.x.x_x64.dmg` (Intel)
