@@ -56,6 +56,11 @@
       :root[data-vibrancy] {
         --boot-chrome: transparent;
       }
+      /* The skeleton no longer hides the app below it when its chrome is transparent, so keep
+         the app invisible until +layout.svelte removes the skeleton. */
+      #boot-skeleton ~ * {
+        visibility: hidden;
+      }
       #boot-skeleton {
         --boot-text: color-mix(in oklch, var(--boot-content) 9%, transparent);
         --boot-text-faint: color-mix(in oklch, var(--boot-content) 6%, transparent);
