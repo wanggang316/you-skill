@@ -37,6 +37,21 @@ and [docs/CLI.md](docs/CLI.md) for the `youskill` command line interface.
 
 ## Download
 
+### Homebrew (macOS)
+
+```bash
+# App
+brew install --cask wanggang316/tap/youskill
+
+# Command line tool only
+brew install wanggang316/tap/youskill
+```
+
+The app updates itself. It can also link its bundled `youskill` command line tool from
+Settings > "Command line tool", so you do not need the formula when you use the app.
+
+### Installers
+
 Download installers from [Releases](https://github.com/wanggang316/you-skill/releases):
 
 - **macOS**: `YouSkill_x.x.x_aarch64.dmg` (Apple Silicon) / `YouSkill_x.x.x_x64.dmg` (Intel)

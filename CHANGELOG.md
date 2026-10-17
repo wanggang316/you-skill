@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Homebrew install: `brew install --cask wanggang316/tap/youskill` for the app and `brew install wanggang316/tap/youskill` for the command line tool. The release workflow publishes both to `wanggang316/homebrew-tap` after each release.
+
 ### Changed
 
 - On macOS, the top bar and list sidebars use the native translucent sidebar material, so the desktop shows through with a blur.

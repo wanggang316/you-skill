@@ -197,3 +197,10 @@ jobs:
               release_id: ${{ needs.create-release.outputs.release_id }},
               draft: false
             })
+
+  homebrew:
+    needs: publish-release
+    uses: ./.github/workflows/homebrew.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit
