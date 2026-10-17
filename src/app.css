@@ -286,6 +286,15 @@ body {
   min-height: 100vh;
 }
 
+/* Window drag areas behave like a native title bar, not like text. */
+[data-window-drag-region] {
+  cursor: default;
+}
+
+[data-window-drag-region] :is(input, textarea, [contenteditable="true"]) {
+  cursor: text;
+}
+
 button {
   transition:
     background-color 0.15s,
