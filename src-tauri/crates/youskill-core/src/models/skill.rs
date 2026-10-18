@@ -215,9 +215,10 @@ impl SkillSource {
 /// Whether `reference` (`[github:]owner/repo[@branch]:<dir or name>` or `folder:<path>`)
 /// names a skill with this source and name.
 fn source_key_matches(source: &SkillSource, name: &str, reference: &str) -> bool {
-  if reference.starts_with("folder:") {
-    return source.key() == format!("folder:{}", folder_key_path(&reference["folder:".len()..]));
+  if let Some(path) = reference.strip_prefix("folder:") {
+    return source.key() == format!("folder:{}", folder_key_path(path));
   }
+
   let SkillSource::Github {
     repo,
     skill_path,
