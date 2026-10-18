@@ -24,8 +24,8 @@ use commands::{
   github::{get_github_auth_status, get_github_avatar, set_github_account},
   hub::{
     check_source_updates, diff_skill, get_hub_skill, import_scanned, import_skills, install_skill,
-    list_hub_skills, migrate_legacy, migration_status, remove_hub_skill, scan_folder, sync_skill,
-    uninstall_skill,
+    list_hub_skills, migrate_legacy, migration_status, plan_import, remove_hub_skill, scan_folder,
+    sync_skill, uninstall_skill,
   },
   instructions::{
     create_instruction, detect_instruction_files, detect_instruction_github, diff_instruction,
@@ -183,6 +183,7 @@ fn main() {
       detect_github_auto,
       list_hub_skills,
       get_hub_skill,
+      plan_import,
       import_skills,
       install_skill,
       uninstall_skill,

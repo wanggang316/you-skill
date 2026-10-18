@@ -204,6 +204,7 @@ pub fn build_view(env: &Env, id: &str, record: &SkillRecord) -> HubSkillView {
   HubSkillView {
     id: id.to_string(),
     name: record.name.clone(),
+    source_key: record.source.key(),
     hub_path: hub_dir.to_string_lossy().to_string(),
     description: probe.description,
     source: record.source.clone(),

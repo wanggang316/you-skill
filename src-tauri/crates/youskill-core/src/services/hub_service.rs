@@ -2,7 +2,8 @@
 
 use crate::models::{
   is_skill_id, new_skill_id, ActionResult, HubSkillView, HubState, ImportItem, ImportOutcome,
-  InstallMode, InstallRecord, InstallScope, SkillRecord, SkillSource, SyncAction,
+  ImportPlan, InstallMode, InstallRecord, InstallScope, LockFile, SkillMatch, SkillRecord,
+  SkillSource, SyncAction,
 };
 use crate::services::drift_service::{build_view, probe_hub};
 use crate::services::env::Env;
@@ -16,7 +17,7 @@ use crate::utils::folder::{
 };
 use crate::utils::hash::{hash_dir, hash_dir_cached, invalidate_hash_cache};
 use crate::utils::path::{
-  is_symlink, is_within, path_to_string, remove_path_any, validate_skill_name,
+  is_symlink, is_within, path_to_string, remove_path_any, same_path, validate_skill_name,
 };
 use crate::utils::time::{now_file_stamp, now_rfc3339};
 use std::fs;
@@ -266,6 +267,80 @@ pub fn import_skills(
   Ok(outcomes)
 }
 
+/// What each item does by default: replace the record of the same source, replace the
+/// newest same-name zip skill, or add a new record. Callers show the plan and send their
+/// choice back as `ImportItem::replace_id`.
+pub fn plan_import(env: &Env, items: &[ImportItem]) -> Result<Vec<ImportPlan>, String> {
+  migrate_skill_ids(env)?;
+  let lock = store(env).read()?;
+  Ok(
+    items
+      .iter()
+      .map(|item| plan_one(env, &lock, item))
+      .collect(),
+  )
+}
+
+fn plan_one(env: &Env, lock: &LockFile, item: &ImportItem) -> ImportPlan {
+  let name = item.name.trim();
+  // A folder inside an agent root is that skill's install, so the record that owns the
+  // install is the same skill.
+  let install_path = match &item.source {
+    SkillSource::Folder { path } if classify_agent_root(env, Path::new(path)).is_some() => {
+      Some(Path::new(path))
+    },
+    _ => None,
+  };
+  let same_source = |record: &SkillRecord| {
+    record.source.same_location(&item.source)
+      || install_path.is_some_and(|path| {
+        record
+          .installs
+          .iter()
+          .any(|install| same_path(Path::new(&install.path), path))
+      })
+  };
+
+  let mut matches: Vec<SkillMatch> = Vec::new();
+  for (id, record) in &lock.skills {
+    let same = same_source(record);
+    if same || record.name.eq_ignore_ascii_case(name) {
+      matches.push(SkillMatch {
+        id: id.clone(),
+        name: record.name.clone(),
+        source_key: record.source.key(),
+        same_source: same,
+        updated_at: record.updated_at.clone(),
+      });
+    }
+  }
+  matches.sort_by(|a, b| {
+    b.same_source
+      .cmp(&a.same_source)
+      .then_with(|| b.updated_at.cmp(&a.updated_at))
+  });
+
+  let replace_required = matches.first().is_some_and(|m| m.same_source);
+  let default_replace_id = if replace_required {
+    matches.first().map(|m| m.id.clone())
+  } else if matches!(item.source, SkillSource::Zip { .. }) {
+    // A zip import is usually a newer version of an earlier zip import.
+    matches
+      .iter()
+      .find(|m| m.source_key == "zip" || m.source_key == "none")
+      .map(|m| m.id.clone())
+  } else {
+    None
+  };
+  ImportPlan {
+    name: name.to_string(),
+    source_key: item.source.key(),
+    matches,
+    default_replace_id,
+    replace_required,
+  }
+}
+
 fn import_one(env: &Env, item: &ImportItem, overwrite: bool) -> Result<ImportOutcome, String> {
   let name = item.name.trim().to_string();
   validate_skill_name(&name)?;
@@ -279,17 +354,39 @@ fn import_one(env: &Env, item: &ImportItem, overwrite: bool) -> Result<ImportOut
 
   let store = store(env);
   let lock = store.read()?;
-  let existing_id = match lock.find_by_name(&name) {
-    Some((_, record)) if record.name != name => {
+  let plan = plan_one(env, &lock, item);
+  let existing_id = if plan.replace_required {
+    let same = plan.default_replace_id.clone();
+    if item.replace_id.is_some() && item.replace_id != same {
       return Err(format!(
-        "A skill named '{}' already exists (names are case-insensitive)",
-        record.name
+        "{} is already in the hub as {}",
+        plan.source_key,
+        same.unwrap_or_default()
       ));
-    },
-    Some(_) if !overwrite => return Err("Skill already exists in the hub".to_string()),
-    Some((id, _)) => Some(id.clone()),
-    None => None,
+    }
+    same
+  } else {
+    item.replace_id.clone()
   };
+  if let Some(id) = &existing_id {
+    let record = lock
+      .skills
+      .get(id)
+      .ok_or_else(|| format!("Skill '{}' is not in the hub", id))?;
+    if !overwrite {
+      return Err(format!(
+        "Skill already exists in the hub: {} ({})",
+        id,
+        record.source.key()
+      ));
+    }
+    if record.name != name {
+      return Err(format!(
+        "Skill '{}' cannot replace '{}': the names differ",
+        name, record.name
+      ));
+    }
+  }
 
   // A folder that is itself an agent target is not a source: register it as an install.
   let mut source = item.source.clone();
@@ -379,6 +476,20 @@ pub fn pull_from_dir(
   let _ops = ops_guard(env)?;
   let (id, record) = resolve_skill(env, key)?;
   let store = store(env);
+  if let Some(source) = updated_source.as_ref().filter(|s| s.has_location()) {
+    let lock = store.read()?;
+    if let Some((other, _)) = lock
+      .skills
+      .iter()
+      .find(|(other, r)| **other != id && r.source.same_location(source))
+    {
+      return Err(format!(
+        "{} is already in the hub as {}",
+        source.key(),
+        other
+      ));
+    }
+  }
   if !src_dir.is_dir() || !src_dir.join(SKILL_MD).is_file() {
     return Err(format!(
       "Source directory is invalid: {}",
@@ -579,7 +690,38 @@ mod tests {
       name: name.to_string(),
       tmp_path: dir.to_string_lossy().to_string(),
       source: SkillSource::None,
+      replace_id: None,
     }
+  }
+
+  fn staged_from(tmp: &Path, name: &str, body: &str, source: SkillSource) -> ImportItem {
+    ImportItem {
+      source,
+      ..staged(tmp, name, body)
+    }
+  }
+
+  fn github(repo: &str, branch: Option<&str>) -> SkillSource {
+    SkillSource::Github {
+      repo: repo.to_string(),
+      url: format!("https://github.com/{repo}.git"),
+      skill_path: "skills/tdd/SKILL.md".to_string(),
+      branch: branch.map(str::to_string),
+      remote_sha: None,
+      marketplace_id: None,
+      latest_remote_sha: None,
+      checked_at: None,
+    }
+  }
+
+  fn zip(path: &str) -> SkillSource {
+    SkillSource::Zip {
+      path: path.to_string(),
+    }
+  }
+
+  fn import(env: &Env, item: ImportItem, overwrite: bool) -> Result<ImportOutcome, String> {
+    import_skills(env, vec![item], overwrite).map(|mut outcomes| outcomes.remove(0))
   }
 
   #[test]
@@ -655,9 +797,14 @@ mod tests {
     assert!(env.hub_dir_of("foo").join("SKILL.md").is_file());
     let first_hash = outcomes[0].hash.clone();
 
-    // Same name without overwrite -> error; different case -> error.
-    assert!(import_skills(&env, vec![staged(tmp.path(), "foo", "v2")], false).is_err());
-    assert!(import_skills(&env, vec![staged(tmp.path(), "FOO", "v2")], true).is_err());
+    // Replacing needs overwrite, and a replacement keeps the name.
+    let first_id = outcomes[0].id.clone();
+    let replace = |name: &str| ImportItem {
+      replace_id: Some(first_id.clone()),
+      ..staged(tmp.path(), name, "v2")
+    };
+    assert!(import(&env, replace("foo"), false).is_err());
+    assert!(import(&env, replace("FOO"), true).is_err());
 
     // Install, then overwrite: installs are kept and the unmodified copy is pushed.
     install_skill(
@@ -674,9 +821,10 @@ mod tests {
       },
     )
     .unwrap();
-    let outcomes = import_skills(&env, vec![staged(tmp.path(), "foo", "v2")], true).unwrap();
-    assert!(outcomes[0].replaced);
-    assert_ne!(outcomes[0].hash, first_hash);
+    let outcome = import(&env, replace("foo"), true).unwrap();
+    assert!(outcome.replaced);
+    assert_eq!(outcome.id, first_id);
+    assert_ne!(outcome.hash, first_hash);
     let view = get_hub_skill(&env, "foo").unwrap().unwrap();
     assert_eq!(view.installs.len(), 1);
     assert_eq!(view.installs[0].state, TargetState::InSync);
@@ -686,6 +834,200 @@ mod tests {
         .ends_with("v2")
     );
     assert!(env.trash_root.read_dir().unwrap().next().is_some());
+  }
+
+  #[test]
+  fn same_name_from_two_sources_gives_two_skills() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let a = import(
+      &env,
+      staged_from(
+        tmp.path(),
+        "tdd",
+        "A",
+        github("mattpocock/skills", Some("main")),
+      ),
+      false,
+    )
+    .unwrap();
+    let b = import(
+      &env,
+      staged_from(
+        tmp.path(),
+        "tdd",
+        "B",
+        github("backnotprop/pstack", Some("main")),
+      ),
+      false,
+    )
+    .unwrap();
+    assert_ne!(a.id, b.id);
+    assert!(!b.replaced);
+    assert!(env.hub_dir(&a.id, "tdd").join("SKILL.md").is_file());
+    assert!(env.hub_dir(&b.id, "tdd").join("SKILL.md").is_file());
+    assert!(
+      get_hub_skill(&env, "tdd").is_err(),
+      "the name alone is ambiguous"
+    );
+    assert_eq!(
+      get_hub_skill(&env, &b.id).unwrap().unwrap().source_key,
+      "github:backnotprop/pstack@main:skills/tdd"
+    );
+
+    // Another branch of the same skill is another skill.
+    let next = import(
+      &env,
+      staged_from(
+        tmp.path(),
+        "tdd",
+        "N",
+        github("mattpocock/skills", Some("next")),
+      ),
+      false,
+    )
+    .unwrap();
+    assert_ne!(next.id, a.id);
+    assert_eq!(store(&env).read().unwrap().skills.len(), 3);
+  }
+
+  #[test]
+  fn known_source_replaces_only_with_overwrite() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let source = github("o/r", Some("main"));
+    let first = import(
+      &env,
+      staged_from(tmp.path(), "tdd", "v1", source.clone()),
+      false,
+    )
+    .unwrap();
+
+    let again = staged_from(tmp.path(), "tdd", "v2", source.clone());
+    let plan = plan_import(&env, std::slice::from_ref(&again)).unwrap();
+    assert!(plan[0].replace_required);
+    assert_eq!(
+      plan[0].default_replace_id.as_deref(),
+      Some(first.id.as_str())
+    );
+    let err = import(&env, again.clone(), false).unwrap_err();
+    assert!(err.contains("already exists"), "{err}");
+
+    // A source in the hub cannot be added again, also not as a replacement of another skill.
+    let other = import(&env, staged(tmp.path(), "tdd", "x"), false).unwrap();
+    let wrong = ImportItem {
+      replace_id: Some(other.id.clone()),
+      ..again.clone()
+    };
+    assert!(import(&env, wrong, true).is_err());
+
+    let replaced = import(&env, again, true).unwrap();
+    assert!(replaced.replaced);
+    assert_eq!(replaced.id, first.id);
+    assert_eq!(store(&env).read().unwrap().skills.len(), 2);
+  }
+
+  #[test]
+  fn import_with_a_branch_matches_a_legacy_record_without_one() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let legacy = import(
+      &env,
+      staged_from(tmp.path(), "tdd", "v1", github("o/r", None)),
+      false,
+    )
+    .unwrap();
+    let item = staged_from(tmp.path(), "tdd", "v2", github("o/r", Some("main")));
+    let outcome = import(&env, item, true).unwrap();
+    assert_eq!(outcome.id, legacy.id);
+    assert_eq!(
+      get_hub_skill(&env, &legacy.id).unwrap().unwrap().source_key,
+      "github:o/r@main:skills/tdd"
+    );
+  }
+
+  #[test]
+  fn zip_import_replaces_the_newest_zip_skill_by_default() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let old = import(
+      &env,
+      staged_from(tmp.path(), "tdd", "1", zip("/a.zip")),
+      false,
+    )
+    .unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(1100));
+    let newer = import(
+      &env,
+      staged_from(tmp.path(), "tdd", "2", zip("/b.zip")),
+      false,
+    )
+    .unwrap();
+    assert_ne!(old.id, newer.id, "no replace_id adds a record");
+    import(
+      &env,
+      staged_from(tmp.path(), "tdd", "gh", github("o/r", Some("main"))),
+      false,
+    )
+    .unwrap();
+
+    let item = staged_from(tmp.path(), "tdd", "3", zip("/c.zip"));
+    let plan = plan_import(&env, std::slice::from_ref(&item)).unwrap();
+    assert!(!plan[0].replace_required);
+    assert_eq!(plan[0].matches.len(), 3);
+    assert_eq!(
+      plan[0].default_replace_id.as_deref(),
+      Some(newer.id.as_str())
+    );
+
+    let chosen = ImportItem {
+      replace_id: plan[0].default_replace_id.clone(),
+      ..item
+    };
+    assert!(import(&env, chosen.clone(), false).is_err());
+    let outcome = import(&env, chosen, true).unwrap();
+    assert_eq!(outcome.id, newer.id);
+    assert!(outcome.replaced);
+  }
+
+  #[test]
+  fn zip_import_does_not_replace_a_github_skill_by_default() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    import(
+      &env,
+      staged_from(tmp.path(), "tdd", "gh", github("o/r", Some("main"))),
+      false,
+    )
+    .unwrap();
+    let item = staged_from(tmp.path(), "tdd", "z", zip("/a.zip"));
+    let plan = plan_import(&env, std::slice::from_ref(&item)).unwrap();
+    assert_eq!(plan[0].matches.len(), 1);
+    assert!(!plan[0].matches[0].same_source);
+    assert!(plan[0].default_replace_id.is_none());
+  }
+
+  #[test]
+  fn pull_refuses_a_source_that_another_skill_has() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    import(
+      &env,
+      staged_from(tmp.path(), "tdd", "a", github("o/a", Some("main"))),
+      false,
+    )
+    .unwrap();
+    let b = import(
+      &env,
+      staged_from(tmp.path(), "tdd", "b", github("o/b", Some("main"))),
+      false,
+    )
+    .unwrap();
+    let src = tmp.path().join("pulled");
+    write(&src, "SKILL.md", "---\nname: tdd\n---\nnew");
+    let err =
+      pull_from_dir(&env, &b.id, &src, Some(github("o/a", Some("main"))), false).unwrap_err();
+    assert!(err.contains("already in the hub"), "{err}");
   }
 
   #[test]
@@ -701,6 +1043,7 @@ mod tests {
       name: "empty".to_string(),
       tmp_path: empty.to_string_lossy().to_string(),
       source: SkillSource::None,
+      replace_id: None,
     };
     assert!(import_skills(&env, vec![item], false).is_err());
   }
@@ -717,6 +1060,7 @@ mod tests {
       source: SkillSource::Folder {
         path: dir.to_string_lossy().to_string(),
       },
+      replace_id: None,
     };
     import_skills(&env, vec![item], false).unwrap();
     let view = get_hub_skill(&env, "foo").unwrap().unwrap();
@@ -739,6 +1083,7 @@ mod tests {
       source: SkillSource::Folder {
         path: src.to_string_lossy().to_string(),
       },
+      replace_id: None,
     };
     import_skills(&env, vec![item], false).unwrap();
 

@@ -140,6 +140,98 @@ impl SkillSource {
       _ => None,
     }
   }
+
+  /// The source key: `github:<owner>/<repo>@<branch>:<skillDir>`, `folder:<path>`, or only
+  /// the type (`zip`, `none`). A legacy GitHub source without a branch has no `@<branch>`.
+  pub fn key(&self) -> String {
+    match self {
+      SkillSource::Github {
+        repo,
+        skill_path,
+        branch,
+        ..
+      } => {
+        let branch = branch
+          .as_deref()
+          .filter(|b| !b.is_empty())
+          .map(|b| format!("@{}", b))
+          .unwrap_or_default();
+        format!(
+          "github:{}{}:{}",
+          repo.trim().to_ascii_lowercase(),
+          branch,
+          skill_dir_of(skill_path)
+        )
+      },
+      SkillSource::Folder { path } => format!("folder:{}", folder_key_path(path)),
+      SkillSource::Zip { .. } => "zip".to_string(),
+      SkillSource::None => "none".to_string(),
+    }
+  }
+
+  /// Whether the source has a location key: YouSkill reads GitHub and folder sources again
+  /// after the import, so their location identifies the skill.
+  pub fn has_location(&self) -> bool {
+    matches!(
+      self,
+      SkillSource::Github { .. } | SkillSource::Folder { .. }
+    )
+  }
+
+  /// Whether two sources are the same location. A GitHub source without a branch (from a
+  /// lock that did not record it) matches the same skill on any branch.
+  pub fn same_location(&self, other: &SkillSource) -> bool {
+    match (self, other) {
+      (
+        SkillSource::Github {
+          repo: a_repo,
+          skill_path: a_path,
+          branch: a_branch,
+          ..
+        },
+        SkillSource::Github {
+          repo: b_repo,
+          skill_path: b_path,
+          branch: b_branch,
+          ..
+        },
+      ) => {
+        let branch_matches = match (a_branch.as_deref(), b_branch.as_deref()) {
+          (Some(a), Some(b)) if !a.is_empty() && !b.is_empty() => a == b,
+          _ => true,
+        };
+        a_repo.trim().eq_ignore_ascii_case(b_repo.trim())
+          && skill_dir_of(a_path) == skill_dir_of(b_path)
+          && branch_matches
+      },
+      (SkillSource::Folder { path: a }, SkillSource::Folder { path: b }) => {
+        folder_key_path(a) == folder_key_path(b)
+      },
+      _ => false,
+    }
+  }
+}
+
+/// `skills/foo/SKILL.md` -> `skills/foo`; a skill at the repository root is `.`.
+fn skill_dir_of(skill_path: &str) -> String {
+  let path = skill_path.trim().replace('\\', "/");
+  let dir = path
+    .strip_suffix("SKILL.md")
+    .unwrap_or(&path)
+    .trim_matches('/');
+  if dir.is_empty() {
+    ".".to_string()
+  } else {
+    dir.to_string()
+  }
+}
+
+fn folder_key_path(path: &str) -> String {
+  let path = path.trim().replace('\\', "/");
+  match path.trim_end_matches('/') {
+    "" => path,
+    trimmed => trimmed.to_string(),
+  }
 }
 
 /// One deployment of a hub skill. Keyed by `path`; several agent apps may map to the same
@@ -320,6 +412,7 @@ pub struct InstallView {
 pub struct HubSkillView {
   pub id: String,
   pub name: String,
+  pub source_key: String,
   pub hub_path: String,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
@@ -378,6 +471,37 @@ pub struct ImportItem {
   pub tmp_path: String,
   #[serde(default)]
   pub source: SkillSource,
+  /// The record to replace (needs `overwrite`). `None` adds a new record, except that a
+  /// source already in the hub always replaces its record.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub replace_id: Option<String>,
+}
+
+/// A hub skill that an import item can replace.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillMatch {
+  pub id: String,
+  pub name: String,
+  pub source_key: String,
+  /// Same location key: the import is a new version of this skill.
+  pub same_source: bool,
+  pub updated_at: String,
+}
+
+/// What an import item does by default, from `plan_import`.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportPlan {
+  pub name: String,
+  pub source_key: String,
+  /// Records with the same location key, then records with the same name.
+  pub matches: Vec<SkillMatch>,
+  /// The record replaced by default; `None` adds a new record.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub default_replace_id: Option<String>,
+  /// The source is already in the hub, so the import can only replace that record.
+  pub replace_required: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -700,6 +824,57 @@ mod tests {
     let err = lock.resolve("tdd").unwrap_err();
     assert!(err.contains(&tdd_a) && err.contains(&tdd_b));
     assert_eq!(lock.find_by_name("tdd").unwrap().0, &tdd_a);
+  }
+
+  fn github(repo: &str, skill_path: &str, branch: Option<&str>) -> SkillSource {
+    SkillSource::Github {
+      repo: repo.to_string(),
+      url: String::new(),
+      skill_path: skill_path.to_string(),
+      branch: branch.map(str::to_string),
+      remote_sha: None,
+      marketplace_id: None,
+      latest_remote_sha: None,
+      checked_at: None,
+    }
+  }
+
+  #[test]
+  fn source_keys() {
+    assert_eq!(
+      github("Owner/Repo", "skills/tdd/SKILL.md", Some("main")).key(),
+      "github:owner/repo@main:skills/tdd"
+    );
+    assert_eq!(github("o/r", "SKILL.md", None).key(), "github:o/r:.");
+    assert_eq!(
+      SkillSource::Folder {
+        path: "/a/b/tdd/".to_string()
+      }
+      .key(),
+      "folder:/a/b/tdd"
+    );
+    assert_eq!(
+      SkillSource::Zip {
+        path: "/x.zip".to_string()
+      }
+      .key(),
+      "zip"
+    );
+    assert_eq!(SkillSource::None.key(), "none");
+  }
+
+  #[test]
+  fn same_location_compares_branch_only_when_both_have_one() {
+    let main = github("o/r", "skills/tdd/SKILL.md", Some("main"));
+    assert!(main.same_location(&github("O/R", "skills/tdd/SKILL.md", Some("main"))));
+    assert!(!main.same_location(&github("o/r", "skills/tdd/SKILL.md", Some("next"))));
+    assert!(main.same_location(&github("o/r", "skills/tdd/SKILL.md", None)));
+    assert!(!main.same_location(&github("o/r", "skills/other/SKILL.md", Some("main"))));
+    let zip = SkillSource::Zip {
+      path: "/x.zip".to_string(),
+    };
+    assert!(!zip.same_location(&zip));
+    assert!(!SkillSource::None.same_location(&SkillSource::None));
   }
 
   #[test]

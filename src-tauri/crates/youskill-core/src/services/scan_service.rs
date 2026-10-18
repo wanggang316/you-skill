@@ -198,6 +198,7 @@ fn import_one_decision(
           name: name.clone(),
           tmp_path: path_to_string(&dir),
           source,
+          replace_id: None,
         }],
         false,
       )?;

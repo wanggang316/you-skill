@@ -1,8 +1,8 @@
 use crate::config::load_config;
 use crate::models::{
-  ActionResult, DiffAgainst, HubSkillView, ImportItem, ImportOutcome, InstallMode, InstallRequest,
-  MigrationReport, ScanDecision, ScanItem, SkillDiff, SkillSource, SourceUpdate, SyncAction,
-  UninstallRequest,
+  ActionResult, DiffAgainst, HubSkillView, ImportItem, ImportOutcome, ImportPlan, InstallMode,
+  InstallRequest, MigrationReport, ScanDecision, ScanItem, SkillDiff, SkillSource, SourceUpdate,
+  SyncAction, UninstallRequest,
 };
 use crate::services::env::Env;
 use crate::services::scan_service::DEFAULT_SCAN_DEPTH;
@@ -43,6 +43,15 @@ pub async fn get_hub_skill(name: String) -> Result<Option<HubSkillView>, String>
   let env = Env::current()?;
   blocking("get_hub_skill", move || {
     hub_service::get_hub_skill(&env, &name)
+  })
+  .await
+}
+
+#[tauri::command]
+pub async fn plan_import(items: Vec<ImportItem>) -> Result<Vec<ImportPlan>, String> {
+  let env = Env::current()?;
+  blocking("plan_import", move || {
+    hub_service::plan_import(&env, &items)
   })
   .await
 }

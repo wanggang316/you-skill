@@ -16,9 +16,18 @@ pub struct Args {
   /// Only import these skill names (comma separated) from what was found.
   #[arg(long, value_delimiter = ',')]
   pick: Vec<String>,
-  /// Replace a skill that is already in the hub; the old copy goes to the trash.
+  /// Replace a skill that is already in the hub; the old copy goes to the trash. A source
+  /// that is already in the hub replaces its skill; a zip skill replaces the newest zip
+  /// skill of the same name.
   #[arg(long)]
   overwrite: bool,
+  /// Replace this skill (an id, a source key or a unique name) instead of the default.
+  /// Needs `--overwrite` and one skill to import.
+  #[arg(long, value_name = "SKILL", conflicts_with = "add")]
+  replace: Option<String>,
+  /// Add new skills also when a zip skill of the same name would be replaced.
+  #[arg(long)]
+  add: bool,
 }
 
 pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
@@ -39,7 +48,8 @@ pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
     }
     items = picked;
   }
-  let items = super::block_on(fill_remote_shas(items))?;
+  let mut items = super::block_on(fill_remote_shas(items))?;
+  choose_replacements(&env, &args, &mut items)?;
   let outcomes = hub_service::import_skills(&env, items, args.overwrite)?;
   if ctx.json {
     emit_json(&outcomes)?;
@@ -47,6 +57,26 @@ pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
   }
   print_outcomes(ctx, &outcomes);
   Ok(EXIT_OK)
+}
+
+/// Fill `replace_id` from `--replace`, `--add` or the default of the import plan.
+fn choose_replacements(env: &Env, args: &Args, items: &mut [ImportItem]) -> Result<(), String> {
+  if let Some(key) = &args.replace {
+    let [item] = items else {
+      return Err("--replace needs exactly one skill to import; use --pick".to_string());
+    };
+    item.replace_id = Some(hub_service::resolve_skill(env, key)?.0);
+    return Ok(());
+  }
+  let plans = hub_service::plan_import(env, items)?;
+  for (item, plan) in items.iter_mut().zip(plans) {
+    item.replace_id = if args.add && !plan.replace_required {
+      None
+    } else {
+      plan.default_replace_id
+    };
+  }
+  Ok(())
 }
 
 fn detect(source: &str) -> Result<Vec<ImportItem>, String> {
@@ -69,6 +99,7 @@ fn detect(source: &str) -> Result<Vec<ImportItem>, String> {
             source: SkillSource::Folder {
               path: path_to_string(&skill_dir),
             },
+            replace_id: None,
           }
         })
         .collect(),
@@ -86,6 +117,7 @@ fn detect(source: &str) -> Result<Vec<ImportItem>, String> {
           source: SkillSource::Zip {
             path: path_to_string(&file),
           },
+          replace_id: None,
         })
         .collect(),
     );
@@ -111,6 +143,7 @@ fn detect(source: &str) -> Result<Vec<ImportItem>, String> {
           latest_remote_sha: None,
           checked_at: None,
         },
+        replace_id: None,
       })
       .collect(),
   )
@@ -150,10 +183,11 @@ fn print_outcomes(ctx: &Ctx, outcomes: &[ImportOutcome]) {
   if ctx.quiet {
     return;
   }
-  let mut table = Table::new(&["NAME", "RESULT", "HUB PATH"]);
+  let mut table = Table::new(&["NAME", "ID", "RESULT", "HUB PATH"]);
   for outcome in outcomes {
     table.row(vec![
       outcome.name.clone(),
+      outcome.id.clone(),
       if outcome.replaced {
         "replaced"
       } else {
