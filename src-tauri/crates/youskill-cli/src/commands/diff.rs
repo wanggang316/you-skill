@@ -2,8 +2,7 @@ use crate::output::{emit_json, Ctx, EXIT_ERROR, EXIT_OK};
 use std::path::{Path, PathBuf};
 use youskill_core::models::{DiffLineKind, DiffStatus, SkillDiff, SkillSource};
 use youskill_core::services::env::Env;
-use youskill_core::services::lock_service::store;
-use youskill_core::services::{diff_service, source_service};
+use youskill_core::services::{diff_service, hub_service, source_service};
 use youskill_core::utils::folder::is_staged_temp_path;
 use youskill_core::utils::path::remove_path_any;
 
@@ -42,12 +41,10 @@ pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
 }
 
 fn diff_source(env: &Env, name: &str) -> Result<SkillDiff, String> {
-  let record = store(env)
-    .get(name)?
-    .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
+  let (id, record) = hub_service::resolve_skill(env, name)?;
   match record.source {
     SkillSource::Folder { path } => {
-      diff_service::diff_hub_against(env, name, Path::new(&path), &path)
+      diff_service::diff_hub_against(env, &id, Path::new(&path), &path)
     },
     SkillSource::Github {
       repo, url, branch, ..
@@ -60,14 +57,14 @@ fn diff_source(env: &Env, name: &str) -> Result<SkillDiff, String> {
         &repo,
         &url,
         branch.as_deref(),
-        name,
+        &record.name,
       ))?;
       let label = match detected.branch.as_deref().or(branch.as_deref()) {
         Some(b) if !b.is_empty() => format!("{}@{}", repo, b),
         _ => repo.clone(),
       };
       let staged = PathBuf::from(detected.tmp_path);
-      let result = diff_service::diff_hub_against(env, name, &staged, &label);
+      let result = diff_service::diff_hub_against(env, &id, &staged, &label);
       if is_staged_temp_path(&staged) {
         let _ = remove_path_any(&staged);
       }

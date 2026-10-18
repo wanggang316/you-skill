@@ -1,15 +1,16 @@
 //! The central skill repository (`~/.youskill/skills`) and its lock file.
 
 use crate::models::{
-  ActionResult, HubSkillView, HubState, ImportItem, ImportOutcome, InstallMode, InstallRecord,
-  InstallScope, SkillRecord, SkillSource, SyncAction,
+  is_skill_id, new_skill_id, ActionResult, HubSkillView, HubState, ImportItem, ImportOutcome,
+  InstallMode, InstallRecord, InstallScope, SkillRecord, SkillSource, SyncAction,
 };
 use crate::services::drift_service::{build_view, probe_hub};
 use crate::services::env::Env;
 use crate::services::install_service::{
   adopt_target, classify_agent_root, materialize_symlink, push_targets,
 };
-use crate::services::lock_service::{ops_guard, store};
+use crate::services::lock_service::{ops_guard, ops_guard_unless_held, store};
+use crate::services::migration_service::migrate_skill_ids;
 use crate::utils::folder::{
   copy_dir, is_staged_temp_path, move_dir, replace_dir_atomic, CopyOpts, SKILL_MD,
 };
@@ -25,6 +26,7 @@ use std::time::{Duration, SystemTime};
 const TRASH_MAX_AGE: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 
 pub fn list_hub_skills(env: &Env) -> Result<Vec<HubSkillView>, String> {
+  migrate_skill_ids(env)?;
   adopt_untracked_hub_dirs(env)?;
   prune_stale_agent_ids(env)?;
   let lock = store(env).read()?;
@@ -32,49 +34,54 @@ pub fn list_hub_skills(env: &Env) -> Result<Vec<HubSkillView>, String> {
     lock
       .skills
       .iter()
-      .map(|(name, record)| build_view(env, name, record))
+      .map(|(id, record)| build_view(env, id, record))
       .collect(),
   )
 }
 
-pub fn get_hub_skill(env: &Env, name: &str) -> Result<Option<HubSkillView>, String> {
-  Ok(
-    store(env)
-      .get(name)?
-      .map(|record| build_view(env, name, &record)),
-  )
+pub fn get_hub_skill(env: &Env, key: &str) -> Result<Option<HubSkillView>, String> {
+  Ok(find_skill(env, key)?.map(|(id, record)| build_view(env, &id, &record)))
 }
 
-/// Directories dropped into the hub by hand become tracked records with no source.
+/// The skill a command argument names: an id, or a name that only one skill has.
+pub fn find_skill(env: &Env, key: &str) -> Result<Option<(String, SkillRecord)>, String> {
+  migrate_skill_ids(env)?;
+  store(env).read()?.resolve(key)
+}
+
+/// Like [`find_skill`], but a skill that is not in the hub is an error.
+pub fn resolve_skill(env: &Env, key: &str) -> Result<(String, SkillRecord), String> {
+  find_skill(env, key)?.ok_or_else(|| format!("Skill '{}' is not in the hub", key.trim()))
+}
+
+/// Hub directories without a record become records with no source. Two forms are adopted:
+/// `skills/<id>/<name>` (also what an interrupted import or migration leaves) and
+/// `skills/<name>` (a directory added by hand), which moves to `skills/<new id>/<name>`.
 fn adopt_untracked_hub_dirs(env: &Env) -> Result<(), String> {
-  if !env.hub_root.is_dir() {
+  if !env.hub_root.is_dir() || untracked_hub_dirs(env)?.is_empty() {
     return Ok(());
   }
-  let store = store(env);
-  let known = store.read()?.skills;
-  let mut untracked: Vec<(String, String)> = Vec::new();
-  for entry in fs::read_dir(&env.hub_root).map_err(|e| e.to_string())? {
-    let entry = entry.map_err(|e| e.to_string())?;
-    let dir = entry.path();
-    if !dir.is_dir() || !dir.join(SKILL_MD).is_file() {
-      continue;
-    }
-    let name = entry.file_name().to_string_lossy().to_string();
-    if known.contains_key(&name) || validate_skill_name(&name).is_err() {
-      continue;
-    }
-    if let Ok(hash) = hash_dir_cached(&dir) {
-      untracked.push((name, hash));
+  let _ops = ops_guard_unless_held(&env.youskill_root)?;
+  let mut adopted: Vec<(String, String, String)> = Vec::new();
+  for (dir_name, name) in untracked_hub_dirs(env)? {
+    let id = if is_skill_id(&dir_name) {
+      dir_name
+    } else {
+      let id = new_skill_id();
+      let old_dir = env.hub_root.join(&dir_name);
+      move_dir(&old_dir, &env.hub_dir(&id, &name))?;
+      invalidate_hash_cache(&old_dir);
+      id
+    };
+    if let Ok(hash) = hash_dir_cached(&env.hub_dir(&id, &name)) {
+      adopted.push((id, name, hash));
     }
   }
-  if untracked.is_empty() {
-    return Ok(());
-  }
-  let _ops = ops_guard(env)?;
   let timestamp = now_rfc3339();
-  store.update(|lock| {
-    for (name, hash) in untracked {
-      lock.skills.entry(name).or_insert(SkillRecord {
+  store(env).update(|lock| {
+    for (id, name, hash) in adopted {
+      lock.skills.entry(id).or_insert(SkillRecord {
+        name,
         source: SkillSource::None,
         hash,
         imported_at: timestamp.clone(),
@@ -86,6 +93,49 @@ fn adopt_untracked_hub_dirs(env: &Env) -> Result<(), String> {
   })
 }
 
+/// `(hub directory name, skill name)` of every hub directory that has no record.
+fn untracked_hub_dirs(env: &Env) -> Result<Vec<(String, String)>, String> {
+  let known = store(env).read()?.skills;
+  let mut untracked = Vec::new();
+  for entry in fs::read_dir(&env.hub_root).map_err(|e| e.to_string())? {
+    let entry = entry.map_err(|e| e.to_string())?;
+    let dir = entry.path();
+    let dir_name = entry.file_name().to_string_lossy().to_string();
+    if !dir.is_dir() || known.contains_key(&dir_name) {
+      continue;
+    }
+    let name = if is_skill_id(&dir_name) {
+      skill_dir_in(&dir)
+    } else if dir.join(SKILL_MD).is_file() {
+      Some(dir_name.clone())
+    } else {
+      None
+    };
+    if let Some(name) = name.filter(|name| validate_skill_name(name).is_ok()) {
+      untracked.push((dir_name, name));
+    }
+  }
+  Ok(untracked)
+}
+
+/// Name of the one skill directory inside `skills/<id>/`.
+pub fn skill_dir_in(id_dir: &Path) -> Option<String> {
+  let mut names = fs::read_dir(id_dir)
+    .ok()?
+    .flatten()
+    .filter(|entry| entry.path().join(SKILL_MD).is_file())
+    .map(|entry| entry.file_name().to_string_lossy().to_string());
+  let name = names.next()?;
+  names.next().is_none().then_some(name)
+}
+
+/// Remove `skills/<id>/` once its skill directory is gone.
+fn remove_id_dir(hub_dir: &Path) {
+  if let Some(id_dir) = hub_dir.parent() {
+    let _ = fs::remove_dir(id_dir);
+  }
+}
+
 /// Drop agent ids from install records that no longer resolve to the record's directory.
 /// An app that moved to the shared `~/.agents/skills` leaves its id behind on the old
 /// directory, where it would claim an agent reads a folder it never looks at. Ids are only
@@ -93,7 +143,7 @@ fn adopt_untracked_hub_dirs(env: &Env) -> Result<(), String> {
 fn prune_stale_agent_ids(env: &Env) -> Result<(), String> {
   let lock = store(env).read()?;
   let mut changes: Vec<(String, String, Vec<String>)> = Vec::new();
-  for (name, record) in &lock.skills {
+  for (id, record) in &lock.skills {
     for install in &record.installs {
       let Some(matched) = classify_agent_root(env, Path::new(&install.path)) else {
         continue;
@@ -105,7 +155,7 @@ fn prune_stale_agent_ids(env: &Env) -> Result<(), String> {
         .cloned()
         .collect();
       if !kept.is_empty() && kept.len() != install.agent_ids.len() {
-        changes.push((name.clone(), install.path.clone(), kept));
+        changes.push((id.clone(), install.path.clone(), kept));
       }
     }
   }
@@ -115,8 +165,8 @@ fn prune_stale_agent_ids(env: &Env) -> Result<(), String> {
 
   let _ops = ops_guard(env)?;
   store(env).update(|lock| {
-    for (name, path, kept) in &changes {
-      let Some(record) = lock.skills.get_mut(name) else {
+    for (id, path, kept) in &changes {
+      let Some(record) = lock.skills.get_mut(id) else {
         continue;
       };
       if let Some(install) = record
@@ -184,15 +234,16 @@ pub fn import_skills(
   overwrite: bool,
 ) -> Result<Vec<ImportOutcome>, String> {
   let _ops = ops_guard(env)?;
+  migrate_skill_ids(env)?;
   let mut outcomes = Vec::new();
   let mut errors = Vec::new();
-  let mut replaced_names = Vec::new();
+  let mut replaced_ids = Vec::new();
 
   for item in items {
     match import_one(env, &item, overwrite) {
       Ok(outcome) => {
         if outcome.replaced {
-          replaced_names.push(outcome.name.clone());
+          replaced_ids.push(outcome.id.clone());
         }
         outcomes.push(outcome);
       },
@@ -200,9 +251,9 @@ pub fn import_skills(
     }
   }
 
-  for name in replaced_names {
-    if let Err(err) = push_targets(env, &name, None, false) {
-      tracing::warn!("push after replacing '{}' failed: {}", name, err);
+  for id in replaced_ids {
+    if let Err(err) = push_targets(env, &id, None, false) {
+      tracing::warn!("push after replacing '{}' failed: {}", id, err);
     }
   }
 
@@ -228,22 +279,17 @@ fn import_one(env: &Env, item: &ImportItem, overwrite: bool) -> Result<ImportOut
 
   let store = store(env);
   let lock = store.read()?;
-  let existing_key = lock
-    .skills
-    .keys()
-    .find(|key| key.eq_ignore_ascii_case(&name))
-    .cloned();
-  if let Some(key) = &existing_key {
-    if key != &name {
+  let existing_id = match lock.find_by_name(&name) {
+    Some((_, record)) if record.name != name => {
       return Err(format!(
         "A skill named '{}' already exists (names are case-insensitive)",
-        key
+        record.name
       ));
-    }
-    if !overwrite {
-      return Err("Skill already exists in the hub".to_string());
-    }
-  }
+    },
+    Some(_) if !overwrite => return Err("Skill already exists in the hub".to_string()),
+    Some((id, _)) => Some(id.clone()),
+    None => None,
+  };
 
   // A folder that is itself an agent target is not a source: register it as an install.
   let mut source = item.source.clone();
@@ -263,11 +309,12 @@ fn import_one(env: &Env, item: &ImportItem, overwrite: bool) -> Result<ImportOut
     }
   }
 
-  let hub_dir = env.hub_dir(&name);
+  let replaced = existing_id.is_some();
+  let id = existing_id.unwrap_or_else(new_skill_id);
+  let hub_dir = env.hub_dir(&id, &name);
   if hub_dir.exists() || is_symlink(&hub_dir) {
     trash_dir(env, &hub_dir)?;
   }
-  fs::create_dir_all(&env.hub_root).map_err(|e| e.to_string())?;
   copy_dir(src, &hub_dir, &CopyOpts::skill())?;
   invalidate_hash_cache(&hub_dir);
   let hash = hash_dir(&hub_dir)?;
@@ -276,9 +323,9 @@ fn import_one(env: &Env, item: &ImportItem, overwrite: bool) -> Result<ImportOut
   }
 
   let timestamp = now_rfc3339();
-  let replaced = existing_key.is_some();
   store.update(|lock| {
-    let record = lock.skills.entry(name.clone()).or_insert(SkillRecord {
+    let record = lock.skills.entry(id.clone()).or_insert(SkillRecord {
+      name: name.clone(),
       source: SkillSource::None,
       hash: hash.clone(),
       imported_at: timestamp.clone(),
@@ -312,6 +359,7 @@ fn import_one(env: &Env, item: &ImportItem, overwrite: bool) -> Result<ImportOut
   })?;
 
   Ok(ImportOutcome {
+    id,
     name,
     hub_path: path_to_string(&hub_dir),
     hash,
@@ -323,31 +371,29 @@ fn import_one(env: &Env, item: &ImportItem, overwrite: bool) -> Result<ImportOut
 /// at `src_dir`). Refuses without `force` when the hub has local edits.
 pub fn pull_from_dir(
   env: &Env,
-  name: &str,
+  key: &str,
   src_dir: &Path,
   updated_source: Option<SkillSource>,
   force: bool,
 ) -> Result<ActionResult, String> {
   let _ops = ops_guard(env)?;
+  let (id, record) = resolve_skill(env, key)?;
   let store = store(env);
-  let record = store
-    .get(name)?
-    .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
   if !src_dir.is_dir() || !src_dir.join(SKILL_MD).is_file() {
     return Err(format!(
       "Source directory is invalid: {}",
       src_dir.to_string_lossy()
     ));
   }
-  let probe = probe_hub(env, name, &record);
+  let probe = probe_hub(env, &id, &record);
   if matches!(probe.state, HubState::Modified | HubState::NameMismatch) && !force {
     return Ok(ActionResult::blocked(
-      vec![format!("Hub copy of '{}' has local changes", name)],
-      Some(build_view(env, name, &record)),
+      vec![format!("Hub copy of '{}' has local changes", record.name)],
+      Some(build_view(env, &id, &record)),
     ));
   }
 
-  let hub_dir = env.hub_dir(name);
+  let hub_dir = env.hub_dir(&id, &record.name);
   if hub_dir.exists() || is_symlink(&hub_dir) {
     trash_dir(env, &hub_dir)?;
   }
@@ -361,8 +407,8 @@ pub fn pull_from_dir(
   store.update(|lock| {
     let record = lock
       .skills
-      .get_mut(name)
-      .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
+      .get_mut(&id)
+      .ok_or_else(|| format!("Skill '{}' is not in the hub", key))?;
     record.hash = hash.clone();
     record.updated_at = timestamp.clone();
     if let Some(source) = &updated_source {
@@ -371,16 +417,13 @@ pub fn pull_from_dir(
     Ok(())
   })?;
   drop(store);
-  push_targets(env, name, None, false)
+  push_targets(env, &id, None, false)
 }
 
 /// Mirror the hub copy back into a `folder` source.
-pub fn push_source(env: &Env, name: &str, force: bool) -> Result<ActionResult, String> {
+pub fn push_source(env: &Env, key: &str, force: bool) -> Result<ActionResult, String> {
   let _ops = ops_guard(env)?;
-  let store = store(env);
-  let record = store
-    .get(name)?
-    .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
+  let (id, record) = resolve_skill(env, key)?;
   let SkillSource::Folder { path } = &record.source else {
     return Err("Only folder sources can be pushed to".to_string());
   };
@@ -388,7 +431,7 @@ pub fn push_source(env: &Env, name: &str, force: bool) -> Result<ActionResult, S
   if !source_dir.is_dir() {
     return Err(format!("Source folder is missing: {}", path));
   }
-  let hub_dir = env.hub_dir(name);
+  let hub_dir = env.hub_dir(&id, &record.name);
   if !hub_dir.is_dir() {
     return Err(format!(
       "Hub copy is missing: {}",
@@ -399,19 +442,20 @@ pub fn push_source(env: &Env, name: &str, force: bool) -> Result<ActionResult, S
   if source_hash != record.hash && !force {
     return Ok(ActionResult::blocked(
       vec![format!("Source folder {} has changes not in the hub", path)],
-      Some(build_view(env, name, &record)),
+      Some(build_view(env, &id, &record)),
     ));
   }
   replace_dir_atomic(&hub_dir, source_dir, &CopyOpts::skill(), &[".git"])?;
   invalidate_hash_cache(source_dir);
-  Ok(ActionResult::applied(build_view(env, name, &record)))
+  Ok(ActionResult::applied(build_view(env, &id, &record)))
 }
 
 /// Accept whatever is in the hub directory as the current version.
-pub fn accept_hub(env: &Env, name: &str) -> Result<ActionResult, String> {
+pub fn accept_hub(env: &Env, key: &str) -> Result<ActionResult, String> {
   let _ops = ops_guard(env)?;
+  let (id, record) = resolve_skill(env, key)?;
   let store = store(env);
-  let hub_dir = env.hub_dir(name);
+  let hub_dir = env.hub_dir(&id, &record.name);
   if !hub_dir.is_dir() {
     return Err(format!(
       "Hub copy is missing: {}",
@@ -424,23 +468,22 @@ pub fn accept_hub(env: &Env, name: &str) -> Result<ActionResult, String> {
   let record = store.update(|lock| {
     let record = lock
       .skills
-      .get_mut(name)
-      .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
+      .get_mut(&id)
+      .ok_or_else(|| format!("Skill '{}' is not in the hub", key))?;
     record.hash = hash.clone();
     record.updated_at = timestamp.clone();
     Ok(record.clone())
   })?;
-  Ok(ActionResult::applied(build_view(env, name, &record)))
+  Ok(ActionResult::applied(build_view(env, &id, &record)))
 }
 
 /// Remove a skill from the hub. With `remove_installs = false`, symlink targets are turned
 /// into real copies first so agents keep working.
-pub fn remove_hub_skill(env: &Env, name: &str, remove_installs: bool) -> Result<(), String> {
+pub fn remove_hub_skill(env: &Env, key: &str, remove_installs: bool) -> Result<(), String> {
   let _ops = ops_guard(env)?;
+  let (id, record) = resolve_skill(env, key)?;
   let store = store(env);
-  let record = store
-    .get(name)?
-    .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
+  let hub_dir = env.hub_dir(&id, &record.name);
 
   let mut errors = Vec::new();
   for install in &record.installs {
@@ -453,17 +496,17 @@ pub fn remove_hub_skill(env: &Env, name: &str, remove_installs: bool) -> Result<
           invalidate_hash_cache(target);
         }
       }
-    } else if let Err(err) = materialize_symlink(env, name, install) {
+    } else if let Err(err) = materialize_symlink(&hub_dir, install) {
       errors.push(format!("{}: {}", install.path, err));
     }
   }
 
-  let hub_dir = env.hub_dir(name);
   if hub_dir.exists() || is_symlink(&hub_dir) {
     trash_dir(env, &hub_dir)?;
   }
+  remove_id_dir(&hub_dir);
   store.update(|lock| {
-    lock.skills.remove(name);
+    lock.skills.remove(&id);
     Ok(())
   })?;
   if !errors.is_empty() {
@@ -474,32 +517,28 @@ pub fn remove_hub_skill(env: &Env, name: &str, remove_installs: bool) -> Result<
 
 /// Offline sync actions. `PullSource` for GitHub sources needs a download and is handled by
 /// the command layer, which then calls `pull_from_dir`.
-pub fn sync_skill(env: &Env, name: &str, action: SyncAction) -> Result<ActionResult, String> {
+pub fn sync_skill(env: &Env, key: &str, action: SyncAction) -> Result<ActionResult, String> {
+  let (id, record) = resolve_skill(env, key)?;
   match action {
-    SyncAction::PullSource { force } => {
-      let record = store(env)
-        .get(name)?
-        .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
-      match &record.source {
-        SkillSource::Folder { path } => pull_from_dir(env, name, Path::new(path), None, force),
-        SkillSource::Github { .. } => {
-          Err("GitHub sources must be pulled through the async command".to_string())
-        },
-        SkillSource::Zip { .. } | SkillSource::None => {
-          Err("This skill has no source to pull from".to_string())
-        },
-      }
+    SyncAction::PullSource { force } => match &record.source {
+      SkillSource::Folder { path } => pull_from_dir(env, &id, Path::new(path), None, force),
+      SkillSource::Github { .. } => {
+        Err("GitHub sources must be pulled through the async command".to_string())
+      },
+      SkillSource::Zip { .. } | SkillSource::None => {
+        Err("This skill has no source to pull from".to_string())
+      },
     },
     SyncAction::PushTargets { targets, force } => {
       let _ops = ops_guard(env)?;
-      push_targets(env, name, targets.as_deref(), force)
+      push_targets(env, &id, targets.as_deref(), force)
     },
     SyncAction::AdoptTarget { path, force } => {
       let _ops = ops_guard(env)?;
-      adopt_target(env, name, &path, force)
+      adopt_target(env, &id, &path, force)
     },
-    SyncAction::AcceptHub => accept_hub(env, name),
-    SyncAction::PushSource { force } => push_source(env, name, force),
+    SyncAction::AcceptHub => accept_hub(env, &id),
+    SyncAction::PushSource { force } => push_source(env, &id, force),
   }
 }
 
@@ -571,14 +610,16 @@ mod tests {
         is_user_custom: false,
       },
     ];
-    import_skills(&env, vec![staged(tmp.path(), "foo", "v1")], false).unwrap();
+    let id = import_skills(&env, vec![staged(tmp.path(), "foo", "v1")], false).unwrap()[0]
+      .id
+      .clone();
 
     let legacy = env.home.join(".codex/skills/foo");
     write(&legacy, "SKILL.md", "---\nname: foo\n---\nv1");
     let legacy_path = legacy.to_string_lossy().to_string();
     store(&env)
       .update(|lock| {
-        let record = lock.skills.get_mut("foo").unwrap();
+        let record = lock.skills.get_mut(&id).unwrap();
         record.installs.push(InstallRecord {
           scope: InstallScope::User,
           project_path: None,
@@ -594,7 +635,7 @@ mod tests {
 
     list_hub_skills(&env).unwrap();
 
-    let record = store(&env).get("foo").unwrap().unwrap();
+    let record = store(&env).get(&id).unwrap().unwrap();
     let install = record
       .installs
       .iter()
@@ -611,7 +652,7 @@ mod tests {
     let outcomes = import_skills(&env, vec![staged(tmp.path(), "foo", "v1")], false).unwrap();
     assert_eq!(outcomes.len(), 1);
     assert!(!outcomes[0].replaced);
-    assert!(env.hub_dir("foo").join("SKILL.md").is_file());
+    assert!(env.hub_dir_of("foo").join("SKILL.md").is_file());
     let first_hash = outcomes[0].hash.clone();
 
     // Same name without overwrite -> error; different case -> error.
@@ -709,12 +750,16 @@ mod tests {
     );
     let pulled = sync_skill(&env, "foo", SyncAction::PullSource { force: false }).unwrap();
     assert!(pulled.applied);
-    assert!(fs::read_to_string(env.hub_dir("foo").join("SKILL.md"))
+    assert!(fs::read_to_string(env.hub_dir_of("foo").join("SKILL.md"))
       .unwrap()
       .ends_with("v2"));
 
     // Edit hub -> pull is blocked; accept -> push back to source.
-    write(&env.hub_dir("foo"), "SKILL.md", "---\nname: foo\n---\nv3");
+    write(
+      &env.hub_dir_of("foo"),
+      "SKILL.md",
+      "---\nname: foo\n---\nv3",
+    );
     write(&src, "SKILL.md", "---\nname: foo\n---\nv2b");
     let blocked = sync_skill(&env, "foo", SyncAction::PullSource { force: false }).unwrap();
     assert!(!blocked.applied);
@@ -751,10 +796,12 @@ mod tests {
     let target = env.home.join(".claude/skills/foo");
     assert!(is_symlink(&target));
 
+    let hub_dir = env.hub_dir_of("foo");
     remove_hub_skill(&env, "foo", false).unwrap();
     assert!(!is_symlink(&target));
     assert!(target.join("SKILL.md").is_file());
-    assert!(!env.hub_dir("foo").exists());
+    assert!(!hub_dir.exists());
+    assert!(!hub_dir.parent().unwrap().exists());
     assert!(get_hub_skill(&env, "foo").unwrap().is_none());
 
     import_skills(&env, vec![staged(tmp.path(), "bar", "v1")], false).unwrap();
@@ -777,11 +824,28 @@ mod tests {
   }
 
   #[test]
+  fn untracked_id_dir_is_adopted_with_its_id() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let id = new_skill_id();
+    write(
+      &env.hub_dir(&id, "kept"),
+      "SKILL.md",
+      "---\nname: kept\n---\n",
+    );
+    let list = list_hub_skills(&env).unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0].id, id);
+    assert_eq!(list[0].name, "kept");
+    assert_eq!(list[0].hub_state, HubState::Ok);
+  }
+
+  #[test]
   fn untracked_hub_dirs_are_adopted_on_list() {
     let tmp = tempfile::tempdir().unwrap();
     let env = env(tmp.path());
     write(
-      &env.hub_dir("manual"),
+      &env.hub_root.join("manual"),
       "SKILL.md",
       "---\nname: manual\n---\n",
     );
@@ -790,5 +854,12 @@ mod tests {
     assert_eq!(list[0].name, "manual");
     assert_eq!(list[0].hub_state, HubState::Ok);
     assert!(!list[0].has_drift);
+    // The directory moves to `skills/<id>/manual`.
+    assert!(is_skill_id(&list[0].id));
+    assert!(!env.hub_root.join("manual").exists());
+    assert!(env
+      .hub_dir(&list[0].id, "manual")
+      .join("SKILL.md")
+      .is_file());
   }
 }

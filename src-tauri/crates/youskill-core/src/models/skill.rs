@@ -1,7 +1,19 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use uuid::Uuid;
 
-pub const LOCK_VERSION: u32 = 1;
+/// Version 2 keys skill records by id; version 1 keyed them by name.
+pub const LOCK_VERSION: u32 = 2;
+
+/// A new skill id: the lock key and the first component of the hub path.
+pub fn new_skill_id() -> String {
+  Uuid::new_v4().to_string()
+}
+
+/// Whether a lock key or hub directory name is a skill id (a version 1 key is a name).
+pub fn is_skill_id(key: &str) -> bool {
+  Uuid::parse_str(key).is_ok()
+}
 
 // ---------------------------------------------------------------------------
 // Marketplace / detection DTOs (unchanged wire format, snake_case)
@@ -150,6 +162,10 @@ pub struct InstallRecord {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SkillRecord {
+  /// Install directory name and agent runtime name. Empty only in a version 1 record,
+  /// where the lock key is the name.
+  #[serde(default)]
+  pub name: String,
   #[serde(default)]
   pub source: SkillSource,
   /// Content hash of the hub directory at import or last accepted change.
@@ -198,6 +214,49 @@ impl Default for LockFile {
   }
 }
 
+impl LockFile {
+  /// Find a skill by id, else by name (names compare case-insensitively). `Ok(None)` when
+  /// nothing matches; an error when the name matches more than one skill.
+  pub fn resolve(&self, key: &str) -> Result<Option<(String, SkillRecord)>, String> {
+    let key = key.trim();
+    if let Some((id, record)) = self
+      .skills
+      .iter()
+      .find(|(id, _)| id.eq_ignore_ascii_case(key))
+    {
+      return Ok(Some((id.clone(), record.clone())));
+    }
+    let matches: Vec<(&String, &SkillRecord)> = self
+      .skills
+      .iter()
+      .filter(|(_, record)| record.name.eq_ignore_ascii_case(key))
+      .collect();
+    match matches.as_slice() {
+      [] => Ok(None),
+      [(id, record)] => Ok(Some(((*id).clone(), (*record).clone()))),
+      _ => Err(format!(
+        "Skill name '{}' matches more than one skill: {}",
+        key,
+        matches
+          .iter()
+          .map(|(id, _)| id.as_str())
+          .collect::<Vec<_>>()
+          .join(", ")
+      )),
+    }
+  }
+
+  /// The skill with this name (case-insensitive). The oldest import wins when more than
+  /// one skill has the name.
+  pub fn find_by_name(&self, name: &str) -> Option<(&String, &SkillRecord)> {
+    self
+      .skills
+      .iter()
+      .filter(|(_, record)| record.name.eq_ignore_ascii_case(name))
+      .min_by(|a, b| a.1.imported_at.cmp(&b.1.imported_at))
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Drift states
 // ---------------------------------------------------------------------------
@@ -211,7 +270,7 @@ pub enum HubState {
   Missing,
   /// Hub directory exists but has no readable `SKILL.md`.
   Invalid,
-  /// `SKILL.md` frontmatter name no longer matches the record key.
+  /// `SKILL.md` frontmatter name no longer matches the record name.
   NameMismatch,
 }
 
@@ -259,6 +318,7 @@ pub struct InstallView {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct HubSkillView {
+  pub id: String,
   pub name: String,
   pub hub_path: String,
   #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -323,6 +383,7 @@ pub struct ImportItem {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportOutcome {
+  pub id: String,
   pub name: String,
   pub hub_path: String,
   pub hash: String,
@@ -388,6 +449,7 @@ impl ActionResult {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceUpdate {
+  pub id: String,
   pub name: String,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub remote_sha: Option<String>,
@@ -562,8 +624,9 @@ mod tests {
   fn lock_file_round_trips_with_camel_case() {
     let mut lock = LockFile::default();
     lock.skills.insert(
-      "foo".to_string(),
+      new_skill_id(),
       SkillRecord {
+        name: "foo".to_string(),
         source: SkillSource::Github {
           repo: "owner/repo".to_string(),
           url: "https://github.com/owner/repo.git".to_string(),
@@ -603,5 +666,45 @@ mod tests {
     let parsed: LockFile = serde_json::from_str(json).unwrap();
     assert_eq!(parsed.skills["x"].source, SkillSource::None);
     assert!(parsed.skills["x"].installs.is_empty());
+    assert!(parsed.skills["x"].name.is_empty());
+  }
+
+  fn named(name: &str, imported_at: &str) -> SkillRecord {
+    SkillRecord {
+      name: name.to_string(),
+      source: SkillSource::None,
+      hash: "h".to_string(),
+      imported_at: imported_at.to_string(),
+      updated_at: imported_at.to_string(),
+      installs: Vec::new(),
+    }
+  }
+
+  #[test]
+  fn resolve_by_id_then_by_unique_name() {
+    let mut lock = LockFile::default();
+    let foo = new_skill_id();
+    let tdd_a = new_skill_id();
+    let tdd_b = new_skill_id();
+    lock.skills.insert(foo.clone(), named("foo", "1"));
+    lock.skills.insert(tdd_a.clone(), named("tdd", "1"));
+    lock.skills.insert(tdd_b.clone(), named("tdd", "2"));
+
+    assert_eq!(lock.resolve(&foo).unwrap().unwrap().0, foo);
+    assert_eq!(
+      lock.resolve(&tdd_b.to_uppercase()).unwrap().unwrap().0,
+      tdd_b
+    );
+    assert_eq!(lock.resolve("FOO").unwrap().unwrap().0, foo);
+    assert!(lock.resolve("missing").unwrap().is_none());
+    let err = lock.resolve("tdd").unwrap_err();
+    assert!(err.contains(&tdd_a) && err.contains(&tdd_b));
+    assert_eq!(lock.find_by_name("tdd").unwrap().0, &tdd_a);
+  }
+
+  #[test]
+  fn skill_ids_are_uuids() {
+    assert!(is_skill_id(&new_skill_id()));
+    assert!(!is_skill_id("tdd"));
   }
 }

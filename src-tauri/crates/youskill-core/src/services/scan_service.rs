@@ -4,10 +4,12 @@ use crate::models::{
   ImportItem, ImportOutcome, ScanDecision, ScanItem, ScanResolution, ScanStatus, SkillSource,
 };
 use crate::services::env::Env;
-use crate::services::hub_service::{import_skills, pull_from_dir};
+use crate::services::hub_service::{find_skill, import_skills, pull_from_dir};
 use crate::services::install_service::{classify_agent_root, register_existing_install};
 use crate::services::lock_service::{ops_guard, store};
-use crate::services::migration_service::{read_legacy_github_lock, read_legacy_project_lock};
+use crate::services::migration_service::{
+  migrate_skill_ids, read_legacy_github_lock, read_legacy_project_lock,
+};
 use crate::utils::folder::{find_skill_dirs, read_skill_name, replace_dir_atomic, CopyOpts};
 use crate::utils::hash::{hash_dir_cached, invalidate_hash_cache};
 use crate::utils::path::{
@@ -21,6 +23,7 @@ pub const DEFAULT_SCAN_DEPTH: usize = 6;
 pub fn scan_folder(env: &Env, path: &str, max_depth: usize) -> Result<Vec<ScanItem>, String> {
   let root = normalize_dir_path(path, &env.home)?;
   let dirs = find_skill_dirs(&root, max_depth.max(1))?;
+  migrate_skill_ids(env)?;
   let lock = store(env).read()?;
   let mut items = Vec::new();
 
@@ -56,13 +59,19 @@ pub fn scan_folder(env: &Env, path: &str, max_depth: usize) -> Result<Vec<ScanIt
       continue;
     }
 
-    let hub_dir = env.hub_dir(&name);
     let in_agent_root = classify_agent_root(env, &dir);
     let source_hint = legacy_source_hint(env, &dir, &name);
-    let record = lock.skills.get(&name);
-    let hub_hash = record.and_then(|_| hash_dir_cached(&hub_dir).ok());
+    let record = lock.find_by_name(&name);
+    let hub_dir = record.map(|(id, record)| env.hub_dir(id, &record.name));
+    let hub_hash = hub_dir
+      .as_deref()
+      .and_then(|hub_dir| hash_dir_cached(hub_dir).ok());
 
-    if is_symlink(&dir) && symlink_points_to(&dir, &hub_dir) {
+    if is_symlink(&dir)
+      && hub_dir
+        .as_deref()
+        .is_some_and(|hub_dir| symlink_points_to(&dir, hub_dir))
+    {
       items.push(ScanItem {
         name,
         path: path_text,
@@ -159,7 +168,8 @@ fn import_one_decision(
   let name = decision.name.trim().to_string();
   let dir = normalize_dir_path(&decision.path, &env.home)?;
   let in_agent_root = classify_agent_root(env, &dir);
-  let exists = store(env).get(&name)?.is_some();
+  let existing = find_skill(env, &name)?;
+  let exists = existing.is_some();
 
   let resolution = match decision.resolution {
     ScanResolution::Skip => return Ok(None),
@@ -195,23 +205,22 @@ fn import_one_decision(
     },
     ScanResolution::AdoptIntoHub => {
       let result = pull_from_dir(env, &name, &dir, decision.source.clone(), true)?;
-      let hash = result
+      let skill = result
         .skill
-        .as_ref()
-        .map(|s| s.hash.clone())
-        .unwrap_or_default();
+        .ok_or_else(|| "Skill is not in the hub".to_string())?;
       Some(ImportOutcome {
-        name: name.clone(),
-        hub_path: path_to_string(&env.hub_dir(&name)),
-        hash,
+        id: skill.id,
+        name: skill.name,
+        hub_path: skill.hub_path,
+        hash: skill.hash,
         replaced: true,
       })
     },
     ScanResolution::PushFromHub => {
-      if !exists {
+      let Some((id, record)) = existing else {
         return Err("Skill is not in the hub".to_string());
-      }
-      let hub_dir = env.hub_dir(&name);
+      };
+      let hub_dir = env.hub_dir(&id, &record.name);
       if !hub_dir.is_dir() {
         return Err("Hub copy is missing".to_string());
       }
@@ -223,7 +232,8 @@ fn import_one_decision(
       invalidate_hash_cache(&dir);
       let hash = hash_dir_cached(&hub_dir)?;
       Some(ImportOutcome {
-        name: name.clone(),
+        id,
+        name: record.name,
         hub_path: path_to_string(&hub_dir),
         hash,
         replaced: false,
@@ -233,7 +243,7 @@ fn import_one_decision(
 
   let register = decision.register_install || resolution == ScanResolution::RegisterOnly;
   if let Some(matched) = in_agent_root {
-    if register && store(env).get(&name)?.is_some() {
+    if register && find_skill(env, &name)?.is_some() {
       let _ops = ops_guard(env)?;
       register_existing_install(
         env,
@@ -294,9 +304,13 @@ mod tests {
     write(&scan_root, "gamma/SKILL.md", "---\nname: gamma\n---\nG");
 
     // beta identical in hub, gamma differs.
-    write(&env.hub_dir("beta"), "SKILL.md", "---\nname: beta\n---\nB");
     write(
-      &env.hub_dir("gamma"),
+      &env.hub_root.join("beta"),
+      "SKILL.md",
+      "---\nname: beta\n---\nB",
+    );
+    write(
+      &env.hub_root.join("gamma"),
       "SKILL.md",
       "---\nname: gamma\n---\nG2",
     );
@@ -356,14 +370,18 @@ mod tests {
       }],
     )
     .unwrap();
-    assert!(fs::read_to_string(env.hub_dir("foo").join("SKILL.md"))
+    assert!(fs::read_to_string(env.hub_dir_of("foo").join("SKILL.md"))
       .unwrap()
       .ends_with("F2"));
     let view = get_hub_skill(&env, "foo").unwrap().unwrap();
     assert_eq!(view.installs[0].state, TargetState::InSync);
 
     // Push from hub overwrites the agent copy.
-    write(&env.hub_dir("foo"), "SKILL.md", "---\nname: foo\n---\nF3");
+    write(
+      &env.hub_dir_of("foo"),
+      "SKILL.md",
+      "---\nname: foo\n---\nF3",
+    );
     crate::services::hub_service::accept_hub(&env, "foo").unwrap();
     import_scanned(
       &env,
@@ -409,7 +427,7 @@ mod tests {
     .unwrap();
 
     assert_eq!(outcomes.len(), 1);
-    assert!(fs::read_to_string(env.hub_dir("dup").join("SKILL.md"))
+    assert!(fs::read_to_string(env.hub_dir_of("dup").join("SKILL.md"))
       .unwrap()
       .ends_with("USER"));
     let view = get_hub_skill(&env, "dup").unwrap().unwrap();

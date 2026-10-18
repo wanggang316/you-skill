@@ -321,7 +321,7 @@ Each record is migrated alone, so an interrupted run continues on the next listi
   continues at step 2.
 - Interrupted after step 2: step 2 is idempotent.
 
-A relink failure is put in the migration report and does not stop the migration. A
+A relink failure is logged and does not stop the migration. A
 symlink that is not in the lock and points to `skills/<key>` breaks. A scan shows it as
 `broken_link`.
 
@@ -367,7 +367,9 @@ Each step compiles and passes `npm run check` and `npm run test`.
 
 1. Model and layout: `SkillRecord.name`, UUID ids, `env.hub_dir(id, name)`, the
    migration, `adopt_untracked_hub_dirs`, `name_mismatch` against `record.name`.
-   Services take an id. Behavior is the same except for the layout.
+   Services take an id or a unique name (`hub_service::resolve_skill`), so the app and
+   the CLI keep working with names until steps 5 and 6. Behavior is the same except for
+   the layout.
 2. Source key and import: `sourceKey`, `replaceId`, `matches` in detection, the
    uniqueness rule, the legacy branch match.
 3. Install: the `occupied_by` blocker and the force transfer.
@@ -377,9 +379,3 @@ Each step compiles and passes `npm run check` and `npm run test`.
 7. Docs and CHANGELOG (`Breaking Changes`: hub layout and lock version 2, no downgrade;
    `Changed`: same-name skills from different sources; `--json` gets `id` and
    `sourceKey`).
-
-## Open questions
-
-- Which agents resolve a skill symlink before they read it? The `<id>/<name>` layout is
-  safe in both cases, so this does not block the design. It decides only whether the
-  extra directory level is required or a precaution.

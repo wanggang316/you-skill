@@ -20,8 +20,8 @@ pub struct HubProbe {
   pub description: Option<String>,
 }
 
-pub fn probe_hub(env: &Env, name: &str, record: &SkillRecord) -> HubProbe {
-  let dir = env.hub_dir(name);
+pub fn probe_hub(env: &Env, id: &str, record: &SkillRecord) -> HubProbe {
+  let dir = env.hub_dir(id, &record.name);
   if !dir.is_dir() {
     return HubProbe {
       state: HubState::Missing,
@@ -46,7 +46,7 @@ pub fn probe_hub(env: &Env, name: &str, record: &SkillRecord) -> HubProbe {
   };
   let frontmatter = FileHelper::read_skill_frontmatter(&skill_md).unwrap_or_default();
   let state = match frontmatter.name.as_deref() {
-    Some(fm_name) if fm_name != name => HubState::NameMismatch,
+    Some(fm_name) if fm_name != record.name => HubState::NameMismatch,
     _ if hash != record.hash => HubState::Modified,
     _ => HubState::Ok,
   };
@@ -57,18 +57,16 @@ pub fn probe_hub(env: &Env, name: &str, record: &SkillRecord) -> HubProbe {
   }
 }
 
-/// Three-way comparison of one install target.
+/// Three-way comparison of one install target of the hub copy at `hub_dir`.
 pub fn target_state(
-  env: &Env,
-  name: &str,
+  hub_dir: &Path,
   install: &InstallRecord,
   hub_hash: Option<&str>,
 ) -> (TargetState, Option<String>) {
   let path = Path::new(&install.path);
-  let hub_dir = env.hub_dir(name);
 
   if is_symlink(path) {
-    if symlink_points_to(path, &hub_dir) {
+    if symlink_points_to(path, hub_dir) {
       return if hub_dir.is_dir() {
         (TargetState::InSync, hub_hash.map(str::to_string))
       } else {
@@ -144,11 +142,11 @@ pub fn source_state(record: &SkillRecord) -> SourceState {
 
 pub fn build_install_view(
   env: &Env,
-  name: &str,
+  hub_dir: &Path,
   install: &InstallRecord,
   hub_hash: Option<&str>,
 ) -> InstallView {
-  let (state, current_hash) = target_state(env, name, install, hub_hash);
+  let (state, current_hash) = target_state(hub_dir, install, hub_hash);
   let project_missing = install.scope == InstallScope::Project
     && !install
       .project_path
@@ -184,13 +182,14 @@ pub fn build_install_view(
   }
 }
 
-pub fn build_view(env: &Env, name: &str, record: &SkillRecord) -> HubSkillView {
-  let probe = probe_hub(env, name, record);
+pub fn build_view(env: &Env, id: &str, record: &SkillRecord) -> HubSkillView {
+  let hub_dir = env.hub_dir(id, &record.name);
+  let probe = probe_hub(env, id, record);
   let source_state = source_state(record);
   let installs: Vec<InstallView> = record
     .installs
     .iter()
-    .map(|install| build_install_view(env, name, install, probe.hash.as_deref()))
+    .map(|install| build_install_view(env, &hub_dir, install, probe.hash.as_deref()))
     .collect();
 
   let has_drift = probe.state != HubState::Ok
@@ -203,8 +202,9 @@ pub fn build_view(env: &Env, name: &str, record: &SkillRecord) -> HubSkillView {
       .any(|install| install.state != TargetState::InSync);
 
   HubSkillView {
-    name: name.to_string(),
-    hub_path: env.hub_dir(name).to_string_lossy().to_string(),
+    id: id.to_string(),
+    name: record.name.clone(),
+    hub_path: hub_dir.to_string_lossy().to_string(),
     description: probe.description,
     source: record.source.clone(),
     hash: record.hash.clone(),
@@ -231,8 +231,11 @@ mod tests {
     fs::write(path, content).unwrap();
   }
 
+  const ID: &str = "00000000-0000-4000-8000-000000000001";
+
   fn record(hash: &str, install: Option<InstallRecord>) -> SkillRecord {
     SkillRecord {
+      name: "foo".to_string(),
       source: SkillSource::None,
       hash: hash.to_string(),
       imported_at: "t".to_string(),
@@ -276,32 +279,32 @@ mod tests {
   fn hub_states() {
     let tmp = tempfile::tempdir().unwrap();
     let env = Env::for_test(tmp.path(), vec![], vec![]);
-    let hub = env.hub_dir("foo");
+    let hub = env.hub_dir(ID, "foo");
 
     assert_eq!(
-      probe_hub(&env, "foo", &record("x", None)).state,
+      probe_hub(&env, ID, &record("x", None)).state,
       HubState::Missing
     );
 
     fs::create_dir_all(&hub).unwrap();
     assert_eq!(
-      probe_hub(&env, "foo", &record("x", None)).state,
+      probe_hub(&env, ID, &record("x", None)).state,
       HubState::Invalid
     );
 
     write(&hub, "SKILL.md", "---\nname: foo\ndescription: d\n---\n");
     let hash = hash_dir(&hub).unwrap();
-    let probe = probe_hub(&env, "foo", &record(&hash, None));
+    let probe = probe_hub(&env, ID, &record(&hash, None));
     assert_eq!(probe.state, HubState::Ok);
     assert_eq!(probe.description.as_deref(), Some("d"));
     assert_eq!(
-      probe_hub(&env, "foo", &record("stale", None)).state,
+      probe_hub(&env, ID, &record("stale", None)).state,
       HubState::Modified
     );
 
     write(&hub, "SKILL.md", "---\nname: other\n---\n");
     assert_eq!(
-      probe_hub(&env, "foo", &record("stale", None)).state,
+      probe_hub(&env, ID, &record("stale", None)).state,
       HubState::NameMismatch
     );
   }
@@ -310,7 +313,7 @@ mod tests {
   fn target_states_for_copies_and_links() {
     let tmp = tempfile::tempdir().unwrap();
     let env = Env::for_test(tmp.path(), vec![], vec![]);
-    let hub = env.hub_dir("foo");
+    let hub = env.hub_dir(ID, "foo");
     write(&hub, "SKILL.md", "v1");
     let base = hash_dir(&hub).unwrap();
 
@@ -318,30 +321,30 @@ mod tests {
     write(&target, "SKILL.md", "v1");
     let inst = install(&target, &base, InstallMode::Copy);
     assert_eq!(
-      target_state(&env, "foo", &inst, Some(&base)).0,
+      target_state(&hub, &inst, Some(&base)).0,
       TargetState::InSync
     );
 
     write(&hub, "SKILL.md", "v2");
     let hub_v2 = hash_dir(&hub).unwrap();
     assert_eq!(
-      target_state(&env, "foo", &inst, Some(&hub_v2)).0,
+      target_state(&hub, &inst, Some(&hub_v2)).0,
       TargetState::Outdated
     );
 
     write(&target, "SKILL.md", "edited");
     assert_eq!(
-      target_state(&env, "foo", &inst, Some(&hub_v2)).0,
+      target_state(&hub, &inst, Some(&hub_v2)).0,
       TargetState::Conflict
     );
     assert_eq!(
-      target_state(&env, "foo", &inst, Some(&base)).0,
+      target_state(&hub, &inst, Some(&base)).0,
       TargetState::Modified
     );
 
     let missing = install(&tmp.path().join("nope"), &base, InstallMode::Copy);
     assert_eq!(
-      target_state(&env, "foo", &missing, Some(&base)).0,
+      target_state(&hub, &missing, Some(&base)).0,
       TargetState::Missing
     );
 
@@ -351,7 +354,7 @@ mod tests {
       std::os::unix::fs::symlink(&hub, &link).unwrap();
       let linked = install(&link, &base, InstallMode::Symlink);
       assert_eq!(
-        target_state(&env, "foo", &linked, Some(&hub_v2)).0,
+        target_state(&hub, &linked, Some(&hub_v2)).0,
         TargetState::InSync
       );
 
@@ -359,7 +362,7 @@ mod tests {
       std::os::unix::fs::symlink(tmp.path().join("gone"), &dangling).unwrap();
       let broken = install(&dangling, &base, InstallMode::Symlink);
       assert_eq!(
-        target_state(&env, "foo", &broken, Some(&hub_v2)).0,
+        target_state(&hub, &broken, Some(&hub_v2)).0,
         TargetState::BrokenLink
       );
     }

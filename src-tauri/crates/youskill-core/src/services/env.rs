@@ -70,8 +70,18 @@ impl Env {
     Self::with_home(home, config_dir, agent_apps, projects)
   }
 
-  pub fn hub_dir(&self, name: &str) -> PathBuf {
-    self.hub_root.join(name)
+  /// Hub copy of a skill: `skills/<id>/<name>`. The directory that holds SKILL.md keeps the
+  /// skill name, also for an agent that resolves a symlink install before it reads it.
+  pub fn hub_dir(&self, id: &str, name: &str) -> PathBuf {
+    self.hub_root.join(id).join(name)
+  }
+
+  /// Hub copy of the skill `key` names, for tests that write into it.
+  #[cfg(test)]
+  pub fn hub_dir_of(&self, key: &str) -> PathBuf {
+    let (id, record) =
+      crate::services::hub_service::resolve_skill(self, key).expect("skill in hub");
+    self.hub_dir(&id, &record.name)
   }
 
   /// Library copy of an instruction.
