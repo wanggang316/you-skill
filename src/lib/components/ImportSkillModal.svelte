@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { AlertCircle, CheckCircle2, FileArchive, Folder, Github, Loader2 } from "@lucide/svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
@@ -13,18 +14,21 @@
     type ScanAction,
     type ScanGroup,
   } from "../scan";
+  import SelectField from "$lib/components/ui/SelectField.svelte";
   import {
     importScanned,
     importSkills,
+    planImport,
     scanFolder,
     type ImportItem,
     type ImportOutcome,
+    type ImportPlan,
     type ScanDecision,
     type ScanItem,
     type SkillSource,
   } from "../api/hub";
   import { detectGithubManual, detectZip, type DetectedSkill } from "../api/skills";
-  import { hubSkillsByName, refreshHub } from "../stores/hub";
+  import { refreshHub, skillLabel } from "../stores/hub";
   import {
     closeImportModal,
     importModal,
@@ -66,14 +70,24 @@
   let isImporting = $state(false);
   let importError = $state("");
   let overwriteExisting = $state(false);
+  /** What the backend proposes for each selected skill, by `tmp_path`. */
+  let plans = $state<Record<string, ImportPlan>>({});
+  /** Skill each selected item replaces, by `tmp_path`; "" adds a new skill. */
+  let choices = $state<Record<string, string>>({});
   let importedOutcomes = $state<ImportOutcome[] | null>(null);
   let unlistenNativeDragDrop: (() => void) | null = null;
 
   const selectedDetected = $derived(
     activeTab === "github" ? selectedGithubSkills : activeTab === "zip" ? selectedZipSkills : []
   );
+  /** Selected skills that the library already has under the same name or source. */
+  const matched = $derived(
+    selectedDetected.filter((skill) => (plans[skill.tmp_path]?.matches.length ?? 0) > 0)
+  );
   const existingNames = $derived(
-    selectedDetected.map((skill) => skill.name).filter((name) => $hubSkillsByName.has(name))
+    selectedDetected
+      .filter((skill) => choices[skill.tmp_path])
+      .map((skill) => $skillLabel(choices[skill.tmp_path]))
   );
   const selectedScanCount = $derived(
     scanItems.filter((item) => (scanActions[item.path] ?? "ignore") !== "ignore").length
@@ -120,6 +134,8 @@
     isImporting = false;
     importError = "";
     overwriteExisting = false;
+    plans = {};
+    choices = {};
     importedOutcomes = null;
     suppressZipClick = false;
     suppressFolderClick = false;
@@ -447,15 +463,49 @@
     return current.length === all.length ? [] : [...all];
   }
 
+  /** Names of selected skills that would replace the same library skill. */
   function findDuplicateNames(skills: DetectedSkill[]): string[] {
     const seen = new Set<string>();
     const dupes = new Set<string>();
     for (const skill of skills) {
-      if (seen.has(skill.name)) dupes.add(skill.name);
-      else seen.add(skill.name);
+      const target = choices[skill.tmp_path];
+      if (!target) continue;
+      if (seen.has(target)) dupes.add(skill.name);
+      else seen.add(target);
     }
     return [...dupes];
   }
+
+  // Ask the backend which library skill each selected skill replaces by default.
+  let planRequest = 0;
+  $effect(() => {
+    if (activeTab === "folder" || selectedDetected.length === 0) return;
+    // Re-plan when the selection or the source changes, not when a choice changes.
+    void githubUrl;
+    void selectedZipPath;
+    let items: ImportItem[];
+    try {
+      items = untrack(() => buildImportItems());
+    } catch {
+      return;
+    }
+    const request = ++planRequest;
+    planImport(items)
+      .then((result) => {
+        if (request !== planRequest) return;
+        const nextPlans: Record<string, ImportPlan> = {};
+        const nextChoices: Record<string, string> = {};
+        items.forEach((item, index) => {
+          const plan = result[index];
+          if (!plan) return;
+          nextPlans[item.tmpPath] = plan;
+          nextChoices[item.tmpPath] = plan.defaultReplaceId ?? "";
+        });
+        plans = nextPlans;
+        choices = nextChoices;
+      })
+      .catch((error) => console.error("Failed to plan the import:", error));
+  });
 
   // ---------------------------------------------------------------------------
   // Import
@@ -476,12 +526,14 @@
           skillPath: skill.skill_path,
           branch: skill.branch ?? null,
         } satisfies SkillSource,
+        replaceId: choices[skill.tmp_path] || null,
       }));
     }
     return selectedZipSkills.map((skill) => ({
       name: skill.name,
       tmpPath: skill.tmp_path,
       source: { type: "zip", path: selectedZipPath } satisfies SkillSource,
+      replaceId: choices[skill.tmp_path] || null,
     }));
   }
 
@@ -499,6 +551,7 @@
         const action = scanActions[item.path] ?? "ignore";
         if (action === "ignore") continue;
         decisions.push({
+          id: item.id ?? null,
           name: item.name,
           path: item.path,
           resolution: resolutionOf(group, action),
@@ -542,9 +595,9 @@
   }
 
   function handleInstallNow() {
-    const names = [...new Set((importedOutcomes ?? []).map((outcome) => outcome.name))];
+    const ids = [...new Set((importedOutcomes ?? []).map((outcome) => outcome.id))];
     handleClose();
-    openInstallModal(names);
+    openInstallModal(ids);
   }
 </script>
 
@@ -736,6 +789,33 @@
                 disabled={isImporting}
               />
             {/if}
+          </div>
+        {/if}
+
+        {#if activeTab !== "folder" && matched.length > 0}
+          <div class="mt-4 space-y-2">
+            <p class="text-base-content-muted text-xs">{$t("import.matches")}</p>
+            {#each matched as skill (skill.tmp_path)}
+              {@const plan = plans[skill.tmp_path]}
+              <div class="flex items-center gap-3">
+                <span class="text-base-content min-w-0 flex-1 truncate text-sm">{skill.name}</span>
+                <SelectField
+                  bind:value={choices[skill.tmp_path]}
+                  disabled={isImporting || plan.replaceRequired}
+                  className="max-w-[65%]"
+                  selectClassName="h-8 text-[12px]"
+                >
+                  {#if !plan.replaceRequired}
+                    <option value="">{$t("import.match.addNew")}</option>
+                  {/if}
+                  {#each plan.matches.filter((match) => !plan.replaceRequired || match.sameSource) as match (match.id)}
+                    <option value={match.id}>
+                      {$t("import.match.replace", { name: match.name, source: match.sourceKey })}
+                    </option>
+                  {/each}
+                </SelectField>
+              </div>
+            {/each}
           </div>
         {/if}
 

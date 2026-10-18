@@ -4,6 +4,7 @@ import {
   checkSourceUpdates as checkSourceUpdatesApi,
   listHubSkills,
   migrationStatus,
+  sourceLabel,
   type HubSkillView,
   type MigrationReport,
   type SourceUpdate,
@@ -22,10 +23,36 @@ export const lastSourceCheck = writable<SourceUpdate[]>([]);
 
 export const migrationReport = writable<MigrationReport | null>(null);
 
-export const hubSkillsByName = derived(
+export const hubSkillsById = derived(
   hubSkills,
-  ($skills) => new Map($skills.map((skill) => [skill.name, skill]))
+  ($skills) => new Map($skills.map((skill) => [skill.id, skill]))
 );
+
+/** Names that more than one skill has; their rows also show the source. */
+export const sharedSkillNames = derived(hubSkills, ($skills) => {
+  const seen = new Set<string>();
+  const shared = new Set<string>();
+  for (const skill of $skills) {
+    const name = skill.name.toLowerCase();
+    if (seen.has(name)) shared.add(name);
+    seen.add(name);
+  }
+  return shared;
+});
+
+/** Display name of a skill id: the name, plus the source when another skill has the name. */
+export const skillLabel = derived([hubSkillsById, sharedSkillNames], ([$byId, $shared]) => {
+  return (id: string): string => {
+    const skill = $byId.get(id);
+    if (!skill) return id;
+    const source = sourceLabel(skill.source) || skill.sourceKey;
+    return $shared.has(skill.name.toLowerCase()) ? `${skill.name} (${source})` : skill.name;
+  };
+});
+
+function compareSkills(a: HubSkillView, b: HubSkillView): number {
+  return a.name.localeCompare(b.name) || a.sourceKey.localeCompare(b.sourceKey);
+}
 
 export const agentsById = derived(
   agents,
@@ -49,7 +76,7 @@ export async function refreshHub(): Promise<void> {
   refreshPromise = (async () => {
     try {
       const skills = await listHubSkills();
-      skills.sort((a, b) => a.name.localeCompare(b.name));
+      skills.sort(compareSkills);
       hubSkills.set(skills);
       hubLoaded.set(true);
     } catch (error) {
@@ -65,9 +92,9 @@ export async function refreshHub(): Promise<void> {
 export function applySkillView(view: HubSkillView | null | undefined): void {
   if (!view) return;
   hubSkills.update((current) => {
-    const index = current.findIndex((skill) => skill.name === view.name);
+    const index = current.findIndex((skill) => skill.id === view.id);
     if (index === -1) {
-      return [...current, view].sort((a, b) => a.name.localeCompare(b.name));
+      return [...current, view].sort(compareSkills);
     }
     const next = [...current];
     next[index] = view;
@@ -81,12 +108,12 @@ const AUTO_SOURCE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 let sourceCheckPromise: Promise<SourceUpdate[]> | null = null;
 let lastFullSourceCheckAt = 0;
 
-export function checkSourceUpdates(names?: string[]): Promise<SourceUpdate[]> {
+export function checkSourceUpdates(ids?: string[]): Promise<SourceUpdate[]> {
   if (sourceCheckPromise) return sourceCheckPromise;
   sourceChecking.set(true);
   sourceCheckPromise = (async () => {
     try {
-      const result = await checkSourceUpdatesApi(names ?? null);
+      const result = await checkSourceUpdatesApi(ids ?? null);
       lastSourceCheck.set(result);
       await refreshHub();
       return result;

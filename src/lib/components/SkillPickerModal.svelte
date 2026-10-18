@@ -5,7 +5,7 @@
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import { t } from "../i18n";
   import { scopedInstalls, type HubSkillView } from "../api/hub";
-  import { hubSkills } from "../stores/hub";
+  import { hubSkills, skillLabel } from "../stores/hub";
   import { closeSkillPickerModal, openInstallModal, skillPickerModal } from "../stores/modals";
   import { userProjects } from "../stores/user-projects";
 
@@ -92,8 +92,8 @@
         </p>
       {:else}
         <div class="grid grid-cols-2 gap-2">
-          {#each candidates as skill (skill.name)}
-            {@const checked = selected.includes(skill.name)}
+          {#each candidates as skill (skill.id)}
+            {@const checked = selected.includes(skill.id)}
             <label
               class={`flex cursor-pointer flex-col gap-1 rounded-xl border px-3 py-2.5 transition ${
                 checked
@@ -107,13 +107,13 @@
                   class="accent-primary"
                   type="checkbox"
                   {checked}
-                  onchange={() => toggle(skill.name)}
+                  onchange={() => toggle(skill.id)}
                 />
                 <span class="text-base-content-subtle shrink-0">
                   <SkillIcon source={skill.source} />
                 </span>
                 <span class="text-base-content min-w-0 flex-1 truncate text-[13px] font-medium">
-                  {skill.name}
+                  {$skillLabel(skill.id)}
                 </span>
               </span>
               <span

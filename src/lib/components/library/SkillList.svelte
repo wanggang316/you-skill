@@ -8,13 +8,14 @@
   import { t } from "$lib/i18n";
   import type { HubSkillView } from "$lib/api/hub";
   import { groupLibrarySkills } from "$lib/library-groups";
+  import { skillLabel } from "$lib/stores/hub";
   import type { LibraryFilter, LibrarySource } from "$lib/navigation/app-shell";
 
   let {
     skills = [],
     totalCount = 0,
-    selectedName = null,
-    checkedNames = [],
+    selectedId = null,
+    checkedIds = [],
     loading = false,
     checking = false,
     error = "",
@@ -33,9 +34,9 @@
   }: {
     skills?: HubSkillView[];
     totalCount?: number;
-    selectedName?: string | null;
+    selectedId?: string | null;
     /** Skills picked with Shift+click for a batch install or removal. */
-    checkedNames?: string[];
+    checkedIds?: string[];
     loading?: boolean;
     /** Source update check in progress. */
     checking?: boolean;
@@ -43,8 +44,8 @@
     search?: string;
     filter?: LibraryFilter;
     source?: LibrarySource;
-    onSelect: (name: string) => void;
-    onToggleChecked: (name: string) => void;
+    onSelect: (id: string) => void;
+    onToggleChecked: (id: string) => void;
     onBatchInstall: () => void;
     onBatchRemove: () => void;
     onClearChecked: () => void;
@@ -112,18 +113,18 @@
 
   // Selecting a skill elsewhere (deep links, imports) must not land in a hidden row.
   $effect(() => {
-    const group = groups.find((item) => item.skills.some((skill) => skill.name === selectedName));
+    const group = groups.find((item) => item.skills.some((skill) => skill.id === selectedId));
     if (!group) return;
     const current = untrack(() => collapsed);
     if (current.includes(group.key)) setCollapsed(current.filter((key) => key !== group.key));
   });
 
-  function handleRowClick(event: MouseEvent, name: string) {
+  function handleRowClick(event: MouseEvent, id: string) {
     if (event.shiftKey) {
-      onToggleChecked(name);
+      onToggleChecked(id);
       return;
     }
-    onSelect(name);
+    onSelect(id);
   }
 </script>
 
@@ -250,9 +251,9 @@
           <span class="text-base-content-faint shrink-0">{group.skills.length}</span>
         </button>
         {#if open}
-          {#each group.skills as skill (skill.name)}
-            {@const selected = skill.name === selectedName}
-            {@const checked = checkedNames.includes(skill.name)}
+          {#each group.skills as skill (skill.id)}
+            {@const selected = skill.id === selectedId}
+            {@const checked = checkedIds.includes(skill.id)}
             <!-- pl-7 puts the text under the group header icon. -->
             <button
               class={`mx-1.5 flex w-[calc(100%-0.75rem)] flex-col gap-1 rounded-lg py-2 pr-2.5 pl-7 text-left transition select-none ${
@@ -263,13 +264,13 @@
                     : "hover:bg-base-content/[0.045]"
               }`}
               type="button"
-              onclick={(event) => handleRowClick(event, skill.name)}
+              onclick={(event) => handleRowClick(event, skill.id)}
               aria-current={selected ? "true" : undefined}
-              aria-pressed={checkedNames.length > 0 ? checked : undefined}
+              aria-pressed={checkedIds.length > 0 ? checked : undefined}
             >
               <div class="flex w-full items-center gap-2">
                 <span class="text-base-content min-w-0 flex-1 truncate text-[13px] font-medium">
-                  {skill.name}
+                  {$skillLabel(skill.id)}
                 </span>
                 {#if skill.hasDrift}
                   <span class="tag tag-warning shrink-0">{$t("library.tag.changed")}</span>
@@ -289,13 +290,13 @@
     {/if}
   </div>
 
-  {#if checkedNames.length > 0}
+  {#if checkedIds.length > 0}
     <div class="flex flex-none items-center gap-2 px-3 py-2.5">
       <PrimaryActionButton
         className="min-w-0 flex-1 px-3 py-1.5 text-[13px] whitespace-nowrap"
         onclick={onBatchInstall}
       >
-        {$t("library.batchInstall", { count: checkedNames.length })}
+        {$t("library.batchInstall", { count: checkedIds.length })}
       </PrimaryActionButton>
       <button
         class="border-error/40 text-error hover:bg-error/10 shrink-0 rounded-xl border px-3 py-1.5 text-[13px] whitespace-nowrap transition"

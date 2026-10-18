@@ -19,7 +19,8 @@ export interface ImportModalState {
 export interface InstallModalState {
   open: boolean;
   kind: LibraryKind;
-  skillNames: string[];
+  /** Skill ids or instruction ids, by `kind`. */
+  ids: string[];
   initialScope: InstallScope;
   initialProjectPath: string | null;
   /** Several places at once; only used together with `lockScope`. */
@@ -33,7 +34,8 @@ export interface InstallModalState {
 export interface LocationPickerModalState {
   open: boolean;
   kind: LibraryKind;
-  skillName: string;
+  /** Skill id or instruction id, by `kind`. */
+  id: string;
 }
 
 export interface ImportInstructionModalState {
@@ -60,8 +62,8 @@ export interface ScopeAgentModalState {
   open: boolean;
   scope: ScopeRef | null;
   scopeName: string;
-  /** Skills of the scope; each is installed into the agents that get added. */
-  skillNames: string[];
+  /** Skill ids of the scope; each is installed into the agents that get added. */
+  skillIds: string[];
   existingIds: string[];
 }
 
@@ -76,7 +78,8 @@ export interface WorkspaceModalState {
 export interface DiffModalState {
   open: boolean;
   kind: LibraryKind;
-  name: string;
+  /** Skill id or instruction id, by `kind`. */
+  id: string;
   against: DiffAgainst;
 }
 
@@ -94,7 +97,7 @@ export const importModal = writable<ImportModalState>({
 export const installModal = writable<InstallModalState>({
   open: false,
   kind: "skill",
-  skillNames: [],
+  ids: [],
   initialScope: "user",
   initialProjectPath: null,
   targets: [],
@@ -105,7 +108,7 @@ export const installModal = writable<InstallModalState>({
 export const locationPickerModal = writable<LocationPickerModalState>({
   open: false,
   kind: "skill",
-  skillName: "",
+  id: "",
 });
 
 export const importInstructionModal = writable<ImportInstructionModalState>({
@@ -120,7 +123,7 @@ export const scopeAgentModal = writable<ScopeAgentModalState>({
   open: false,
   scope: null,
   scopeName: "",
-  skillNames: [],
+  skillIds: [],
   existingIds: [],
 });
 
@@ -136,7 +139,7 @@ export const workspaceModal = writable<WorkspaceModalState>({
 export const diffModal = writable<DiffModalState>({
   open: false,
   kind: "skill",
-  name: "",
+  id: "",
   against: { kind: "source" },
 });
 
@@ -170,7 +173,7 @@ export function closeImportModal(): void {
 }
 
 export function openInstallModal(
-  skillNames: string[],
+  ids: string[],
   options?: {
     scope?: InstallScope;
     projectPath?: string | null;
@@ -180,11 +183,11 @@ export function openInstallModal(
     kind?: LibraryKind;
   }
 ): void {
-  if (skillNames.length === 0) return;
+  if (ids.length === 0) return;
   installModal.set({
     open: true,
     kind: options?.kind ?? "skill",
-    skillNames,
+    ids,
     initialScope: options?.scope ?? "user",
     initialProjectPath: options?.projectPath ?? null,
     targets: options?.targets ?? [],
@@ -193,8 +196,8 @@ export function openInstallModal(
   });
 }
 
-export function openLocationPickerModal(skillName: string, kind: LibraryKind = "skill"): void {
-  locationPickerModal.set({ open: true, kind, skillName });
+export function openLocationPickerModal(id: string, kind: LibraryKind = "skill"): void {
+  locationPickerModal.set({ open: true, kind, id });
 }
 
 export function openImportInstructionModal(
@@ -271,12 +274,8 @@ export function closeForceModal(): void {
   forceModal.set({ open: false, blockers: [], onConfirm: null, onCancel: null });
 }
 
-export function openDiffModal(
-  name: string,
-  against: DiffAgainst,
-  kind: LibraryKind = "skill"
-): void {
-  diffModal.set({ open: true, kind, name, against });
+export function openDiffModal(id: string, against: DiffAgainst, kind: LibraryKind = "skill"): void {
+  diffModal.set({ open: true, kind, id, against });
 }
 
 export function closeDiffModal(): void {
@@ -295,7 +294,7 @@ export function closeSkillPickerModal(): void {
 export function openScopeAgentModal(options: {
   scope: ScopeRef;
   scopeName: string;
-  skillNames: string[];
+  skillIds: string[];
   existingIds: string[];
 }): void {
   scopeAgentModal.set({ open: true, ...options });

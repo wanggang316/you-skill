@@ -63,7 +63,12 @@ export interface InstallView {
 }
 
 export interface HubSkillView {
+  /** Stable key of the skill in the hub. */
+  id: string;
+  /** Install directory name and agent runtime name; more than one skill can have it. */
   name: string;
+  /** `github:owner/repo@branch:dir`, `folder:<path>`, or only the type (`zip`, `none`). */
+  sourceKey: string;
   hubPath: string;
   description?: string | null;
   source: SkillSource;
@@ -84,6 +89,7 @@ export interface InstallTargetSpec {
 }
 
 export interface InstallRequest {
+  /** Skill id (a unique name also works). */
   name: string;
   targets: InstallTargetSpec[];
   mode?: InstallMode | null;
@@ -91,6 +97,7 @@ export interface InstallRequest {
 }
 
 export interface UninstallRequest {
+  /** Skill id (a unique name also works). */
   name: string;
   targets: InstallTargetSpec[];
   /** Install directories to drop as a whole, whichever agents read them. */
@@ -115,9 +122,31 @@ export interface ImportItem {
   name: string;
   tmpPath: string;
   source: SkillSource;
+  /** Skill to replace (needs overwrite); omitted adds a new skill. */
+  replaceId?: string | null;
+}
+
+export interface SkillMatch {
+  id: string;
+  name: string;
+  sourceKey: string;
+  /** Same GitHub or folder location: the import is a new version of this skill. */
+  sameSource: boolean;
+  updatedAt: string;
+}
+
+export interface ImportPlan {
+  name: string;
+  sourceKey: string;
+  matches: SkillMatch[];
+  /** Skill replaced by default; omitted adds a new skill. */
+  defaultReplaceId?: string | null;
+  /** The source is already in the hub, so the import can only replace that skill. */
+  replaceRequired: boolean;
 }
 
 export interface ImportOutcome {
+  id: string;
   name: string;
   hubPath: string;
   hash: string;
@@ -125,6 +154,7 @@ export interface ImportOutcome {
 }
 
 export interface SourceUpdate {
+  id: string;
   name: string;
   remoteSha?: string | null;
   latestRemoteSha?: string | null;
@@ -142,6 +172,8 @@ export interface AgentRootMatch {
 }
 
 export interface ScanItem {
+  /** Hub skill the folder belongs to; omitted when it is new. */
+  id?: string | null;
   name: string;
   path: string;
   hash?: string | null;
@@ -161,6 +193,7 @@ export type ScanResolution =
   | "skip";
 
 export interface ScanDecision {
+  id?: string | null;
   name: string;
   path: string;
   resolution: ScanResolution;
@@ -218,8 +251,12 @@ export async function listHubSkills(): Promise<HubSkillView[]> {
   return apiCall<HubSkillView[]>("list_hub_skills");
 }
 
-export async function getHubSkill(name: string): Promise<HubSkillView | null> {
-  return apiCall<HubSkillView | null>("get_hub_skill", { name });
+export async function getHubSkill(id: string): Promise<HubSkillView | null> {
+  return apiCall<HubSkillView | null>("get_hub_skill", { id });
+}
+
+export async function planImport(items: ImportItem[]): Promise<ImportPlan[]> {
+  return apiCall<ImportPlan[]>("plan_import", { items });
 }
 
 export async function importSkills(
@@ -237,16 +274,16 @@ export async function uninstallSkill(request: UninstallRequest): Promise<ActionR
   return apiCall<ActionResult>("uninstall_skill", { request });
 }
 
-export async function removeHubSkill(name: string, removeInstalls: boolean): Promise<void> {
-  return apiCall<void>("remove_hub_skill", { name, removeInstalls });
+export async function removeHubSkill(id: string, removeInstalls: boolean): Promise<void> {
+  return apiCall<void>("remove_hub_skill", { id, removeInstalls });
 }
 
-export async function syncSkill(name: string, action: SyncAction): Promise<ActionResult> {
-  return apiCall<ActionResult>("sync_skill", { name, action });
+export async function syncSkill(id: string, action: SyncAction): Promise<ActionResult> {
+  return apiCall<ActionResult>("sync_skill", { id, action });
 }
 
-export async function checkSourceUpdates(names?: string[] | null): Promise<SourceUpdate[]> {
-  return apiCall<SourceUpdate[]>("check_source_updates", { names: names ?? null });
+export async function checkSourceUpdates(ids?: string[] | null): Promise<SourceUpdate[]> {
+  return apiCall<SourceUpdate[]>("check_source_updates", { ids: ids ?? null });
 }
 
 export async function scanFolder(path: string, maxDepth?: number): Promise<ScanItem[]> {
@@ -265,8 +302,8 @@ export async function migrationStatus(): Promise<MigrationReport | null> {
   return apiCall<MigrationReport | null>("migration_status");
 }
 
-export async function diffSkill(name: string, against: DiffAgainst): Promise<SkillDiff> {
-  return apiCall<SkillDiff>("diff_skill", { name, against });
+export async function diffSkill(id: string, against: DiffAgainst): Promise<SkillDiff> {
+  return apiCall<SkillDiff>("diff_skill", { id, against });
 }
 
 // ============ Helpers ============
@@ -274,7 +311,7 @@ export async function diffSkill(name: string, against: DiffAgainst): Promise<Ski
 export function sourceLabel(source: SkillSource): string {
   switch (source.type) {
     case "github":
-      return source.repo;
+      return source.branch ? `${source.repo}@${source.branch}` : source.repo;
     case "folder":
     case "zip":
       return source.path;

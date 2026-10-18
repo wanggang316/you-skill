@@ -20,7 +20,15 @@
     type HubSkillView,
   } from "$lib/api";
   import { homePath } from "$lib/stores/env";
-  import { agents, agentsById, hubError, hubLoading, hubSkills, refreshHub } from "$lib/stores/hub";
+  import {
+    agents,
+    agentsById,
+    hubError,
+    hubLoading,
+    hubSkills,
+    refreshHub,
+    skillLabel,
+  } from "$lib/stores/hub";
   import { instructions } from "$lib/stores/instructions";
   import {
     openDiffModal,
@@ -214,7 +222,7 @@
     openScopeAgentModal({
       scope: entry.ref,
       scopeName: entry.name,
-      skillNames: entry.skills.map((skill) => skill.name),
+      skillIds: entry.skills.map((skill) => skill.id),
       existingIds,
     });
   }
@@ -246,9 +254,11 @@
       const failures: string[] = [];
       for (const { skill, paths } of affected) {
         const result = await performAction((force) =>
-          uninstallSkill({ name: skill.name, targets: [], paths, force })
+          uninstallSkill({ name: skill.id, targets: [], paths, force })
         );
-        if (!result.applied) failures.push(`${skill.name}: ${result.blockers.join("; ")}`);
+        if (!result.applied) {
+          failures.push(`${$skillLabel(skill.id)}: ${result.blockers.join("; ")}`);
+        }
       }
       if (failures.length > 0) actionError = failures.join("\n");
     });
@@ -259,7 +269,7 @@
     if (!entry) return;
     const installs = scopedInstalls(skill, entry.ref);
     const drifted = installs.filter((install) => install.state !== "in_sync");
-    const name = skill.name;
+    const name = skill.id;
 
     switch (action) {
       case "manage":
@@ -366,7 +376,7 @@
             onAddAgent={handleAddAgent}
             onRemoveAgents={handleRemoveAgents}
             onOpenMemory={(file) => goto(buildInstructionsHref({ file: file.path }))}
-            onOpenSkill={(name) => goto(buildLibraryHref({ skill: name }))}
+            onOpenSkill={(id) => goto(buildLibraryHref({ skill: id }))}
             onSkillAction={handleSkillAction}
           />
         {/key}

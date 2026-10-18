@@ -184,7 +184,7 @@
           <section class="space-y-2">
             <h3 class="text-base-content text-sm font-medium">{$t("detail.drift")}</h3>
             <DriftPanel
-              name={skill.name}
+              id={skill.id}
               hubState={skill.hubState}
               sourceState={skill.sourceState}
               source={skill.source}

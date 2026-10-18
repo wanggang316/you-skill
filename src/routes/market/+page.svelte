@@ -13,7 +13,7 @@
     type RemoteSkill,
     type SkillSource,
   } from "$lib/api";
-  import { hubSkillsByName, refreshHub } from "$lib/stores/hub";
+  import { hubSkills, refreshHub } from "$lib/stores/hub";
   import {
     loadRemote,
     remoteError,
@@ -64,8 +64,17 @@
 
   const repoSlug = (skill: RemoteSkill) => skill.source.trim();
 
+  /** The hub skill imported from this marketplace entry: same repository and name. */
   function hubEntry(skill: RemoteSkill) {
-    return $hubSkillsByName.get(skill.name) ?? null;
+    const repo = repoSlug(skill).toLowerCase();
+    return (
+      $hubSkills.find(
+        (entry) =>
+          entry.name === skill.name &&
+          entry.source.type === "github" &&
+          entry.source.repo.toLowerCase() === repo
+      ) ?? null
+    );
   }
 
   function hasUpdate(skill: RemoteSkill): boolean {
@@ -91,7 +100,7 @@
       const existing = hubEntry(skill);
       if (existing && hasUpdate(skill) && existing.source.type === "github") {
         const result = await performAction((force) =>
-          syncSkill(skill.name, { kind: "pull_source", force })
+          syncSkill(existing.id, { kind: "pull_source", force })
         );
         if (!result.applied && result.blockers.length > 0) {
           log = result.blockers.join("\n");
@@ -111,13 +120,13 @@
         remoteSha: skill.skill_path_sha ?? null,
         marketplaceId: skill.id,
       };
-      await importSkills(
+      const outcomes = await importSkills(
         [{ name: detected.name, tmpPath: detected.tmp_path, source }],
         Boolean(existing)
       );
       recordInstall(skill.id).catch((error) => console.error("Failed to record install:", error));
       await refreshHub();
-      openInstallModal([detected.name]);
+      openInstallModal(outcomes.map((outcome) => outcome.id));
     } catch (error) {
       log = String(error);
     } finally {

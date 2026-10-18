@@ -39,10 +39,10 @@ pub async fn list_hub_skills() -> Result<Vec<HubSkillView>, String> {
 }
 
 #[tauri::command]
-pub async fn get_hub_skill(name: String) -> Result<Option<HubSkillView>, String> {
+pub async fn get_hub_skill(id: String) -> Result<Option<HubSkillView>, String> {
   let env = Env::current()?;
   blocking("get_hub_skill", move || {
-    hub_service::get_hub_skill(&env, &name)
+    hub_service::get_hub_skill(&env, &id)
   })
   .await
 }
@@ -119,32 +119,32 @@ pub async fn uninstall_skill(request: UninstallRequest) -> Result<ActionResult, 
 }
 
 #[tauri::command]
-pub async fn remove_hub_skill(name: String, remove_installs: bool) -> Result<(), String> {
+pub async fn remove_hub_skill(id: String, remove_installs: bool) -> Result<(), String> {
   let env = Env::current()?;
   blocking("remove_hub_skill", move || {
-    hub_service::remove_hub_skill(&env, &name, remove_installs)
+    hub_service::remove_hub_skill(&env, &id, remove_installs)
   })
   .await
 }
 
 #[tauri::command]
-pub async fn sync_skill(name: String, action: SyncAction) -> Result<ActionResult, String> {
+pub async fn sync_skill(id: String, action: SyncAction) -> Result<ActionResult, String> {
   let env = Env::current()?;
   if let SyncAction::PullSource { force } = &action {
     let is_github = env
       .lock_path
       .is_file()
-      .then(|| hub_service::find_skill(&env, &name))
+      .then(|| hub_service::find_skill(&env, &id))
       .transpose()?
       .flatten()
       .map(|(_, record)| record.source.github_repo().is_some())
       .unwrap_or(false);
     if is_github {
-      return source_service::pull_github_source(env, name, *force).await;
+      return source_service::pull_github_source(env, id, *force).await;
     }
   }
   blocking("sync_skill", move || {
-    hub_service::sync_skill(&env, &name, action)
+    hub_service::sync_skill(&env, &id, action)
   })
   .await
 }
@@ -152,17 +152,17 @@ pub async fn sync_skill(name: String, action: SyncAction) -> Result<ActionResult
 /// Diff the hub copy against an install target or the recorded source. A GitHub source
 /// is downloaded to a temp directory first and removed afterwards.
 #[tauri::command]
-pub async fn diff_skill(name: String, against: DiffAgainst) -> Result<SkillDiff, String> {
+pub async fn diff_skill(id: String, against: DiffAgainst) -> Result<SkillDiff, String> {
   let env = Env::current()?;
   match against {
     DiffAgainst::Target { path } => {
       blocking("diff_skill", move || {
-        diff_service::diff_hub_against(&env, &name, Path::new(&path), &path)
+        diff_service::diff_hub_against(&env, &id, Path::new(&path), &path)
       })
       .await
     },
     DiffAgainst::Source => {
-      let (id, record) = hub_service::resolve_skill(&env, &name)?;
+      let (id, record) = hub_service::resolve_skill(&env, &id)?;
       match record.source {
         SkillSource::Folder { path } => {
           blocking("diff_skill", move || {
@@ -197,9 +197,9 @@ pub async fn diff_skill(name: String, against: DiffAgainst) -> Result<SkillDiff,
 }
 
 #[tauri::command]
-pub async fn check_source_updates(names: Option<Vec<String>>) -> Result<Vec<SourceUpdate>, String> {
+pub async fn check_source_updates(ids: Option<Vec<String>>) -> Result<Vec<SourceUpdate>, String> {
   let env = Env::current()?;
-  source_service::check_source_updates(env, names).await
+  source_service::check_source_updates(env, ids).await
 }
 
 #[tauri::command]
