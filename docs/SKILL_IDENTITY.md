@@ -52,11 +52,11 @@ keep both skills, and the user must be able to install each one in a different s
 
 Three values identify a skill. Each one has one role:
 
-| Value       | Example                                | Role                                       | Changes when          |
-| ----------- | -------------------------------------- | ------------------------------------------ | --------------------- |
-| `id`        | `3f2a9c1e-...` (UUID v4)               | lock key, hub path                         | never                 |
-| `sourceKey` | `github:backnotprop/pstack:skills/tdd` | uniqueness of a source, portable reference | the source changes    |
-| `name`      | `tdd`                                  | install directory, agent runtime name      | never (see non-goals) |
+| Value       | Example                                     | Role                                       | Changes when          |
+| ----------- | ------------------------------------------- | ------------------------------------------ | --------------------- |
+| `id`        | `3f2a9c1e-...` (UUID v4)                    | lock key, hub path                         | never                 |
+| `sourceKey` | `github:backnotprop/pstack@main:skills/tdd` | uniqueness of a source, portable reference | the source changes    |
+| `name`      | `tdd`                                       | install directory, agent runtime name      | never (see non-goals) |
 
 ```
 SkillRecord (key: id)
@@ -92,25 +92,55 @@ The hub directory of a skill is `<id>/<name>`, not `<id>`:
 
 ## Source key
 
-| Source   | `sourceKey`                        | Normalization                                                             |
-| -------- | ---------------------------------- | ------------------------------------------------------------------------- |
-| `github` | `github:<owner>/<repo>:<skillDir>` | `owner/repo` in lower case; `skillDir` is `skillPath` without `/SKILL.md` |
-| `folder` | `folder:<path>`                    | canonical absolute path                                                   |
-| `zip`    | none                               |                                                                           |
-| `none`   | none                               |                                                                           |
+| Source   | `sourceKey`                                 | Normalization                                                                      |
+| -------- | ------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `github` | `github:<owner>/<repo>@<branch>:<skillDir>` | `owner/repo` in lower case; `skillDir` is `skillPath` without `/SKILL.md`          |
+| `folder` | `folder:<path>`                             | canonical absolute path of the skill directory, for example `folder:/a/b/tdd`      |
+| `zip`    | `zip:<archive>:<skillDir>`                  | canonical absolute path of the archive; `skillDir` is relative to the archive root |
+| `none`   | none                                        |                                                                                    |
 
-The branch is not part of the key: one skill on two branches is one skill.
+Every source that an import can make has a key. `none` comes only from the legacy
+migration, from `adopt_untracked_hub_dirs` and from a scan. These records have no known
+origin, so they have no key and an import never matches them.
 
-Rules:
+### Branch
+
+The branch is part of the key. One skill on `main` and on `next` gives two records,
+because the content and the update stream are different. The two records have the same
+name, so they cannot be installed into the same agent root (see [Install](#install)), but
+each one can be installed into a different scope.
+
+- The key is unambiguous: an owner and a repository name contain no `@`, and a Git branch
+  name contains no `:`. A branch name can contain `/` and `@`
+  (`github:o/r@feat/x:skills/tdd`).
+- A new import always has a resolved branch: `GithubHelper::clone_repo_to` returns the
+  branch that it downloaded.
+- A legacy record can have no branch (`branch: None`). Its key is
+  `github:<owner>/<repo>:<skillDir>`. An import that resolves the default branch of that
+  repository matches such a record, and the replace writes the branch into the record.
+  Thus a legacy record does not get a duplicate.
+
+### Zip
+
+The archive path stands in for the origin, because an archive has no other identity:
+
+- The same archive at the same path, imported again: the same key, so a replace.
+- A different archive with a skill of the same name: a different key, so a new record. A
+  match by name would replace the other skill without notice.
+- The same archive after a move or a rename: a different key, so a duplicate record. The
+  duplicate is visible in the library and the user can remove it. This failure is safer
+  than a wrong replace.
+
+`SkillSource::Zip` gets `skillPath` (from `DetectedSkill.skill_path`). A legacy zip record
+without `skillPath` uses `zip:<archive>:<name>`.
+
+### Rules
 
 - No two records have the same `sourceKey`. An import with a known `sourceKey` replaces
   that record and does not add a new one.
 - When a source changes (`pull_source` with an updated source, a repository rename), the
   key is computed again. The id and the hub path do not change. A change to a key that
   another record has is refused.
-- A `zip` or `none` skill has no key. An import of such a skill matches records by name
-  among `zip` and `none` records. Thus a repeated import of the same archive replaces the
-  skill and does not add a duplicate.
 
 ## Lock file
 
@@ -213,13 +243,13 @@ Each command that takes a skill (`show`, `install`, `uninstall`, `remove`, `upda
 `sync`, `diff`) resolves the argument in this order:
 
 1. An id.
-2. A source key. The `github:` prefix is optional, and `<owner>/<repo>:<name>` also
-   resolves when that repository has one skill with the name. Examples:
-   `github:backnotprop/pstack:skills/tdd`, `backnotprop/pstack:skills/tdd`,
-   `backnotprop/pstack:tdd`.
+2. A source key, or a part of one that matches one record. The `github:` prefix and
+   `@<branch>` are optional, and `<owner>/<repo>:<name>` matches by name inside that
+   repository. Examples: `github:backnotprop/pstack@main:skills/tdd`,
+   `backnotprop/pstack:skills/tdd`, `backnotprop/pstack@next:tdd`, `backnotprop/pstack:tdd`.
 3. A unique name.
-4. More than one record with the name: exit 1 and list the candidates by source key:
-   `ambiguous skill 'tdd': github:mattpocock/skills:skills/tdd, github:backnotprop/pstack:skills/tdd`.
+4. More than one match in step 2 or 3: exit 1 and list the candidates by source key:
+   `ambiguous skill 'tdd': github:mattpocock/skills@main:skills/tdd, github:backnotprop/pstack@main:skills/tdd`.
 
 Rule 3 keeps current scripts working while a name is unique. Scripts that must work on
 more than one machine use a source key, not an id.
@@ -242,7 +272,7 @@ already accept an id or a unique name.
   lookup returns a list.
 - Route `/skills/hub/<id>`.
 - Library list: when two skills have the same name, each row shows its source
-  (`owner/repo` or folder name) as a second label.
+  (`owner/repo@branch`, the folder name or the archive name) as a second label.
 - `ImportSkillModal`: the current `existingNames` check (it compares case differently
   from the backend) is replaced by `matches` from detection. Same source: "update
   existing", which needs the overwrite checkbox. Same name, different source: an
@@ -280,6 +310,11 @@ Core (`youskill-core`):
 - Import of the same name from two GitHub repositories gives two records, two ids and two
   hub directories `skills/<id>/tdd`.
 - Import with a known source key replaces only with `overwrite`, and never adds a record.
+- Import of one skill from two branches gives two records.
+- Import from the default branch matches a legacy record without a branch, and writes the
+  branch into it.
+- Import of the same zip path again replaces. A different zip with a skill of the same
+  name adds a record.
 - A source change to a key that another record has is refused.
 - Install of the second `tdd` into a root where the first `tdd` is installed: blocked with
   `occupied_by`. With force: the install record moves, and a modified old copy goes to
@@ -294,7 +329,9 @@ Core (`youskill-core`):
 
 CLI (`tests/cli.rs`):
 
-- A skill resolves by id, by source key, by `<owner>/<repo>:<name>` and by unique name.
+- A skill resolves by id, by source key, by a key without branch, by
+  `<owner>/<repo>:<name>` and by unique name. A key without branch that matches two
+  branches exits 1.
 - `show tdd` with two records exits 1 with the ambiguity message.
 - `install` on an occupied target exits 2. With `--force`, it exits 0.
 
@@ -305,8 +342,8 @@ Each step compiles and passes `npm run check` and `npm run test`.
 1. Model and layout: `SkillRecord.name`, UUID ids, `env.hub_dir(id, name)`, the
    migration, `adopt_untracked_hub_dirs`, `name_mismatch` against `record.name`.
    Services take an id. Behavior is the same except for the layout.
-2. Source key and import: `sourceKey`, `replaceId`, `matches` in detection, the
-   uniqueness rule.
+2. Source key and import: `sourceKey`, `SkillSource::Zip.skillPath`, `replaceId`,
+   `matches` in detection, the uniqueness rule, the legacy branch match.
 3. Install: the `occupied_by` blocker and the force transfer.
 4. Scan and source updates: matching by id.
 5. CLI: the shared resolver, the `SOURCE` column, import and install messages.
