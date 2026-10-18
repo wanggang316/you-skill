@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The list column on the left of each page runs to the bottom edge of the window. Content panels keep their gap above the edge ([HAN-252](https://linear.app/gumpw/issue/HAN-252)).
+
 ### Fixed
 
 ### Removed

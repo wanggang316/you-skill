@@ -780,9 +780,10 @@ pre.code-block--compact {
 }
 
 @layer components {
-  /* White content surface that sits on the gray window chrome. */
+  /* White content surface that sits on the gray window chrome. It keeps a gap above the window
+     bottom edge; list columns next to it run to the edge. */
   .surface-panel {
-    @apply border-base-300 bg-base-100 overflow-hidden rounded-xl border;
+    @apply border-base-300 bg-base-100 mb-2 overflow-hidden rounded-xl border;
     box-shadow: 0 1px 2px 0 color-mix(in oklch, var(--color-base-content) 5%, transparent);
   }
 
