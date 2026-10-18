@@ -122,7 +122,7 @@ pub fn report_action<T: Outcome>(ctx: &Ctx, label: &str, result: &T) -> Result<i
     for blocker in result.blockers() {
       eprintln!("  - {}", blocker);
     }
-    eprintln!("Retry with --force to discard the local changes.");
+    eprintln!("Retry with --force to apply it anyway.");
   }
   Ok(if result.applied() {
     EXIT_OK

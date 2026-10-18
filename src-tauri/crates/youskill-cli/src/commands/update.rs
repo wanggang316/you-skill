@@ -65,7 +65,7 @@ pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
     ctx.say("No skills with a GitHub source.");
     return Ok(code);
   }
-  let mut table = Table::new(&["NAME", "STATE", "NOTE"]);
+  let mut table = Table::new(&["NAME", "ID", "STATE", "NOTE"]);
   for update in &checked {
     let state = match (update.update_available, &update.error) {
       (_, Some(_)) => "error",
@@ -75,6 +75,7 @@ pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
     };
     table.row(vec![
       update.name.clone(),
+      update.id.clone(),
       state.to_string(),
       update.error.clone().unwrap_or_default(),
     ]);
