@@ -96,18 +96,24 @@ The hub directory of a skill is `<id>/<name>`, not `<id>`:
 | -------- | ------------------------------------------- | ----------------------------------------------------------------------------- |
 | `github` | `github:<owner>/<repo>@<branch>:<skillDir>` | `owner/repo` in lower case; `skillDir` is `skillPath` without `/SKILL.md`     |
 | `folder` | `folder:<path>`                             | canonical absolute path of the skill directory, for example `folder:/a/b/tdd` |
-| `zip`    | none                                        |                                                                               |
-| `none`   | none                                        |                                                                               |
+| `zip`    | `zip`                                       | type only                                                                     |
+| `none`   | `none`                                      | type only                                                                     |
 
-A key is given only to a source that YouSkill reads again after the import: `github`
-(`check_source_updates`, `pull_source`) and `folder` (`pull_source`, `push_source`). For
-these sources the location is the identity of the skill.
+Every record has a key, and the key always starts with the source type. Thus the key
+shows how a skill came into the hub, also for a zip import.
 
-A `zip` source is read once. The archive path records where the content came from, but a
-download folder path is not an identity: the same archive can be at a different path, and
-a different archive can be at the same path. A key built from it gives wrong matches, so
-`zip` and `none` have no key. An import of such a skill does not replace a record
-automatically. See [Import](#import).
+There are two kinds of key:
+
+- A location key (`<type>:<location>`) is given to a source that YouSkill reads again
+  after the import: `github` (`check_source_updates`, `pull_source`) and `folder`
+  (`pull_source`, `push_source`). For these sources the location is the identity of the
+  skill. A location key is unique and is a reference (see [CLI](#cli)).
+- A type-only key (`zip`, `none`) only records the source type. It is not unique and is
+  not a reference. A `zip` source is read once: the archive path records where the
+  content came from, but it is not an identity, because the same archive can be at a
+  different path and a different archive can be at the same path. `none` has no known
+  origin (legacy migration, `adopt_untracked_hub_dirs`, scan). An import never matches a
+  record by a type-only key. See [Import](#import).
 
 ### Branch
 
@@ -128,8 +134,8 @@ each one can be installed into a different scope.
 
 ### Rules
 
-- No two records have the same `sourceKey`. An import with a known `sourceKey` replaces
-  that record and does not add a new one.
+- No two records have the same location key. An import with a known location key
+  replaces that record and does not add a new one.
 - When a source changes (`pull_source` with an updated source, a repository rename), the
   key is computed again. The id and the hub path do not change. A change to a key that
   another record has is refused.
@@ -164,12 +170,12 @@ key decides. For a source without a key, the user decides. The name never decide
 - `replaceId: None`: create a new record with a new id.
 
 `DetectedSkill` gets `matches: { id, sameSource: bool }[]`: the records with the same
-source key (`sameSource: true`), and the records with the same name and a different or no
-source key (`sameSource: false`). The caller selects:
+location key (`sameSource: true`), and the records with the same name and a different
+location key or a type-only key (`sameSource: false`). The caller selects:
 
 - Same source: replace. This needs `overwrite`, as today, because it discards the old hub
   copy (the old copy goes to `.trash`). `import_one` refuses `replaceId: None` for a known
-  source key.
+  location key.
 - Same name, different source: add as new by default. The user can select one of the
   matches to replace instead. This is how a newer version of a zip skill replaces the
   older one.
@@ -237,22 +243,22 @@ Each command that takes a skill (`show`, `install`, `uninstall`, `remove`, `upda
 `sync`, `diff`) resolves the argument in this order:
 
 1. An id.
-2. A source key, or a part of one that matches one record. The `github:` prefix and
+2. A location key, or a part of one that matches one record. The `github:` prefix and
    `@<branch>` are optional, and `<owner>/<repo>:<name>` matches by name inside that
    repository. Examples: `github:backnotprop/pstack@main:skills/tdd`,
    `backnotprop/pstack:skills/tdd`, `backnotprop/pstack@next:tdd`, `backnotprop/pstack:tdd`.
 3. A unique name.
-4. More than one match in step 2 or 3: exit 1 and list the candidates by source key:
-   `ambiguous skill 'tdd': github:mattpocock/skills@main:skills/tdd, github:backnotprop/pstack@main:skills/tdd`.
+4. More than one match in step 2 or 3: exit 1 and list each candidate with its id and source key:
+   `ambiguous skill 'tdd': 3f2a9c1e (github:mattpocock/skills@main:skills/tdd), 8b71d0f4 (zip)`.
 
 Rule 3 keeps current scripts working while a name is unique. Scripts that must work on
-more than one machine use a source key, not an id.
+more than one machine use a location key, not an id.
 
 Other changes:
 
 - `list` and `show`: a `SOURCE` column with the source key. `--json` gets `id` and
   `sourceKey` on each view. The change only adds fields.
-- `import --overwrite`: replaces the record with the same source key. When only the name
+- `import --overwrite`: replaces the record with the same location key. When only the name
   is equal, the import adds a new record. The import does not fail.
 - `import <zip> --replace <skill>`: replaces the given record (any reference form from
   the list above). It needs `--pick` when the archive has more than one skill. Without
@@ -273,7 +279,7 @@ already accept an id or a unique name.
   label.
 - `ImportSkillModal`: the current `existingNames` check (it compares case differently
   from the backend) is replaced by `matches` from detection. Same source: "update
-  existing", which needs the overwrite checkbox. Same name, different or no source key:
+  existing", which needs the overwrite checkbox. Same name, different location key or a type-only key:
   "add as a second skill `tdd`" by default, with an option to replace one of the
   matches. Neither choice blocks confirm.
 - `InstallSkillModal` and the scope views: a target that is occupied by another skill with
@@ -308,13 +314,15 @@ Core (`youskill-core`):
 
 - Import of the same name from two GitHub repositories gives two records, two ids and two
   hub directories `skills/<id>/tdd`.
-- Import with a known source key replaces only with `overwrite`, and never adds a record.
+- Import with a known location key replaces only with `overwrite`, and never adds a record.
 - Import of one skill from two branches gives two records.
 - Import from the default branch matches a legacy record without a branch, and writes the
   branch into it.
 - A zip import with a known name adds a record. With `replaceId`, it replaces that
   record and keeps its installs.
 - A source change to a key that another record has is refused.
+- `zip` and `none` keys are not resolved as references, and two zip records can have the
+  same name and the same key.
 - Install of the second `tdd` into a root where the first `tdd` is installed: blocked with
   `occupied_by`. With force: the install record moves, and a modified old copy goes to
   `.trash`.
@@ -328,7 +336,7 @@ Core (`youskill-core`):
 
 CLI (`tests/cli.rs`):
 
-- A skill resolves by id, by source key, by a key without branch, by
+- A skill resolves by id, by location key, by a key without branch, by
   `<owner>/<repo>:<name>` and by unique name. A key without branch that matches two
   branches exits 1.
 - `show tdd` with two records exits 1 with the ambiguity message.
