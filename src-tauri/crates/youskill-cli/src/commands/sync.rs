@@ -19,7 +19,7 @@ pub enum Action {
 
 #[derive(clap::Args)]
 pub struct Args {
-  /// Skill name as listed by `youskill list`.
+  /// Skill id, source key (`owner/repo[@branch]:<name>`) or unique name.
   name: String,
   #[arg(value_enum)]
   action: Action,

@@ -4,7 +4,7 @@ use youskill_core::services::hub_service;
 
 #[derive(clap::Args)]
 pub struct Args {
-  /// Skill names as listed by `youskill list`.
+  /// Skill ids, source keys (`owner/repo[@branch]:<name>`) or unique names.
   #[arg(required = true)]
   names: Vec<String>,
   /// Leave copy targets on disk as unmanaged skills. Symlink targets are turned into

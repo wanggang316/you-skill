@@ -655,6 +655,90 @@ fn import_from_folder_and_scan() {
     .stdout(predicate::str::contains("No skills with a GitHub source."));
 }
 
+#[test]
+fn same_name_skills_from_two_folders() {
+  let home = Home::new();
+  with_agents(&home);
+  let first = home.path().join("one").join("tdd");
+  let second = home.path().join("two").join("tdd");
+  home.write_skill(&first, "tdd", "one");
+  home.write_skill(&second, "tdd", "two");
+  for dir in [&first, &second] {
+    home
+      .cmd()
+      .args(["import", dir.to_str().unwrap()])
+      .assert()
+      .success()
+      .stdout(predicate::str::contains("imported"));
+  }
+
+  home
+    .cmd()
+    .args(["show", "tdd"])
+    .assert()
+    .code(1)
+    .stderr(predicate::str::contains("ambiguous skill 'tdd'"));
+  let first_key = format!("folder:{}", first.to_str().unwrap());
+  let second_key = format!("folder:{}", second.to_str().unwrap());
+  let view = show_json(&home, &first_key);
+  assert_eq!(view["sourceKey"], first_key.as_str());
+  let first_id = view["id"].as_str().unwrap().to_string();
+
+  // Importing a known folder again replaces its skill, and only with --overwrite.
+  home
+    .cmd()
+    .args(["import", first.to_str().unwrap()])
+    .assert()
+    .code(1)
+    .stderr(predicate::str::contains("already exists"));
+  home
+    .cmd()
+    .args(["import", first.to_str().unwrap(), "--overwrite"])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains(&first_id))
+    .stdout(predicate::str::contains("replaced"));
+
+  // One agent directory holds one `tdd`.
+  home
+    .cmd()
+    .args(["install", &first_id, "-a", "claude-code", "--mode", "copy"])
+    .assert()
+    .success();
+  home
+    .cmd()
+    .args([
+      "install",
+      &second_key,
+      "-a",
+      "claude-code",
+      "--mode",
+      "copy",
+    ])
+    .assert()
+    .code(2)
+    .stderr(predicate::str::contains("occupied by"));
+  home
+    .cmd()
+    .args([
+      "install",
+      &second_key,
+      "-a",
+      "claude-code",
+      "--mode",
+      "copy",
+      "--force",
+    ])
+    .assert()
+    .success();
+  let installed = fs::read_to_string(home.path().join(".claude/skills/tdd/SKILL.md")).unwrap();
+  assert!(installed.contains("two"));
+  assert!(show_json(&home, &first_id)["installs"]
+    .as_array()
+    .unwrap()
+    .is_empty());
+}
+
 // ---------------------------------------------------------------------------
 // Instructions
 // ---------------------------------------------------------------------------

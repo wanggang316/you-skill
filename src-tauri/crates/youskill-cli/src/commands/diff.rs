@@ -8,7 +8,7 @@ use youskill_core::utils::path::remove_path_any;
 
 #[derive(clap::Args)]
 pub struct Args {
-  /// Skill name as listed by `youskill list`.
+  /// Skill id, source key (`owner/repo[@branch]:<name>`) or unique name.
   name: String,
   /// Compare with this install target (its path as shown by `youskill show`).
   #[arg(long, conflicts_with = "source", required_unless_present = "source")]

@@ -212,6 +212,38 @@ impl SkillSource {
   }
 }
 
+/// Whether `reference` (`[github:]owner/repo[@branch]:<dir or name>` or `folder:<path>`)
+/// names a skill with this source and name.
+fn source_key_matches(source: &SkillSource, name: &str, reference: &str) -> bool {
+  if reference.starts_with("folder:") {
+    return source.key() == format!("folder:{}", folder_key_path(&reference["folder:".len()..]));
+  }
+  let SkillSource::Github {
+    repo,
+    skill_path,
+    branch,
+    ..
+  } = source
+  else {
+    return false;
+  };
+  let reference = reference.strip_prefix("github:").unwrap_or(reference);
+  let Some((location, skill)) = reference.split_once(':') else {
+    return false;
+  };
+  let (wanted_repo, wanted_branch) = match location.split_once('@') {
+    Some((repo, branch)) => (repo, Some(branch)),
+    None => (location, None),
+  };
+  let branch_matches = match (wanted_branch, branch.as_deref()) {
+    (Some(wanted), Some(actual)) if !actual.is_empty() => wanted == actual,
+    _ => true,
+  };
+  repo.trim().eq_ignore_ascii_case(wanted_repo.trim())
+    && branch_matches
+    && (skill_dir_of(skill_path) == skill.trim_matches('/') || name.eq_ignore_ascii_case(skill))
+}
+
 /// `skills/foo/SKILL.md` -> `skills/foo`; a skill at the repository root is `.`.
 fn skill_dir_of(skill_path: &str) -> String {
   let path = skill_path.trim().replace('\\', "/");
@@ -307,8 +339,10 @@ impl Default for LockFile {
 }
 
 impl LockFile {
-  /// Find a skill by id, else by name (names compare case-insensitively). `Ok(None)` when
-  /// nothing matches; an error when the name matches more than one skill.
+  /// Find a skill by id, else by source key, else by name (names compare
+  /// case-insensitively). A source key can leave out `github:` and `@<branch>`, and can end
+  /// in the skill name instead of its directory: `owner/repo:tdd`. `Ok(None)` when nothing
+  /// matches; an error when more than one skill matches.
   pub fn resolve(&self, key: &str) -> Result<Option<(String, SkillRecord)>, String> {
     let key = key.trim();
     if let Some((id, record)) = self
@@ -318,20 +352,28 @@ impl LockFile {
     {
       return Ok(Some((id.clone(), record.clone())));
     }
-    let matches: Vec<(&String, &SkillRecord)> = self
-      .skills
-      .iter()
-      .filter(|(_, record)| record.name.eq_ignore_ascii_case(key))
-      .collect();
+    let matches: Vec<(&String, &SkillRecord)> = if key.contains(':') {
+      self
+        .skills
+        .iter()
+        .filter(|(_, record)| source_key_matches(&record.source, &record.name, key))
+        .collect()
+    } else {
+      self
+        .skills
+        .iter()
+        .filter(|(_, record)| record.name.eq_ignore_ascii_case(key))
+        .collect()
+    };
     match matches.as_slice() {
       [] => Ok(None),
       [(id, record)] => Ok(Some(((*id).clone(), (*record).clone()))),
       _ => Err(format!(
-        "Skill name '{}' matches more than one skill: {}",
+        "ambiguous skill '{}': {}",
         key,
         matches
           .iter()
-          .map(|(id, _)| id.as_str())
+          .map(|(id, record)| format!("{} ({})", id, record.source.key()))
           .collect::<Vec<_>>()
           .join(", ")
       )),
@@ -829,6 +871,7 @@ mod tests {
     assert!(lock.resolve("missing").unwrap().is_none());
     let err = lock.resolve("tdd").unwrap_err();
     assert!(err.contains(&tdd_a) && err.contains(&tdd_b));
+    assert!(err.starts_with("ambiguous skill 'tdd'"), "{err}");
     assert_eq!(lock.find_by_name("tdd").unwrap().0, &tdd_a);
   }
 
@@ -881,6 +924,37 @@ mod tests {
     };
     assert!(!zip.same_location(&zip));
     assert!(!SkillSource::None.same_location(&SkillSource::None));
+  }
+
+  #[test]
+  fn resolve_by_source_key() {
+    let mut lock = LockFile::default();
+    let main = new_skill_id();
+    let next = new_skill_id();
+    let folder = new_skill_id();
+    let mut with_source = |id: &String, source: SkillSource| {
+      let mut record = named("tdd", "1");
+      record.source = source;
+      lock.skills.insert(id.clone(), record);
+    };
+    with_source(&main, github("o/r", "skills/tdd/SKILL.md", Some("main")));
+    with_source(&next, github("o/r", "skills/tdd/SKILL.md", Some("next")));
+    with_source(
+      &folder,
+      SkillSource::Folder {
+        path: "/src/tdd".to_string(),
+      },
+    );
+
+    let id_of = |key: &str| lock.resolve(key).unwrap().map(|(id, _)| id);
+    assert_eq!(id_of("github:o/r@main:skills/tdd"), Some(main.clone()));
+    assert_eq!(id_of("O/R@next:tdd"), Some(next.clone()));
+    assert_eq!(id_of("folder:/src/tdd/"), Some(folder.clone()));
+    assert_eq!(id_of("o/r@dev:tdd"), None);
+    let err = lock.resolve("o/r:tdd").unwrap_err();
+    assert!(
+      err.contains("github:o/r@main:skills/tdd") && err.contains("github:o/r@next:skills/tdd")
+    );
   }
 
   #[test]

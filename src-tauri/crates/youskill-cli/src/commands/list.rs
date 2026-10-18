@@ -1,4 +1,4 @@
-use crate::output::{emit_json, source_label, state_str, Ctx, Table, EXIT_OK};
+use crate::output::{emit_json, state_str, Ctx, Table, EXIT_OK};
 use youskill_core::models::HubSkillView;
 use youskill_core::services::env::Env;
 
@@ -28,12 +28,13 @@ pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
     });
     return Ok(EXIT_OK);
   }
-  let mut table = Table::new(&["NAME", "HUB", "SOURCE", "SOURCE STATE", "TARGETS"]);
+  let mut table = Table::new(&["NAME", "ID", "HUB", "SOURCE", "SOURCE STATE", "TARGETS"]);
   for skill in &skills {
     table.row(vec![
       skill.name.clone(),
+      skill.id.clone(),
       state_str(&skill.hub_state),
-      source_label(&skill.source),
+      skill.source_key.clone(),
       state_str(&skill.source_state),
       super::targets_summary(skill),
     ]);
