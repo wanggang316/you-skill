@@ -46,16 +46,10 @@
 
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    class="group absolute top-0 bottom-0 z-20 flex w-2 -translate-x-1/2 cursor-col-resize justify-center"
+    class="absolute top-0 bottom-0 z-20 w-2 -translate-x-1/2 cursor-col-resize"
     style={`left: ${$listPaneWidth}px;`}
     title={$t("splitView.resize")}
     onpointerdown={startResize}
     ondblclick={() => saveListPaneWidth(LIST_PANE.initial)}
-  >
-    <span
-      class={`bg-primary/60 my-3 w-0.5 rounded-full transition-opacity duration-150 ${
-        resizing ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-      }`}
-    ></span>
-  </div>
+  ></div>
 </div>
