@@ -693,6 +693,9 @@ pub struct AgentRootMatch {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanItem {
+  /// The hub skill this folder belongs to; `None` when it is new.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub id: Option<String>,
   pub name: String,
   pub path: String,
   #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -731,6 +734,9 @@ impl ScanResolution {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanDecision {
+  /// The hub skill from the scan item; `None` selects the oldest skill with the name.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub id: Option<String>,
   pub name: String,
   pub path: String,
   pub resolution: ScanResolution,

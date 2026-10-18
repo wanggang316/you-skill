@@ -1,7 +1,8 @@
 //! Scan a folder for skills and reconcile them with the hub.
 
 use crate::models::{
-  ImportItem, ImportOutcome, ScanDecision, ScanItem, ScanResolution, ScanStatus, SkillSource,
+  ImportItem, ImportOutcome, LockFile, ScanDecision, ScanItem, ScanResolution, ScanStatus,
+  SkillRecord, SkillSource,
 };
 use crate::services::env::Env;
 use crate::services::hub_service::{find_skill, import_skills, pull_from_dir};
@@ -34,6 +35,7 @@ pub fn scan_folder(env: &Env, path: &str, max_depth: usize) -> Result<Vec<ScanIt
     let path_text = path_to_string(&dir);
     if is_within(&dir, &env.hub_root) {
       items.push(ScanItem {
+        id: None,
         name,
         path: path_text,
         hash: None,
@@ -47,6 +49,7 @@ pub fn scan_folder(env: &Env, path: &str, max_depth: usize) -> Result<Vec<ScanIt
     }
     if let Err(err) = validate_skill_name(&name) {
       items.push(ScanItem {
+        id: None,
         name,
         path: path_text,
         hash: None,
@@ -61,7 +64,12 @@ pub fn scan_folder(env: &Env, path: &str, max_depth: usize) -> Result<Vec<ScanIt
 
     let in_agent_root = classify_agent_root(env, &dir);
     let source_hint = legacy_source_hint(env, &dir, &name);
-    let record = lock.find_by_name(&name);
+    let (hash, error) = match hash_dir_cached(&dir) {
+      Ok(hash) => (Some(hash), None),
+      Err(err) => (None, Some(err)),
+    };
+    let record = match_record(env, &lock, &dir, &name, hash.as_deref());
+    let id = record.map(|(id, _)| id.clone());
     let hub_dir = record.map(|(id, record)| env.hub_dir(id, &record.name));
     let hub_hash = hub_dir
       .as_deref()
@@ -73,6 +81,7 @@ pub fn scan_folder(env: &Env, path: &str, max_depth: usize) -> Result<Vec<ScanIt
         .is_some_and(|hub_dir| symlink_points_to(&dir, hub_dir))
     {
       items.push(ScanItem {
+        id,
         name,
         path: path_text,
         hash: hub_hash.clone(),
@@ -85,16 +94,13 @@ pub fn scan_folder(env: &Env, path: &str, max_depth: usize) -> Result<Vec<ScanIt
       continue;
     }
 
-    let (hash, error) = match hash_dir_cached(&dir) {
-      Ok(hash) => (Some(hash), None),
-      Err(err) => (None, Some(err)),
-    };
     let status = match (record, &hash, &hub_hash) {
       (None, _, _) => ScanStatus::New,
       (Some(_), Some(hash), Some(hub_hash)) if hash == hub_hash => ScanStatus::Identical,
       (Some(_), _, _) => ScanStatus::Different,
     };
     items.push(ScanItem {
+      id,
       name,
       path: path_text,
       hash,
@@ -107,6 +113,46 @@ pub fn scan_folder(env: &Env, path: &str, max_depth: usize) -> Result<Vec<ScanIt
   }
 
   Ok(items)
+}
+
+/// The hub skill a scanned folder belongs to: the skill a symlink points to, the skill that
+/// has the folder as an install, the skill with the name and the same content, else the
+/// oldest skill with the name.
+fn match_record<'a>(
+  env: &Env,
+  lock: &'a LockFile,
+  dir: &Path,
+  name: &str,
+  hash: Option<&str>,
+) -> Option<(&'a String, &'a SkillRecord)> {
+  let records = || lock.skills.iter();
+  if is_symlink(dir) {
+    if let Some(found) =
+      records().find(|(id, record)| symlink_points_to(dir, &env.hub_dir(id, &record.name)))
+    {
+      return Some(found);
+    }
+  }
+  if let Some(found) = records().find(|(_, record)| {
+    record
+      .installs
+      .iter()
+      .any(|install| same_path(Path::new(&install.path), dir))
+  }) {
+    return Some(found);
+  }
+  if let Some(hash) = hash {
+    if let Some(found) = records().find(|(id, record)| {
+      record.name.eq_ignore_ascii_case(name)
+        && hash_dir_cached(&env.hub_dir(id, &record.name))
+          .ok()
+          .as_deref()
+          == Some(hash)
+    }) {
+      return Some(found);
+    }
+  }
+  lock.find_by_name(name)
 }
 
 /// GitHub provenance recorded by the previous lock formats next to a scanned skill:
@@ -168,8 +214,15 @@ fn import_one_decision(
   let name = decision.name.trim().to_string();
   let dir = normalize_dir_path(&decision.path, &env.home)?;
   let in_agent_root = classify_agent_root(env, &dir);
-  let existing = find_skill(env, &name)?;
+  let existing = match decision.id.as_deref() {
+    Some(id) => find_skill(env, id)?,
+    None => store(env)
+      .read()?
+      .find_by_name(&name)
+      .map(|(id, record)| (id.clone(), record.clone())),
+  };
   let exists = existing.is_some();
+  let mut target_id = existing.as_ref().map(|(id, _)| id.clone());
 
   let resolution = match decision.resolution {
     ScanResolution::Skip => return Ok(None),
@@ -202,10 +255,15 @@ fn import_one_decision(
         }],
         false,
       )?;
-      outcomes.pop()
+      let outcome = outcomes.pop();
+      target_id = outcome.as_ref().map(|outcome| outcome.id.clone());
+      outcome
     },
     ScanResolution::AdoptIntoHub => {
-      let result = pull_from_dir(env, &name, &dir, decision.source.clone(), true)?;
+      let id = target_id
+        .clone()
+        .ok_or_else(|| "Skill is not in the hub".to_string())?;
+      let result = pull_from_dir(env, &id, &dir, decision.source.clone(), true)?;
       let skill = result
         .skill
         .ok_or_else(|| "Skill is not in the hub".to_string())?;
@@ -244,11 +302,11 @@ fn import_one_decision(
 
   let register = decision.register_install || resolution == ScanResolution::RegisterOnly;
   if let Some(matched) = in_agent_root {
-    if register && find_skill(env, &name)?.is_some() {
+    if let Some(id) = target_id.filter(|_| register) {
       let _ops = ops_guard(env)?;
       register_existing_install(
         env,
-        &name,
+        &id,
         &dir,
         matched.scope,
         matched.project_path.clone(),
@@ -342,6 +400,7 @@ mod tests {
     let outcomes = import_scanned(
       &env,
       vec![ScanDecision {
+        id: None,
         name: "foo".to_string(),
         path: items[0].path.clone(),
         resolution: ScanResolution::Import,
@@ -363,6 +422,7 @@ mod tests {
     import_scanned(
       &env,
       vec![ScanDecision {
+        id: None,
         name: "foo".to_string(),
         path: items[0].path.clone(),
         resolution: ScanResolution::AdoptIntoHub,
@@ -387,6 +447,7 @@ mod tests {
     import_scanned(
       &env,
       vec![ScanDecision {
+        id: None,
         name: "foo".to_string(),
         path: items[0].path.clone(),
         resolution: ScanResolution::PushFromHub,
@@ -410,6 +471,7 @@ mod tests {
     write(&project_dir, "SKILL.md", "---\nname: dup\n---\nPROJECT");
 
     let decision = |path: &Path, resolution: ScanResolution| ScanDecision {
+      id: None,
       name: "dup".to_string(),
       path: path_to_string(path),
       resolution,
@@ -457,6 +519,7 @@ mod tests {
       &env,
       vec![
         ScanDecision {
+          id: None,
           name: "orphan".to_string(),
           path: path_to_string(&orphan),
           resolution: ScanResolution::RegisterOnly,
@@ -464,6 +527,7 @@ mod tests {
           source: None,
         },
         ScanDecision {
+          id: None,
           name: "other".to_string(),
           path: path_to_string(&other),
           resolution: ScanResolution::Import,
@@ -477,6 +541,89 @@ mod tests {
     assert_eq!(outcomes.len(), 1);
     assert_eq!(outcomes[0].name, "other");
     assert!(get_hub_skill(&env, "orphan").unwrap().is_none());
+  }
+
+  #[test]
+  fn scan_selects_the_same_name_skill_by_install_path_then_content() {
+    use crate::models::{InstallMode, InstallRequest, InstallTargetSpec};
+    use crate::services::install_service::install_skill;
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env(tmp.path());
+    let staged = |label: &str, repo: &str| {
+      let dir = tmp.path().join("staged").join(label).join("tdd");
+      write(&dir, "SKILL.md", &format!("---\nname: tdd\n---\n{label}"));
+      ImportItem {
+        name: "tdd".to_string(),
+        tmp_path: path_to_string(&dir),
+        source: SkillSource::Folder {
+          path: format!("/src/{repo}/tdd"),
+        },
+        replace_id: None,
+      }
+    };
+    let a = import_skills(&env, vec![staged("A", "a")], false).unwrap()[0]
+      .id
+      .clone();
+    let b = import_skills(&env, vec![staged("B", "b")], false).unwrap()[0]
+      .id
+      .clone();
+    install_skill(
+      &env,
+      InstallRequest {
+        name: b.clone(),
+        targets: vec![InstallTargetSpec {
+          scope: InstallScope::User,
+          project_path: None,
+          agent_id: "claude-code".to_string(),
+        }],
+        mode: Some(InstallMode::Copy),
+        force: false,
+      },
+    )
+    .unwrap();
+
+    // An install of `b`, edited: still `b`, by its install path.
+    let claude = env.home.join(".claude/skills");
+    write(&claude, "tdd/SKILL.md", "---\nname: tdd\n---\nedited");
+    let items = scan_folder(&env, &claude.to_string_lossy(), DEFAULT_SCAN_DEPTH).unwrap();
+    assert_eq!(items[0].id.as_deref(), Some(b.as_str()));
+    assert_eq!(items[0].status, ScanStatus::Different);
+
+    // A loose copy of `b`: `b`, by its content. Another copy: the oldest skill.
+    let loose = tmp.path().join("loose");
+    write(&loose, "copy/SKILL.md", "---\nname: tdd\n---\nB");
+    write(&loose, "other/SKILL.md", "---\nname: tdd\n---\nC");
+    let items = scan_folder(&env, &loose.to_string_lossy(), DEFAULT_SCAN_DEPTH).unwrap();
+    let by_dir = |dir: &str| {
+      items
+        .iter()
+        .find(|item| item.path.ends_with(dir))
+        .unwrap()
+        .clone()
+    };
+    assert_eq!(by_dir("copy").id.as_deref(), Some(b.as_str()));
+    assert_eq!(by_dir("copy").status, ScanStatus::Identical);
+    assert_eq!(by_dir("other").id.as_deref(), Some(a.as_str()));
+
+    // A decision with the id adopts into that skill.
+    import_scanned(
+      &env,
+      vec![ScanDecision {
+        id: Some(b.clone()),
+        name: "tdd".to_string(),
+        path: by_dir("other").path,
+        resolution: ScanResolution::AdoptIntoHub,
+        register_install: false,
+        source: None,
+      }],
+    )
+    .unwrap();
+    assert!(fs::read_to_string(env.hub_dir_of(&b).join("SKILL.md"))
+      .unwrap()
+      .ends_with("C"));
+    assert!(fs::read_to_string(env.hub_dir_of(&a).join("SKILL.md"))
+      .unwrap()
+      .ends_with("A"));
   }
 
   #[test]

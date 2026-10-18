@@ -956,7 +956,6 @@ mod tests {
       false,
     )
     .unwrap();
-    std::thread::sleep(std::time::Duration::from_millis(1100));
     let newer = import(
       &env,
       staged_from(tmp.path(), "tdd", "2", zip("/b.zip")),
