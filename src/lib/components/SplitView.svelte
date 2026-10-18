@@ -37,9 +37,10 @@
   }
 </script>
 
+<!-- The list column runs into the shell's bottom padding so it reaches the window edge. -->
 <div
   bind:this={container}
-  class={`relative grid min-h-0 flex-1 ${resizing ? "cursor-col-resize select-none" : ""}`}
+  class={`relative grid min-h-0 flex-1 [&>:first-child]:-mb-2 ${resizing ? "cursor-col-resize select-none" : ""}`}
   style={`grid-template-columns: ${$listPaneWidth}px minmax(0, 1fr);`}
 >
   {@render children()}
