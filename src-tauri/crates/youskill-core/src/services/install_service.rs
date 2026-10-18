@@ -285,15 +285,38 @@ pub fn install_skill(env: &Env, request: InstallRequest) -> Result<ActionResult,
   let requested_mode = request.mode.unwrap_or_default();
   let hub_hash = hash_dir_cached(&hub_dir)?;
   let groups = group_targets(env, &name, &request.targets)?;
+  let lock = store.read()?;
 
   let mut blockers = Vec::new();
   let mut plans: Vec<(usize, Plan)> = Vec::new();
+  // Install paths that move from another skill with the same name to this one.
+  let mut taken: Vec<(usize, String, PathBuf)> = Vec::new();
   for (index, group) in groups.iter().enumerate() {
     let existing = record
       .installs
       .iter()
       .find(|install| same_path(Path::new(&install.path), &group.path));
-    let plan = if let Some(existing) = existing {
+    let owner = lock.skills.iter().find(|(other, other_record)| {
+      **other != id
+        && other_record
+          .installs
+          .iter()
+          .any(|install| same_path(Path::new(&install.path), &group.path))
+    });
+    let plan = if let Some((other, other_record)) = owner.filter(|_| existing.is_none()) {
+      if !request.force {
+        blockers.push(format!(
+          "{} is occupied by '{}' ({}, {}); use force to replace it",
+          group.path.to_string_lossy(),
+          other_record.name,
+          other,
+          other_record.source.key()
+        ));
+        continue;
+      }
+      taken.push((index, other.clone(), group.path.clone()));
+      Plan::Write(requested_mode)
+    } else if let Some(existing) = existing {
       let (state, _) = target_state(&hub_dir, existing, Some(&hub_hash));
       let mode = request.mode.unwrap_or(existing.mode);
       if mode != existing.mode && !request.force {
@@ -344,6 +367,14 @@ pub fn install_skill(env: &Env, request: InstallRequest) -> Result<ActionResult,
   }
 
   let mut errors = Vec::new();
+  // The other skill's copy may hold local edits: keep it in the trash.
+  for (_, _, path) in &taken {
+    if path.is_dir() && !is_symlink(path) {
+      if let Err(err) = super::hub_service::trash_dir(env, path) {
+        errors.push(format!("{}: {}", path.to_string_lossy(), err));
+      }
+    }
+  }
   let mut effective_modes: BTreeMap<usize, InstallMode> = BTreeMap::new();
   for (index, plan) in plans {
     let group = &groups[index];
@@ -362,6 +393,16 @@ pub fn install_skill(env: &Env, request: InstallRequest) -> Result<ActionResult,
 
   let timestamp = now();
   store.update(|lock| {
+    for (index, other, path) in &taken {
+      if !effective_modes.contains_key(index) {
+        continue;
+      }
+      if let Some(other_record) = lock.skills.get_mut(other) {
+        other_record
+          .installs
+          .retain(|install| !same_path(Path::new(&install.path), path));
+      }
+    }
     let record = lock
       .skills
       .get_mut(&id)
@@ -1148,6 +1189,111 @@ mod tests {
     assert!(fs::read_to_string(target.join("SKILL.md"))
       .unwrap()
       .ends_with("v1"));
+  }
+
+  /// A second skill named `foo` from another source.
+  fn add_second_foo(env: &Env) -> String {
+    let id = "00000000-0000-4000-8000-000000000002".to_string();
+    let hub = env.hub_dir(&id, "foo");
+    write(&hub, "SKILL.md", "---\nname: foo\n---\nother");
+    let hash = hash_dir(&hub).unwrap();
+    store(env)
+      .update(|lock| {
+        lock.skills.insert(
+          id.clone(),
+          SkillRecord {
+            name: "foo".to_string(),
+            source: SkillSource::Zip {
+              path: "/foo.zip".to_string(),
+            },
+            hash,
+            imported_at: "t2".to_string(),
+            updated_at: "t2".to_string(),
+            installs: vec![],
+          },
+        );
+        Ok(())
+      })
+      .unwrap();
+    id
+  }
+
+  #[test]
+  fn install_onto_a_target_of_another_same_name_skill_is_blocked_then_moved() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env_with_hub(tmp.path(), vec![]);
+    let other = add_second_foo(&env);
+    let request = |key: &str, force: bool| InstallRequest {
+      name: key.to_string(),
+      targets: vec![spec(InstallScope::User, None, "claude-code")],
+      mode: Some(InstallMode::Copy),
+      force,
+    };
+    install_skill(&env, request(ID, false)).unwrap();
+    let target = env.home.join(".claude/skills/foo");
+    write(&target, "SKILL.md", "local edit");
+
+    let blocked = install_skill(&env, request(&other, false)).unwrap();
+    assert!(!blocked.applied);
+    assert!(
+      blocked.blockers[0].contains("occupied by"),
+      "{:?}",
+      blocked.blockers
+    );
+    assert_eq!(
+      fs::read_to_string(target.join("SKILL.md")).unwrap(),
+      "local edit"
+    );
+
+    let forced = install_skill(&env, request(&other, true)).unwrap();
+    assert!(forced.applied);
+    assert!(fs::read_to_string(target.join("SKILL.md"))
+      .unwrap()
+      .ends_with("other"));
+    assert!(view_of(&env, ID).unwrap().installs.is_empty());
+    assert_eq!(view_of(&env, &other).unwrap().installs.len(), 1);
+    let trashed = fs::read_dir(&env.trash_root)
+      .unwrap()
+      .next()
+      .unwrap()
+      .unwrap();
+    assert_eq!(
+      fs::read_to_string(trashed.path().join("SKILL.md")).unwrap(),
+      "local edit"
+    );
+  }
+
+  #[test]
+  fn same_name_skills_install_into_different_scopes() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("proj");
+    fs::create_dir_all(&project).unwrap();
+    let env = env_with_hub(tmp.path(), vec![]);
+    let other = add_second_foo(&env);
+    let install = |key: &str, scope: InstallScope, project: Option<&Path>| {
+      install_skill(
+        &env,
+        InstallRequest {
+          name: key.to_string(),
+          targets: vec![spec(scope, project, "claude-code")],
+          mode: Some(InstallMode::Copy),
+          force: false,
+        },
+      )
+      .unwrap()
+    };
+    assert!(install(ID, InstallScope::User, None).applied);
+    assert!(install(&other, InstallScope::Project, Some(&project)).applied);
+    assert!(
+      fs::read_to_string(project.join(".claude/skills/foo/SKILL.md"))
+        .unwrap()
+        .ends_with("other")
+    );
+    assert!(
+      fs::read_to_string(env.home.join(".claude/skills/foo/SKILL.md"))
+        .unwrap()
+        .ends_with("v1")
+    );
   }
 
   #[test]
