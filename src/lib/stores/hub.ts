@@ -45,10 +45,19 @@ export const skillLabel = derived([hubSkillsById, sharedSkillNames], ([$byId, $s
   return (id: string): string => {
     const skill = $byId.get(id);
     if (!skill) return id;
-    const source = sourceLabel(skill.source) || skill.sourceKey;
+    const source = sourceHint(skill);
     return $shared.has(skill.name.toLowerCase()) ? `${skill.name} (${source})` : skill.name;
   };
 });
+
+/** Short source of a skill: `owner/repo@branch`, or the folder or archive name. */
+function sourceHint(skill: HubSkillView): string {
+  const { source } = skill;
+  if (source.type === "folder" || source.type === "zip") {
+    return source.path.split(/[/\\]/).filter(Boolean).pop() ?? source.path;
+  }
+  return sourceLabel(source) || skill.sourceKey;
+}
 
 function compareSkills(a: HubSkillView, b: HubSkillView): number {
   return a.name.localeCompare(b.name) || a.sourceKey.localeCompare(b.sourceKey);
