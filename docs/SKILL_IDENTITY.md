@@ -1,9 +1,18 @@
 # Skill Identity
 
-Status: proposed. This document describes how the hub separates the identity of a skill
-from its name. When the change is implemented, move the stable parts into
-[ARCHITECTURE.md](ARCHITECTURE.md) and [CLI.md](CLI.md) and keep this file as the design
-record.
+Status: implemented. This document is the design record of how the hub separates the
+identity of a skill from its name. [ARCHITECTURE.md](ARCHITECTURE.md) and
+[CLI.md](CLI.md) describe the current behavior.
+
+The implementation differs from this design in these points:
+
+- Detection results do not carry the matches. `plan_import(items)` returns an
+  `ImportPlan` per import item (`matches`, `defaultReplaceId`, `replaceRequired`), because
+  the source of an item is only known when the caller builds it.
+- `InstallRequest.name` and `UninstallRequest.name` keep their name and take an id or a
+  unique name. The Tauri commands that take one skill take `id`.
+- `list` shows an `ID` column next to the `SOURCE` column.
+- A failed relink during the migration is logged, not put in the migration report.
 
 ## Problem
 
@@ -173,9 +182,9 @@ the user confirms it.
 Every replace needs `overwrite`, as today, because it discards the old hub copy (the old
 copy goes to `.trash`).
 
-`DetectedSkill` gets `matches: { id, sameSource: bool }[]`: the records with the same
+`plan_import` returns `matches: { id, sameSource: bool }[]`: the records with the same
 location key (`sameSource: true`), and the records with the same name and a different
-location key or a type-only key (`sameSource: false`). It also gets `defaultReplaceId`:
+location key or a type-only key (`sameSource: false`). It also returns `defaultReplaceId`:
 
 | Detected source | Existing record with the same name     | `defaultReplaceId`            | Can change |
 | --------------- | -------------------------------------- | ----------------------------- | ---------- |
