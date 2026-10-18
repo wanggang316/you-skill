@@ -92,16 +92,22 @@ The hub directory of a skill is `<id>/<name>`, not `<id>`:
 
 ## Source key
 
-| Source   | `sourceKey`                                 | Normalization                                                                      |
-| -------- | ------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `github` | `github:<owner>/<repo>@<branch>:<skillDir>` | `owner/repo` in lower case; `skillDir` is `skillPath` without `/SKILL.md`          |
-| `folder` | `folder:<path>`                             | canonical absolute path of the skill directory, for example `folder:/a/b/tdd`      |
-| `zip`    | `zip:<archive>:<skillDir>`                  | canonical absolute path of the archive; `skillDir` is relative to the archive root |
-| `none`   | none                                        |                                                                                    |
+| Source   | `sourceKey`                                 | Normalization                                                                 |
+| -------- | ------------------------------------------- | ----------------------------------------------------------------------------- |
+| `github` | `github:<owner>/<repo>@<branch>:<skillDir>` | `owner/repo` in lower case; `skillDir` is `skillPath` without `/SKILL.md`     |
+| `folder` | `folder:<path>`                             | canonical absolute path of the skill directory, for example `folder:/a/b/tdd` |
+| `zip`    | none                                        |                                                                               |
+| `none`   | none                                        |                                                                               |
 
-Every source that an import can make has a key. `none` comes only from the legacy
-migration, from `adopt_untracked_hub_dirs` and from a scan. These records have no known
-origin, so they have no key and an import never matches them.
+A key is given only to a source that YouSkill reads again after the import: `github`
+(`check_source_updates`, `pull_source`) and `folder` (`pull_source`, `push_source`). For
+these sources the location is the identity of the skill.
+
+A `zip` source is read once. The archive path records where the content came from, but a
+download folder path is not an identity: the same archive can be at a different path, and
+a different archive can be at the same path. A key built from it gives wrong matches, so
+`zip` and `none` have no key. An import of such a skill does not replace a record
+automatically. See [Import](#import).
 
 ### Branch
 
@@ -119,20 +125,6 @@ each one can be installed into a different scope.
   `github:<owner>/<repo>:<skillDir>`. An import that resolves the default branch of that
   repository matches such a record, and the replace writes the branch into the record.
   Thus a legacy record does not get a duplicate.
-
-### Zip
-
-The archive path stands in for the origin, because an archive has no other identity:
-
-- The same archive at the same path, imported again: the same key, so a replace.
-- A different archive with a skill of the same name: a different key, so a new record. A
-  match by name would replace the other skill without notice.
-- The same archive after a move or a rename: a different key, so a duplicate record. The
-  duplicate is visible in the library and the user can remove it. This failure is safer
-  than a wrong replace.
-
-`SkillSource::Zip` gets `skillPath` (from `DetectedSkill.skill_path`). A legacy zip record
-without `skillPath` uses `zip:<archive>:<name>`.
 
 ### Rules
 
@@ -162,8 +154,8 @@ without `skillPath` uses `zip:<archive>:<name>`.
 
 ## Import
 
-An import adds a new record or replaces an existing record. The source key decides which
-one, not the name.
+An import adds a new record or replaces an existing record. For a source with a key, the
+key decides. For a source without a key, the user decides. The name never decides alone.
 
 `ImportItem` gets an optional `replaceId`:
 
@@ -172,13 +164,15 @@ one, not the name.
 - `replaceId: None`: create a new record with a new id.
 
 `DetectedSkill` gets `matches: { id, sameSource: bool }[]`: the records with the same
-source key (`sameSource: true`), and the records with the same name and a different
-source (`sameSource: false`). The caller selects:
+source key (`sameSource: true`), and the records with the same name and a different or no
+source key (`sameSource: false`). The caller selects:
 
 - Same source: replace. This needs `overwrite`, as today, because it discards the old hub
   copy (the old copy goes to `.trash`). `import_one` refuses `replaceId: None` for a known
   source key.
-- Same name, different source: add as new. This does not block the import.
+- Same name, different source: add as new by default. The user can select one of the
+  matches to replace instead. This is how a newer version of a zip skill replaces the
+  older one.
 
 `ImportOutcome` gets `id`.
 
@@ -260,6 +254,9 @@ Other changes:
   `sourceKey` on each view. The change only adds fields.
 - `import --overwrite`: replaces the record with the same source key. When only the name
   is equal, the import adds a new record. The import does not fail.
+- `import <zip> --replace <skill>`: replaces the given record (any reference form from
+  the list above). It needs `--pick` when the archive has more than one skill. Without
+  `--replace`, a zip import always adds new records.
 - `install` on an occupied target: prints the `occupied_by` blocker and exits 2. `--force`
   moves the install.
 
@@ -272,11 +269,13 @@ already accept an id or a unique name.
   lookup returns a list.
 - Route `/skills/hub/<id>`.
 - Library list: when two skills have the same name, each row shows its source
-  (`owner/repo@branch`, the folder name or the archive name) as a second label.
+  (`owner/repo@branch`, the folder name, the archive name or the import date) as a second
+  label.
 - `ImportSkillModal`: the current `existingNames` check (it compares case differently
   from the backend) is replaced by `matches` from detection. Same source: "update
-  existing", which needs the overwrite checkbox. Same name, different source: an
-  informational line "added as a second skill `tdd`", which does not block confirm.
+  existing", which needs the overwrite checkbox. Same name, different or no source key:
+  "add as a second skill `tdd`" by default, with an option to replace one of the
+  matches. Neither choice blocks confirm.
 - `InstallSkillModal` and the scope views: a target that is occupied by another skill with
   the same name goes through `confirmForce`, as other blockers do.
 
@@ -313,8 +312,8 @@ Core (`youskill-core`):
 - Import of one skill from two branches gives two records.
 - Import from the default branch matches a legacy record without a branch, and writes the
   branch into it.
-- Import of the same zip path again replaces. A different zip with a skill of the same
-  name adds a record.
+- A zip import with a known name adds a record. With `replaceId`, it replaces that
+  record and keeps its installs.
 - A source change to a key that another record has is refused.
 - Install of the second `tdd` into a root where the first `tdd` is installed: blocked with
   `occupied_by`. With force: the install record moves, and a modified old copy goes to
@@ -342,8 +341,8 @@ Each step compiles and passes `npm run check` and `npm run test`.
 1. Model and layout: `SkillRecord.name`, UUID ids, `env.hub_dir(id, name)`, the
    migration, `adopt_untracked_hub_dirs`, `name_mismatch` against `record.name`.
    Services take an id. Behavior is the same except for the layout.
-2. Source key and import: `sourceKey`, `SkillSource::Zip.skillPath`, `replaceId`,
-   `matches` in detection, the uniqueness rule, the legacy branch match.
+2. Source key and import: `sourceKey`, `replaceId`, `matches` in detection, the
+   uniqueness rule, the legacy branch match.
 3. Install: the `occupied_by` blocker and the force transfer.
 4. Scan and source updates: matching by id.
 5. CLI: the shared resolver, the `SOURCE` column, import and install messages.
