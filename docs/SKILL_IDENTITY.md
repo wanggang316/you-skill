@@ -160,8 +160,9 @@ each one can be installed into a different scope.
 
 ## Import
 
-An import adds a new record or replaces an existing record. For a source with a key, the
-key decides. For a source without a key, the user decides. The name never decides alone.
+An import adds a new record or replaces an existing record. For a source with a location
+key, the key decides. For a source with a type-only key, the import proposes a default and
+the user confirms it.
 
 `ImportItem` gets an optional `replaceId`:
 
@@ -169,16 +170,28 @@ key decides. For a source without a key, the user decides. The name never decide
   in sync receive the new content (this is the current `overwrite` behavior).
 - `replaceId: None`: create a new record with a new id.
 
+Every replace needs `overwrite`, as today, because it discards the old hub copy (the old
+copy goes to `.trash`).
+
 `DetectedSkill` gets `matches: { id, sameSource: bool }[]`: the records with the same
 location key (`sameSource: true`), and the records with the same name and a different
-location key or a type-only key (`sameSource: false`). The caller selects:
+location key or a type-only key (`sameSource: false`). It also gets `defaultReplaceId`:
 
-- Same source: replace. This needs `overwrite`, as today, because it discards the old hub
-  copy (the old copy goes to `.trash`). `import_one` refuses `replaceId: None` for a known
-  location key.
-- Same name, different source: add as new by default. The user can select one of the
-  matches to replace instead. This is how a newer version of a zip skill replaces the
-  older one.
+| Detected source | Existing record with the same name     | `defaultReplaceId`            | Can change |
+| --------------- | -------------------------------------- | ----------------------------- | ---------- |
+| `github`        | same location key                      | that record                   | no         |
+| `folder`        | same location key                      | that record                   | no         |
+| `zip`           | key `zip` or `none`                    | the one updated most recently | yes        |
+| any             | only records with another location key | none (add as new)             | yes        |
+
+- Same location key: replace, and `import_one` refuses `replaceId: None`. Two records with
+  one location key cannot exist.
+- `zip`: a new version of an archive is the usual case, so a same-name `zip` or `none`
+  record is replaced by default. The user can select another match or "add as new".
+  When more than one such record exists, the default is the one with the latest
+  `updatedAt`, and the UI lists the others.
+- Different location key: add as new by default. The user can select a match to replace
+  instead.
 
 `ImportOutcome` gets `id`.
 
@@ -258,11 +271,13 @@ Other changes:
 
 - `list` and `show`: a `SOURCE` column with the source key. `--json` gets `id` and
   `sourceKey` on each view. The change only adds fields.
-- `import --overwrite`: replaces the record with the same location key. When only the name
-  is equal, the import adds a new record. The import does not fail.
+- `import` uses `defaultReplaceId`. When it is set, the import needs `--overwrite`, else
+  it exits 1 and names the record, as today. When it is not set, the import adds a new
+  record and prints its id.
 - `import <zip> --replace <skill>`: replaces the given record (any reference form from
-  the list above). It needs `--pick` when the archive has more than one skill. Without
-  `--replace`, a zip import always adds new records.
+  the list above) instead of the default. It needs `--pick` when the archive has more
+  than one skill, and it needs `--overwrite`.
+- `import <zip> --add`: adds a new record also when a default replace exists.
 - `install` on an occupied target: prints the `occupied_by` blocker and exits 2. `--force`
   moves the install.
 
@@ -279,9 +294,11 @@ already accept an id or a unique name.
   label.
 - `ImportSkillModal`: the current `existingNames` check (it compares case differently
   from the backend) is replaced by `matches` from detection. Same source: "update
-  existing", which needs the overwrite checkbox. Same name, different location key or a type-only key:
-  "add as a second skill `tdd`" by default, with an option to replace one of the
-  matches. Neither choice blocks confirm.
+  existing", which needs the overwrite checkbox. A zip skill with a same-name `zip` or
+  `none` record: "replace `tdd`" is selected by default and needs the overwrite
+  checkbox; the user can select another match or "add as new". Same name, different
+  location key: "add as a second skill `tdd`" by default, with an option to replace one
+  of the matches.
 - `InstallSkillModal` and the scope views: a target that is occupied by another skill with
   the same name goes through `confirmForce`, as other blockers do.
 
@@ -318,8 +335,10 @@ Core (`youskill-core`):
 - Import of one skill from two branches gives two records.
 - Import from the default branch matches a legacy record without a branch, and writes the
   branch into it.
-- A zip import with a known name adds a record. With `replaceId`, it replaces that
-  record and keeps its installs.
+- A zip import with a same-name `zip` record proposes that record as `defaultReplaceId`;
+  with two such records, the one updated most recently. A replace without `overwrite` is
+  refused. With `replaceId: None`, the import adds a record.
+- A zip import with only a same-name `github` record proposes no replace.
 - A source change to a key that another record has is refused.
 - `zip` and `none` keys are not resolved as references, and two zip records can have the
   same name and the same key.
