@@ -248,15 +248,15 @@ impl Candidate<'_> {
       missing: self.missing,
     };
 
-    let best_name = self
-      .names
+    let shown = match_name(self.names[0], query);
+    let best = self.names[1..]
       .iter()
-      .enumerate()
-      .filter_map(|(index, name)| match_name(name, query).map(|found| (found, index)))
-      .min_by_key(|((rank, _), index)| (*rank, *index));
-    if let Some(((rank, ranges), index)) = best_name {
-      // Ranges of another name do not apply to the name that is shown.
-      let ranges = if index == 0 { ranges } else { Vec::new() };
+      .filter_map(|name| match_name(name, query).map(|(rank, _)| rank))
+      .chain(shown.as_ref().map(|(rank, _)| *rank))
+      .min();
+    if let Some(rank) = best {
+      // Mark the shown name only; ranges of another name do not apply to it.
+      let ranges = shown.map(|(_, ranges)| ranges).unwrap_or_default();
       return Some((rank, hit(MatchField::Name, ranges, None)));
     }
 
@@ -766,6 +766,13 @@ mod tests {
     assert_eq!(hits.len(), 1);
     assert_eq!(hits[0].kind, SearchItemKind::User);
     assert_eq!(hits[0].name, "User");
+    assert_eq!(hits[0].name_ranges, vec![[0, 4]]);
+
+    // The shown name marks its own match, also when the English name ranks higher.
+    let groups = search(&env, "user", "User level").unwrap();
+    let hits = group(&groups, SearchGroupKind::Projects);
+    assert_eq!(hits[0].name, "User level");
+    assert_eq!(hits[0].name_ranges, vec![[0, 4]]);
 
     let groups = search(&env, "用户", "用户").unwrap();
     let hits = group(&groups, SearchGroupKind::Projects);
