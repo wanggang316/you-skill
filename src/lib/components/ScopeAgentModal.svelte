@@ -7,7 +7,7 @@
   import AgentPicker from "./AgentPicker.svelte";
   import { t } from "../i18n";
   import { installSkill, type InstallMode } from "../api/hub";
-  import { agents, refreshHub } from "../stores/hub";
+  import { agents, refreshHub, skillLabel } from "../stores/hub";
   import { closeScopeAgentModal, performAction, scopeAgentModal } from "../stores/modals";
   import { settings } from "../stores/settings";
 
@@ -55,9 +55,11 @@
     }));
     const failures: string[] = [];
     try {
-      for (const name of modalState.skillNames) {
-        const result = await performAction((force) => installSkill({ name, targets, mode, force }));
-        if (!result.applied) failures.push(`${name}: ${result.blockers.join("; ")}`);
+      for (const id of modalState.skillIds) {
+        const result = await performAction((force) =>
+          installSkill({ name: id, targets, mode, force })
+        );
+        if (!result.applied) failures.push(`${$skillLabel(id)}: ${result.blockers.join("; ")}`);
       }
       await refreshHub();
       if (failures.length > 0) {
@@ -82,7 +84,7 @@
 >
   <div class="space-y-5 px-6 pt-2 pb-6">
     <p class="text-base-content-muted text-[13px]">
-      {$t("agentAdd.hint", { count: modalState.skillNames.length })}
+      {$t("agentAdd.hint", { count: modalState.skillIds.length })}
     </p>
 
     {#if candidates.length === 0}

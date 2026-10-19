@@ -32,6 +32,11 @@ impl Home {
     self.path().join(".youskill").join("skills")
   }
 
+  /// Hub copy of a skill that `add_hub_skill` put there: `skills/<id>/<name>`.
+  fn hub_skill(&self, name: &str) -> PathBuf {
+    self.hub().join(skill_id(name)).join(name)
+  }
+
   fn lock_path(&self) -> PathBuf {
     self.path().join(".youskill").join(".skill-lock.json")
   }
@@ -67,7 +72,7 @@ impl Home {
 
   /// Put a skill into the hub and record it in the lock with the hash it has right now.
   fn add_hub_skill(&self, name: &str, installs: Vec<InstallRecord>) {
-    let dir = self.hub().join(name);
+    let dir = self.hub_skill(name);
     self.write_skill(&dir, name, "# Body");
     let hash = hash_dir(&dir).unwrap();
     let mut lock = if self.lock_path().is_file() {
@@ -76,8 +81,9 @@ impl Home {
       LockFile::default()
     };
     lock.skills.insert(
-      name.to_string(),
+      skill_id(name),
       SkillRecord {
+        name: name.to_string(),
         source: SkillSource::None,
         hash,
         imported_at: "2026-01-01T00:00:00Z".to_string(),
@@ -89,8 +95,16 @@ impl Home {
   }
 }
 
+/// A fixed id per skill name, so a test can find the hub copy of a skill it added.
+fn skill_id(name: &str) -> String {
+  let hash = name.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |acc, byte| {
+    (acc ^ u64::from(byte)).wrapping_mul(0x0100_0000_01b3)
+  });
+  format!("00000000-0000-4000-8000-{:012x}", hash & 0xffff_ffff_ffff)
+}
+
 fn copy_install(home: &Home, name: &str, target: &Path) -> InstallRecord {
-  let hub_dir = home.hub().join(name);
+  let hub_dir = home.hub_skill(name);
   fs::create_dir_all(target.parent().unwrap()).unwrap();
   fs::create_dir_all(target).unwrap();
   fs::copy(hub_dir.join("SKILL.md"), target.join("SKILL.md")).unwrap();
@@ -478,7 +492,7 @@ fn remove_needs_confirmation_or_yes() {
     .assert()
     .code(2)
     .stderr(predicate::str::contains("needs a terminal or --yes"));
-  assert!(home.hub().join("demo").is_dir());
+  assert!(home.hub_skill("demo").is_dir());
 
   home
     .cmd()
@@ -486,7 +500,7 @@ fn remove_needs_confirmation_or_yes() {
     .assert()
     .success()
     .stdout(predicate::str::contains("Removed 'demo'"));
-  assert!(!home.hub().join("demo").exists());
+  assert!(!home.hub_skill("demo").exists());
   assert!(!target.exists());
   home.cmd().args(["show", "demo"]).assert().code(1);
 }
@@ -502,7 +516,7 @@ fn sync_push_and_adopt_targets() {
     .assert()
     .success();
   let target = home.path().join(".claude/skills/demo");
-  let hub = home.hub().join("demo");
+  let hub = home.hub_skill("demo");
 
   // Hub moves on: the target is outdated and push brings it up to date.
   fs::write(hub.join("extra.md"), "new\n").unwrap();
@@ -639,6 +653,90 @@ fn import_from_folder_and_scan() {
     .assert()
     .success()
     .stdout(predicate::str::contains("No skills with a GitHub source."));
+}
+
+#[test]
+fn same_name_skills_from_two_folders() {
+  let home = Home::new();
+  with_agents(&home);
+  let first = home.path().join("one").join("tdd");
+  let second = home.path().join("two").join("tdd");
+  home.write_skill(&first, "tdd", "one");
+  home.write_skill(&second, "tdd", "two");
+  for dir in [&first, &second] {
+    home
+      .cmd()
+      .args(["import", dir.to_str().unwrap()])
+      .assert()
+      .success()
+      .stdout(predicate::str::contains("imported"));
+  }
+
+  home
+    .cmd()
+    .args(["show", "tdd"])
+    .assert()
+    .code(1)
+    .stderr(predicate::str::contains("ambiguous skill 'tdd'"));
+  let first_key = format!("folder:{}", first.to_str().unwrap());
+  let second_key = format!("folder:{}", second.to_str().unwrap());
+  let view = show_json(&home, &first_key);
+  assert_eq!(view["sourceKey"], first_key.as_str());
+  let first_id = view["id"].as_str().unwrap().to_string();
+
+  // Importing a known folder again replaces its skill, and only with --overwrite.
+  home
+    .cmd()
+    .args(["import", first.to_str().unwrap()])
+    .assert()
+    .code(1)
+    .stderr(predicate::str::contains("already exists"));
+  home
+    .cmd()
+    .args(["import", first.to_str().unwrap(), "--overwrite"])
+    .assert()
+    .success()
+    .stdout(predicate::str::contains(&first_id))
+    .stdout(predicate::str::contains("replaced"));
+
+  // One agent directory holds one `tdd`.
+  home
+    .cmd()
+    .args(["install", &first_id, "-a", "claude-code", "--mode", "copy"])
+    .assert()
+    .success();
+  home
+    .cmd()
+    .args([
+      "install",
+      &second_key,
+      "-a",
+      "claude-code",
+      "--mode",
+      "copy",
+    ])
+    .assert()
+    .code(2)
+    .stderr(predicate::str::contains("occupied by"));
+  home
+    .cmd()
+    .args([
+      "install",
+      &second_key,
+      "-a",
+      "claude-code",
+      "--mode",
+      "copy",
+      "--force",
+    ])
+    .assert()
+    .success();
+  let installed = fs::read_to_string(home.path().join(".claude/skills/tdd/SKILL.md")).unwrap();
+  assert!(installed.contains("two"));
+  assert!(show_json(&home, &first_id)["installs"]
+    .as_array()
+    .unwrap()
+    .is_empty());
 }
 
 // ---------------------------------------------------------------------------

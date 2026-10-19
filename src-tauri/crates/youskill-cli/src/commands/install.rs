@@ -21,7 +21,7 @@ impl From<Mode> for InstallMode {
 
 #[derive(clap::Args)]
 pub struct Args {
-  /// Skill names as listed by `youskill list`.
+  /// Skill ids, source keys (`owner/repo[@branch]:<name>`) or unique names.
   #[arg(required = true)]
   names: Vec<String>,
   /// Agent ids (comma separated, see `youskill agents`), or `all` for every detected agent.

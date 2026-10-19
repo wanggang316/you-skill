@@ -9,10 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 
+- The library keys each skill by an id and stores it at `~/.youskill/skills/<id>/<name>` (lock file version 2). The first start moves the library and relinks symlink installs. An earlier version cannot read the new layout.
+- The CLI `--json` output and the command line arguments use the new skill id: `list`, `show`, `import` and `update` report it, and every skill argument accepts an id, a source key or a unique name.
+
 ### Added
+
+- Skills with the same name from different sources can be in the library together. Each one can be installed into a different place; an install into a directory that holds the other one asks before it replaces it.
+- The import dialog shows library skills with the same name or source, and lets you replace one of them or add the import as a new skill. A zip import replaces the newest zip skill of the same name by default.
+- `youskill import --replace <skill>` and `--add`; skill arguments accept source keys such as `owner/repo@main:tdd`.
 
 ### Changed
 
+- An import of a GitHub folder or local folder that is already in the library always updates that skill. The branch is part of a GitHub source, so a skill from another branch is a separate skill.
 - The list column on the left of each page runs to the bottom edge of the window. Content panels keep their gap above the edge ([HAN-252](https://linear.app/gumpw/issue/HAN-252)).
 
 ### Fixed

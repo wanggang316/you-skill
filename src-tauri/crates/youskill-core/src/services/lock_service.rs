@@ -104,8 +104,8 @@ impl LockStore {
     read_lock_file(&self.path)
   }
 
-  pub fn get(&self, name: &str) -> Result<Option<SkillRecord>, String> {
-    Ok(self.read()?.skills.get(name).cloned())
+  pub fn get(&self, id: &str) -> Result<Option<SkillRecord>, String> {
+    Ok(self.read()?.skills.get(id).cloned())
   }
 
   /// Read-modify-write under the operation lock and the store mutex. The file is only
@@ -160,6 +160,7 @@ mod tests {
 
   fn record(hash: &str) -> SkillRecord {
     SkillRecord {
+      name: String::new(),
       source: SkillSource::None,
       hash: hash.to_string(),
       imported_at: "t".to_string(),

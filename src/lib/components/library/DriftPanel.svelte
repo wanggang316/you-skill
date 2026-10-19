@@ -8,7 +8,7 @@
   export type TargetAction = "push" | "adopt" | "reinstall";
 
   let {
-    name,
+    id,
     kind = "skill",
     hubState,
     sourceState = "not_checkable",
@@ -18,7 +18,8 @@
     onSync,
     onTargetAction,
   }: {
-    name: string;
+    /** Skill id or instruction id, by `kind`. */
+    id: string;
     kind?: LibraryKind;
     hubState: HubState;
     /** Instructions have no source; they leave these at their defaults. */
@@ -99,7 +100,7 @@
             class={buttonClass}
             type="button"
             disabled={busy}
-            onclick={() => openDiffModal(name, { kind: "source" }, kind)}
+            onclick={() => openDiffModal(id, { kind: "source" }, kind)}
           >
             {$t("diff.view")}
           </button>
@@ -144,7 +145,7 @@
                 class={buttonClass}
                 type="button"
                 disabled={busy}
-                onclick={() => openDiffModal(name, { kind: "target", path: install.path }, kind)}
+                onclick={() => openDiffModal(id, { kind: "target", path: install.path }, kind)}
               >
                 {$t("diff.view")}
               </button>

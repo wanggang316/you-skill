@@ -281,7 +281,7 @@
           <section class="space-y-2">
             <h3 class="text-base-content text-sm font-medium">{$t("detail.drift")}</h3>
             <DriftPanel
-              name={instruction.id}
+              id={instruction.id}
               kind="instruction"
               hubState={instruction.hubState}
               installs={instruction.installs}

@@ -6,7 +6,8 @@ use youskill_core::services::source_service;
 
 #[derive(clap::Args)]
 pub struct Args {
-  /// Skills to update; every skill with a GitHub source when omitted.
+  /// Skills to update (ids, source keys or unique names); every skill with a GitHub source
+  /// when omitted.
   names: Vec<String>,
   /// Only refresh the source state; do not pull anything.
   #[arg(long)]
@@ -25,11 +26,12 @@ struct Report {
 
 pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
   let env = Env::current()?;
+  let mut ids = Vec::new();
   for name in &args.names {
-    super::skill_or_error(&env, name)?;
+    ids.push(super::skill_or_error(&env, name)?.id);
   }
-  let names = (!args.names.is_empty()).then(|| args.names.clone());
-  let checked = super::block_on(source_service::check_source_updates(env.clone(), names))??;
+  let ids = (!ids.is_empty()).then_some(ids);
+  let checked = super::block_on(source_service::check_source_updates(env.clone(), ids))??;
 
   let mut pulled = Vec::new();
   let mut code = EXIT_OK;
@@ -37,7 +39,7 @@ pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
     for update in checked.iter().filter(|u| u.update_available) {
       let result = super::block_on(source_service::pull_github_source(
         env.clone(),
-        update.name.clone(),
+        update.id.clone(),
         args.force,
       ))??;
       if result.applied {
@@ -63,7 +65,7 @@ pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
     ctx.say("No skills with a GitHub source.");
     return Ok(code);
   }
-  let mut table = Table::new(&["NAME", "STATE", "NOTE"]);
+  let mut table = Table::new(&["NAME", "ID", "STATE", "NOTE"]);
   for update in &checked {
     let state = match (update.update_available, &update.error) {
       (_, Some(_)) => "error",
@@ -73,6 +75,7 @@ pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
     };
     table.row(vec![
       update.name.clone(),
+      update.id.clone(),
       state.to_string(),
       update.error.clone().unwrap_or_default(),
     ]);

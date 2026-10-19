@@ -4,6 +4,7 @@
   import { t } from "../i18n";
   import { closeDiffModal, diffModal, type LibraryKind } from "../stores/modals";
   import { instructionName } from "$lib/stores/instructions";
+  import { hubSkillsById } from "../stores/hub";
   import { diffSkill, type DiffAgainst, type DiffStatus, type SkillDiff } from "../api/hub";
   import { diffInstruction } from "../api/instructions";
 
@@ -15,7 +16,9 @@
   let requestId = 0;
 
   const displayName = $derived(
-    $diffModal.kind === "instruction" ? $instructionName($diffModal.name) : $diffModal.name
+    $diffModal.kind === "instruction"
+      ? $instructionName($diffModal.id)
+      : ($hubSkillsById.get($diffModal.id)?.name ?? $diffModal.id)
   );
   const selectedFile = $derived(
     diff?.files.find((file) => file.path === selectedPath) ?? diff?.files[0] ?? null
@@ -24,12 +27,12 @@
   $effect(() => {
     const state = $diffModal;
     open = state.open;
-    if (state.open && state.name) {
-      void load(state.name, state.against, state.kind);
+    if (state.open && state.id) {
+      void load(state.id, state.against, state.kind);
     }
   });
 
-  async function load(name: string, against: DiffAgainst, kind: LibraryKind) {
+  async function load(key: string, against: DiffAgainst, kind: LibraryKind) {
     const id = ++requestId;
     loading = true;
     error = "";
@@ -38,8 +41,8 @@
     try {
       const result =
         kind === "instruction" && against.kind === "target"
-          ? await diffInstruction(name, against.path)
-          : await diffSkill(name, against);
+          ? await diffInstruction(key, against.path)
+          : await diffSkill(key, against);
       if (id !== requestId) return;
       diff = result;
       selectedPath = result.files[0]?.path ?? null;
@@ -74,7 +77,7 @@
 
 <Modal
   bind:open
-  title={$diffModal.name ? `${$t("diff.title")} · ${displayName}` : $t("diff.title")}
+  title={$diffModal.id ? `${$t("diff.title")} · ${displayName}` : $t("diff.title")}
   onClose={handleClose}
   containerClass="max-w-[min(94vw,76rem)]"
 >

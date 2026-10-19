@@ -9,7 +9,7 @@ Code is the source of truth; when this document and the code disagree, fix the d
 
 ```
 ~/.youskill/
-  skills/<name>/          # hub: the single canonical copy of each managed skill
+  skills/<id>/<name>/     # hub: the canonical copy of each managed skill
   .skill-lock.json        # registry of sources, hashes and install targets
   instructions/<id>.md    # instruction templates: one Markdown file per template
   .instruction-lock.json  # registry of template names, hashes and install targets
@@ -47,10 +47,11 @@ the projects page can group them; projects registered before workspaces existed 
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "migration": { "completedAt": "...", "imported": ["..."], "installs": 3, "errors": [] },
   "skills": {
-    "<name>": {
+    "<id>": {
+      "name": "foo",
       "source": { "type": "github", "repo": "owner/repo", "url": "...", "skillPath": "skills/foo/SKILL.md",
                   "branch": "main", "remoteSha": "...", "latestRemoteSha": "...", "checkedAt": "..." },
       "hash": "<sha256 of the hub directory at import / last accepted change>",
@@ -67,12 +68,25 @@ the projects page can group them; projects registered before workspaces existed 
 }
 ```
 
-- The record key is the skill name (SKILL.md frontmatter `name`, falling back to the
-  directory name). Names are validated as safe directory names and compared
-  case-insensitively.
+- The record key is a UUID; it never changes. `name` (SKILL.md frontmatter `name`,
+  falling back to the directory name) is the install directory name and the name agents
+  use. Names are validated as safe directory names and compared case-insensitively, and
+  more than one skill can have a name. The hub copy is `skills/<id>/<name>`, so the
+  directory that holds SKILL.md keeps the skill name also behind a resolved symlink. The
+  design is in [SKILL_IDENTITY.md](SKILL_IDENTITY.md).
 - `source` is one of `github`, `folder`, `zip`, `none`. `folder` is only used for
   directories outside every agent root; a folder inside an agent root is registered as an
-  install instead.
+  install instead. The source key (`SkillSource::key`) is
+  `github:<owner>/<repo>@<branch>:<skillDir>`, `folder:<path>`, or only the type for `zip`
+  and `none`. A GitHub or folder source is in the hub at most once: importing it again
+  replaces its skill. Any other import adds a new skill unless it names one in
+  `replaceId`; `plan_import` reports the matches and the default (the newest same-name zip
+  skill for a zip import).
+- Commands take an id, a source key (`owner/repo[@branch]:<dir or name>`) or a name that
+  one skill has (`LockFile::resolve`, `hub_service::resolve_skill`).
+- One install directory belongs to one skill. An install onto a directory that another
+  same-name skill has returns an `occupied by` blocker; forced, the install record moves
+  and the old copy goes to `.trash`.
 - Install records are keyed by target path. Several agent apps that share a directory
   (every agent using `.agents/skills` inside a project) share one record via `agentIds`.
   Uninstalling removes an agent id; files are deleted only when no agent is left.
@@ -95,7 +109,7 @@ refresh (`checkAllSourceUpdates` in `stores/hub.ts`).
 
 | Node             | States                                                                                           | Rule                                                                                                                              |
 | ---------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| Hub              | `ok`, `modified`, `missing`, `invalid`, `name_mismatch`                                          | `hash(H) != record.hash` is `modified`                                                                                            |
+| Hub              | `ok`, `modified`, `missing`, `invalid`, `name_mismatch`                                          | `hash(H) != record.hash` is `modified`; a frontmatter name other than `record.name` is `name_mismatch`                            |
 | Target (copy)    | `in_sync`, `outdated`, `modified`, `conflict`, `missing`                                         | three-way against `install.hash` as base: T==H in sync; T==base, H!=base outdated; T!=base, H==base modified; all differ conflict |
 | Target (symlink) | `in_sync`, `broken_link`                                                                         | link into the hub is always in sync                                                                                               |
 | Source           | `in_sync`, `update_available`, `source_modified`, `source_missing`, `not_checkable`, `unchecked` | github compares `remoteSha` with `latestRemoteSha`; folder hashes the folder                                                      |
@@ -136,15 +150,15 @@ rest get an id and keep their key as name. Everything lives in `instruction_serv
 
 ## Command surface
 
-| Area         | Commands                                                                                                                                                                                                                                                                       |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Hub          | `list_hub_skills`, `get_hub_skill`, `import_skills`, `remove_hub_skill`, `sync_skill`, `diff_skill`, `check_source_updates`, `migrate_legacy`, `migration_status`                                                                                                              |
-| Install      | `install_skill`, `uninstall_skill`                                                                                                                                                                                                                                             |
-| Scan         | `scan_folder`, `import_scanned`                                                                                                                                                                                                                                                |
+| Area         | Commands                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Hub          | `list_hub_skills`, `get_hub_skill`, `plan_import`, `import_skills`, `remove_hub_skill`, `sync_skill`, `diff_skill`, `check_source_updates`, `migrate_legacy`, `migration_status`                                                                                                                                                                                                                       |
+| Install      | `install_skill`, `uninstall_skill`                                                                                                                                                                                                                                                                                                                                                                     |
+| Scan         | `scan_folder`, `import_scanned`                                                                                                                                                                                                                                                                                                                                                                        |
 | Instructions | `list_instructions`, `get_instruction`, `read_instruction`, `write_instruction`, `rename_instruction`, `import_instructions`, `create_instruction`, `detect_instruction_files`, `detect_instruction_github`, `install_instruction`, `uninstall_instruction`, `remove_instruction`, `sync_instruction`, `diff_instruction`, `list_instruction_files`, `read_instruction_file`, `write_instruction_file` |
-| Projects     | `list_user_projects`, `add_user_project`, `update_user_project`, `remove_user_project`, `list_workspaces`, `add_workspace`, `remove_workspace`, `scan_workspace`, `register_projects`, `list_memory_files`                                                                     |
-| Detection    | `detect_github_manual`, `detect_github_auto`, `detect_zip`, `detect_folder` (stage into a temp dir)                                                                                                                                                                            |
-| Other        | marketplace, agent apps, projects, settings, backup, file readers, translation                                                                                                                                                                                                 |
+| Projects     | `list_user_projects`, `add_user_project`, `update_user_project`, `remove_user_project`, `list_workspaces`, `add_workspace`, `remove_workspace`, `scan_workspace`, `register_projects`, `list_memory_files`                                                                                                                                                                                             |
+| Detection    | `detect_github_manual`, `detect_github_auto`, `detect_zip`, `detect_folder` (stage into a temp dir)                                                                                                                                                                                                                                                                                                    |
+| Other        | marketplace, agent apps, projects, settings, backup, file readers, translation                                                                                                                                                                                                                                                                                                                         |
 
 Services live in the `youskill-core` crate (`src-tauri/crates/youskill-core`), which the
 Tauri app and the `youskill` CLI (see [CLI.md](CLI.md)) both depend on; the app's
@@ -164,10 +178,18 @@ hub copies are created, symlinks into the old canonical directory are relinked t
 real copies become install records, and nothing legacy is deleted. The report is stored
 under `migration` in the lock and shown once in the library.
 
+A version 1 lock keys records by name and keeps the hub copy at `skills/<name>`.
+`migration_service::migrate_skill_ids` runs before any listing, lookup, import or scan:
+each such record gets a UUID, its directory moves to `skills/<id>/<name>`, its symlink
+installs are relinked, and the lock is written, one record at a time. A run stopped after
+the move finds `skills/<id>/<name>` without a record and keeps that id.
+
 ## Frontend
 
 - `src/lib/api/hub.ts` mirrors the command surface (camelCase payloads).
-- `src/lib/stores/hub.ts` holds the skill list and agent apps; `stores/modals.ts` holds the
+- `src/lib/stores/hub.ts` holds the skill list (`hubSkillsById`; `skillLabel` adds the
+  source to a name that more than one skill has) and agent apps. Selections, routes and
+  dialogs carry skill ids. `stores/modals.ts` holds the
   import / install / force-confirm / diff modals and `performAction`, the helper that turns a
   blocked `ActionResult` into a confirmation.
 - `src/lib/api/instructions.ts` and `stores/instructions.ts` do the same for the

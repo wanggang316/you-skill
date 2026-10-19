@@ -2,8 +2,9 @@
 
 use crate::models::{ActionResult, DetectedSkill, SkillSource, SourceUpdate};
 use crate::services::env::Env;
-use crate::services::hub_service::pull_from_dir;
+use crate::services::hub_service::{pull_from_dir, resolve_skill};
 use crate::services::lock_service::store;
+use crate::services::migration_service::migrate_skill_ids;
 use crate::services::remote_service::fetch_skills_by_names;
 use crate::services::skill_service::detect_github_auto;
 use crate::utils::github::GithubHelper;
@@ -12,6 +13,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
 struct Candidate {
+  id: String,
   name: String,
   repo: String,
   branch: String,
@@ -19,23 +21,24 @@ struct Candidate {
   remote_sha: Option<String>,
 }
 
-/// Look up the latest tree SHA for every GitHub-sourced skill (or the given names), store
-/// it in the lock, and report which skills have an update available.
+/// Look up the latest tree SHA for every GitHub-sourced skill (or the skills the given ids
+/// or names select), store it in the lock, and report which skills have an update available.
 pub async fn check_source_updates(
   env: Env,
-  names: Option<Vec<String>>,
+  keys: Option<Vec<String>>,
 ) -> Result<Vec<SourceUpdate>, String> {
+  migrate_skill_ids(&env)?;
   let lock = store(&env).read()?;
   let candidates: Vec<Candidate> = lock
     .skills
     .iter()
-    .filter(|(name, _)| {
-      names
+    .filter(|(id, record)| {
+      keys
         .as_ref()
-        .map(|list| list.iter().any(|n| n == *name))
+        .map(|list| list.iter().any(|key| key == *id || *key == record.name))
         .unwrap_or(true)
     })
-    .filter_map(|(name, record)| match &record.source {
+    .filter_map(|(id, record)| match &record.source {
       SkillSource::Github {
         repo,
         skill_path,
@@ -43,7 +46,8 @@ pub async fn check_source_updates(
         remote_sha,
         ..
       } => Some(Candidate {
-        name: name.clone(),
+        id: id.clone(),
+        name: record.name.clone(),
         repo: repo.trim().to_string(),
         branch: branch.clone().unwrap_or_else(|| "main".to_string()),
         skill_path: skill_path.clone(),
@@ -73,7 +77,7 @@ pub async fn check_source_updates(
         .iter()
         .find(|c| c.name == remote.name && c.repo.eq_ignore_ascii_case(remote.source.trim()));
       if let Some(candidate) = matches.filter(|c| marketplace_confirms(c, sha)) {
-        latest.insert(candidate.name.clone(), sha.clone());
+        latest.insert(candidate.id.clone(), sha.clone());
       }
     }
   }
@@ -81,12 +85,12 @@ pub async fn check_source_updates(
   // 2. Everything else goes to the GitHub trees API, one request per (repo, branch).
   let mut groups: BTreeMap<(String, String), Vec<&Candidate>> = BTreeMap::new();
   for candidate in &candidates {
-    if latest.contains_key(&candidate.name) {
+    if latest.contains_key(&candidate.id) {
       continue;
     }
     if candidate.skill_path.trim().is_empty() {
       errors.insert(
-        candidate.name.clone(),
+        candidate.id.clone(),
         "Skill path inside the repository is unknown".to_string(),
       );
       continue;
@@ -99,7 +103,7 @@ pub async fn check_source_updates(
   for ((repo, branch), members) in groups {
     let Ok((owner, repo_name)) = GithubHelper::parse_github_url(&repo) else {
       for member in members {
-        errors.insert(member.name.clone(), format!("Invalid repository: {}", repo));
+        errors.insert(member.id.clone(), format!("Invalid repository: {}", repo));
       }
       continue;
     };
@@ -109,11 +113,11 @@ pub async fn check_source_updates(
         for member in members {
           match shas.get(&member.skill_path) {
             Some(sha) => {
-              latest.insert(member.name.clone(), sha.clone());
+              latest.insert(member.id.clone(), sha.clone());
             },
             None => {
               errors.insert(
-                member.name.clone(),
+                member.id.clone(),
                 format!("Skill folder not found on branch {}", branch),
               );
             },
@@ -122,7 +126,7 @@ pub async fn check_source_updates(
       },
       Err(err) => {
         for member in members {
-          errors.insert(member.name.clone(), err.clone());
+          errors.insert(member.id.clone(), err.clone());
         }
       },
     }
@@ -131,8 +135,8 @@ pub async fn check_source_updates(
   let checked_at = now_rfc3339();
   let latest_snapshot = latest.clone();
   store(&env).update(|lock| {
-    for (name, sha) in &latest_snapshot {
-      if let Some(record) = lock.skills.get_mut(name) {
+    for (id, sha) in &latest_snapshot {
+      if let Some(record) = lock.skills.get_mut(id) {
         if let SkillSource::Github {
           latest_remote_sha,
           checked_at: checked,
@@ -151,17 +155,18 @@ pub async fn check_source_updates(
     candidates
       .into_iter()
       .map(|candidate| {
-        let latest_sha = latest.get(&candidate.name).cloned();
+        let latest_sha = latest.get(&candidate.id).cloned();
         let update_available = match (&candidate.remote_sha, &latest_sha) {
           (Some(current), Some(latest)) => current != latest,
           _ => false,
         };
         SourceUpdate {
-          name: candidate.name.clone(),
+          error: errors.remove(&candidate.id),
+          id: candidate.id,
+          name: candidate.name,
           remote_sha: candidate.remote_sha,
           latest_remote_sha: latest_sha,
           update_available,
-          error: errors.remove(&candidate.name),
         }
       })
       .collect(),
@@ -190,12 +195,10 @@ pub async fn stage_github_source(
 /// Download the current version of a GitHub-sourced skill and replace the hub copy.
 pub async fn pull_github_source(
   env: Env,
-  name: String,
+  key: String,
   force: bool,
 ) -> Result<ActionResult, String> {
-  let record = store(&env)
-    .get(&name)?
-    .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
+  let (id, record) = resolve_skill(&env, &key)?;
   let SkillSource::Github {
     repo,
     url,
@@ -209,7 +212,7 @@ pub async fn pull_github_source(
     return Err("Skill is not sourced from GitHub".to_string());
   };
 
-  let detected = stage_github_source(&repo, &url, branch.as_deref(), &name).await?;
+  let detected = stage_github_source(&repo, &url, branch.as_deref(), &record.name).await?;
   let downloaded_branch = detected.branch.clone().or(branch);
   let remote_sha = match GithubHelper::get_skill_folder_hash(
     &url,
@@ -239,13 +242,7 @@ pub async fn pull_github_source(
 
   let tmp_path = detected.tmp_path.clone();
   tokio::task::spawn_blocking(move || {
-    pull_from_dir(
-      &env,
-      &name,
-      Path::new(&tmp_path),
-      Some(updated_source),
-      force,
-    )
+    pull_from_dir(&env, &id, Path::new(&tmp_path), Some(updated_source), force)
   })
   .await
   .map_err(|e| format!("pull join error: {}", e))?
@@ -257,6 +254,7 @@ mod tests {
 
   fn candidate(remote_sha: Option<&str>) -> Candidate {
     Candidate {
+      id: "00000000-0000-4000-8000-000000000001".to_string(),
       name: "pdf".to_string(),
       repo: "anthropics/skills".to_string(),
       branch: "main".to_string(),

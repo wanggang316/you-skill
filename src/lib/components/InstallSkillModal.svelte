@@ -18,7 +18,7 @@
     type ScopeRef,
   } from "../api/hub";
   import { installInstruction, uninstallInstruction } from "../api/instructions";
-  import { agents, hubSkillsByName, refreshHub } from "../stores/hub";
+  import { agents, hubSkillsById, refreshHub, skillLabel } from "../stores/hub";
   import { instructionName, instructionsById, refreshInstructions } from "../stores/instructions";
   import {
     closeInstallModal,
@@ -40,9 +40,9 @@
   let applying = $state(false);
   let error = $state("");
 
-  const skillNames = $derived($installModal.skillNames);
+  const itemIds = $derived($installModal.ids);
   const isInstruction = $derived($installModal.kind === "instruction");
-  const isSingle = $derived(skillNames.length === 1);
+  const isSingle = $derived(itemIds.length === 1);
   const locked = $derived($installModal.lockScope);
   const replace = $derived(!isInstruction && $installModal.replace);
   const targets = $derived.by((): ScopeRef[] => {
@@ -63,9 +63,9 @@
     return project?.name ?? (path ? baseName(path) : "");
   });
   const title = $derived.by(() => {
-    const first = skillNames[0] ?? "";
-    const name = isInstruction ? $instructionName(first) : first;
-    const count = skillNames.length;
+    const first = itemIds[0] ?? "";
+    const name = isInstruction ? $instructionName(first) : $skillLabel(first);
+    const count = itemIds.length;
     if (locked) {
       return isSingle
         ? $t("install.titleTo", { name, target: targetName })
@@ -77,9 +77,7 @@
   /** Agents already installed; only meaningful for one skill going to one place. */
   const currentIds = $derived.by(() => {
     if (!isSingle || targets.length !== 1) return [] as string[];
-    const view = isInstruction
-      ? $instructionsById.get(skillNames[0])
-      : $hubSkillsByName.get(skillNames[0]);
+    const view = isInstruction ? $instructionsById.get(itemIds[0]) : $hubSkillsById.get(itemIds[0]);
     if (!view) return [] as string[];
     return installedAgentIds(view, targets[0].scope, targets[0].projectPath);
   });
@@ -87,18 +85,20 @@
   /** Skills that will be reset before installing, because they are already at a target. */
   const replacedNames = $derived.by(() => {
     if (!replace) return [] as string[];
-    return skillNames.filter((name) => {
-      const view = $hubSkillsByName.get(name);
-      return !!view && targets.some((target) => scopedInstalls(view, target).length > 0);
-    });
+    return itemIds
+      .filter((id) => {
+        const view = $hubSkillsById.get(id);
+        return !!view && targets.some((target) => scopedInstalls(view, target).length > 0);
+      })
+      .map((id) => $skillLabel(id));
   });
 
   const hasProjects = $derived($userProjects.length > 0);
   const canApply = $derived(!applying && targets.length > 0 && hasChanges());
 
   const refresh = () => (isInstruction ? refreshInstructions() : refreshHub());
-  /** What failures are reported under: the template name, not its id. */
-  const label = (name: string) => (isInstruction ? get(instructionName)(name) : name);
+  /** What failures are reported under: the name, not the id. */
+  const label = (id: string) => (isInstruction ? get(instructionName)(id) : get(skillLabel)(id));
 
   function hasChanges(): boolean {
     // Replacing rewrites existing installs, so the same agent selection still has work to do.
@@ -163,7 +163,7 @@
 
   /** Uninstall every existing install of the skill at the target, then install it fresh. */
   async function replaceAt(name: string, target: ScopeRef): Promise<string | null> {
-    const view = get(hubSkillsByName).get(name);
+    const view = get(hubSkillsById).get(name);
     const paths = view ? scopedInstalls(view, target).map((install) => install.path) : [];
     if (paths.length > 0) {
       const result = await performAction((force) =>
@@ -183,16 +183,16 @@
     const failures: string[] = [];
     try {
       const single = isSingle && targets.length === 1;
-      for (const name of skillNames) {
+      for (const name of itemIds) {
         for (const target of targets) {
           if (replace) {
             const failure = await replaceAt(name, target);
-            if (failure) failures.push(`${name}: ${failure}`);
+            if (failure) failures.push(`${label(name)}: ${failure}`);
             continue;
           }
           const view = isInstruction
             ? get(instructionsById).get(name)
-            : get(hubSkillsByName).get(name);
+            : get(hubSkillsById).get(name);
           const current = view ? installedAgentIds(view, target.scope, target.projectPath) : [];
           const add = selectedIds.filter((id) => !current.includes(id));
           const remove = single ? current.filter((id) => !selectedIds.includes(id)) : [];

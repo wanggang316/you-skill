@@ -1,7 +1,6 @@
 use crate::output::{report_action, Ctx};
 use youskill_core::models::{SkillSource, SyncAction};
 use youskill_core::services::env::Env;
-use youskill_core::services::lock_service::store;
 use youskill_core::services::{hub_service, source_service};
 
 #[derive(Clone, Copy, clap::ValueEnum)]
@@ -20,7 +19,7 @@ pub enum Action {
 
 #[derive(clap::Args)]
 pub struct Args {
-  /// Skill name as listed by `youskill list`.
+  /// Skill id, source key (`owner/repo[@branch]:<name>`) or unique name.
   name: String,
   #[arg(value_enum)]
   action: Action,
@@ -69,9 +68,8 @@ pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
 
 fn is_github(env: &Env, name: &str) -> Result<bool, String> {
   Ok(
-    store(env)
-      .get(name)?
-      .map(|record| matches!(record.source, SkillSource::Github { .. }))
+    hub_service::find_skill(env, name)?
+      .map(|(_, record)| matches!(record.source, SkillSource::Github { .. }))
       .unwrap_or(false),
   )
 }

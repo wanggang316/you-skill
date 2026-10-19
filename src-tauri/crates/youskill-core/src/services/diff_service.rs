@@ -4,6 +4,7 @@
 
 use crate::models::{DiffHunk, DiffLine, DiffLineKind, DiffStatus, FileDiff, SkillDiff};
 use crate::services::env::Env;
+use crate::services::hub_service::resolve_skill;
 use crate::utils::hash::is_excluded_component;
 use crate::utils::path::path_to_string;
 use similar::{ChangeTag, TextDiff};
@@ -23,18 +24,20 @@ enum Entry {
   Symlink(String),
 }
 
-/// Diff the hub copy of `name` (left) against `right` (an install target or a source
-/// directory). Added / removed are relative to the hub: `added` exists only on the right.
+/// Diff the hub copy of the skill `key` names (left) against `right` (an install target or
+/// a source directory). Added / removed are relative to the hub: `added` exists only on the
+/// right.
 pub fn diff_hub_against(
   env: &Env,
-  name: &str,
+  key: &str,
   right: &Path,
   right_label: &str,
 ) -> Result<SkillDiff, String> {
-  let hub_dir = env.hub_dir(name);
+  let (id, record) = resolve_skill(env, key)?;
+  let hub_dir = env.hub_dir(&id, &record.name);
   let (files, unchanged) = diff_dirs(&hub_dir, right)?;
   Ok(SkillDiff {
-    name: name.to_string(),
+    name: record.name,
     left_label: path_to_string(&hub_dir),
     right_label: right_label.to_string(),
     files,

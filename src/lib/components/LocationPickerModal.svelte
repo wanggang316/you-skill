@@ -9,7 +9,7 @@
   import { uninstallInstruction } from "../api/instructions";
   import { baseName } from "../scopes";
   import { homePath } from "../stores/env";
-  import { hubSkillsByName, refreshHub } from "../stores/hub";
+  import { hubSkillsById, refreshHub, skillLabel } from "../stores/hub";
   import { instructionName, instructionsById, refreshInstructions } from "../stores/instructions";
   import {
     closeLocationPickerModal,
@@ -34,13 +34,15 @@
   let selected = $state<string[]>([]);
   let error = $state("");
 
-  const skillName = $derived($locationPickerModal.skillName);
+  const skillName = $derived($locationPickerModal.id);
   const kind = $derived($locationPickerModal.kind);
   const isInstruction = $derived(kind === "instruction");
   const skill = $derived(
-    isInstruction ? $instructionsById.get(skillName) : $hubSkillsByName.get(skillName)
+    isInstruction ? $instructionsById.get(skillName) : $hubSkillsById.get(skillName)
   );
-  const displayName = $derived(isInstruction ? $instructionName(skillName) : skillName);
+  const displayName = $derived(
+    isInstruction ? $instructionName(skillName) : $skillLabel(skillName)
+  );
   const refresh = () => (isInstruction ? refreshInstructions() : refreshHub());
 
   const matches = (location: { name: string; path: string }) => {
@@ -170,7 +172,7 @@
     );
     if (toRemove.length > 0) {
       const confirmed = await confirm(
-        $t("locationPicker.uninstallCount", { name, count: removed.length }),
+        $t("locationPicker.uninstallCount", { name: displayName, count: removed.length }),
         { title: $t("scope.uninstall"), kind: "warning" }
       );
       if (!confirmed) return;

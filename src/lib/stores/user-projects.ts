@@ -47,7 +47,7 @@ export async function forgetProject(path: string, registered: boolean): Promise<
   for (const skill of get(hubSkills)) {
     const paths = scopedInstalls(skill, ref).map((install) => install.path);
     if (paths.length === 0) continue;
-    const result = await uninstallSkill({ name: skill.name, targets: [], paths, force: true });
+    const result = await uninstallSkill({ name: skill.id, targets: [], paths, force: true });
     if (!result.applied) failures.push(`${skill.name}: ${result.blockers.join("; ")}`);
   }
   for (const item of get(instructions)) {

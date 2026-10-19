@@ -6,7 +6,7 @@ use youskill_core::utils::path::same_path;
 
 #[derive(clap::Args)]
 pub struct Args {
-  /// Skill names as listed by `youskill list`.
+  /// Skill ids, source keys (`owner/repo[@branch]:<name>`) or unique names.
   #[arg(required = true)]
   names: Vec<String>,
   /// Agent ids to remove the skill from (comma separated), or `all` for every agent that

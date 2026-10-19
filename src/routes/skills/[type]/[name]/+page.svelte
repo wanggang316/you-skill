@@ -37,7 +37,8 @@
         source = skill ? { kind: "remote", name, skill } : null;
       } else if (params.type === "hub" || params.type === "local") {
         const skill = await getHubSkill(name);
-        source = skill ? { kind: "hub", name, rootPath: skill.hubPath } : null;
+        if (skill) currentName = skill.name;
+        source = skill ? { kind: "hub", name: skill.name, rootPath: skill.hubPath } : null;
       } else {
         error = "Invalid skill type";
         return;

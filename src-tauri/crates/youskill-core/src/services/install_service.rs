@@ -7,6 +7,7 @@ use crate::models::{
 use crate::services::agent_apps_service::LEGACY_USER_ROOTS;
 use crate::services::drift_service::{build_view, probe_hub, target_state};
 use crate::services::env::Env;
+use crate::services::hub_service::resolve_skill;
 use crate::services::lock_service::{ops_guard, store};
 use crate::utils::folder::{copy_dir, replace_dir_atomic, CopyOpts};
 use crate::utils::hash::{hash_dir, hash_dir_cached, invalidate_hash_cache};
@@ -179,11 +180,11 @@ fn now() -> String {
   now_rfc3339()
 }
 
-fn view_of(env: &Env, name: &str) -> Result<HubSkillView, String> {
+fn view_of(env: &Env, id: &str) -> Result<HubSkillView, String> {
   let record = store(env)
-    .get(name)?
-    .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
-  Ok(build_view(env, name, &record))
+    .get(id)?
+    .ok_or_else(|| format!("Skill '{}' is not in the hub", id))?;
+  Ok(build_view(env, id, &record))
 }
 
 /// Write the hub skill to `target` with the requested mode. Returns the effective mode
@@ -268,12 +269,10 @@ enum Plan {
 
 pub fn install_skill(env: &Env, request: InstallRequest) -> Result<ActionResult, String> {
   let _ops = ops_guard(env)?;
-  let name = request.name.trim().to_string();
+  let (id, record) = resolve_skill(env, &request.name)?;
+  let name = record.name.clone();
   let store = store(env);
-  let record = store
-    .get(&name)?
-    .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
-  let hub_dir = env.hub_dir(&name);
+  let hub_dir = env.hub_dir(&id, &name);
   if !hub_dir.is_dir() {
     return Err(format!(
       "Hub copy is missing: {}",
@@ -286,16 +285,39 @@ pub fn install_skill(env: &Env, request: InstallRequest) -> Result<ActionResult,
   let requested_mode = request.mode.unwrap_or_default();
   let hub_hash = hash_dir_cached(&hub_dir)?;
   let groups = group_targets(env, &name, &request.targets)?;
+  let lock = store.read()?;
 
   let mut blockers = Vec::new();
   let mut plans: Vec<(usize, Plan)> = Vec::new();
+  // Install paths that move from another skill with the same name to this one.
+  let mut taken: Vec<(usize, String, PathBuf)> = Vec::new();
   for (index, group) in groups.iter().enumerate() {
     let existing = record
       .installs
       .iter()
       .find(|install| same_path(Path::new(&install.path), &group.path));
-    let plan = if let Some(existing) = existing {
-      let (state, _) = target_state(env, &name, existing, Some(&hub_hash));
+    let owner = lock.skills.iter().find(|(other, other_record)| {
+      **other != id
+        && other_record
+          .installs
+          .iter()
+          .any(|install| same_path(Path::new(&install.path), &group.path))
+    });
+    let plan = if let Some((other, other_record)) = owner.filter(|_| existing.is_none()) {
+      if !request.force {
+        blockers.push(format!(
+          "{} is occupied by '{}' ({}, {}); use force to replace it",
+          group.path.to_string_lossy(),
+          other_record.name,
+          other,
+          other_record.source.key()
+        ));
+        continue;
+      }
+      taken.push((index, other.clone(), group.path.clone()));
+      Plan::Write(requested_mode)
+    } else if let Some(existing) = existing {
+      let (state, _) = target_state(&hub_dir, existing, Some(&hub_hash));
       let mode = request.mode.unwrap_or(existing.mode);
       if mode != existing.mode && !request.force {
         blockers.push(format!(
@@ -321,6 +343,7 @@ pub fn install_skill(env: &Env, request: InstallRequest) -> Result<ActionResult,
       match classify_new_target(
         env,
         &name,
+        &hub_dir,
         &group.path,
         &hub_hash,
         requested_mode,
@@ -339,11 +362,19 @@ pub fn install_skill(env: &Env, request: InstallRequest) -> Result<ActionResult,
   if !blockers.is_empty() {
     return Ok(ActionResult::blocked(
       blockers,
-      Some(build_view(env, &name, &record)),
+      Some(build_view(env, &id, &record)),
     ));
   }
 
   let mut errors = Vec::new();
+  // The other skill's copy may hold local edits: keep it in the trash.
+  for (_, _, path) in &taken {
+    if path.is_dir() && !is_symlink(path) {
+      if let Err(err) = super::hub_service::trash_dir(env, path) {
+        errors.push(format!("{}: {}", path.to_string_lossy(), err));
+      }
+    }
+  }
   let mut effective_modes: BTreeMap<usize, InstallMode> = BTreeMap::new();
   for (index, plan) in plans {
     let group = &groups[index];
@@ -362,9 +393,19 @@ pub fn install_skill(env: &Env, request: InstallRequest) -> Result<ActionResult,
 
   let timestamp = now();
   store.update(|lock| {
+    for (index, other, path) in &taken {
+      if !effective_modes.contains_key(index) {
+        continue;
+      }
+      if let Some(other_record) = lock.skills.get_mut(other) {
+        other_record
+          .installs
+          .retain(|install| !same_path(Path::new(&install.path), path));
+      }
+    }
     let record = lock
       .skills
-      .get_mut(&name)
+      .get_mut(&id)
       .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
     for (index, mode) in &effective_modes {
       let group = &groups[*index];
@@ -376,7 +417,7 @@ pub fn install_skill(env: &Env, request: InstallRequest) -> Result<ActionResult,
   if !errors.is_empty() {
     return Err(errors.join("\n"));
   }
-  Ok(ActionResult::applied(view_of(env, &name)?))
+  Ok(ActionResult::applied(view_of(env, &id)?))
 }
 
 fn upsert_install(
@@ -417,17 +458,17 @@ fn upsert_install(
 fn classify_new_target(
   env: &Env,
   name: &str,
+  hub_dir: &Path,
   path: &Path,
   hub_hash: &str,
   mode: InstallMode,
   force: bool,
 ) -> Result<Plan, String> {
-  let hub_dir = env.hub_dir(name);
   if !path.exists() && !is_symlink(path) {
     return Ok(Plan::Write(mode));
   }
   if is_symlink(path) {
-    if symlink_points_to(path, &hub_dir) {
+    if symlink_points_to(path, hub_dir) {
       return Ok(if mode == InstallMode::Symlink {
         Plan::Keep(InstallMode::Symlink)
       } else {
@@ -468,12 +509,10 @@ fn classify_new_target(
 
 pub fn uninstall_skill(env: &Env, request: UninstallRequest) -> Result<ActionResult, String> {
   let _ops = ops_guard(env)?;
-  let name = request.name.trim().to_string();
+  let (id, record) = resolve_skill(env, &request.name)?;
   let store = store(env);
-  let record = store
-    .get(&name)?
-    .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
-  let hub_hash = hash_dir_cached(&env.hub_dir(&name)).ok();
+  let hub_dir = env.hub_dir(&id, &record.name);
+  let hub_hash = hash_dir_cached(&hub_dir).ok();
 
   // Map each spec to the install record that owns that agent id (by scope + project).
   let mut removals: Vec<(String, Vec<String>)> = Vec::new(); // (install.path, agent ids)
@@ -553,7 +592,7 @@ pub fn uninstall_skill(env: &Env, request: UninstallRequest) -> Result<ActionRes
       files_to_remove.push(target.to_path_buf());
       continue;
     }
-    let (state, _) = target_state(env, &name, install, hub_hash.as_deref());
+    let (state, _) = target_state(&hub_dir, install, hub_hash.as_deref());
     match state {
       TargetState::Modified | TargetState::Conflict if !request.force => {
         blockers.push(format!("{} has local changes", path));
@@ -565,7 +604,7 @@ pub fn uninstall_skill(env: &Env, request: UninstallRequest) -> Result<ActionRes
   if !blockers.is_empty() {
     return Ok(ActionResult::blocked(
       blockers,
-      Some(build_view(env, &name, &record)),
+      Some(build_view(env, &id, &record)),
     ));
   }
 
@@ -581,8 +620,8 @@ pub fn uninstall_skill(env: &Env, request: UninstallRequest) -> Result<ActionRes
   store.update(|lock| {
     let record = lock
       .skills
-      .get_mut(&name)
-      .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
+      .get_mut(&id)
+      .ok_or_else(|| format!("Skill '{}' is not in the hub", record.name))?;
     for (path, ids) in &removals {
       if let Some(install) = record.installs.iter_mut().find(|i| &i.path == path) {
         install.agent_ids.retain(|id| !ids.contains(id));
@@ -597,22 +636,20 @@ pub fn uninstall_skill(env: &Env, request: UninstallRequest) -> Result<ActionRes
   if !errors.is_empty() {
     return Err(errors.join("\n"));
   }
-  Ok(ActionResult::applied(view_of(env, &name)?))
+  Ok(ActionResult::applied(view_of(env, &id)?))
 }
 
 /// Push the hub copy to copy-mode targets. Symlink targets are skipped. Without `force`,
 /// targets with local edits (Modified / Conflict) are left alone and reported as blockers.
 pub fn push_targets(
   env: &Env,
-  name: &str,
+  key: &str,
   only: Option<&[String]>,
   force: bool,
 ) -> Result<ActionResult, String> {
+  let (id, record) = resolve_skill(env, key)?;
   let store = store(env);
-  let record = store
-    .get(name)?
-    .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
-  let hub_dir = env.hub_dir(name);
+  let hub_dir = env.hub_dir(&id, &record.name);
   if !hub_dir.is_dir() {
     return Err(format!(
       "Hub copy is missing: {}",
@@ -640,7 +677,7 @@ pub fn push_targets(
       }
       continue;
     }
-    let (state, _) = target_state(env, name, install, Some(&hub_hash));
+    let (state, _) = target_state(&hub_dir, install, Some(&hub_hash));
     match state {
       TargetState::InSync => {
         pushed.push(install.path.clone());
@@ -677,8 +714,8 @@ pub fn push_targets(
     store.update(|lock| {
       let record = lock
         .skills
-        .get_mut(name)
-        .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
+        .get_mut(&id)
+        .ok_or_else(|| format!("Skill '{}' is not in the hub", key))?;
       for install in &mut record.installs {
         if pushed.contains(&install.path) {
           install.hash = hub_hash.clone();
@@ -691,7 +728,7 @@ pub fn push_targets(
   if !errors.is_empty() {
     return Err(errors.join("\n"));
   }
-  let view = view_of(env, name)?;
+  let view = view_of(env, &id)?;
   if blockers.is_empty() {
     Ok(ActionResult::applied(view))
   } else {
@@ -700,16 +737,10 @@ pub fn push_targets(
 }
 
 /// Take the content of one copy target as the new hub version.
-pub fn adopt_target(
-  env: &Env,
-  name: &str,
-  path: &str,
-  force: bool,
-) -> Result<ActionResult, String> {
+pub fn adopt_target(env: &Env, key: &str, path: &str, force: bool) -> Result<ActionResult, String> {
+  let (id, record) = resolve_skill(env, key)?;
+  let name = record.name.as_str();
   let store = store(env);
-  let record = store
-    .get(name)?
-    .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
   let install = record
     .installs
     .iter()
@@ -723,7 +754,7 @@ pub fn adopt_target(
     return Err(format!("{} does not exist", install.path));
   }
 
-  let probe = probe_hub(env, name, &record);
+  let probe = probe_hub(env, &id, &record);
   let mut blockers = Vec::new();
   if matches!(probe.state, HubState::Modified | HubState::NameMismatch) && !force {
     blockers.push(format!("Hub copy of '{}' has local changes", name));
@@ -731,11 +762,11 @@ pub fn adopt_target(
   if !blockers.is_empty() {
     return Ok(ActionResult::blocked(
       blockers,
-      Some(build_view(env, name, &record)),
+      Some(build_view(env, &id, &record)),
     ));
   }
 
-  let hub_dir = env.hub_dir(name);
+  let hub_dir = env.hub_dir(&id, name);
   if hub_dir.exists() {
     super::hub_service::trash_dir(env, &hub_dir)?;
   }
@@ -747,7 +778,7 @@ pub fn adopt_target(
   store.update(|lock| {
     let record = lock
       .skills
-      .get_mut(name)
+      .get_mut(&id)
       .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
     record.hash = new_hash.clone();
     record.updated_at = timestamp.clone();
@@ -760,7 +791,7 @@ pub fn adopt_target(
     }
     Ok(())
   })?;
-  Ok(ActionResult::applied(view_of(env, name)?))
+  Ok(ActionResult::applied(view_of(env, &id)?))
 }
 
 /// Record an already-present directory (found by scan or migration) as an install target
@@ -768,13 +799,14 @@ pub fn adopt_target(
 /// else as `copy` with its current content hash as the merge base.
 pub fn register_existing_install(
   env: &Env,
-  name: &str,
+  key: &str,
   path: &Path,
   scope: InstallScope,
   project_path: Option<String>,
   agent_ids: &[String],
 ) -> Result<(), String> {
-  let hub_dir = env.hub_dir(name);
+  let (id, record) = resolve_skill(env, key)?;
+  let hub_dir = env.hub_dir(&id, &record.name);
   // The hub hash is the merge base: a differing copy shows up as `Modified` (local edits
   // relative to the hub) rather than `Outdated`.
   let hash = hash_dir_cached(&hub_dir)?;
@@ -788,8 +820,8 @@ pub fn register_existing_install(
   store(env).update(|lock| {
     let record = lock
       .skills
-      .get_mut(name)
-      .ok_or_else(|| format!("Skill '{}' is not in the hub", name))?;
+      .get_mut(&id)
+      .ok_or_else(|| format!("Skill '{}' is not in the hub", key))?;
     if let Some(install) = record
       .installs
       .iter_mut()
@@ -819,23 +851,18 @@ pub fn register_existing_install(
 
 /// Replace a symlink target with a real copy of the hub content (used before the hub copy
 /// is removed so agents keep working).
-pub fn materialize_symlink(
-  env: &Env,
-  name: &str,
-  install: &InstallRecord,
-) -> Result<InstallMode, String> {
+pub fn materialize_symlink(hub_dir: &Path, install: &InstallRecord) -> Result<InstallMode, String> {
   let target = Path::new(&install.path);
   if !is_symlink(target) {
     return Ok(install.mode);
   }
-  let hub_dir = env.hub_dir(name);
   if !hub_dir.is_dir() {
     return Err(format!(
       "Hub copy is missing: {}",
       hub_dir.to_string_lossy()
     ));
   }
-  write_target(&hub_dir, target, InstallMode::Copy)
+  write_target(hub_dir, target, InstallMode::Copy)
 }
 
 #[cfg(test)]
@@ -864,6 +891,8 @@ mod tests {
     }
   }
 
+  const ID: &str = "00000000-0000-4000-8000-000000000001";
+
   fn env_with_hub(tmp: &Path, projects: Vec<UserProject>) -> Env {
     let env = Env::for_test(
       tmp,
@@ -874,14 +903,15 @@ mod tests {
       ],
       projects,
     );
-    let hub = env.hub_dir("foo");
+    let hub = env.hub_dir(ID, "foo");
     write(&hub, "SKILL.md", "---\nname: foo\n---\nv1");
     let hash = hash_dir(&hub).unwrap();
     LockStore::new(env.lock_path.clone())
       .update(|lock| {
         lock.skills.insert(
-          "foo".to_string(),
+          ID.to_string(),
           SkillRecord {
+            name: "foo".to_string(),
             source: SkillSource::None,
             hash,
             imported_at: "t".to_string(),
@@ -917,11 +947,11 @@ mod tests {
     )
     .unwrap();
 
-    let record = store(&env).get("foo").unwrap().unwrap();
+    let record = store(&env).get(ID).unwrap().unwrap();
     // Only the agent that was asked for is recorded ...
     assert_eq!(record.installs[0].agent_ids, vec!["codex".to_string()]);
     // ... but the view names every agent that reads the directory.
-    let view = view_of(&env, "foo").unwrap();
+    let view = view_of(&env, ID).unwrap();
     assert_eq!(
       view.installs[0].record.agent_ids,
       vec!["codex".to_string(), "cursor".to_string()]
@@ -959,7 +989,7 @@ mod tests {
     assert_eq!(view.installs[0].record.mode, InstallMode::Copy);
 
     write(&target, "SKILL.md", "edited");
-    let view = view_of(&env, "foo").unwrap();
+    let view = view_of(&env, ID).unwrap();
     assert_eq!(view.installs[0].state, TargetState::Modified);
     assert!(view.has_drift);
 
@@ -988,7 +1018,7 @@ mod tests {
     .unwrap();
     assert!(forced.applied);
     assert!(!target.exists());
-    assert!(view_of(&env, "foo").unwrap().installs.is_empty());
+    assert!(view_of(&env, ID).unwrap().installs.is_empty());
   }
 
   #[test]
@@ -1046,7 +1076,7 @@ mod tests {
     assert!(result.applied);
     assert!(!Path::new(&shared_path).exists());
     assert!(user_path.is_dir());
-    let view = view_of(&env, "foo").unwrap();
+    let view = view_of(&env, ID).unwrap();
     assert_eq!(view.installs.len(), 1);
     assert_eq!(view.installs[0].record.scope, InstallScope::User);
   }
@@ -1086,8 +1116,8 @@ mod tests {
     assert!(is_symlink(&project.join(".agents/skills/foo")));
 
     // Hub edits are visible through the link without a push.
-    write(&env.hub_dir("foo"), "SKILL.md", "v2");
-    let view = view_of(&env, "foo").unwrap();
+    write(&env.hub_dir(ID, "foo"), "SKILL.md", "v2");
+    let view = view_of(&env, ID).unwrap();
     assert_eq!(view.installs[0].state, TargetState::InSync);
     assert_eq!(view.hub_state, crate::models::HubState::Modified);
 
@@ -1161,6 +1191,111 @@ mod tests {
       .ends_with("v1"));
   }
 
+  /// A second skill named `foo` from another source.
+  fn add_second_foo(env: &Env) -> String {
+    let id = "00000000-0000-4000-8000-000000000002".to_string();
+    let hub = env.hub_dir(&id, "foo");
+    write(&hub, "SKILL.md", "---\nname: foo\n---\nother");
+    let hash = hash_dir(&hub).unwrap();
+    store(env)
+      .update(|lock| {
+        lock.skills.insert(
+          id.clone(),
+          SkillRecord {
+            name: "foo".to_string(),
+            source: SkillSource::Zip {
+              path: "/foo.zip".to_string(),
+            },
+            hash,
+            imported_at: "t2".to_string(),
+            updated_at: "t2".to_string(),
+            installs: vec![],
+          },
+        );
+        Ok(())
+      })
+      .unwrap();
+    id
+  }
+
+  #[test]
+  fn install_onto_a_target_of_another_same_name_skill_is_blocked_then_moved() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = env_with_hub(tmp.path(), vec![]);
+    let other = add_second_foo(&env);
+    let request = |key: &str, force: bool| InstallRequest {
+      name: key.to_string(),
+      targets: vec![spec(InstallScope::User, None, "claude-code")],
+      mode: Some(InstallMode::Copy),
+      force,
+    };
+    install_skill(&env, request(ID, false)).unwrap();
+    let target = env.home.join(".claude/skills/foo");
+    write(&target, "SKILL.md", "local edit");
+
+    let blocked = install_skill(&env, request(&other, false)).unwrap();
+    assert!(!blocked.applied);
+    assert!(
+      blocked.blockers[0].contains("occupied by"),
+      "{:?}",
+      blocked.blockers
+    );
+    assert_eq!(
+      fs::read_to_string(target.join("SKILL.md")).unwrap(),
+      "local edit"
+    );
+
+    let forced = install_skill(&env, request(&other, true)).unwrap();
+    assert!(forced.applied);
+    assert!(fs::read_to_string(target.join("SKILL.md"))
+      .unwrap()
+      .ends_with("other"));
+    assert!(view_of(&env, ID).unwrap().installs.is_empty());
+    assert_eq!(view_of(&env, &other).unwrap().installs.len(), 1);
+    let trashed = fs::read_dir(&env.trash_root)
+      .unwrap()
+      .next()
+      .unwrap()
+      .unwrap();
+    assert_eq!(
+      fs::read_to_string(trashed.path().join("SKILL.md")).unwrap(),
+      "local edit"
+    );
+  }
+
+  #[test]
+  fn same_name_skills_install_into_different_scopes() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("proj");
+    fs::create_dir_all(&project).unwrap();
+    let env = env_with_hub(tmp.path(), vec![]);
+    let other = add_second_foo(&env);
+    let install = |key: &str, scope: InstallScope, project: Option<&Path>| {
+      install_skill(
+        &env,
+        InstallRequest {
+          name: key.to_string(),
+          targets: vec![spec(scope, project, "claude-code")],
+          mode: Some(InstallMode::Copy),
+          force: false,
+        },
+      )
+      .unwrap()
+    };
+    assert!(install(ID, InstallScope::User, None).applied);
+    assert!(install(&other, InstallScope::Project, Some(&project)).applied);
+    assert!(
+      fs::read_to_string(project.join(".claude/skills/foo/SKILL.md"))
+        .unwrap()
+        .ends_with("other")
+    );
+    assert!(
+      fs::read_to_string(env.home.join(".claude/skills/foo/SKILL.md"))
+        .unwrap()
+        .ends_with("v1")
+    );
+  }
+
   #[test]
   fn push_and_adopt_round_trip() {
     let tmp = tempfile::tempdir().unwrap();
@@ -1178,14 +1313,14 @@ mod tests {
     let target = env.home.join(".claude/skills/foo");
 
     // Hub moves on -> target Outdated -> push.
-    write(&env.hub_dir("foo"), "SKILL.md", "v2");
-    let view = view_of(&env, "foo").unwrap();
+    write(&env.hub_dir(ID, "foo"), "SKILL.md", "v2");
+    let view = view_of(&env, ID).unwrap();
     assert_eq!(view.installs[0].state, TargetState::Outdated);
     let pushed = push_targets(&env, "foo", None, false).unwrap();
     assert!(pushed.applied);
     assert_eq!(fs::read_to_string(target.join("SKILL.md")).unwrap(), "v2");
     assert_eq!(
-      view_of(&env, "foo").unwrap().installs[0].state,
+      view_of(&env, ID).unwrap().installs[0].state,
       TargetState::InSync
     );
 
@@ -1198,10 +1333,10 @@ mod tests {
     let adopted = adopt_target(&env, "foo", &target.to_string_lossy(), false).unwrap();
     assert!(adopted.applied);
     assert_eq!(
-      fs::read_to_string(env.hub_dir("foo").join("SKILL.md")).unwrap(),
+      fs::read_to_string(env.hub_dir(ID, "foo").join("SKILL.md")).unwrap(),
       "v3"
     );
-    let view = view_of(&env, "foo").unwrap();
+    let view = view_of(&env, ID).unwrap();
     assert_eq!(view.hub_state, crate::models::HubState::Ok);
     assert_eq!(view.installs[0].state, TargetState::InSync);
     assert!(env.trash_root.is_dir());

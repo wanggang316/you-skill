@@ -2,13 +2,19 @@
 //! `~/.agents/skills` (canonical copies), `~/.agents/.skill-lock.json` (GitHub lock),
 //! `<config_dir>/youskill/native-skill-lock.json`, `<project>/skills-lock.json`, plus every
 //! agent's own skills directory. Nothing legacy is deleted.
+//!
+//! Also the move from lock version 1 (records keyed by name, `skills/<name>`) to version 2
+//! (records keyed by id, `skills/<id>/<name>`), see [`migrate_skill_ids`].
 
-use crate::models::{InstallMode, InstallScope, MigrationReport, SkillRecord, SkillSource};
+use crate::models::{
+  is_skill_id, new_skill_id, InstallMode, InstallScope, MigrationReport, SkillRecord, SkillSource,
+};
 use crate::services::agent_apps_service::LEGACY_USER_ROOTS;
 use crate::services::env::Env;
+use crate::services::hub_service::skill_dir_in;
 use crate::services::install_service::{register_existing_install, write_target};
-use crate::services::lock_service::{ops_guard, store};
-use crate::utils::folder::{copy_dir, read_skill_name, CopyOpts, SKILL_MD};
+use crate::services::lock_service::{ops_guard, ops_guard_unless_held, store};
+use crate::utils::folder::{copy_dir, move_dir, read_skill_name, CopyOpts, SKILL_MD};
 use crate::utils::hash::{hash_dir, invalidate_hash_cache};
 use crate::utils::path::{
   expand_home_with, is_symlink, is_within, legacy_agents_root, same_path, symlink_points_to,
@@ -171,6 +177,7 @@ pub fn ensure_migrated(env: &Env) -> Result<Option<MigrationReport>, String> {
 
 pub fn migrate_legacy(env: &Env) -> Result<MigrationReport, String> {
   let _ops = ops_guard(env)?;
+  migrate_skill_ids(env)?;
   let mut report = MigrationReport::default();
   let legacy_root = legacy_agents_root(&env.home);
   let github_lock =
@@ -350,32 +357,42 @@ fn migrate_root<F>(
       continue;
     }
 
-    let hub_dir = env.hub_dir(&name);
-    let linked_to_hub = symlink_points_to(&dir, &hub_dir);
-    let linked_to_legacy = !linked_to_hub
-      && is_symlink(&dir)
-      && is_within(&dir.canonicalize().unwrap_or_default(), &legacy_root);
+    let resolved = is_symlink(&dir)
+      .then(|| dir.canonicalize().ok())
+      .flatten()
+      .unwrap_or_default();
+    let linked_to_hub = is_symlink(&dir) && is_within(&resolved, &env.hub_root);
+    let linked_to_legacy = !linked_to_hub && is_symlink(&dir) && is_within(&resolved, &legacy_root);
 
     // Import into the hub when unknown.
-    let known = match store(env).get(&name) {
-      Ok(record) => record.is_some(),
+    let known = match store(env).read() {
+      Ok(lock) => lock.find_by_name(&name).map(|(id, _)| id.clone()),
       Err(err) => {
         report.errors.push(err);
         continue;
       },
     };
-    if !known {
-      if linked_to_hub {
-        continue;
-      }
-      if let Err(err) = import_into_hub(env, &name, &dir, &source_hint(&name, &dir_name)) {
-        report
-          .errors
-          .push(format!("{}: {}", dir.to_string_lossy(), err));
-        continue;
-      }
-      report.imported.push(name.clone());
-    }
+    let id = match known {
+      Some(id) => id,
+      None => {
+        if linked_to_hub {
+          continue;
+        }
+        match import_into_hub(env, &name, &dir, &source_hint(&name, &dir_name)) {
+          Ok(id) => {
+            report.imported.push(name.clone());
+            id
+          },
+          Err(err) => {
+            report
+              .errors
+              .push(format!("{}: {}", dir.to_string_lossy(), err));
+            continue;
+          },
+        }
+      },
+    };
+    let hub_dir = env.hub_dir(&id, &name);
 
     // Relink symlinks that used to point at the legacy canonical dir.
     if linked_to_legacy {
@@ -395,7 +412,7 @@ fn migrate_root<F>(
     } else {
       agent_ids.clone()
     };
-    match register_existing_install(env, &name, &dir, scope, project_path.clone(), &ids) {
+    match register_existing_install(env, &id, &dir, scope, project_path.clone(), &ids) {
       Ok(()) => report.installs += 1,
       Err(err) => report
         .errors
@@ -404,18 +421,16 @@ fn migrate_root<F>(
   }
 }
 
+/// Copy a skill into the hub as a new record and return its id.
 fn import_into_hub(
   env: &Env,
   name: &str,
   dir: &Path,
   hint: &Option<(SkillSource, Option<String>)>,
-) -> Result<(), String> {
-  let hub_dir = env.hub_dir(name);
-  if hub_dir.exists() {
-    // A previous partial run left the directory without a record: keep its content.
-  } else {
-    copy_dir(dir, &hub_dir, &CopyOpts::skill())?;
-  }
+) -> Result<String, String> {
+  let id = new_skill_id();
+  let hub_dir = env.hub_dir(&id, name);
+  copy_dir(dir, &hub_dir, &CopyOpts::skill())?;
   invalidate_hash_cache(&hub_dir);
   let hash = hash_dir(&hub_dir)?;
   let now = now_rfc3339();
@@ -424,15 +439,98 @@ fn import_into_hub(
     .filter(|s| !s.is_empty())
     .unwrap_or_else(|| now.clone());
   store(env).update(|lock| {
-    lock.skills.entry(name.to_string()).or_insert(SkillRecord {
-      source,
-      hash,
-      imported_at,
-      updated_at: now,
-      installs: Vec::new(),
-    });
+    lock.skills.insert(
+      id.clone(),
+      SkillRecord {
+        name: name.to_string(),
+        source,
+        hash,
+        imported_at,
+        updated_at: now,
+        installs: Vec::new(),
+      },
+    );
+    Ok(())
+  })?;
+  Ok(id)
+}
+
+/// Move every version 1 record (keyed by name, hub copy at `skills/<name>`) to a new id and
+/// `skills/<id>/<name>`, and relink its symlink installs. Each record moves on its own, so
+/// an interrupted run continues on the next call: a hub copy that was moved before the
+/// lock was written is found at `skills/<id>/<name>` and keeps that id.
+pub fn migrate_skill_ids(env: &Env) -> Result<(), String> {
+  if !has_named_records(env)? {
+    return Ok(());
+  }
+  let _ops = ops_guard_unless_held(&env.youskill_root)?;
+  let lock = store(env).read()?;
+  for (key, record) in &lock.skills {
+    if !is_skill_id(key) {
+      migrate_named_record(env, key, record)?;
+    }
+  }
+  Ok(())
+}
+
+fn has_named_records(env: &Env) -> Result<bool, String> {
+  Ok(
+    store(env)
+      .read()?
+      .skills
+      .keys()
+      .any(|key| !is_skill_id(key)),
+  )
+}
+
+fn migrate_named_record(env: &Env, key: &str, record: &SkillRecord) -> Result<(), String> {
+  let name = if record.name.is_empty() {
+    key.to_string()
+  } else {
+    record.name.clone()
+  };
+  let old_dir = env.hub_root.join(key);
+  let id = if old_dir.is_dir() {
+    let id = new_skill_id();
+    move_dir(&old_dir, &env.hub_dir(&id, &name))?;
+    invalidate_hash_cache(&old_dir);
+    id
+  } else {
+    moved_hub_copy(env, &name)?.unwrap_or_else(new_skill_id)
+  };
+
+  let hub_dir = env.hub_dir(&id, &name);
+  for install in &record.installs {
+    let target = Path::new(&install.path);
+    if is_symlink(target) && symlink_points_to(target, &old_dir) {
+      if let Err(err) = write_target(&hub_dir, target, InstallMode::Symlink) {
+        tracing::warn!("relinking {} failed: {}", install.path, err);
+      }
+    }
+  }
+
+  store(env).update(|lock| {
+    if let Some(mut moved) = lock.skills.remove(key) {
+      moved.name = name.clone();
+      lock.skills.insert(id.clone(), moved);
+    }
     Ok(())
   })
+}
+
+/// The id of `skills/<id>/<name>` when no record has that id yet.
+fn moved_hub_copy(env: &Env, name: &str) -> Result<Option<String>, String> {
+  let Ok(entries) = fs::read_dir(&env.hub_root) else {
+    return Ok(None);
+  };
+  let known = store(env).read()?.skills;
+  Ok(entries.flatten().find_map(|entry| {
+    let id = entry.file_name().to_string_lossy().to_string();
+    let found = is_skill_id(&id)
+      && !known.contains_key(&id)
+      && skill_dir_in(&entry.path()).as_deref() == Some(name);
+    found.then_some(id)
+  }))
 }
 
 #[cfg(test)]
@@ -541,7 +639,10 @@ mod tests {
     let claude_foo = by_path(&foo, ".claude/skills/foo");
     assert_eq!(claude_foo.record.mode, InstallMode::Symlink);
     assert_eq!(claude_foo.state, TargetState::InSync);
-    assert!(symlink_points_to(&claude.join("foo"), &env.hub_dir("foo")));
+    assert!(symlink_points_to(
+      &claude.join("foo"),
+      &env.hub_dir_of("foo")
+    ));
     // codex link to an unmanaged location is left alone and not recorded.
     assert!(foo
       .installs
@@ -609,6 +710,116 @@ mod tests {
     assert!(foo.installs[0].record.path.ends_with(".cursor/skills/foo"));
     assert_eq!(foo.installs[0].record.agent_ids, vec!["cursor"]);
     assert_eq!(foo.installs[0].state, TargetState::InSync);
+  }
+
+  /// A version 1 lock: `foo` keyed by name at `skills/foo`, installed as a symlink into
+  /// Claude Code and as a copy into the shared directory.
+  #[cfg(unix)]
+  fn v1_hub(tmp: &Path) -> Env {
+    use crate::models::InstallRecord;
+    let env = Env::for_test(
+      tmp,
+      vec![
+        app("agents", "~/.agents/skills", ".agents/skills"),
+        app("claude-code", "~/.claude/skills", ".claude/skills"),
+      ],
+      vec![],
+    );
+    let old_dir = env.hub_root.join("foo");
+    write(&old_dir, "SKILL.md", "---\nname: foo\n---\nF");
+    let hash = hash_dir(&old_dir).unwrap();
+    let link = env.home.join(".claude/skills/foo");
+    fs::create_dir_all(link.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(&old_dir, &link).unwrap();
+    let copy = env.home.join(".agents/skills/foo");
+    copy_dir(&old_dir, &copy, &CopyOpts::skill()).unwrap();
+    let install = |path: &Path, mode: InstallMode, agent: &str| InstallRecord {
+      scope: InstallScope::User,
+      project_path: None,
+      path: path.to_string_lossy().to_string(),
+      mode,
+      hash: hash.clone(),
+      installed_at: "t".to_string(),
+      agent_ids: vec![agent.to_string()],
+    };
+    let installs = vec![
+      install(&link, InstallMode::Symlink, "claude-code"),
+      install(&copy, InstallMode::Copy, "agents"),
+    ];
+    write(
+      &env.youskill_root,
+      ".skill-lock.json",
+      &serde_json::json!({
+        "version": 1,
+        "skills": { "foo": {
+          "hash": hash,
+          "importedAt": "t",
+          "updatedAt": "t",
+          "installs": installs,
+        } }
+      })
+      .to_string(),
+    );
+    env
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn version_1_records_move_to_ids_and_symlinks_follow() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = v1_hub(tmp.path());
+
+    migrate_skill_ids(&env).unwrap();
+
+    let lock = store(&env).read().unwrap();
+    assert_eq!(lock.skills.len(), 1);
+    let (id, record) = lock.skills.iter().next().unwrap();
+    assert!(is_skill_id(id));
+    assert_eq!(record.name, "foo");
+    let hub_dir = env.hub_dir(id, "foo");
+    assert!(hub_dir.join("SKILL.md").is_file());
+    assert!(!env.hub_root.join("foo").exists());
+    assert!(symlink_points_to(
+      &env.home.join(".claude/skills/foo"),
+      &hub_dir
+    ));
+
+    let view = get_hub_skill(&env, "foo").unwrap().unwrap();
+    assert_eq!(&view.id, id);
+    assert_eq!(view.hub_state, crate::models::HubState::Ok);
+    assert!(view
+      .installs
+      .iter()
+      .all(|install| install.state == TargetState::InSync));
+
+    // A second run changes nothing.
+    migrate_skill_ids(&env).unwrap();
+    assert_eq!(store(&env).read().unwrap().skills, lock.skills);
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn interrupted_id_migration_keeps_the_moved_copy() {
+    let tmp = tempfile::tempdir().unwrap();
+    let env = v1_hub(tmp.path());
+    // Stopped after the move: the hub copy has an id, the lock and the link do not.
+    let id = new_skill_id();
+    move_dir(&env.hub_root.join("foo"), &env.hub_dir(&id, "foo")).unwrap();
+
+    migrate_skill_ids(&env).unwrap();
+
+    let lock = store(&env).read().unwrap();
+    assert_eq!(lock.skills.keys().collect::<Vec<_>>(), vec![&id]);
+    assert!(symlink_points_to(
+      &env.home.join(".claude/skills/foo"),
+      &env.hub_dir(&id, "foo")
+    ));
+    let view = get_hub_skill(&env, &id).unwrap().unwrap();
+    assert_eq!(view.installs.len(), 2);
+    assert!(view
+      .installs
+      .iter()
+      .all(|install| install.state == TargetState::InSync));
   }
 
   #[test]

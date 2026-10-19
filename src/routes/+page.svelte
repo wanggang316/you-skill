@@ -36,6 +36,7 @@
     hubSkills,
     migrationReport,
     refreshHub,
+    skillLabel,
     sourceChecking,
   } from "$lib/stores/hub";
   import { homePath } from "$lib/stores/env";
@@ -54,12 +55,12 @@
   let removeModalOpen = $state(false);
   let migrationDismissed = $state(false);
   /** Skills picked with Shift+click for a batch install or removal. */
-  let checkedNames = $state<string[]>([]);
+  let checkedIds = $state<string[]>([]);
   /** Skills the remove modal acts on: the selected one or the checked batch. */
-  let removeNames = $state<string[]>([]);
+  let removeIds = $state<string[]>([]);
 
   const location = $derived(getAppLocation(page.url));
-  const selectedName = $derived(location.skill);
+  const selectedId = $derived(location.skill);
   const filter = $derived(location.filter);
   const source = $derived(location.source);
 
@@ -83,12 +84,12 @@
   });
 
   const selectedSkill = $derived<HubSkillView | null>(
-    selectedName ? ($hubSkills.find((skill) => skill.name === selectedName) ?? null) : null
+    selectedId ? ($hubSkills.find((skill) => skill.id === selectedId) ?? null) : null
   );
 
   const removeInstallCount = $derived(
     $hubSkills
-      .filter((skill) => removeNames.includes(skill.name))
+      .filter((skill) => removeIds.includes(skill.id))
       .reduce((total, skill) => total + skill.installs.length, 0)
   );
 
@@ -122,16 +123,16 @@
     source?: LibrarySource;
   }) {
     const href = buildLibraryHref({
-      skill: options.skill === undefined ? selectedName : options.skill,
+      skill: options.skill === undefined ? selectedId : options.skill,
       filter: options.filter ?? filter,
       source: options.source ?? source,
     });
     goto(href, { replaceState: true, keepFocus: true, noScroll: true });
   }
 
-  function handleSelect(name: string) {
+  function handleSelect(id: string) {
     actionError = "";
-    navigate({ skill: name });
+    navigate({ skill: id });
   }
 
   async function runAction(work: () => Promise<unknown>) {
@@ -148,31 +149,31 @@
     }
   }
 
-  function handleToggleChecked(name: string) {
-    checkedNames = checkedNames.includes(name)
-      ? checkedNames.filter((item) => item !== name)
-      : [...checkedNames, name];
+  function handleToggleChecked(id: string) {
+    checkedIds = checkedIds.includes(id)
+      ? checkedIds.filter((item) => item !== id)
+      : [...checkedIds, id];
   }
 
   function handleBatchInstall() {
-    const names = checkedNames.filter((name) => $hubSkills.some((skill) => skill.name === name));
-    checkedNames = [];
-    openInstallModal(names, { replace: true });
+    const ids = checkedIds.filter((id) => $hubSkills.some((skill) => skill.id === id));
+    checkedIds = [];
+    openInstallModal(ids, { replace: true });
   }
 
-  function openRemoveModal(names: string[]) {
-    if (names.length === 0) return;
-    removeNames = names;
+  function openRemoveModal(ids: string[]) {
+    if (ids.length === 0) return;
+    removeIds = ids;
     removeModalOpen = true;
   }
 
   function handleBatchRemove() {
-    openRemoveModal(checkedNames.filter((name) => $hubSkills.some((skill) => skill.name === name)));
+    openRemoveModal(checkedIds.filter((id) => $hubSkills.some((skill) => skill.id === id)));
   }
 
   function handleInstall(scope: InstallScope, projectPath: string | null, lockScope = false) {
     if (!selectedSkill) return;
-    openInstallModal([selectedSkill.name], { scope, projectPath, lockScope });
+    openInstallModal([selectedSkill.id], { scope, projectPath, lockScope });
   }
 
   /** Uninstall from every agent of one location, after confirming. */
@@ -183,7 +184,8 @@
   ) {
     const skill = selectedSkill;
     if (!skill || installs.length === 0) return;
-    const name = skill.name;
+    const id = skill.id;
+    const name = $skillLabel(id);
     const paths = installs.map((install) => install.path);
     const location =
       scope === "user"
@@ -197,7 +199,7 @@
       });
       if (!confirmed) return;
       const result = await performAction((force) =>
-        uninstallSkill({ name, targets: [], paths, force })
+        uninstallSkill({ name: id, targets: [], paths, force })
       );
       if (!result.applied && result.blockers.length > 0) {
         actionError = result.blockers.join("\n");
@@ -208,7 +210,7 @@
   function handleTargetAction(install: InstallView, action: TargetAction) {
     const skill = selectedSkill;
     if (!skill) return;
-    const name = skill.name;
+    const name = skill.id;
     void runAction(async () => {
       let result;
       switch (action) {
@@ -252,7 +254,7 @@
   function handleSync(action: SyncAction) {
     const skill = selectedSkill;
     if (!skill) return;
-    const name = skill.name;
+    const name = skill.id;
     void runAction(async () => {
       const result = await performAction((force) => syncSkill(name, withForce(action, force)));
       if (!result.applied && result.blockers.length > 0) {
@@ -274,7 +276,7 @@
 
   function handleCheckSource() {
     if (!selectedSkill) return;
-    void checkSourceUpdates([selectedSkill.name]).then((updates) => {
+    void checkSourceUpdates([selectedSkill.id]).then((updates) => {
       const failed = updates.find((update) => update.error);
       if (failed?.error) actionError = failed.error;
     });
@@ -282,33 +284,33 @@
 
   /** Remove every target; on failure keep only the failed ones so a retry skips the rest. */
   async function handleRemove(removeInstalls: boolean) {
-    const failures: { name: string; error: unknown }[] = [];
-    for (const name of removeNames) {
+    const failures: { id: string; error: unknown }[] = [];
+    for (const id of removeIds) {
       try {
-        await removeHubSkill(name, removeInstalls);
+        await removeHubSkill(id, removeInstalls);
       } catch (error) {
-        failures.push({ name, error });
+        failures.push({ id, error });
       }
     }
     if (failures.length === 0) return;
-    const removed = removeNames.filter((name) => !failures.some((item) => item.name === name));
+    const removed = removeIds.filter((id) => !failures.some((item) => item.id === id));
     if (removed.length > 0) {
       dropRemoved(removed);
       await refreshHub().catch(console.error);
     }
-    removeNames = failures.map((item) => item.name);
+    removeIds = failures.map((item) => item.id);
     throw failures.length === 1 && removed.length === 0
       ? failures[0].error
-      : failures.map((item) => `${item.name}: ${String(item.error)}`).join("\n");
+      : failures.map((item) => `${$skillLabel(item.id)}: ${String(item.error)}`).join("\n");
   }
 
   function dropRemoved(removed: string[]) {
-    checkedNames = checkedNames.filter((name) => !removed.includes(name));
-    if (selectedName && removed.includes(selectedName)) navigate({ skill: null });
+    checkedIds = checkedIds.filter((id) => !removed.includes(id));
+    if (selectedId && removed.includes(selectedId)) navigate({ skill: null });
   }
 
   async function handleRemoved() {
-    dropRemoved(removeNames);
+    dropRemoved(removeIds);
     await refreshHub();
   }
 </script>
@@ -346,8 +348,8 @@
     <SkillList
       skills={filteredSkills}
       totalCount={$hubSkills.length}
-      {selectedName}
-      {checkedNames}
+      {selectedId}
+      {checkedIds}
       loading={$hubLoading}
       checking={$sourceChecking}
       error={$hubError}
@@ -358,7 +360,7 @@
       onToggleChecked={handleToggleChecked}
       onBatchInstall={handleBatchInstall}
       onBatchRemove={handleBatchRemove}
-      onClearChecked={() => (checkedNames = [])}
+      onClearChecked={() => (checkedIds = [])}
       onRefresh={handleRefresh}
       onScan={() => openScanRootsModal()}
       onFilterChange={(next) => navigate({ filter: next })}
@@ -367,7 +369,7 @@
 
     <div class="surface-panel grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)]">
       {#if selectedSkill}
-        {#key selectedSkill.name}
+        {#key selectedSkill.id}
           <SkillDetail
             skill={selectedSkill}
             projects={$userProjects}
@@ -378,10 +380,10 @@
             {actionError}
             onInstall={handleInstall}
             onUninstallLocation={handleUninstallLocation}
-            onManageLocations={() => openLocationPickerModal(selectedSkill.name)}
+            onManageLocations={() => openLocationPickerModal(selectedSkill.id)}
             onTargetAction={handleTargetAction}
             onSync={handleSync}
-            onRemove={() => openRemoveModal([selectedSkill.name])}
+            onRemove={() => openRemoveModal([selectedSkill.id])}
             onOpenDir={handleOpenDir}
             onCheckSource={handleCheckSource}
           />
@@ -402,10 +404,10 @@
 
 <RemoveSkillModal
   bind:open={removeModalOpen}
-  name={removeNames.join(", ")}
-  title={removeNames.length > 1 ? $t("remove.batchTitle", { count: removeNames.length }) : ""}
-  description={removeNames.length > 1
-    ? $t("remove.batchDescription", { count: removeNames.length })
+  name={removeIds.map((id) => $skillLabel(id)).join(", ")}
+  title={removeIds.length > 1 ? $t("remove.batchTitle", { count: removeIds.length }) : ""}
+  description={removeIds.length > 1
+    ? $t("remove.batchDescription", { count: removeIds.length })
     : ""}
   installCount={removeInstallCount}
   remove={handleRemove}

@@ -21,6 +21,7 @@
   import type { MemoryFile } from "$lib/api/agent-apps";
   import type { AgentInfo } from "$lib/api/skills";
   import { parentDir, type ScopeEntry } from "$lib/scopes";
+  import { skillLabel } from "$lib/stores/hub";
 
   export type ScopeSkillAction = "manage" | "diff" | "push" | "adopt" | "openDir" | "uninstall";
 
@@ -60,7 +61,7 @@
     /** Remove every skill of this scope from one skills directory. */
     onRemoveAgents: (location: { path: string; agentIds: string[] }) => void;
     onOpenMemory: (file: MemoryFile) => void;
-    onOpenSkill: (name: string) => void;
+    onOpenSkill: (id: string) => void;
     onSkillAction: (skill: HubSkillView, action: ScopeSkillAction) => void;
   } = $props();
 
@@ -76,7 +77,7 @@
         for (const id of install.agentIds) {
           if (!group.agentIds.includes(id)) group.agentIds.push(id);
         }
-        group.skills.add(skill.name);
+        group.skills.add(skill.id);
         map.set(dir, group);
       }
     }
@@ -374,14 +375,14 @@
           <p class="text-base-content-faint px-1 text-xs">{$t("scope.empty")}</p>
         {:else}
           <div class="border-base-300 divide-base-300 divide-y rounded-2xl border">
-            {#each visibleSkills as skill (skill.name)}
+            {#each visibleSkills as skill (skill.id)}
               {@const installs = installsOf(skill)}
               {@const drifted = installs.some((install) => install.state !== "in_sync")}
               <div class="flex items-center gap-3 px-3 py-2">
                 <button
                   class="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                   type="button"
-                  onclick={() => onOpenSkill(skill.name)}
+                  onclick={() => onOpenSkill(skill.id)}
                   title={installs.map((install) => install.path).join("\n")}
                 >
                   <span class="text-base-content-subtle shrink-0">
@@ -389,7 +390,7 @@
                   </span>
                   <span class="min-w-0 flex-1">
                     <span class="text-base-content block truncate text-[13px] font-medium">
-                      {skill.name}
+                      {$skillLabel(skill.id)}
                     </span>
                     <span class="text-base-content-faint block truncate text-[11px]">
                       {locationLabel(installs)}

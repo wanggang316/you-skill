@@ -58,6 +58,7 @@ pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
           registered.push(item.path.clone());
         }
         decisions.push(ScanDecision {
+          id: item.id.clone(),
           name: item.name.clone(),
           path: item.path.clone(),
           resolution: if first {
@@ -75,6 +76,7 @@ pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
         }
         registered.push(item.path.clone());
         decisions.push(ScanDecision {
+          id: item.id.clone(),
           name: item.name.clone(),
           path: item.path.clone(),
           resolution: ScanResolution::RegisterOnly,

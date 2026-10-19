@@ -4,7 +4,7 @@ use youskill_core::services::env::Env;
 
 #[derive(clap::Args)]
 pub struct Args {
-  /// Skill name as listed by `youskill list`.
+  /// Skill id, source key (`owner/repo[@branch]:<name>`) or unique name.
   name: String,
 }
 
@@ -21,12 +21,14 @@ pub fn run(ctx: &Ctx, args: Args) -> Result<i32, String> {
 
 pub fn print_skill(skill: &HubSkillView) {
   println!("Name:         {}", skill.name);
+  println!("Id:           {}", skill.id);
   if let Some(description) = &skill.description {
     println!("Description:  {}", description);
   }
   println!("Hub path:     {}", skill.hub_path);
   println!("Hub state:    {}", state_str(&skill.hub_state));
   println!("Source:       {}", source_label(&skill.source));
+  println!("Source key:   {}", skill.source_key);
   println!("Source state: {}", state_str(&skill.source_state));
   println!("Imported:     {}", skill.imported_at);
   println!("Updated:      {}", skill.updated_at);
