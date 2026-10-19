@@ -119,3 +119,17 @@ git pull --rebase && git push
 - Resolve conflicts in YOUR files only
 - If conflict is in a file you didn't modify, abort and ask the user
 - NEVER force push
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in GitHub Issues (`gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Three labels: `agent-todo`, `agent-done`, `needs-info`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
