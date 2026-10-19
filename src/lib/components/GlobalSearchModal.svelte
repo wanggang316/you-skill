@@ -52,6 +52,9 @@
   /** Drops answers to queries that were replaced while they ran. */
   let requestSeq = 0;
 
+  /** The hits belong to an older query until the search for this one returns. */
+  const stale = $derived(loading || shownQuery !== query);
+
   /** Hits in display order, with their index into it. */
   const hits = $derived(groups.flatMap((group) => group.hits));
   const offsets = $derived(
@@ -128,7 +131,7 @@
   }
 
   function openHit(hit: SearchHit | undefined) {
-    if (!hit) return;
+    if (!hit || stale) return;
     close();
     void goto(hrefOf(hit));
   }
@@ -162,8 +165,6 @@
       void select(selected - 1);
     } else if (event.key === "Enter") {
       event.preventDefault();
-      // The hits belong to an older query until the search for this one returns.
-      if (loading || shownQuery !== query) return;
       openHit(hits[selected]);
     }
   }
@@ -233,8 +234,9 @@
     <div
       bind:this={list}
       id="global-search-results"
-      class="min-h-0 flex-1 overflow-y-auto p-2"
+      class={`min-h-0 flex-1 overflow-y-auto p-2 transition-opacity ${stale && hits.length > 0 ? "opacity-60" : ""}`}
       role="listbox"
+      aria-busy={stale}
       aria-label={$t("search.title")}
     >
       {#if error}
