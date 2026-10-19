@@ -36,6 +36,7 @@ use commands::{
   },
   remote::{fetch_remote_skills, fetch_skills_by_names, record_skill_install},
   scan_roots::{add_scan_root, list_scan_roots, remove_scan_root, suggest_scan_roots},
+  search::global_search,
   settings::{
     backup_skills, get_settings, list_openrouter_models, open_backup_folder, set_backup_folder,
     update_settings,
@@ -234,7 +235,8 @@ fn main() {
       read_instruction_file,
       write_instruction_file,
       detect_instruction_files,
-      detect_instruction_github
+      detect_instruction_github,
+      global_search
     ])
     .build(tauri::generate_context!())
     .expect("error while building tauri application")
