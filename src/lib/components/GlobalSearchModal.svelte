@@ -63,6 +63,7 @@
 
   $effect(() => {
     if (!$globalSearchOpen) return;
+    cancel();
     query = "";
     groups = [];
     shownQuery = "";
@@ -86,13 +87,13 @@
     timer = setTimeout(async () => {
       try {
         const result = await globalSearch(text, $t("scope.user"));
-        if (seq !== requestSeq) return;
+        if (seq !== requestSeq || !$globalSearchOpen) return;
         groups = result;
         shownQuery = text;
         error = "";
         selected = 0;
       } catch (err) {
-        if (seq !== requestSeq) return;
+        if (seq !== requestSeq || !$globalSearchOpen) return;
         error = err instanceof Error ? err.message : String(err);
         groups = [];
       } finally {
@@ -101,9 +102,15 @@
     }, DEBOUNCE_MS);
   }
 
-  function close() {
+  /** Stops the pending search, so that its answer is not shown. */
+  function cancel() {
     clearTimeout(timer);
     requestSeq++;
+    loading = false;
+  }
+
+  function close() {
+    cancel();
     modal?.handleClose();
   }
 
@@ -142,7 +149,12 @@
       close();
       return;
     }
-    if (event.key === "ArrowDown") {
+    if (event.key === "Escape") {
+      // Handled here instead of by the modal, so that the pending search is cancelled too.
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+    } else if (event.key === "ArrowDown") {
       event.preventDefault();
       void select(selected + 1);
     } else if (event.key === "ArrowUp") {
@@ -150,6 +162,8 @@
       void select(selected - 1);
     } else if (event.key === "Enter") {
       event.preventDefault();
+      // The hits belong to an older query until the search for this one returns.
+      if (loading || shownQuery !== query) return;
       openHit(hits[selected]);
     }
   }
@@ -186,6 +200,7 @@
   placement="top"
   containerClass="max-w-[640px]"
   onClose={() => {
+    cancel();
     query = "";
     groups = [];
   }}
