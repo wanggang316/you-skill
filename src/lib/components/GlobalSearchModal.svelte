@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from "svelte";
   import { goto } from "$app/navigation";
-  import { Folder, Loader2, ScrollText, Search, Sparkles, User } from "@lucide/svelte";
+  import { Folder, Loader2, ScrollText, Search, User, Zap } from "@lucide/svelte";
   import type { Component } from "svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import {
@@ -31,7 +31,7 @@
   };
 
   const ICONS: Record<SearchItemKind, Component<{ size?: number; strokeWidth?: number }>> = {
-    skill: Sparkles,
+    skill: Zap,
     instruction: ScrollText,
     project: Folder,
     user: User,
