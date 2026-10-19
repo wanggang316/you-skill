@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Skills with the same name from different sources can be in the library together. Each one can be installed into a different place; an install into a directory that holds the other one asks before it replaces it.
 - The import dialog shows library skills with the same name or source, and lets you replace one of them or add the import as a new skill. A zip import replaces the newest zip skill of the same name by default.
 - `youskill import --replace <skill>` and `--add`; skill arguments accept source keys such as `owner/repo@main:tdd`.
+- Global Search: press `Mod+P` (or the search button in the top bar) to find library skills by name, description or `SKILL.md` text, instruction templates by name or text, and projects by name or path, then open the result on its page. The shortcut can be changed in Settings > Shortcuts ([#42](https://github.com/wanggang316/you-skill/issues/42)).
 
 ### Changed
 
