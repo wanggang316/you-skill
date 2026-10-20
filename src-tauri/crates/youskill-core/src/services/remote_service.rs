@@ -201,6 +201,7 @@ pub struct MarketCategory {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MarketRepository {
+  pub star_count: Option<u64>,
   pub icon: Option<String>,
   pub id: u64,
   pub name: String,
@@ -384,9 +385,10 @@ mod tests {
     );
     let repository: MarketRepository = serde_json::from_value(serde_json::json!({
       "id": 1, "name": "team/tools", "skill_count": 2, "enabled": true,
-      "type": "hot", "icon": "lucide:star"
+      "type": "hot", "icon": "lucide:star", "star_count": 120
     }))
     .unwrap();
+    assert_eq!(repository.star_count, Some(120));
     assert_eq!(
       serde_json::to_value(repository).unwrap()["icon"],
       "lucide:star"

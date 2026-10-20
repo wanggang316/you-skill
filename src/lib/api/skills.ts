@@ -161,6 +161,7 @@ export interface MarketCategory {
 }
 
 export interface MarketRepository extends MarketCategory {
+  star_count?: number | null;
   enabled: boolean;
   type: string;
 }

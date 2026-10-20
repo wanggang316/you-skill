@@ -6,7 +6,17 @@
   import SegmentedTabs from "$lib/components/ui/SegmentedTabs.svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { Check, ChevronDown, ChevronsUpDown, Loader2, RefreshCw, Search } from "@lucide/svelte";
+  import {
+    Check,
+    ChevronDown,
+    ArrowDownWideNarrow,
+    Loader2,
+    RefreshCw,
+    Search,
+    Star,
+  } from "@lucide/svelte";
+  import { DropdownMenu } from "bits-ui";
+  import { menuContentClass, menuItemClass } from "$lib/components/ui/menu";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "$lib/i18n";
   import {
@@ -31,6 +41,13 @@
           $t("market.all"))
       : ($marketState.repository ?? $t("market.repositories"))
   );
+  const repositoryStars = $derived(
+    $marketState.repositories.find((item) => item.name === $marketState.repository)?.star_count
+  );
+  const sortItems = $derived([
+    { value: "heat_score", label: $t("market.sort.popular") },
+    { value: "star_count", label: $t("market.sort.stars") },
+  ]);
   const navigationError = $derived(
     $marketState.tab === "categories"
       ? $marketState.categoriesError
@@ -248,7 +265,17 @@
         class="border-base-300 flex h-12 shrink-0 items-center justify-between gap-3 border-b px-6"
         data-window-drag-region
       >
-        <h2 class="text-base-content truncate text-sm font-semibold" {title}>{title}</h2>
+        <div class="flex min-w-0 items-center gap-3">
+          <h2 class="text-base-content truncate text-sm font-semibold" {title}>{title}</h2>
+          {#if $marketState.tab === "repositories" && repositoryStars != null}
+            <span
+              class="text-base-content-subtle inline-flex shrink-0 items-center gap-1 text-xs tabular-nums"
+              aria-label={`${repositoryStars.toLocaleString()} stars`}
+            >
+              <Star size={13} aria-hidden="true" />{repositoryStars.toLocaleString()}
+            </span>
+          {/if}
+        </div>
         <span class="text-base-content-subtle shrink-0 text-xs tabular-nums" role="status">
           {#if $marketState.loading}{$t("market.loading")}{:else if $marketState.loaded}{$t(
               "library.count",
@@ -271,22 +298,40 @@
             disabled={noRepository}
           />
         </div>
-        <div class="relative">
-          <select
-            class="border-base-300 bg-base-100 text-base-content h-9 cursor-pointer appearance-none rounded-lg border pr-8 pl-3 text-sm"
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger
+            class="border-base-300 text-base-content-muted hover:bg-base-200 hover:text-base-content data-[state=open]:bg-base-200 flex size-9 shrink-0 items-center justify-center rounded-lg border transition disabled:opacity-40"
             aria-label={$t("market.sort")}
-            value={$marketState.sortBy}
+            title={`${$t("market.sort")}: ${sortItems.find((item) => item.value === $marketState.sortBy)?.label}`}
             disabled={noRepository}
-            onchange={(event) => run(() => marketplace.sort(event.currentTarget.value))}
           >
-            <option value="heat_score">{$t("market.sort.popular")}</option>
-            <option value="star_count">{$t("market.sort.stars")}</option>
-          </select>
-          <ChevronsUpDown
-            class="text-base-content-subtle pointer-events-none absolute top-1/2 right-3 -translate-y-1/2"
-            size={14}
-          />
-        </div>
+            <ArrowDownWideNarrow size={16} />
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              class={menuContentClass}
+              align="end"
+              sideOffset={4}
+              collisionPadding={8}
+            >
+              <DropdownMenu.RadioGroup
+                value={$marketState.sortBy}
+                onValueChange={(value) => run(() => marketplace.sort(value))}
+              >
+                {#each sortItems as item (item.value)}
+                  <DropdownMenu.RadioItem
+                    value={item.value}
+                    class={`${menuItemClass()} flex items-center justify-between gap-3`}
+                  >
+                    {#snippet children({ checked })}
+                      {item.label}<Check size={13} class={checked ? "" : "invisible"} />
+                    {/snippet}
+                  </DropdownMenu.RadioItem>
+                {/each}
+              </DropdownMenu.RadioGroup>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
         <IconButton
           variant="outline"
           onclick={() => run(() => marketplace.refresh())}
@@ -354,9 +399,19 @@
                         ><Check size={12} />{$t("market.imported")}</span
                       >{/if}
                   </span>
-                  <span class="text-base-content-subtle mt-1 block truncate text-xs"
-                    >{skill.source}</span
-                  >
+                  {#if $marketState.tab === "categories"}
+                    <span
+                      class="text-base-content-subtle mt-1 flex min-w-0 items-center gap-3 text-xs"
+                    >
+                      <span class="truncate">{skill.source}</span>
+                      <span
+                        class="inline-flex shrink-0 items-center gap-1 tabular-nums"
+                        aria-label={`${skill.star_count.toLocaleString()} stars`}
+                      >
+                        <Star size={12} aria-hidden="true" />{skill.star_count.toLocaleString()}
+                      </span>
+                    </span>
+                  {/if}
                   {#if skill.description}<span
                       class="text-base-content-muted mt-2 line-clamp-2 text-xs leading-relaxed"
                       >{skill.description}</span

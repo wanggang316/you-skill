@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Marketplace shows stars beside category result sources and in the hot repository header. Repository results omit the repeated source, and sorting uses an icon menu.
+
 - Marketplace has category and hot repository navigation beside a scoped skill list. Search, sort, results, and scroll position are restored after viewing a skill.
 
 - An import of a GitHub folder or local folder that is already in the library always updates that skill. The branch is part of a GitHub source, so a skill from another branch is a separate skill.
