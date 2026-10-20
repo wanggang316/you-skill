@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Category navigation works with older catalog servers that do not yet provide the tag summary endpoint.
+
 - Marketplace details use the server skill id to distinguish entries with the same name. Pagination no longer stops one page early.
 
 ### Removed

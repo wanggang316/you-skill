@@ -21,7 +21,7 @@ The desktop marketplace has one unfiltered skill list. Users need to browse by t
 
 ## Consequences
 
-The existing public tag endpoint loads all related skill summaries and timed out during verification. Add `GET /api/public/tags/summary` with the existing visible-skill count query. Keep the original endpoint unchanged. Deploy this backend addition before releasing the desktop change. Navigation state lasts for the app session, not across restarts.
+The existing public tag endpoint loads all related skill summaries and timed out during verification. Add `GET /api/public/tags/summary` with the existing visible-skill count query. Keep the original endpoint unchanged. Prefer the summary endpoint. If an older server returns 404 or 422, use the original tags endpoint with a 45-second timeout because its response includes all related skills. Do not fall back for authorization, rate-limit, server, or decode errors. Deploy the summary endpoint to remove the large legacy response. Navigation state lasts for the app session, not across restarts.
 
 ## Verification
 

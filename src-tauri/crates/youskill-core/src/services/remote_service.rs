@@ -218,28 +218,66 @@ struct RepositoriesResponse {
   items: Vec<MarketRepository>,
 }
 
-async fn fetch_catalog<T: serde::de::DeserializeOwned>(path: &str) -> Result<T, String> {
+async fn fetch_catalog_from<T: serde::de::DeserializeOwned>(
+  client: &Client,
+  base_url: &str,
+  path: &str,
+) -> Result<T, reqwest::Error> {
+  client
+    .get(format!("{base_url}/api/public/{path}"))
+    .send()
+    .await?
+    .error_for_status()?
+    .json::<T>()
+    .await
+}
+
+fn catalog_client() -> Result<Client, String> {
   Client::builder()
     .timeout(Duration::from_secs(10))
     .build()
-    .map_err(|e| format!("Failed to create HTTP client: {e}"))?
-    .get(format!("{API_BASE_URL}/api/public/{path}"))
-    .send()
+    .map_err(|e| format!("Failed to create HTTP client: {e}"))
+}
+
+async fn fetch_catalog<T: serde::de::DeserializeOwned>(path: &str) -> Result<T, String> {
+  fetch_catalog_from(&catalog_client()?, API_BASE_URL, path)
     .await
-    .map_err(|e| format!("Network connection failed: {e}"))?
-    .error_for_status()
-    .map_err(|e| format!("Catalog request failed: {e}"))?
-    .json::<T>()
-    .await
-    .map_err(|e| format!("Invalid catalog response: {e}"))
+    .map_err(|e| format!("Catalog request failed: {e}"))
+}
+
+async fn fetch_market_categories_from(
+  client: &Client,
+  base_url: &str,
+) -> Result<Vec<MarketCategory>, reqwest::Error> {
+  let response =
+    match fetch_catalog_from::<CategoriesResponse>(client, base_url, "tags/summary").await {
+      Ok(response) => response,
+      // Older servers parse "summary" as a numeric tag id and return 422.
+      Err(error)
+        if matches!(
+          error.status().map(|status| status.as_u16()),
+          Some(404 | 422)
+        ) =>
+      {
+        client
+        .get(format!("{base_url}/api/public/tags"))
+        // The legacy response includes all related skills and can be large.
+        .timeout(Duration::from_secs(45))
+        .send()
+        .await?
+        .error_for_status()?
+        .json::<CategoriesResponse>()
+        .await?
+      },
+      Err(error) => return Err(error),
+    };
+  Ok(response.tags)
 }
 
 pub async fn fetch_market_categories() -> Result<Vec<MarketCategory>, String> {
-  Ok(
-    fetch_catalog::<CategoriesResponse>("tags/summary")
-      .await?
-      .tags,
-  )
+  fetch_market_categories_from(&catalog_client()?, API_BASE_URL)
+    .await
+    .map_err(|e| format!("Catalog request failed: {e}"))
 }
 
 pub async fn fetch_hot_repositories() -> Result<Vec<MarketRepository>, String> {
@@ -267,6 +305,109 @@ pub async fn fetch_remote_skill(skill_id: String) -> Result<RemoteSkill, String>
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  fn catalog_server(
+    responses: Vec<(u16, &'static str)>,
+  ) -> (String, std::thread::JoinHandle<Vec<String>>) {
+    use std::io::{Read, Write};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let server = std::thread::spawn(move || {
+      let mut paths = Vec::new();
+      for (status, body) in responses {
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        let mut stream = loop {
+          match listener.accept() {
+            Ok((stream, _)) => break stream,
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+              assert!(
+                std::time::Instant::now() < deadline,
+                "Expected another catalog request"
+              );
+              std::thread::sleep(Duration::from_millis(5));
+            },
+            Err(error) => panic!("Failed to accept request: {error}"),
+          }
+        };
+        stream.set_nonblocking(false).unwrap();
+        stream
+          .set_read_timeout(Some(Duration::from_secs(5)))
+          .unwrap();
+        let mut request = Vec::new();
+        let mut buffer = [0; 1024];
+        while !request.windows(4).any(|value| value == b"\r\n\r\n") {
+          let count = stream.read(&mut buffer).unwrap();
+          assert!(count > 0, "Incomplete HTTP request");
+          request.extend_from_slice(&buffer[..count]);
+        }
+        let request = String::from_utf8(request).unwrap();
+        paths.push(
+          request
+            .lines()
+            .next()
+            .unwrap()
+            .split_whitespace()
+            .nth(1)
+            .unwrap()
+            .to_string(),
+        );
+        write!(stream, "HTTP/1.1 {status} Test\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).unwrap();
+      }
+      paths
+    });
+    (format!("http://{address}"), server)
+  }
+
+  fn categories_from(base: &str) -> Result<Vec<MarketCategory>, reqwest::Error> {
+    tokio::runtime::Builder::new_current_thread()
+      .enable_all()
+      .build()
+      .unwrap()
+      .block_on(fetch_market_categories_from(&Client::new(), base))
+  }
+
+  const CATEGORY_JSON: &str = r#"{"tags":[{"id":7,"name":"testing","skill_count":2,"skills":[]}]}"#;
+
+  #[test]
+  fn categories_prefer_the_summary_endpoint() {
+    let (base, server) = catalog_server(vec![(200, CATEGORY_JSON)]);
+    let categories = categories_from(&base).unwrap();
+    assert_eq!(categories[0].id, 7);
+    assert_eq!(server.join().unwrap(), ["/api/public/tags/summary"]);
+  }
+
+  #[test]
+  fn categories_support_servers_without_the_summary_route() {
+    for status in [404, 422] {
+      let (base, server) = catalog_server(vec![(status, "{}"), (200, CATEGORY_JSON)]);
+      let categories = categories_from(&base).unwrap();
+      assert_eq!(categories[0].name, "testing");
+      assert_eq!(categories[0].skill_count, 2);
+      assert_eq!(
+        server.join().unwrap(),
+        ["/api/public/tags/summary", "/api/public/tags"]
+      );
+    }
+  }
+
+  #[test]
+  fn categories_do_not_retry_authorization_rate_limit_or_server_errors() {
+    for status in [401, 403, 429, 500] {
+      let (base, server) = catalog_server(vec![(status, "{}")]);
+      let error = categories_from(&base).unwrap_err();
+      assert_eq!(error.status().map(|value| value.as_u16()), Some(status));
+      assert_eq!(server.join().unwrap(), ["/api/public/tags/summary"]);
+    }
+  }
+
+  #[test]
+  fn categories_do_not_hide_invalid_summary_responses() {
+    let (base, server) = catalog_server(vec![(200, "{}")]);
+    let error = categories_from(&base).unwrap_err();
+    assert!(error.is_decode());
+    assert_eq!(server.join().unwrap(), ["/api/public/tags/summary"]);
+  }
 
   #[test]
   fn pagination_uses_offset_instead_of_one_based_page() {
