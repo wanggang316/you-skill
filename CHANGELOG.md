@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Marketplace tabs use a translucent sidebar track instead of an opaque panel background.
+
 - Marketplace navigation uses the same hover and selection colors as the other sidebars and displays category and hot repository icons from the catalog.
 
 - Category navigation works with older catalog servers that do not yet provide the tag summary endpoint.

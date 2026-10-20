@@ -164,6 +164,7 @@
           value={$marketState.tab}
           onChange={(value) => run(() => marketplace.selectTab(value as MarketTab))}
           fullWidth
+          surface="sidebar"
         />
       </div>
       <nav
