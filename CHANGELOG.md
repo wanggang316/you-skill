@@ -20,10 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Marketplace has category and hot repository navigation beside a scoped skill list. Search, sort, results, and scroll position are restored after viewing a skill.
+
 - An import of a GitHub folder or local folder that is already in the library always updates that skill. The branch is part of a GitHub source, so a skill from another branch is a separate skill.
 - The list column on the left of each page runs to the bottom edge of the window. Content panels keep their gap above the edge ([HAN-252](https://linear.app/gumpw/issue/HAN-252)).
 
 ### Fixed
+
+- Marketplace details use the server skill id to distinguish entries with the same name. Pagination no longer stops one page early.
 
 ### Removed
 

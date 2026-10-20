@@ -1,5 +1,8 @@
 <script lang="ts">
   import { get } from "svelte/store";
+  import { onMount, onDestroy, tick } from "svelte";
+  import SplitView from "$lib/components/SplitView.svelte";
+  import SegmentedTabs from "$lib/components/ui/SegmentedTabs.svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import { Check, ChevronDown, ChevronsUpDown, Loader2, RefreshCw, Search } from "@lucide/svelte";
@@ -14,52 +17,52 @@
     type SkillSource,
   } from "$lib/api";
   import { hubSkills, refreshHub } from "$lib/stores/hub";
-  import {
-    loadRemote,
-    remoteError,
-    remoteHasMore,
-    remoteLoaded,
-    remoteLoading,
-    remoteSkills,
-  } from "$lib/stores/market";
+  import { marketplace, marketState, type MarketTab } from "$lib/stores/market";
   import { openInstallModal, performAction } from "$lib/stores/modals";
 
-  const PAGE_SIZE = 20;
-
-  let query = $state("");
-  let skip = $state(0);
-  let sortBy = $state("heat_score");
   let busySkillId = $state("");
   let log = $state("");
-  let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+  let viewport = $state<HTMLElement | null>(null);
+  let searchTimeout = $state<ReturnType<typeof setTimeout> | null>(null);
+  const title = $derived(
+    $marketState.tab === "categories"
+      ? ($marketState.categories.find((item) => item.id === $marketState.categoryId)?.name ??
+          $t("market.all"))
+      : ($marketState.repository ?? $t("market.repositories"))
+  );
+  const navigationError = $derived(
+    $marketState.tab === "categories"
+      ? $marketState.categoriesError
+      : $marketState.repositoriesError
+  );
+  const noRepository = $derived($marketState.tab === "repositories" && !$marketState.repository);
 
-  $effect(() => {
-    if (!get(remoteLoaded)) {
-      load(true).catch(console.error);
-    }
+  onMount(() => {
+    const scrollTop = get(marketState).scrollTop;
+    void marketplace.initialize();
+    void tick().then(() => {
+      if (viewport) viewport.scrollTop = scrollTop;
+    });
+  });
+  onDestroy(() => {
+    if (searchTimeout) clearTimeout(searchTimeout);
   });
 
-  async function load(reset: boolean) {
-    if (reset) skip = 0;
-    await loadRemote({
-      reset,
-      skip,
-      limit: PAGE_SIZE,
-      search: query,
-      sortBy,
-      sortOrder: "desc",
-    });
-  }
-
-  function handleSearchInput() {
+  function run(action: () => Promise<void>) {
     if (searchTimeout) clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => load(true).catch(console.error), 500);
+    searchTimeout = null;
+    if (viewport) viewport.scrollTop = 0;
+    void action();
   }
 
-  async function loadMore() {
-    if (!get(remoteHasMore)) return;
-    skip += PAGE_SIZE;
-    await load(false);
+  function handleSearchInput(event: Event) {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    marketplace.setSearch((event.currentTarget as HTMLInputElement).value);
+    if (viewport) viewport.scrollTop = 0;
+    searchTimeout = setTimeout(() => {
+      searchTimeout = null;
+      void marketplace.reload();
+    }, 500);
   }
 
   const repoSlug = (skill: RemoteSkill) => skill.source.trim();
@@ -137,41 +140,139 @@
   function handleView(skill: RemoteSkill) {
     const returnTo = `${page.url.pathname}${page.url.search}`;
     goto(
-      `/skills/remote/${encodeURIComponent(skill.name)}?returnTo=${encodeURIComponent(returnTo)}`
+      `/skills/remote/${encodeURIComponent(skill.name)}?id=${encodeURIComponent(skill.id)}&returnTo=${encodeURIComponent(returnTo)}`
     );
   }
 </script>
 
-<section class="surface-panel flex h-full min-h-0 min-w-0 flex-col">
-  <header
-    class="border-base-300 flex h-12 flex-none items-center border-b px-7"
-    data-window-drag-region
-  >
-    <h1 class="text-base-content truncate text-[1.05rem] font-semibold tracking-[-0.02em]">
-      {$t("market.title")}
-    </h1>
-  </header>
+<section class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+  <SplitView>
+    <aside class="flex min-h-0 min-w-0 flex-col" aria-label={$t("market.browse")}>
+      <header class="flex h-12 shrink-0 items-center px-5" data-window-drag-region>
+        <h1 class="text-base-content text-[1.05rem] font-semibold tracking-[-0.02em]">
+          {$t("market.title")}
+        </h1>
+      </header>
+      <div class="px-3 pb-3">
+        <SegmentedTabs
+          items={[
+            { value: "categories", label: $t("market.categories") },
+            { value: "repositories", label: $t("market.repositories") },
+          ]}
+          className="[&>button]:px-2 [&>button]:text-xs [&>button]:whitespace-nowrap"
+          value={$marketState.tab}
+          onChange={(value) => run(() => marketplace.selectTab(value as MarketTab))}
+          fullWidth
+        />
+      </div>
+      <nav
+        class="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-4"
+        aria-label={$t(
+          $marketState.tab === "categories" ? "market.categories" : "market.repositories"
+        )}
+      >
+        {#if $marketState.tab === "categories"}
+          <button
+            type="button"
+            class="market-nav-row"
+            class:active={$marketState.categoryId === null}
+            aria-current={$marketState.categoryId === null ? "true" : undefined}
+            onclick={() => run(() => marketplace.selectCategory(null))}
+          >
+            <span>{$t("market.all")}</span>
+          </button>
+          {#each $marketState.categories as category (category.id)}
+            <button
+              type="button"
+              class="market-nav-row"
+              class:active={$marketState.categoryId === category.id}
+              aria-current={$marketState.categoryId === category.id ? "true" : undefined}
+              onclick={() => run(() => marketplace.selectCategory(category.id))}
+            >
+              <span class="truncate" title={category.name}>{category.name}</span>
+              <span class="text-base-content-subtle shrink-0 text-xs tabular-nums"
+                >{category.skill_count}</span
+              >
+            </button>
+          {/each}
+        {:else}
+          {#each $marketState.repositories as repository (repository.id)}
+            <button
+              type="button"
+              class="market-nav-row"
+              class:active={$marketState.repository === repository.name}
+              aria-current={$marketState.repository === repository.name ? "true" : undefined}
+              onclick={() => run(() => marketplace.selectRepository(repository.name))}
+            >
+              <span class="min-w-0 text-left">
+                <span class="block truncate font-medium" title={repository.name}
+                  >{repository.name.split("/").slice(1).join("/") || repository.name}</span
+                >
+                <span class="text-base-content-subtle block truncate text-xs"
+                  >{repository.name.split("/")[0]}</span
+                >
+              </span>
+              <span class="text-base-content-subtle shrink-0 text-xs tabular-nums"
+                >{repository.skill_count}</span
+              >
+            </button>
+          {/each}
+        {/if}
+        {#if $marketState.navigationLoading}
+          <p class="text-base-content-muted px-3 py-4 text-xs" role="status">
+            {$t("market.loading")}
+          </p>
+        {:else if $marketState.tab === "repositories" && !$marketState.repositories.length && !$marketState.repositoriesError}
+          <p class="text-base-content-muted px-3 py-4 text-xs">{$t("market.repositories.empty")}</p>
+        {/if}
+        {#if navigationError}
+          <div class="px-3 py-4 text-xs">
+            <p class="text-error break-words" role="alert">{navigationError}</p>
+            <button
+              type="button"
+              class="settings-button mt-3"
+              onclick={() => run(() => marketplace.refresh())}>{$t("common.retry")}</button
+            >
+          </div>
+        {/if}
+      </nav>
+    </aside>
 
-  <main class="min-h-0 flex-1 overflow-y-auto">
-    <div class="mx-auto max-w-6xl space-y-6 px-7 py-6">
-      <div class="flex flex-wrap items-center gap-3">
-        <div class="relative flex-1">
+    <div class="surface-panel flex min-h-0 min-w-0 flex-col">
+      <header
+        class="border-base-300 flex h-12 shrink-0 items-center justify-between gap-3 border-b px-6"
+        data-window-drag-region
+      >
+        <h2 class="text-base-content truncate text-sm font-semibold" {title}>{title}</h2>
+        <span class="text-base-content-subtle shrink-0 text-xs tabular-nums" role="status">
+          {#if $marketState.loading}{$t("market.loading")}{:else if $marketState.loaded}{$t(
+              "library.count",
+              { count: $marketState.total }
+            )}{/if}
+        </span>
+      </header>
+      <div class="border-base-300 flex shrink-0 flex-wrap items-center gap-3 border-b px-6 py-4">
+        <div class="relative min-w-32 flex-1">
           <Search
             class="text-base-content-subtle absolute top-1/2 left-3 -translate-y-1/2"
             size={16}
           />
           <input
-            class="border-base-300 bg-base-200 text-base-content placeholder:text-base-content-subtle focus:border-base-300 h-9 w-full rounded-xl border px-9 text-sm focus:outline-none"
-            placeholder={$t("market.search.placeholder")}
-            bind:value={query}
+            class="border-base-300 bg-base-200 text-base-content placeholder:text-base-content-subtle focus:ring-primary h-9 w-full rounded-lg border pr-3 pl-9 text-sm focus:ring-1 focus:outline-none disabled:opacity-50"
+            placeholder={$t("market.search.scope", { name: title })}
+            aria-label={$t("market.search.scope", { name: title })}
+            value={$marketState.query}
             oninput={handleSearchInput}
+            disabled={noRepository}
           />
         </div>
         <div class="relative">
           <select
-            class="border-base-300 bg-base-100 text-base-content focus:border-base-300 h-9 cursor-pointer appearance-none rounded-xl border pr-8 pl-3 text-sm focus:outline-none"
-            bind:value={sortBy}
-            onchange={() => load(true).catch(console.error)}
+            class="border-base-300 bg-base-100 text-base-content h-9 cursor-pointer appearance-none rounded-lg border pr-8 pl-3 text-sm"
+            aria-label={$t("market.sort")}
+            value={$marketState.sortBy}
+            disabled={noRepository}
+            onchange={(event) => run(() => marketplace.sort(event.currentTarget.value))}
           >
             <option value="heat_score">{$t("market.sort.popular")}</option>
             <option value="star_count">{$t("market.sort.stars")}</option>
@@ -183,113 +284,138 @@
         </div>
         <IconButton
           variant="outline"
-          onclick={() => load(true).catch(console.error)}
+          onclick={() => run(() => marketplace.refresh())}
+          disabled={$marketState.navigationLoading || $marketState.loading}
           title={$t("library.refresh")}
           ariaLabel={$t("library.refresh")}
           class="h-9 w-9"
         >
-          <RefreshCw size={16} class={$remoteLoading ? "animate-spin" : ""} />
+          <RefreshCw
+            size={16}
+            class={$marketState.loading || $marketState.navigationLoading ? "animate-spin" : ""}
+          />
         </IconButton>
       </div>
-
-      {#if $remoteError}
-        <p class="text-error text-sm">{$remoteError}</p>
-      {/if}
-      {#if log}
-        <div
-          class="bg-base-200 text-base-content-muted rounded-lg px-3 py-2 text-xs whitespace-pre-wrap"
-        >
-          {log}
-        </div>
-      {/if}
-
-      <div>
-        {#if $remoteLoading && $remoteSkills.length === 0}
-          <div
-            class="border-base-300 text-base-content-muted rounded-2xl border border-dashed p-6 text-center text-sm"
-          >
-            {$t("market.loading")}
-          </div>
-        {:else if $remoteSkills.length === 0}
-          <div
-            class="border-base-300 text-base-content-muted rounded-2xl border border-dashed p-6 text-center text-sm"
-          >
-            {$t("market.empty")}
-          </div>
-        {:else}
-          {#each $remoteSkills as skill (skill.id)}
-            {@const inHub = Boolean(hubEntry(skill))}
-            {@const busy = busySkillId === skill.id}
-            <div
-              class="border-base-300 hover:bg-base-200 border-b px-4 py-4 transition"
-              onclick={() => handleView(skill)}
-              onkeydown={(e) => (e.key === "Enter" || e.key === " ") && handleView(skill)}
-              role="button"
-              tabindex="0"
-              aria-label={`View ${skill.name}`}
+      <main
+        bind:this={viewport}
+        class="min-h-0 flex-1 overflow-y-auto"
+        onscroll={() => marketplace.saveScroll(viewport?.scrollTop ?? 0)}
+        aria-busy={$marketState.loading || searchTimeout !== null}
+      >
+        {#if $marketState.error}
+          <div class="px-6 py-4 text-sm" role="alert">
+            <p class="text-error">{$marketState.error}</p>
+            <button
+              class="settings-button mt-3"
+              type="button"
+              onclick={() =>
+                $marketState.skills.length ? marketplace.loadMore() : marketplace.reload()}
+              >{$t("common.retry")}</button
             >
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-2">
-                    <p class="cursor-pointer truncate text-base">
-                      {skill.name}
-                      <span class="text-base-content/70 text-sm font-normal">({skill.source})</span>
-                    </p>
-                    {#if inHub}
-                      <span
-                        class="text-success inline-flex items-center rounded-lg px-2 py-0.5 text-xs"
-                      >
-                        <Check size={10} class="mr-1" />
-                        {$t("market.imported")}
-                      </span>
-                    {/if}
-                  </div>
-                  {#if skill.description}
-                    <p class="text-base-content-subtle mt-1 line-clamp-1 text-xs">
-                      {skill.description}
-                    </p>
-                  {/if}
-                </div>
-                <div
-                  class="flex items-center gap-2"
-                  onclick={(e) => e.stopPropagation()}
-                  onkeydown={(e) => e.stopPropagation()}
-                  role="presentation"
-                >
-                  <button
-                    class="border-base-300 bg-base-300 text-primary hover:bg-primary hover:text-primary-content inline-flex h-6 items-center rounded-lg border px-2 py-0.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-50"
-                    onclick={() => handleImport(skill)}
-                    disabled={Boolean(busySkillId)}
-                    type="button"
-                  >
-                    {#if busy}
-                      <Loader2 size={12} class="animate-spin" />
-                    {:else}
-                      {buttonLabel(skill)}
-                    {/if}
-                  </button>
-                </div>
-              </div>
-            </div>
-          {/each}
+          </div>
         {/if}
-      </div>
-
-      <div class="flex items-center justify-center">
-        <IconButton
-          variant="outline"
-          onclick={() => loadMore().catch(console.error)}
-          disabled={!$remoteHasMore || $remoteLoading}
-          title={$remoteHasMore ? $t("market.loadMore") : $t("market.noMore")}
-          ariaLabel={$remoteHasMore ? $t("market.loadMore") : $t("market.noMore")}
-        >
-          {#if $remoteLoading}
-            <RefreshCw size={16} class="animate-spin" />
-          {:else}
-            <ChevronDown size={16} />
-          {/if}
-        </IconButton>
-      </div>
+        {#if log}<div
+            class="bg-base-200 text-base-content-muted mx-6 mt-4 rounded-lg px-3 py-2 text-xs whitespace-pre-wrap"
+          >
+            {log}
+          </div>{/if}
+        {#if ($marketState.loading || searchTimeout !== null) && !$marketState.skills.length}
+          <div
+            class="text-base-content-muted flex items-center justify-center gap-2 p-12 text-sm"
+            role="status"
+          >
+            <Loader2 size={16} class="animate-spin" />{$t("market.loading")}
+          </div>
+        {:else if noRepository}
+          <p class="text-base-content-muted p-12 text-center text-sm">
+            {$t($marketState.navigationLoading ? "market.loading" : "market.repositories.empty")}
+          </p>
+        {:else if !$marketState.skills.length && !$marketState.error}
+          <p class="text-base-content-muted p-12 text-center text-sm">{$t("market.empty")}</p>
+        {:else}
+          <ul class="divide-base-300 divide-y px-6">
+            {#each $marketState.skills as skill (skill.id)}
+              {@const inHub = Boolean(hubEntry(skill))}
+              <li class="hover:bg-base-200 flex items-center gap-4 py-4 transition-colors">
+                <button
+                  type="button"
+                  class="focus-visible:outline-primary min-w-0 flex-1 rounded text-left"
+                  onclick={() => handleView(skill)}
+                >
+                  <span class="flex min-w-0 items-center gap-2">
+                    <span class="text-base-content truncate text-sm font-medium">{skill.name}</span>
+                    {#if inHub}<span
+                        class="text-success inline-flex shrink-0 items-center gap-1 text-xs"
+                        ><Check size={12} />{$t("market.imported")}</span
+                      >{/if}
+                  </span>
+                  <span class="text-base-content-subtle mt-1 block truncate text-xs"
+                    >{skill.source}</span
+                  >
+                  {#if skill.description}<span
+                      class="text-base-content-muted mt-2 line-clamp-2 text-xs leading-relaxed"
+                      >{skill.description}</span
+                    >{/if}
+                </button>
+                <button
+                  class="settings-button shrink-0"
+                  onclick={() => handleImport(skill)}
+                  disabled={Boolean(busySkillId)}
+                  type="button"
+                >
+                  {#if busySkillId === skill.id}<Loader2
+                      size={12}
+                      class="animate-spin"
+                    />{/if}{buttonLabel(skill)}
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+        {#if $marketState.skills.length}
+          <div class="flex justify-center p-6">
+            <button
+              class="settings-button"
+              onclick={() => marketplace.loadMore()}
+              disabled={!$marketState.hasMore || $marketState.loading}
+              type="button"
+            >
+              {#if $marketState.loading}<Loader2
+                  size={14}
+                  class="animate-spin"
+                />{:else if $marketState.hasMore}<ChevronDown size={14} />{/if}
+              {$t($marketState.hasMore ? "market.loadMore" : "market.noMore")}
+            </button>
+          </div>
+        {/if}
+      </main>
     </div>
-  </main>
+  </SplitView>
 </section>
+
+<style>
+  .market-nav-row {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-radius: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    text-align: left;
+    font-size: 0.8125rem;
+    color: var(--color-base-content-muted);
+  }
+  .market-nav-row:hover {
+    background: var(--color-base-200);
+  }
+  .market-nav-row.active {
+    background: var(--color-base-300);
+    color: var(--color-base-content);
+    font-weight: 500;
+  }
+  .market-nav-row:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+</style>

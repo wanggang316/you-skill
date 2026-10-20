@@ -6,7 +6,7 @@
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import SkillFileViewer, { type FileSource } from "$lib/components/SkillFileViewer.svelte";
   import { t } from "$lib/i18n";
-  import { fetchSkillsByNames } from "$lib/api/skills";
+  import { fetchRemoteSkill, fetchSkillsByNames } from "$lib/api/skills";
   import { getHubSkill } from "$lib/api/hub";
 
   let loading = $state(true);
@@ -32,9 +32,12 @@
     currentName = name;
     try {
       if (params.type === "remote") {
-        const remoteSkills = await fetchSkillsByNames([name]);
-        const skill = remoteSkills.find((item) => item.name === name) ?? remoteSkills[0] ?? null;
-        source = skill ? { kind: "remote", name, skill } : null;
+        const id = $page.url.searchParams.get("id");
+        const skill = id
+          ? await fetchRemoteSkill(id)
+          : ((await fetchSkillsByNames([name])).find((item) => item.name === name) ?? null);
+        if (skill) currentName = skill.name;
+        source = skill ? { kind: "remote", name: skill.name, skill } : null;
       } else if (params.type === "hub" || params.type === "local") {
         const skill = await getHubSkill(name);
         if (skill) currentName = skill.name;
@@ -56,7 +59,7 @@
   const handleBack = () => {
     const returnTo = get(page).url.searchParams.get("returnTo");
     if (returnTo) {
-      goto(decodeURIComponent(returnTo));
+      goto(returnTo);
       return;
     }
     window.history.back();
@@ -65,6 +68,7 @@
   $effect(() => {
     params.type;
     params.name;
+    $page.url.searchParams.get("id");
     loadSkill().catch(console.error);
   });
 </script>

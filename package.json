@@ -12,6 +12,7 @@
     "check:frontend": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:backend": "cargo fmt --manifest-path src-tauri/Cargo.toml --all --check && cargo clippy --manifest-path src-tauri/Cargo.toml --workspace --all-targets -- -D warnings",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "test:frontend": "node --test tests/*.test.mjs",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml --workspace",
     "release": "bash ./scripts/release.sh",
     "tauri": "tauri",

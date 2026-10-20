@@ -34,7 +34,10 @@ use commands::{
     rename_instruction, sync_instruction, uninstall_instruction, write_instruction,
     write_instruction_file,
   },
-  remote::{fetch_remote_skills, fetch_skills_by_names, record_skill_install},
+  remote::{
+    fetch_hot_repositories, fetch_market_categories, fetch_remote_skill, fetch_remote_skills,
+    fetch_skills_by_names, record_skill_install,
+  },
   scan_roots::{add_scan_root, list_scan_roots, remove_scan_root, suggest_scan_roots},
   settings::{
     backup_skills, get_settings, list_openrouter_models, open_backup_folder, set_backup_folder,
@@ -170,6 +173,9 @@ fn main() {
       set_github_account,
       get_github_avatar,
       fetch_remote_skills,
+      fetch_remote_skill,
+      fetch_market_categories,
+      fetch_hot_repositories,
       fetch_skills_by_names,
       record_skill_install,
       list_local_agent_apps,
