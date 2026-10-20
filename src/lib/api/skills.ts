@@ -154,6 +154,7 @@ export async function translateSkillMarkdown(markdown: string, force = false): P
 }
 
 export interface MarketCategory {
+  icon?: string | null;
   id: number;
   name: string;
   skill_count: number;

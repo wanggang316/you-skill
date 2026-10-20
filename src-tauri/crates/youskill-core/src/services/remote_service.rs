@@ -193,6 +193,7 @@ impl From<ApiSkill> for RemoteSkill {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MarketCategory {
+  pub icon: Option<String>,
   pub id: u64,
   pub name: String,
   pub skill_count: u64,
@@ -200,6 +201,7 @@ pub struct MarketCategory {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MarketRepository {
+  pub icon: Option<String>,
   pub id: u64,
   pub name: String,
   pub skill_count: u64,
@@ -368,6 +370,28 @@ mod tests {
   }
 
   const CATEGORY_JSON: &str = r#"{"tags":[{"id":7,"name":"testing","skill_count":2,"skills":[]}]}"#;
+
+  #[test]
+  fn catalog_icons_survive_the_frontend_boundary() {
+    let category: MarketCategory = serde_json::from_value(serde_json::json!({
+      "id": 7, "name": "testing", "skill_count": 2,
+      "icon": "streamline-freehand:bug-alert-message"
+    }))
+    .unwrap();
+    assert_eq!(
+      serde_json::to_value(category).unwrap()["icon"],
+      "streamline-freehand:bug-alert-message"
+    );
+    let repository: MarketRepository = serde_json::from_value(serde_json::json!({
+      "id": 1, "name": "team/tools", "skill_count": 2, "enabled": true,
+      "type": "hot", "icon": "lucide:star"
+    }))
+    .unwrap();
+    assert_eq!(
+      serde_json::to_value(repository).unwrap()["icon"],
+      "lucide:star"
+    );
+  }
 
   #[test]
   fn categories_prefer_the_summary_endpoint() {

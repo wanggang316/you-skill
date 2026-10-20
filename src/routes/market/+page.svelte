@@ -1,6 +1,7 @@
 <script lang="ts">
   import { get } from "svelte/store";
   import { onMount, onDestroy, tick } from "svelte";
+  import CatalogIcon from "$lib/components/CatalogIcon.svelte";
   import SplitView from "$lib/components/SplitView.svelte";
   import SegmentedTabs from "$lib/components/ui/SegmentedTabs.svelte";
   import { goto } from "$app/navigation";
@@ -179,7 +180,8 @@
             aria-current={$marketState.categoryId === null ? "true" : undefined}
             onclick={() => run(() => marketplace.selectCategory(null))}
           >
-            <span>{$t("market.all")}</span>
+            <CatalogIcon fallback="all" />
+            <span class="min-w-0 flex-1">{$t("market.all")}</span>
           </button>
           {#each $marketState.categories as category (category.id)}
             <button
@@ -189,7 +191,8 @@
               aria-current={$marketState.categoryId === category.id ? "true" : undefined}
               onclick={() => run(() => marketplace.selectCategory(category.id))}
             >
-              <span class="truncate" title={category.name}>{category.name}</span>
+              <CatalogIcon icon={category.icon} />
+              <span class="min-w-0 flex-1 truncate" title={category.name}>{category.name}</span>
               <span class="text-base-content-subtle shrink-0 text-xs tabular-nums"
                 >{category.skill_count}</span
               >
@@ -204,7 +207,8 @@
               aria-current={$marketState.repository === repository.name ? "true" : undefined}
               onclick={() => run(() => marketplace.selectRepository(repository.name))}
             >
-              <span class="min-w-0 text-left">
+              <CatalogIcon icon={repository.icon} fallback="repository" />
+              <span class="min-w-0 flex-1 text-left">
                 <span class="block truncate font-medium" title={repository.name}
                   >{repository.name.split("/").slice(1).join("/") || repository.name}</span
                 >
@@ -407,10 +411,11 @@
     color: var(--color-base-content-muted);
   }
   .market-nav-row:hover {
-    background: var(--color-base-200);
+    background: color-mix(in oklch, var(--color-base-content) 4.5%, transparent);
+    color: var(--color-base-content);
   }
   .market-nav-row.active {
-    background: var(--color-base-300);
+    background: color-mix(in oklch, var(--color-base-content) 7%, transparent);
     color: var(--color-base-content);
     font-weight: 500;
   }
