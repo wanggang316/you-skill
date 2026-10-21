@@ -20,10 +20,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Marketplace shows stars beside category result sources and in the hot repository header. Repository results omit the repeated source, and sorting uses an icon menu.
+
+- Marketplace has category and hot repository navigation beside a scoped skill list. Search, sort, results, and scroll position are restored after viewing a skill.
+
 - An import of a GitHub folder or local folder that is already in the library always updates that skill. The branch is part of a GitHub source, so a skill from another branch is a separate skill.
 - The list column on the left of each page runs to the bottom edge of the window. Content panels keep their gap above the edge ([HAN-252](https://linear.app/gumpw/issue/HAN-252)).
 
 ### Fixed
+
+- Marketplace tabs use a translucent sidebar track instead of an opaque panel background.
+
+- Marketplace navigation uses the same hover and selection colors as the other sidebars and displays category and hot repository icons from the catalog.
+
+- Category navigation works with older catalog servers that do not yet provide the tag summary endpoint.
+
+- Marketplace details use the server skill id to distinguish entries with the same name. Pagination no longer stops one page early.
 
 ### Removed
 
