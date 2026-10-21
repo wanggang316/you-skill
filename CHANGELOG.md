@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Recover empty skill names from existing hub directories so the library can display and read skills after an upgrade, without changing their ids or install history.
+
 ### Removed
 
 ## [0.9.13] - 2026-10-21
