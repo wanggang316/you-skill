@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.9.13] - 2026-10-21
+
+### Breaking Changes
+
 - The library keys each skill by an id and stores it at `~/.youskill/skills/<id>/<name>` (lock file version 2). The first start moves the library and relinks symlink installs. An earlier version cannot read the new layout.
 - The CLI `--json` output and the command line arguments use the new skill id: `list`, `show`, `import` and `update` report it, and every skill argument accepts an id, a source key or a unique name.
 
