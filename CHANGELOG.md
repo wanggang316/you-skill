@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The update dialog hides release note sections that have no entries ([HAN-256](https://linear.app/gumpw/issue/HAN-256)).
+
 ### Removed
 
 ## [0.9.14] - 2026-10-22
