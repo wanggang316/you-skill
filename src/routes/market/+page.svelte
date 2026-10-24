@@ -1,7 +1,8 @@
 <script lang="ts">
   import { get } from "svelte/store";
-  import { onMount, onDestroy, tick } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import CatalogIcon from "$lib/components/CatalogIcon.svelte";
+  import MarketSkillDetail from "$lib/components/MarketSkillDetail.svelte";
   import SplitView from "$lib/components/SplitView.svelte";
   import SegmentedTabs from "$lib/components/ui/SegmentedTabs.svelte";
   import { goto } from "$app/navigation";
@@ -30,6 +31,7 @@
   import { hubSkills, refreshHub } from "$lib/stores/hub";
   import { marketplace, marketState, type MarketTab } from "$lib/stores/market";
   import { openInstallModal, performAction } from "$lib/stores/modals";
+  import { buildMarketHref } from "$lib/navigation/app-shell";
 
   let busySkillId = $state("");
   let log = $state("");
@@ -54,13 +56,15 @@
       : $marketState.repositoriesError
   );
   const noRepository = $derived($marketState.tab === "repositories" && !$marketState.repository);
+  /** Marketplace id of the skill shown in the content panel (`?skill=`). */
+  const detailId = $derived(page.url.searchParams.get("skill"));
 
   onMount(() => {
-    const scrollTop = get(marketState).scrollTop;
     void marketplace.initialize();
-    void tick().then(() => {
-      if (viewport) viewport.scrollTop = scrollTop;
-    });
+  });
+  // The list remounts when the detail closes; put it back where the user left it.
+  $effect(() => {
+    if (viewport) viewport.scrollTop = get(marketState).scrollTop;
   });
   onDestroy(() => {
     if (searchTimeout) clearTimeout(searchTimeout);
@@ -70,6 +74,8 @@
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = null;
     if (viewport) viewport.scrollTop = 0;
+    // Picking a category or repository while a skill is open goes back to the list.
+    if (detailId) void goto(buildMarketHref());
     void action();
   }
 
@@ -156,10 +162,7 @@
   }
 
   function handleView(skill: RemoteSkill) {
-    const returnTo = `${page.url.pathname}${page.url.search}`;
-    goto(
-      `/skills/remote/${encodeURIComponent(skill.name)}?id=${encodeURIComponent(skill.id)}&returnTo=${encodeURIComponent(returnTo)}`
-    );
+    goto(buildMarketHref(skill.id));
   }
 </script>
 
@@ -260,196 +263,205 @@
       </nav>
     </aside>
 
-    <div class="surface-panel flex min-h-0 min-w-0 flex-col">
-      <header
-        class="border-base-300 flex h-12 shrink-0 items-center justify-between gap-3 border-b px-6"
-        data-window-drag-region
-      >
-        <div class="flex min-w-0 items-center gap-3">
-          <h2 class="text-base-content truncate text-sm font-semibold" {title}>{title}</h2>
-          {#if $marketState.tab === "repositories" && repositoryStars != null}
-            <span
-              class="text-base-content-subtle inline-flex shrink-0 items-center gap-1 text-xs tabular-nums"
-              aria-label={`${repositoryStars.toLocaleString()} stars`}
-            >
-              <Star size={13} aria-hidden="true" />{repositoryStars.toLocaleString()}
-            </span>
-          {/if}
-        </div>
-        <span class="text-base-content-subtle shrink-0 text-xs tabular-nums" role="status">
-          {#if $marketState.loading}{$t("market.loading")}{:else if $marketState.loaded}{$t(
-              "library.count",
-              { count: $marketState.total }
-            )}{/if}
-        </span>
-      </header>
-      <div class="border-base-300 flex shrink-0 flex-wrap items-center gap-3 border-b px-6 py-4">
-        <div class="relative min-w-32 flex-1">
-          <Search
-            class="text-base-content-subtle absolute top-1/2 left-3 -translate-y-1/2"
-            size={16}
-          />
-          <input
-            class="border-base-300 bg-base-200 text-base-content placeholder:text-base-content-subtle focus:ring-primary h-9 w-full rounded-lg border pr-3 pl-9 text-sm focus:ring-1 focus:outline-none disabled:opacity-50"
-            placeholder={$t("market.search.scope", { name: title })}
-            aria-label={$t("market.search.scope", { name: title })}
-            value={$marketState.query}
-            oninput={handleSearchInput}
-            disabled={noRepository}
-          />
-        </div>
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger
-            class="border-base-300 text-base-content-muted hover:bg-base-200 hover:text-base-content data-[state=open]:bg-base-200 flex size-9 shrink-0 items-center justify-center rounded-lg border transition disabled:opacity-40"
-            aria-label={$t("market.sort")}
-            title={`${$t("market.sort")}: ${sortItems.find((item) => item.value === $marketState.sortBy)?.label}`}
-            disabled={noRepository}
-          >
-            <ArrowDownWideNarrow size={16} />
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              class={menuContentClass}
-              align="end"
-              sideOffset={4}
-              collisionPadding={8}
-            >
-              <DropdownMenu.RadioGroup
-                value={$marketState.sortBy}
-                onValueChange={(value) => run(() => marketplace.sort(value))}
-              >
-                {#each sortItems as item (item.value)}
-                  <DropdownMenu.RadioItem
-                    value={item.value}
-                    class={`${menuItemClass()} flex items-center justify-between gap-3`}
-                  >
-                    {#snippet children({ checked })}
-                      {item.label}<Check size={13} class={checked ? "" : "invisible"} />
-                    {/snippet}
-                  </DropdownMenu.RadioItem>
-                {/each}
-              </DropdownMenu.RadioGroup>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
-        <IconButton
-          variant="outline"
-          onclick={() => run(() => marketplace.refresh())}
-          disabled={$marketState.navigationLoading || $marketState.loading}
-          title={$t("library.refresh")}
-          ariaLabel={$t("library.refresh")}
-          class="h-9 w-9"
+    {#if detailId}
+      <MarketSkillDetail id={detailId} onBack={() => goto(buildMarketHref())} />
+    {:else}
+      <div class="surface-panel flex min-h-0 min-w-0 flex-col">
+        <header
+          class="border-base-300 flex h-12 shrink-0 items-center justify-between gap-3 border-b px-6"
+          data-window-drag-region
         >
-          <RefreshCw
-            size={16}
-            class={$marketState.loading || $marketState.navigationLoading ? "animate-spin" : ""}
-          />
-        </IconButton>
-      </div>
-      <main
-        bind:this={viewport}
-        class="min-h-0 flex-1 overflow-y-auto"
-        onscroll={() => marketplace.saveScroll(viewport?.scrollTop ?? 0)}
-        aria-busy={$marketState.loading || searchTimeout !== null}
-      >
-        {#if $marketState.error}
-          <div class="px-6 py-4 text-sm" role="alert">
-            <p class="text-error">{$marketState.error}</p>
-            <button
-              class="settings-button mt-3"
-              type="button"
-              onclick={() =>
-                $marketState.skills.length ? marketplace.loadMore() : marketplace.reload()}
-              >{$t("common.retry")}</button
+          <div class="flex min-w-0 items-center gap-3">
+            <h2 class="text-base-content truncate text-sm font-semibold" {title}>{title}</h2>
+            {#if $marketState.tab === "repositories" && repositoryStars != null}
+              <span
+                class="text-base-content-subtle inline-flex shrink-0 items-center gap-1 text-xs tabular-nums"
+                aria-label={`${repositoryStars.toLocaleString()} stars`}
+              >
+                <Star size={13} aria-hidden="true" />{repositoryStars.toLocaleString()}
+              </span>
+            {/if}
+          </div>
+          <span class="text-base-content-subtle shrink-0 text-xs tabular-nums" role="status">
+            {#if $marketState.loading}{$t("market.loading")}{:else if $marketState.loaded}{$t(
+                "library.count",
+                { count: $marketState.total }
+              )}{/if}
+          </span>
+        </header>
+        <div class="border-base-300 flex shrink-0 flex-wrap items-center gap-3 border-b px-6 py-4">
+          <div class="relative min-w-32 flex-1">
+            <Search
+              class="text-base-content-subtle absolute top-1/2 left-3 -translate-y-1/2"
+              size={16}
+            />
+            <input
+              class="border-base-300 bg-base-200 text-base-content placeholder:text-base-content-subtle focus:ring-primary h-9 w-full rounded-lg border pr-3 pl-9 text-sm focus:ring-1 focus:outline-none disabled:opacity-50"
+              placeholder={$t("market.search.scope", { name: title })}
+              aria-label={$t("market.search.scope", { name: title })}
+              value={$marketState.query}
+              oninput={handleSearchInput}
+              disabled={noRepository}
+            />
+          </div>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger
+              class="border-base-300 text-base-content-muted hover:bg-base-200 hover:text-base-content data-[state=open]:bg-base-200 flex size-9 shrink-0 items-center justify-center rounded-lg border transition disabled:opacity-40"
+              aria-label={$t("market.sort")}
+              title={`${$t("market.sort")}: ${sortItems.find((item) => item.value === $marketState.sortBy)?.label}`}
+              disabled={noRepository}
             >
-          </div>
-        {/if}
-        {#if log}<div
-            class="bg-base-200 text-base-content-muted mx-6 mt-4 rounded-lg px-3 py-2 text-xs whitespace-pre-wrap"
-          >
-            {log}
-          </div>{/if}
-        {#if ($marketState.loading || searchTimeout !== null) && !$marketState.skills.length}
-          <div
-            class="text-base-content-muted flex items-center justify-center gap-2 p-12 text-sm"
-            role="status"
-          >
-            <Loader2 size={16} class="animate-spin" />{$t("market.loading")}
-          </div>
-        {:else if noRepository}
-          <p class="text-base-content-muted p-12 text-center text-sm">
-            {$t($marketState.navigationLoading ? "market.loading" : "market.repositories.empty")}
-          </p>
-        {:else if !$marketState.skills.length && !$marketState.error}
-          <p class="text-base-content-muted p-12 text-center text-sm">{$t("market.empty")}</p>
-        {:else}
-          <ul class="divide-base-300 divide-y px-6">
-            {#each $marketState.skills as skill (skill.id)}
-              {@const inHub = Boolean(hubEntry(skill))}
-              <li class="hover:bg-base-200 flex items-center gap-4 py-4 transition-colors">
-                <button
-                  type="button"
-                  class="focus-visible:outline-primary min-w-0 flex-1 rounded text-left"
-                  onclick={() => handleView(skill)}
+              <ArrowDownWideNarrow size={16} />
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                class={menuContentClass}
+                align="end"
+                sideOffset={4}
+                collisionPadding={8}
+              >
+                <DropdownMenu.RadioGroup
+                  value={$marketState.sortBy}
+                  onValueChange={(value) => run(() => marketplace.sort(value))}
                 >
-                  <span class="flex min-w-0 items-center gap-2">
-                    <span class="text-base-content truncate text-sm font-medium">{skill.name}</span>
-                    {#if inHub}<span
-                        class="text-success inline-flex shrink-0 items-center gap-1 text-xs"
-                        ><Check size={12} />{$t("market.imported")}</span
-                      >{/if}
-                  </span>
-                  {#if $marketState.tab === "categories"}
-                    <span
-                      class="text-base-content-subtle mt-1 flex min-w-0 items-center gap-3 text-xs"
+                  {#each sortItems as item (item.value)}
+                    <DropdownMenu.RadioItem
+                      value={item.value}
+                      class={`${menuItemClass()} flex items-center justify-between gap-3`}
                     >
-                      <span class="truncate">{skill.source}</span>
-                      <span
-                        class="inline-flex shrink-0 items-center gap-1 tabular-nums"
-                        aria-label={`${skill.star_count.toLocaleString()} stars`}
-                      >
-                        <Star size={12} aria-hidden="true" />{skill.star_count.toLocaleString()}
-                      </span>
-                    </span>
-                  {/if}
-                  {#if skill.description}<span
-                      class="text-base-content-muted mt-2 line-clamp-2 text-xs leading-relaxed"
-                      >{skill.description}</span
-                    >{/if}
-                </button>
-                <button
-                  class="settings-button shrink-0"
-                  onclick={() => handleImport(skill)}
-                  disabled={Boolean(busySkillId)}
-                  type="button"
-                >
-                  {#if busySkillId === skill.id}<Loader2
-                      size={12}
-                      class="animate-spin"
-                    />{/if}{buttonLabel(skill)}
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-        {#if $marketState.skills.length}
-          <div class="flex justify-center p-6">
-            <button
-              class="settings-button"
-              onclick={() => marketplace.loadMore()}
-              disabled={!$marketState.hasMore || $marketState.loading}
-              type="button"
+                      {#snippet children({ checked })}
+                        {item.label}<Check size={13} class={checked ? "" : "invisible"} />
+                      {/snippet}
+                    </DropdownMenu.RadioItem>
+                  {/each}
+                </DropdownMenu.RadioGroup>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+          <IconButton
+            variant="outline"
+            onclick={() => run(() => marketplace.refresh())}
+            disabled={$marketState.navigationLoading || $marketState.loading}
+            title={$t("library.refresh")}
+            ariaLabel={$t("library.refresh")}
+            class="h-9 w-9"
+          >
+            <RefreshCw
+              size={16}
+              class={$marketState.loading || $marketState.navigationLoading ? "animate-spin" : ""}
+            />
+          </IconButton>
+        </div>
+        <main
+          bind:this={viewport}
+          class="min-h-0 flex-1 overflow-y-auto"
+          onscroll={() => {
+            // Unmounting the list fires a last scroll event; keep the saved position.
+            if (viewport) marketplace.saveScroll(viewport.scrollTop);
+          }}
+          aria-busy={$marketState.loading || searchTimeout !== null}
+        >
+          {#if $marketState.error}
+            <div class="px-6 py-4 text-sm" role="alert">
+              <p class="text-error">{$marketState.error}</p>
+              <button
+                class="settings-button mt-3"
+                type="button"
+                onclick={() =>
+                  $marketState.skills.length ? marketplace.loadMore() : marketplace.reload()}
+                >{$t("common.retry")}</button
+              >
+            </div>
+          {/if}
+          {#if log}<div
+              class="bg-base-200 text-base-content-muted mx-6 mt-4 rounded-lg px-3 py-2 text-xs whitespace-pre-wrap"
             >
-              {#if $marketState.loading}<Loader2
-                  size={14}
-                  class="animate-spin"
-                />{:else if $marketState.hasMore}<ChevronDown size={14} />{/if}
-              {$t($marketState.hasMore ? "market.loadMore" : "market.noMore")}
-            </button>
-          </div>
-        {/if}
-      </main>
-    </div>
+              {log}
+            </div>{/if}
+          {#if ($marketState.loading || searchTimeout !== null) && !$marketState.skills.length}
+            <div
+              class="text-base-content-muted flex items-center justify-center gap-2 p-12 text-sm"
+              role="status"
+            >
+              <Loader2 size={16} class="animate-spin" />{$t("market.loading")}
+            </div>
+          {:else if noRepository}
+            <p class="text-base-content-muted p-12 text-center text-sm">
+              {$t($marketState.navigationLoading ? "market.loading" : "market.repositories.empty")}
+            </p>
+          {:else if !$marketState.skills.length && !$marketState.error}
+            <p class="text-base-content-muted p-12 text-center text-sm">{$t("market.empty")}</p>
+          {:else}
+            <ul class="divide-base-300 divide-y px-6">
+              {#each $marketState.skills as skill (skill.id)}
+                {@const inHub = Boolean(hubEntry(skill))}
+                <li class="hover:bg-base-200 flex items-center gap-4 py-4 transition-colors">
+                  <button
+                    type="button"
+                    class="focus-visible:outline-primary min-w-0 flex-1 rounded text-left"
+                    onclick={() => handleView(skill)}
+                  >
+                    <span class="flex min-w-0 items-center gap-2">
+                      <span class="text-base-content truncate text-sm font-medium"
+                        >{skill.name}</span
+                      >
+                      {#if inHub}<span
+                          class="text-success inline-flex shrink-0 items-center gap-1 text-xs"
+                          ><Check size={12} />{$t("market.imported")}</span
+                        >{/if}
+                    </span>
+                    {#if $marketState.tab === "categories"}
+                      <span
+                        class="text-base-content-subtle mt-1 flex min-w-0 items-center gap-3 text-xs"
+                      >
+                        <span class="truncate">{skill.source}</span>
+                        <span
+                          class="inline-flex shrink-0 items-center gap-1 tabular-nums"
+                          aria-label={`${skill.star_count.toLocaleString()} stars`}
+                        >
+                          <Star size={12} aria-hidden="true" />{skill.star_count.toLocaleString()}
+                        </span>
+                      </span>
+                    {/if}
+                    {#if skill.description}<span
+                        class="text-base-content-muted mt-2 line-clamp-2 text-xs leading-relaxed"
+                        >{skill.description}</span
+                      >{/if}
+                  </button>
+                  <button
+                    class="settings-button shrink-0"
+                    onclick={() => handleImport(skill)}
+                    disabled={Boolean(busySkillId)}
+                    type="button"
+                  >
+                    {#if busySkillId === skill.id}<Loader2
+                        size={12}
+                        class="animate-spin"
+                      />{/if}{buttonLabel(skill)}
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+          {#if $marketState.skills.length}
+            <div class="flex justify-center p-6">
+              <button
+                class="settings-button"
+                onclick={() => marketplace.loadMore()}
+                disabled={!$marketState.hasMore || $marketState.loading}
+                type="button"
+              >
+                {#if $marketState.loading}<Loader2
+                    size={14}
+                    class="animate-spin"
+                  />{:else if $marketState.hasMore}<ChevronDown size={14} />{/if}
+                {$t($marketState.hasMore ? "market.loadMore" : "market.noMore")}
+              </button>
+            </div>
+          {/if}
+        </main>
+      </div>
+    {/if}
   </SplitView>
 </section>
 
