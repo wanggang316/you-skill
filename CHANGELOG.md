@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Instruction file groups in the Instructions list can be collapsed and expanded; the state is remembered ([HAN-261](https://linear.app/gumpw/issue/HAN-261)).
+
 ### Changed
 
 ### Fixed
