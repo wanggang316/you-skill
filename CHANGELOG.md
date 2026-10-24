@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Opening a skill in Market shows its detail in the content panel and keeps the category and repository list visible ([HAN-260](https://linear.app/gumpw/issue/HAN-260)).
+
 ### Fixed
 
 - The update dialog hides release note sections that have no entries ([HAN-256](https://linear.app/gumpw/issue/HAN-256)).
