@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.9.15] - 2026-10-24
+
+### Breaking Changes
+
+### Added
+
 - Instruction file groups in the Instructions list can be collapsed and expanded; the state is remembered ([HAN-261](https://linear.app/gumpw/issue/HAN-261)).
 - Workspace groups in the "Install to" location picker can be collapsed and expanded; the state is remembered ([HAN-262](https://linear.app/gumpw/issue/HAN-262)).
 
