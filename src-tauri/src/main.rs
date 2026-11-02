@@ -24,7 +24,7 @@ use commands::{
     update_user_agent_app,
   },
   cli::{cli_status, install_cli, uninstall_cli},
-  favorites::{list_favorites, set_favorite},
+  favorites::{list_favorites, set_favorite, sync_favorites},
   github::{get_github_auth_status, get_github_avatar, set_github_account},
   hub::{
     check_source_updates, diff_skill, get_hub_skill, import_scanned, import_skills, install_skill,
@@ -210,6 +210,7 @@ fn main() {
       record_skill_install,
       list_favorites,
       set_favorite,
+      sync_favorites,
       list_local_agent_apps,
       refresh_agent_apps,
       add_user_agent_app,
