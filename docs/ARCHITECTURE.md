@@ -289,7 +289,8 @@ A favorite is a marketplace skill, keyed by its marketplace id. `favorites.json`
 record per skill: favorite state, `updatedAt` (client milliseconds), a snapshot (name,
 source, description) and a `pending` flag for changes not sent to an account. A removal
 stays as a pending tombstone until a sync confirms it. Favorites work without an account;
-the Marketplace has a Favorites view and a heart toggle in the list and the detail page. A
+the Marketplace has a Favorites view, opened from the round bookmark button next to the
+Categories | Hot repos tabs, and a bookmark toggle in the list and the detail page. A
 favorite whose skill lookup returns 404 shows as unavailable from its snapshot.
 
 `favorite_sync_service::sync` pushes pending records, removals first, in batches of at

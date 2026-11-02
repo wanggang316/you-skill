@@ -4,14 +4,14 @@
   import CatalogIcon from "$lib/components/CatalogIcon.svelte";
   import MarketSkillDetail from "$lib/components/MarketSkillDetail.svelte";
   import SplitView from "$lib/components/SplitView.svelte";
-  import SegmentedTabs from "$lib/components/ui/SegmentedTabs.svelte";
+  import MarketViewSwitch from "$lib/components/MarketViewSwitch.svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import {
     Check,
     ChevronDown,
     ArrowDownWideNarrow,
-    Heart,
+    Bookmark,
     Loader2,
     RefreshCw,
     Search,
@@ -189,32 +189,17 @@
           {$t("market.title")}
         </h1>
       </header>
-      <div class="px-3 pb-2">
-        <button
-          type="button"
-          class="market-nav-row"
-          class:active={showingFavorites}
-          aria-current={showingFavorites ? "true" : undefined}
-          onclick={() => run(() => marketplace.showFavorites())}
-        >
-          <Heart size={16} class="shrink-0" aria-hidden="true" />
-          <span class="min-w-0 flex-1">{$t("market.favorites")}</span>
-          <span class="text-base-content-subtle shrink-0 text-xs tabular-nums"
-            >{$favoritesState.items.length}</span
-          >
-        </button>
-      </div>
       <div class="px-3 pb-3">
-        <SegmentedTabs
-          items={[
+        <MarketViewSwitch
+          tabs={[
             { value: "categories", label: $t("market.categories") },
             { value: "repositories", label: $t("market.repositories") },
           ]}
-          className="[&>button]:px-2 [&>button]:text-xs [&>button]:whitespace-nowrap"
-          value={$marketState.tab}
-          onChange={(value) => run(() => marketplace.selectTab(value as MarketTab))}
-          fullWidth
-          surface="sidebar"
+          tab={$marketState.tab}
+          favorites={showingFavorites}
+          favoritesLabel={$t("market.favorites")}
+          onSelectTab={(value) => run(() => marketplace.selectTab(value as MarketTab))}
+          onShowFavorites={() => run(() => marketplace.showFavorites())}
         />
       </div>
       <nav
@@ -449,7 +434,7 @@
                       title={$t("market.unfavorite")}
                       class="text-secondary h-8 w-8 shrink-0 p-0"
                     >
-                      <Heart size={16} fill="currentColor" />
+                      <Bookmark size={16} fill="currentColor" />
                     </IconButton>
                   </li>
                 {/each}
@@ -531,7 +516,7 @@
                       title={$t(favorite ? "market.unfavorite" : "market.favorite")}
                       class={`h-8 w-8 shrink-0 p-0 ${favorite ? "text-secondary" : "text-base-content-subtle"}`}
                     >
-                      <Heart size={16} fill={favorite ? "currentColor" : "none"} />
+                      <Bookmark size={16} fill={favorite ? "currentColor" : "none"} />
                     </IconButton>
                     <button
                       class="settings-button shrink-0"

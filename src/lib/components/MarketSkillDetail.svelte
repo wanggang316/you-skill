@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ChevronLeft, Heart, Loader2 } from "@lucide/svelte";
+  import { Bookmark, ChevronLeft, Loader2 } from "@lucide/svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import SkillFileViewer from "$lib/components/SkillFileViewer.svelte";
   import { t } from "$lib/i18n";
@@ -63,7 +63,7 @@
         title={$t(favorite ? "market.unfavorite" : "market.favorite")}
         class={`h-8 w-8 shrink-0 p-0 ${favorite ? "text-secondary" : "text-base-content-subtle"}`}
       >
-        <Heart size={16} fill={favorite ? "currentColor" : "none"} />
+        <Bookmark size={16} fill={favorite ? "currentColor" : "none"} />
       </IconButton>
     {/if}
   </header>
