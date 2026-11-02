@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.11.0] - 2026-11-02
+
+### Breaking Changes
+
 - The GitHub backup uses a new repository format with one device file per computer. The first computer that syncs after the update asks to migrate the repository; other computers must update the app before they can back up or restore again ([#66](https://github.com/wanggang316/youskill/issues/66)).
 
 ### Added
@@ -34,8 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The GitHub backup no longer writes the folder, zip or file path of a local source into the repository. A restore keeps the local path of an item, and a first merge no longer pairs items by an equal folder path. The next backup removes the paths that earlier versions wrote ([#72](https://github.com/wanggang316/youskill/issues/72)).
 - In the dark theme, warning, success and info text (for example the warning before a repository update and the Added tag in the list of changes) is light and easy to read.
-
-### Removed
 
 ## [0.10.0] - 2026-10-29
 
