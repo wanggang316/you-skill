@@ -21,3 +21,10 @@ pub fn set_favorite(
   favorite_sync::request(&app, favorite_sync::AFTER_CHANGE);
   Ok(list)
 }
+
+/// Starts a sync with the account now, after a running one. The result comes as
+/// `favorites://synced`. Signed out, the sync does nothing.
+#[tauri::command]
+pub fn sync_favorites(app: AppHandle) {
+  favorite_sync::request(&app, favorite_sync::NOW);
+}

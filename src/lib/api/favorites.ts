@@ -39,6 +39,14 @@ export function setFavorite(
   return apiCall("set_favorite", { skillId, favorited, snapshot: snapshot ?? null });
 }
 
+/**
+ * Starts a sync with the account now, after a running one. It does nothing when signed out.
+ * The result comes as `favorites://synced`.
+ */
+export function syncFavorites(): Promise<void> {
+  return apiCall("sync_favorites");
+}
+
 /** Result of a sync with the account. */
 export interface FavoritesSynced {
   /** Adds reverted because the account has the maximum number of favorites. */

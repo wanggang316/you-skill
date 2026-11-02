@@ -1,5 +1,5 @@
-//! When favorites sync with the account: at app start, after a sign-in, on window focus, and
-//! after a local change (debounced). A failed sync retries later. The sync logic is in
+//! When favorites sync with the account: at app start, after a sign-in, on window focus, on a
+//! Refresh in the marketplace, and after a local change (debounced). A failed sync retries later. The sync logic is in
 //! `favorite_sync_service`.
 
 use crate::account::{emit_changed, Account};
