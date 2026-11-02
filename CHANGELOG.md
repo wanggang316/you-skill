@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refresh in the Marketplace, in the Favorites view and the list view, syncs favorites with the signed-in account at once, and the list shows the result when the sync ends. A failed sync shows no error and retries later ([#79](https://github.com/wanggang316/youskill/issues/79)).
 - Each computer keeps its own user-level installs in its own device file in the backup. Installing a skill on one computer no longer shows a pending install on the other computers ([#66](https://github.com/wanggang316/youskill/issues/66)).
 - A backup no longer stops when another computer backed up other items first: it is added on top, and the changes of the other computer are offered by the next restore, selected by default. Only an item changed on both computers opens the restore preview. Custom agents are compared one by one ([#66](https://github.com/wanggang316/youskill/issues/66)).
+- The Marketplace opens Favorites from a round bookmark button next to the Categories | Hot repos tabs, and favorites use a bookmark icon instead of a heart, as on iOS ([#81](https://github.com/wanggang316/youskill/issues/81)).
 
 ### Fixed
 
