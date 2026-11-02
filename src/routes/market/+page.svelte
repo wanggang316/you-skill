@@ -176,7 +176,7 @@
   }
 
   function refresh() {
-    if (showingFavorites) void favorites.load();
+    void favorites.refresh();
     run(() => marketplace.refresh());
   }
 </script>

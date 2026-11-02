@@ -222,3 +222,61 @@ test("a sync shows a message for changes the account rejected for another reason
   await favorites.remove("1");
   assert.equal(state.otherRejected, false);
 });
+
+test("refresh requests a sync and shows a record added on the server", async () => {
+  let records = [];
+  let handler;
+  let syncs = 0;
+  const favorites = createFavorites({
+    list: async () => records,
+    set: async () => records,
+    listen: async (next) => {
+      handler = next;
+    },
+    sync: async () => {
+      syncs += 1;
+      // The backend sync pulls a record added on another device, then reports.
+      setTimeout(() => {
+        records = [{ skillId: "9", favorited: true, updatedAt: 1, snapshot: {}, pending: false }];
+        handler({ limitReached: [], rejected: [] });
+      });
+    },
+  });
+  let state;
+  favorites.state.subscribe((value) => (state = value));
+  await favorites.load();
+  assert.equal(syncs, 0);
+
+  await favorites.refresh();
+  assert.equal(syncs, 1);
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.deepEqual(
+    state.items.map((item) => item.skillId),
+    ["9"]
+  );
+});
+
+test("a failed sync request on refresh shows no error and keeps the list", async () => {
+  const records = [{ skillId: "3", favorited: true, updatedAt: 1, snapshot: {}, pending: true }];
+  const favorites = createFavorites({
+    list: async () => records,
+    set: async () => records,
+    sync: async () => {
+      throw new Error("offline");
+    },
+  });
+  let state;
+  favorites.state.subscribe((value) => (state = value));
+  const logged = console.error;
+  console.error = () => {};
+  try {
+    await favorites.refresh();
+  } finally {
+    console.error = logged;
+  }
+  assert.equal(state.error, "");
+  assert.deepEqual(
+    state.items.map((item) => item.skillId),
+    ["3"]
+  );
+});

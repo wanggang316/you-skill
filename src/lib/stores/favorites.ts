@@ -3,6 +3,7 @@ import {
   listFavorites,
   onFavoritesSynced,
   setFavorite,
+  syncFavorites,
   type FavoritesSynced,
   type LocalFavorite,
 } from "../api/favorites";
@@ -45,10 +46,17 @@ interface FavoritesApi {
   set: typeof setFavorite;
   /** Follows syncs with the account. */
   listen?: (handler: (event: FavoritesSynced) => void) => Promise<unknown>;
+  /** Starts a sync with the account now. */
+  sync?: () => Promise<void>;
 }
 
 export function createFavorites(
-  api: FavoritesApi = { list: listFavorites, set: setFavorite, listen: onFavoritesSynced }
+  api: FavoritesApi = {
+    list: listFavorites,
+    set: setFavorite,
+    listen: onFavoritesSynced,
+    sync: syncFavorites,
+  }
 ) {
   const state = writable<FavoritesState>({
     items: [],
@@ -111,18 +119,32 @@ export function createFavorites(
     }
   }
 
+  /** Reads the list and, once, starts to follow syncs with the account. */
+  async function load() {
+    if (api.listen) {
+      listening ??= api.listen(synced).catch((error) => {
+        listening = null;
+        console.error("Failed to listen for favorite syncs:", error);
+      });
+    }
+    await reload();
+  }
+
   return {
     state: { subscribe: state.subscribe },
     isFavorite,
-    /** Reads the list and, once, starts to follow syncs with the account. */
-    async load() {
-      if (api.listen) {
-        listening ??= api.listen(synced).catch((error) => {
-          listening = null;
-          console.error("Failed to listen for favorite syncs:", error);
-        });
+    load,
+    /**
+     * Reads the list and starts a sync with the account now. The list reloads when the sync
+     * reports. A failed request shows no error; the backend retries pending changes.
+     */
+    async refresh() {
+      await load();
+      try {
+        await api.sync?.();
+      } catch (error) {
+        console.error("Failed to start a favorite sync:", error);
       }
-      await reload();
     },
     /** Favorites `skill`, or removes it when it is a favorite. */
     toggle: (skill: RemoteSkill) => change(skill.id, !isFavorite(skill.id), skill),
