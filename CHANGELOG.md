@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Pull is replaced by Restore: a preview with decisions, then an apply that commits the merged library on top of the branch. Backup no longer stops at "diverged" without a way forward; it points to Restore ([#60](https://github.com/wanggang316/youskill/issues/60)).
 - The Library refresh button spins only for a manual refresh and for the first load. Refreshes at startup, when the window gets focus, when the Library opens, and after a change run in the background; their errors go to the log and do not replace the error on the page ([#57](https://github.com/wanggang316/youskill/issues/57)).
+- Refresh in the Marketplace, in the Favorites view and the list view, syncs favorites with the signed-in account at once, and the list shows the result when the sync ends. A failed sync shows no error and retries later ([#79](https://github.com/wanggang316/youskill/issues/79)).
 - Each computer keeps its own user-level installs in its own device file in the backup. Installing a skill on one computer no longer shows a pending install on the other computers ([#66](https://github.com/wanggang316/youskill/issues/66)).
 - A backup no longer stops when another computer backed up other items first: it is added on top, and the changes of the other computer are offered by the next restore, selected by default. Only an item changed on both computers opens the restore preview. Custom agents are compared one by one ([#66](https://github.com/wanggang316/youskill/issues/66)).
 
