@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A translated `SKILL.md` always has a translated `description`: it is translated separately and put back into the frontmatter, and the other frontmatter fields stay as written. Reasoning text (`</think>`, `Thinking Process:`) and a ```` ```markdown ```` fence around a translation are removed, also from saved translations. Use Retranslate to correct a translation saved without a translated description ([#83](https://github.com/wanggang316/youskill/issues/83)).
+
 ### Removed
 
 ## [0.11.0] - 2026-11-02
