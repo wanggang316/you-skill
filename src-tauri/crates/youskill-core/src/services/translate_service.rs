@@ -4,6 +4,7 @@ use crate::utils::file::split_frontmatter;
 use serde_yaml::{Mapping, Value};
 use sha2::{Digest, Sha256};
 use std::fs;
+use std::future::Future;
 use std::path::{Path, PathBuf};
 
 fn build_translation_system_prompt(target_language: &str) -> String {
@@ -332,29 +333,113 @@ fn lookup_cached_translation(
   let cache_key = build_translation_cache_key(model, target_language, markdown);
   // Entries saved by earlier versions can keep a model wrapper.
   load_translation_cache_entry(cache_dir, &cache_key)
-    .map(|cached| strip_model_wrapper(&cached, markdown))
-    .filter(|cached| !is_untranslated(markdown, cached))
+    .and_then(|cached| checked_translation(&cached, markdown).ok())
 }
 
-async fn request_translation(
+/// Why a model result cannot be used as the translation of its source.
+#[derive(Debug, PartialEq)]
+enum UnusableTranslation {
+  Blank,
+  Untranslated,
+  /// A reasoning preamble that `strip_model_wrapper` could not separate from the text.
+  Reasoning,
+}
+
+#[derive(Debug, PartialEq)]
+enum TranslationFailure {
+  Request(String),
+  Unusable(UnusableTranslation),
+}
+
+/// Removes model wrappers from `output` and checks that the rest is a translation of `source`.
+fn checked_translation(output: &str, source: &str) -> Result<String, UnusableTranslation> {
+  let cleaned = strip_model_wrapper(output, source);
+  if cleaned.trim().is_empty() {
+    return Err(UnusableTranslation::Blank);
+  }
+  if cleaned.trim_start().starts_with(THINKING_PREAMBLE)
+    && !source.trim_start().starts_with(THINKING_PREAMBLE)
+  {
+    return Err(UnusableTranslation::Reasoning);
+  }
+  if is_untranslated(source, &cleaned) {
+    return Err(UnusableTranslation::Untranslated);
+  }
+  Ok(cleaned)
+}
+
+/// Calls `request` up to `attempts` times and returns the first usable translation of `source`.
+async fn translate_with_retry<F, Fut>(
+  source: &str,
+  attempts: usize,
+  mut request: F,
+) -> Result<String, TranslationFailure>
+where
+  F: FnMut() -> Fut,
+  Fut: Future<Output = Result<String, String>>,
+{
+  let mut failure = TranslationFailure::Unusable(UnusableTranslation::Blank);
+  for _ in 0..attempts {
+    let output = request().await.map_err(TranslationFailure::Request)?;
+    match checked_translation(&output, source) {
+      Ok(translated) => return Ok(translated),
+      Err(reason) => failure = TranslationFailure::Unusable(reason),
+    }
+  }
+  Err(failure)
+}
+
+async fn translate_text(
   api_key: String,
   model: String,
   system_prompt: String,
   text: String,
-) -> Result<String, String> {
-  let messages = vec![
-    ai_service::OpenRouterMessage {
-      role: "system".to_string(),
-      content: system_prompt,
-    },
-    ai_service::OpenRouterMessage {
-      role: "user".to_string(),
-      content: text.clone(),
-    },
-  ];
-  let output = ai_service::chat_completion_with_openrouter(&api_key, &model, messages, 0.1).await?;
-  Ok(strip_model_wrapper(&output, &text))
+  attempts: usize,
+) -> Result<String, TranslationFailure> {
+  translate_with_retry(&text, attempts, || {
+    let (api_key, model) = (api_key.clone(), model.clone());
+    let messages = vec![
+      ai_service::OpenRouterMessage {
+        role: "system".to_string(),
+        content: system_prompt.clone(),
+      },
+      ai_service::OpenRouterMessage {
+        role: "user".to_string(),
+        content: text.clone(),
+      },
+    ];
+    async move {
+      ai_service::chat_completion_with_openrouter(&api_key, &model, messages, 0.1).await
+    }
+  })
+  .await
 }
+
+fn translation_failure_message(
+  failure: TranslationFailure,
+  part: &str,
+  model: &str,
+  target_language: &str,
+) -> String {
+  match failure {
+    TranslationFailure::Request(error) => error,
+    TranslationFailure::Unusable(UnusableTranslation::Blank) => {
+      format!("模型 {} 返回的{}为空。请重试或更换模型", model, part)
+    },
+    TranslationFailure::Unusable(UnusableTranslation::Untranslated) => format!(
+      "模型 {} 返回的{}与原文相同，未翻译为 {}。请检查目标语言或更换模型后重试",
+      model, part, target_language
+    ),
+    TranslationFailure::Unusable(UnusableTranslation::Reasoning) => format!(
+      "模型 {} 返回了推理过程，而不是{}的译文。请重试或更换模型",
+      model, part
+    ),
+  }
+}
+
+/// A short description costs little to request again; the body can take a long time.
+const BODY_ATTEMPTS: usize = 1;
+const DESCRIPTION_ATTEMPTS: usize = 2;
 
 /// Translates `markdown` with the configured model. When `force` is true, skips the
 /// cached translation and replaces it with the new result.
@@ -397,53 +482,45 @@ pub async fn translate_skill_markdown(markdown: String, force: bool) -> Result<S
     .as_ref()
     .map_or(markdown.as_str(), |document| document.body.trim());
 
-  let description_task = description.clone().map(|description| {
-    tokio::spawn(request_translation(
+  let description_task = description.map(|description| {
+    tokio::spawn(translate_text(
       api_key.clone(),
       model.clone(),
       build_description_system_prompt(&target_language),
       description,
+      DESCRIPTION_ATTEMPTS,
     ))
   });
   let translated_body = if body.trim().is_empty() {
     body.to_string()
   } else {
-    request_translation(
+    translate_text(
       api_key.clone(),
       model.clone(),
       build_translation_system_prompt(&target_language),
       body.to_string(),
+      BODY_ATTEMPTS,
     )
-    .await?
+    .await
+    .map_err(|failure| translation_failure_message(failure, "内容", &model, &target_language))?
   };
+  // A translation is saved only with a usable description translation.
   let translated_description = match description_task {
     Some(task) => Some(
       task
         .await
-        .map_err(|error| format!("翻译 description 失败: {}", error))??
-        .trim()
-        .to_string(),
+        .map_err(|error| format!("翻译 description 失败: {}", error))?
+        .map_err(|failure| {
+          translation_failure_message(failure, " description ", &model, &target_language)
+        })?,
     ),
     None => None,
   };
 
-  let description_untranslated = match (&description, &translated_description) {
-    (Some(description), Some(translated)) => is_untranslated(description, translated),
-    _ => true,
-  };
-  if is_untranslated(body, &translated_body) && description_untranslated {
-    return Err(format!(
-      "模型 {} 返回的内容与原文相同，未翻译为 {}。请检查目标语言或更换模型后重试",
-      model, target_language
-    ));
-  }
-
   let content = match &document {
     Some(document) => assemble_translation(
       document,
-      translated_description
-        .as_deref()
-        .filter(|translated| !translated.is_empty()),
+      translated_description.as_deref().map(str::trim),
       &translated_body,
     ),
     None => translated_body,
@@ -756,6 +833,126 @@ mod tests {
     assert_eq!(
       lookup_cached_translation(&config, dir.path(), SKILL_MD).as_deref(),
       Some("---\nname: demo\ndescription: 演示\n---\n# 演示\n")
+    );
+  }
+
+  fn block_on<F: Future>(future: F) -> F::Output {
+    tokio::runtime::Builder::new_current_thread()
+      .build()
+      .unwrap()
+      .block_on(future)
+  }
+
+  /// Runs `translate_with_retry` with fake model outputs and returns the result and call count.
+  fn retry_with_outputs(
+    source: &str,
+    attempts: usize,
+    outputs: &[Result<&str, &str>],
+  ) -> (Result<String, TranslationFailure>, usize) {
+    let mut calls = 0;
+    let result = block_on(translate_with_retry(source, attempts, || {
+      let output = outputs[calls].map(str::to_string).map_err(str::to_string);
+      calls += 1;
+      async move { output }
+    }));
+    (result, calls)
+  }
+
+  #[test]
+  fn checked_translation_rejects_unusable_results() {
+    assert_eq!(
+      checked_translation(" \n", "Text"),
+      Err(UnusableTranslation::Blank)
+    );
+    assert_eq!(
+      checked_translation("Text\n", "Text"),
+      Err(UnusableTranslation::Untranslated)
+    );
+    assert_eq!(
+      checked_translation("<think>plan</think>\nText", "Text"),
+      Err(UnusableTranslation::Untranslated)
+    );
+    assert_eq!(
+      checked_translation("Thinking Process:\n\n1. Translate.\n\n文本", "Text"),
+      Err(UnusableTranslation::Reasoning)
+    );
+    assert_eq!(
+      checked_translation("```\n文本\n```", "Text").as_deref(),
+      Ok("文本\n")
+    );
+  }
+
+  #[test]
+  fn retry_requests_description_again_after_echo() {
+    let (result, calls) = retry_with_outputs(
+      "Use for demos.",
+      DESCRIPTION_ATTEMPTS,
+      &[Ok("Use for demos."), Ok("用于演示。")],
+    );
+    assert_eq!(result.as_deref(), Ok("用于演示。"));
+    assert_eq!(calls, 2);
+  }
+
+  #[test]
+  fn retry_rejects_description_that_stays_unusable() {
+    let (result, calls) = retry_with_outputs(
+      "Use for demos.",
+      DESCRIPTION_ATTEMPTS,
+      &[Ok(""), Ok("Use for demos.")],
+    );
+    assert_eq!(
+      result,
+      Err(TranslationFailure::Unusable(
+        UnusableTranslation::Untranslated
+      ))
+    );
+    assert_eq!(calls, 2);
+
+    let (result, _) = retry_with_outputs(
+      "Use for demos.",
+      DESCRIPTION_ATTEMPTS,
+      &[
+        Ok("Thinking Process:\n\n用于演示。"),
+        Ok("Thinking Process:\n\n用于演示。"),
+      ],
+    );
+    assert_eq!(
+      result,
+      Err(TranslationFailure::Unusable(UnusableTranslation::Reasoning))
+    );
+  }
+
+  #[test]
+  fn retry_stops_at_request_error_and_attempt_limit() {
+    let (result, calls) =
+      retry_with_outputs("Text", DESCRIPTION_ATTEMPTS, &[Err("network"), Ok("文本")]);
+    assert_eq!(
+      result,
+      Err(TranslationFailure::Request("network".to_string()))
+    );
+    assert_eq!(calls, 1);
+
+    let (result, calls) =
+      retry_with_outputs("# Demo", BODY_ATTEMPTS, &[Ok("# Demo"), Ok("# 演示")]);
+    assert_eq!(
+      result,
+      Err(TranslationFailure::Unusable(
+        UnusableTranslation::Untranslated
+      ))
+    );
+    assert_eq!(calls, 1);
+  }
+
+  #[test]
+  fn lookup_ignores_cached_entry_with_unremovable_reasoning() {
+    let dir = tempfile::tempdir().unwrap();
+    let config = translate_config();
+    let key = build_translation_cache_key("test/model", "Chinese", "Run the demo.");
+    save_translation_cache_entry(dir.path(), &key, "Thinking Process:\n\n运行演示。").unwrap();
+
+    assert_eq!(
+      lookup_cached_translation(&config, dir.path(), "Run the demo."),
+      None
     );
   }
 }
