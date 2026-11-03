@@ -157,9 +157,9 @@ fn document_start(text: &str, source: &str) -> Option<usize> {
 }
 
 /// The text inside a ```` ```markdown ````, ```` ```md ```` or ```` ``` ```` fence that wraps
-/// all of `text`. `None` when `text` is not wrapped or `source` itself starts with a fence.
-/// The translation keeps code blocks, so a wrapped `text` has exactly two fence lines more
-/// than `source`; this separates a wrapper from a document that starts and ends with code.
+/// all of `text`, or `None`. The translation keeps code blocks, so a wrapped `text` has
+/// exactly two fence lines more than `source`. This separates a wrapper from the fences of
+/// the document, also when the document starts or ends with a code block.
 fn fenced_document<'a>(text: &'a str, source: &str) -> Option<&'a str> {
   let fence_lines = |value: &str| {
     value
@@ -167,7 +167,7 @@ fn fenced_document<'a>(text: &'a str, source: &str) -> Option<&'a str> {
       .filter(|line| line.trim_start().starts_with("```"))
       .count()
   };
-  if source.trim_start().starts_with("```") || fence_lines(text) != fence_lines(source) + 2 {
+  if fence_lines(text) != fence_lines(source) + 2 {
     return None;
   }
   let trimmed = text.trim();
@@ -437,8 +437,34 @@ fn translation_failure_message(
   }
 }
 
-/// The body to store. A body of only code, commands or paths stays the same under the
-/// translation rules, so an unchanged body is kept when the description is translated.
+/// Whether `markdown` has text that the translation rules ask to translate: letters outside
+/// code blocks, inline code, and URLs.
+fn has_translatable_text(markdown: &str) -> bool {
+  let mut in_fence = false;
+  for line in markdown.lines() {
+    let trimmed = line.trim_start();
+    if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+      in_fence = !in_fence;
+      continue;
+    }
+    if in_fence || line.starts_with("    ") || line.starts_with('\t') {
+      continue;
+    }
+    let outside_inline_code = line.split('`').step_by(2);
+    let has_text = outside_inline_code
+      .flat_map(str::split_whitespace)
+      .filter(|word| !word.contains("://"))
+      .any(|word| word.chars().any(char::is_alphabetic));
+    if has_text {
+      return true;
+    }
+  }
+  false
+}
+
+/// The body to store. A body of only code, commands, paths or URLs stays the same under the
+/// translation rules, so such a body is kept unchanged when the description is translated.
+/// An unchanged body with text to translate is still a failure.
 fn accepted_body(
   body: &str,
   result: Result<String, TranslationFailure>,
@@ -446,7 +472,7 @@ fn accepted_body(
 ) -> Result<String, TranslationFailure> {
   match result {
     Err(TranslationFailure::Unusable(UnusableTranslation::Untranslated))
-      if description_translated =>
+      if description_translated && !has_translatable_text(body) =>
     {
       Ok(body.to_string())
     },
@@ -1028,5 +1054,54 @@ mod tests {
       translated(markdown, "构建它。", &kept),
       "---\nname: demo\ndescription: \"构建它。\"\n---\n\n```bash\nnpm run build\n```\n"
     );
+  }
+
+  #[test]
+  fn accepted_body_rejects_unchanged_body_with_text() {
+    let unchanged = || {
+      Err(TranslationFailure::Unusable(
+        UnusableTranslation::Untranslated,
+      ))
+    };
+    for body in [
+      "# Usage\n\n```bash\nnpm run build\n```",
+      "Run `npm run build` first.",
+      "- Open https://example.com and sign in.",
+    ] {
+      assert_eq!(
+        accepted_body(body, unchanged(), true),
+        unchanged(),
+        "body {:?}",
+        body
+      );
+    }
+    for body in [
+      "```bash\nnpm run build\n```\n\n~~~\nmake\n~~~",
+      "`npm run build`\n\n    ./scripts/run.sh",
+      "https://example.com/docs\n\n- `src/main.rs`",
+    ] {
+      assert_eq!(
+        accepted_body(body, unchanged(), true).as_deref(),
+        Ok(body),
+        "body {:?}",
+        body
+      );
+    }
+  }
+
+  #[test]
+  fn strip_removes_fence_around_document_that_starts_with_code() {
+    let source = "```bash\nnpm run build\n```\n\nBuild the app.";
+    let translation = "```bash\nnpm run build\n```\n\n构建应用。";
+    for fence in ["```markdown", "```"] {
+      let output = format!("{}\n{}\n```", fence, translation);
+      assert_eq!(
+        strip_model_wrapper(&output, source),
+        format!("{}\n", translation),
+        "fence {}",
+        fence
+      );
+    }
+    assert_eq!(strip_model_wrapper(translation, source), translation);
   }
 }
