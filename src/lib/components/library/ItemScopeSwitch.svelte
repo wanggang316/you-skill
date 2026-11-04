@@ -63,7 +63,7 @@
     title={error || $t("sync.shared.hint")}
     aria-busy={saving}
     onclick={toggle}
-    class={`inline-flex shrink-0 items-center gap-2 ${saving ? "cursor-progress" : ""} ${
+    class={`inline-flex shrink-0 items-center gap-2 ${
       size === "md" ? "h-8 px-1 text-[13px]" : "h-6 px-1 text-[11px]"
     } ${error ? "text-error" : "text-base-content-muted"}`}
   >
@@ -76,7 +76,7 @@
       <span
         class={`bg-switch-thumb absolute left-0.5 flex items-center justify-center rounded-full shadow-sm transition-transform ${
           size === "md" ? "h-3.5 w-3.5" : "h-2.5 w-2.5"
-        } ${shared ? (size === "md" ? "translate-x-3.5" : "translate-x-2.5") : ""}`}
+        } ${shared ? (size === "md" ? "translate-x-3.5" : "translate-x-2.5") : "translate-x-0"}`}
       >
         {#if saving}
           <Loader2
