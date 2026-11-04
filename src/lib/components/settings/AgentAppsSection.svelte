@@ -5,7 +5,7 @@
   import { refreshAgentApps, removeAgentApp, type AgentApp } from "$lib/api";
   import AddAgentAppModal from "$lib/components/AddAgentAppModal.svelte";
   import AgentAppIcon from "$lib/components/AgentAppIcon.svelte";
-  import ItemScopeField from "$lib/components/library/ItemScopeField.svelte";
+  import ItemScopeSwitch from "$lib/components/library/ItemScopeSwitch.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import { t } from "$lib/i18n";
   import SettingsPane from "./SettingsPane.svelte";
@@ -86,12 +86,10 @@
     <div class="flex min-w-0 flex-1 flex-col">
       <span class="text-base-content text-[13px] font-medium">{app.display_name}</span>
       {@render pathRows(app)}
-      {#if editable}
-        <ItemScopeField itemKey={`agent:${app.id}`} layout="inline" />
-      {/if}
     </div>
     {#if editable}
-      <div class="flex shrink-0 gap-0.5">
+      <div class="flex shrink-0 items-center gap-0.5">
+        <ItemScopeSwitch itemKey={`agent:${app.id}`} size="sm" />
         <button
           class="text-base-content-muted hover:bg-base-300 hover:text-base-content rounded-md p-1.5"
           onclick={() => openEditModal(app)}
