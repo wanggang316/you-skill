@@ -4,5 +4,5 @@ export const BRAND_BOLT_PATH =
 
 export const BRAND_BOLT_VIEW_BOX = "0 0 433 455";
 
-/** Project home. The app has no separate website yet. */
-export const WEBSITE_URL = "https://github.com/wanggang316/you-skill";
+/** Project website. */
+export const WEBSITE_URL = "https://youskill.cc";
