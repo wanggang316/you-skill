@@ -60,9 +60,9 @@
     aria-checked={shared}
     aria-label={$t("sync.shared.label")}
     title={error || $t("sync.shared.hint")}
-    disabled={saving}
+    aria-busy={saving}
     onclick={toggle}
-    class={`inline-flex shrink-0 items-center gap-2 disabled:opacity-60 ${
+    class={`inline-flex shrink-0 items-center gap-2 ${
       size === "md" ? "h-8 px-1 text-[13px]" : "h-6 px-1 text-[11px]"
     } ${error ? "text-error" : "text-base-content-muted"}`}
   >
