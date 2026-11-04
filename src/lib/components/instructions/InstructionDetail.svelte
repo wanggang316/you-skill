@@ -7,7 +7,7 @@
   import SegmentedTabs from "$lib/components/ui/SegmentedTabs.svelte";
   import MarkdownEditor from "$lib/components/MarkdownEditor.svelte";
   import InstallTargets from "$lib/components/library/InstallTargets.svelte";
-  import ItemScopeField from "$lib/components/library/ItemScopeField.svelte";
+  import ItemScopeSwitch from "$lib/components/library/ItemScopeSwitch.svelte";
   import DriftPanel, { type TargetAction } from "$lib/components/library/DriftPanel.svelte";
   import { t } from "$lib/i18n";
   import {
@@ -192,6 +192,7 @@
       {/if}
     </div>
     <div class="flex shrink-0 items-center gap-1.5">
+      <ItemScopeSwitch itemKey={`instruction:${instruction.id}`} />
       <IconButton
         variant="outline"
         onclick={onOpenFile}
@@ -269,7 +270,6 @@
           <dd>{formatDate(instruction.importedAt)}</dd>
           <dt>{$t("detail.updatedAt")}</dt>
           <dd>{formatDate(instruction.updatedAt)}</dd>
-          <ItemScopeField itemKey={`instruction:${instruction.id}`} />
         </dl>
 
         {#if renameError}

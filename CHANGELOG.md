@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The sync scope of a skill, an instruction template or a custom agent is now a Shared switch next to the Open folder button in the detail header (in the row for a custom agent), in place of the All computers / This computer only selector.
+
 ### Fixed
 
 - The website link in Settings > About opens https://youskill.cc.
