@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Loader2 } from "@lucide/svelte";
   import { getItemScope, setItemScope, type ItemScope } from "$lib/api";
   import { t } from "$lib/i18n";
 
@@ -62,7 +63,7 @@
     title={error || $t("sync.shared.hint")}
     aria-busy={saving}
     onclick={toggle}
-    class={`inline-flex shrink-0 items-center gap-2 ${
+    class={`inline-flex shrink-0 items-center gap-2 ${saving ? "cursor-progress" : ""} ${
       size === "md" ? "h-8 px-1 text-[13px]" : "h-6 px-1 text-[11px]"
     } ${error ? "text-error" : "text-base-content-muted"}`}
   >
@@ -73,10 +74,18 @@
       } ${shared ? "bg-primary" : "bg-switch-track"}`}
     >
       <span
-        class={`bg-switch-thumb absolute left-0.5 rounded-full shadow-sm transition-transform ${
+        class={`bg-switch-thumb absolute left-0.5 flex items-center justify-center rounded-full shadow-sm transition-transform ${
           size === "md" ? "h-3.5 w-3.5" : "h-2.5 w-2.5"
         } ${shared ? (size === "md" ? "translate-x-3.5" : "translate-x-2.5") : ""}`}
-      ></span>
+      >
+        {#if saving}
+          <Loader2
+            size={size === "md" ? 10 : 8}
+            strokeWidth={3}
+            class={`animate-spin ${shared ? "text-primary" : "text-base-content-muted"}`}
+          />
+        {/if}
+      </span>
     </span>
   </button>
 {/if}
