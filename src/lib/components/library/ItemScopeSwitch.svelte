@@ -62,18 +62,18 @@
     title={error || $t("sync.shared.hint")}
     disabled={saving}
     onclick={toggle}
-    class={`hover:bg-base-200 inline-flex shrink-0 items-center gap-2 rounded-lg transition disabled:opacity-60 ${
-      size === "md" ? "h-8 px-2 text-[13px]" : "h-6 px-1.5 text-[11px]"
+    class={`inline-flex shrink-0 items-center gap-2 disabled:opacity-60 ${
+      size === "md" ? "h-8 px-1 text-[13px]" : "h-6 px-1 text-[11px]"
     } ${error ? "text-error" : "text-base-content-muted"}`}
   >
     <span class="whitespace-nowrap">{$t("sync.shared.label")}</span>
     <span
       class={`relative inline-flex shrink-0 items-center rounded-full transition-colors ${
         size === "md" ? "h-[18px] w-8" : "h-3.5 w-6"
-      } ${shared ? "bg-primary" : "bg-base-content/20"}`}
+      } ${shared ? "bg-primary" : "bg-switch-track"}`}
     >
       <span
-        class={`bg-neutral-content absolute left-0.5 rounded-full shadow-sm transition-transform ${
+        class={`bg-switch-thumb absolute left-0.5 rounded-full shadow-sm transition-transform ${
           size === "md" ? "h-3.5 w-3.5" : "h-2.5 w-2.5"
         } ${shared ? (size === "md" ? "translate-x-3.5" : "translate-x-2.5") : ""}`}
       ></span>

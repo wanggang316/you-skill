@@ -40,6 +40,9 @@
   --color-chrome: oklch(96.4% 0.002 286);
   /* Control that floats on a recessed track, such as the active top bar tab */
   --color-raised: oklch(100% 0 0);
+  /* Switch: track when off, and the thumb in both states */
+  --color-switch-track: oklch(88% 0.004 286);
+  --color-switch-thumb: oklch(100% 0 0);
 
   /* 深色主题颜色 */
   --color-base-100-dark: oklch(0.2308 0 0);
@@ -65,6 +68,8 @@
   --color-overlay-dark: oklch(21% 0.006 285.885 / 0.6);
   --color-chrome-dark: oklch(0.195 0 0);
   --color-raised-dark: oklch(0.3268 0.0055 236.68);
+  --color-switch-track-dark: oklch(0.42 0.004 286);
+  --color-switch-thumb-dark: oklch(0.96 0 0);
 }
 
 /* 浮层层级：数值越大越靠上。弹出层（菜单、提示）需要显示在模态框之上 */
@@ -107,6 +112,9 @@
   --color-chrome: oklch(96.4% 0.002 286);
   /* Control that floats on a recessed track, such as the active top bar tab */
   --color-raised: oklch(100% 0 0);
+  /* Switch: track when off, and the thumb in both states */
+  --color-switch-track: oklch(88% 0.004 286);
+  --color-switch-thumb: oklch(100% 0 0);
 
   /* 深色主题颜色 */
   --color-base-100-dark: oklch(0.2308 0 0);
@@ -132,6 +140,8 @@
   --color-overlay-dark: oklch(21% 0.006 285.885 / 0.6);
   --color-chrome-dark: oklch(0.195 0 0);
   --color-raised-dark: oklch(0.3268 0.0055 236.68);
+  --color-switch-track-dark: oklch(0.42 0.004 286);
+  --color-switch-thumb-dark: oklch(0.96 0 0);
 
   /* 变量映射 */
   --base-100: var(--color-base-100);
@@ -220,6 +230,8 @@
   --color-error-content: var(--color-error-content-dark);
   --color-chrome: var(--color-chrome-dark);
   --color-raised: var(--color-raised-dark);
+  --color-switch-track: var(--color-switch-track-dark);
+  --color-switch-thumb: var(--color-switch-thumb-dark);
 
   /* 变量映射到深色主题 */
   --base-100: var(--color-base-100-dark);
