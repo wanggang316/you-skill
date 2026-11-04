@@ -13,13 +13,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+### Fixed
+
+### Removed
+
+## [0.11.1] - 2026-11-05
+
+### Changed
+
 - The sync scope of a skill, an instruction template or a custom agent is now a Shared switch next to the Open folder button in the detail header (in the row for a custom agent), in place of the All computers / This computer only selector.
 
 ### Fixed
 
 - The website link in Settings > About opens https://youskill.cc.
-
-### Removed
+- Translating a skill now always translates its description, and the result no longer contains leftover model reasoning or Markdown fences ([#85](https://github.com/wanggang316/youskill/pull/85) by [@superada2026](https://github.com/superada2026)).
 
 ## [0.11.0] - 2026-11-02
 

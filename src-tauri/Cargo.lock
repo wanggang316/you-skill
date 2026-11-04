@@ -7186,7 +7186,7 @@ dependencies = [
 
 [[package]]
 name = "you-skill"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "image",
  "keyring",
@@ -7209,7 +7209,7 @@ dependencies = [
 
 [[package]]
 name = "youskill-cli"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "assert_cmd",
  "clap",
@@ -7227,7 +7227,7 @@ dependencies = [
 
 [[package]]
 name = "youskill-core"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "base64 0.22.1",
  "chrono",
