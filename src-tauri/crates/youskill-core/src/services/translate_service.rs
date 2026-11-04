@@ -437,49 +437,6 @@ fn translation_failure_message(
   }
 }
 
-/// Whether `markdown` has text that the translation rules ask to translate: letters outside
-/// code blocks, inline code, and URLs.
-fn has_translatable_text(markdown: &str) -> bool {
-  let mut in_fence = false;
-  for line in markdown.lines() {
-    let trimmed = line.trim_start();
-    if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
-      in_fence = !in_fence;
-      continue;
-    }
-    if in_fence || line.starts_with("    ") || line.starts_with('\t') {
-      continue;
-    }
-    let outside_inline_code = line.split('`').step_by(2);
-    let has_text = outside_inline_code
-      .flat_map(str::split_whitespace)
-      .filter(|word| !word.contains("://"))
-      .any(|word| word.chars().any(char::is_alphabetic));
-    if has_text {
-      return true;
-    }
-  }
-  false
-}
-
-/// The body to store. A body of only code, commands, paths or URLs stays the same under the
-/// translation rules, so such a body is kept unchanged when the description is translated.
-/// An unchanged body with text to translate is still a failure.
-fn accepted_body(
-  body: &str,
-  result: Result<String, TranslationFailure>,
-  description_translated: bool,
-) -> Result<String, TranslationFailure> {
-  match result {
-    Err(TranslationFailure::Unusable(UnusableTranslation::Untranslated))
-      if description_translated && !has_translatable_text(body) =>
-    {
-      Ok(body.to_string())
-    },
-    result => result,
-  }
-}
-
 /// A short description costs little to request again; the body can take a long time.
 const BODY_ATTEMPTS: usize = 1;
 const DESCRIPTION_ATTEMPTS: usize = 2;
@@ -534,8 +491,9 @@ pub async fn translate_skill_markdown(markdown: String, force: bool) -> Result<S
       DESCRIPTION_ATTEMPTS,
     ))
   });
-  let body_result = if body.trim().is_empty() {
-    Ok(body.to_string())
+  // An unchanged body is a failure too: a SKILL.md body has prose to translate.
+  let translated_body = if body.trim().is_empty() {
+    body.to_string()
   } else {
     translate_text(
       api_key.clone(),
@@ -545,18 +503,7 @@ pub async fn translate_skill_markdown(markdown: String, force: bool) -> Result<S
       BODY_ATTEMPTS,
     )
     .await
-  };
-  // Only an unchanged body can still be accepted, which depends on the description.
-  let body_result = match body_result {
-    Err(failure) if failure != TranslationFailure::Unusable(UnusableTranslation::Untranslated) => {
-      return Err(translation_failure_message(
-        failure,
-        "内容",
-        &model,
-        &target_language,
-      ));
-    },
-    result => result,
+    .map_err(|failure| translation_failure_message(failure, "内容", &model, &target_language))?
   };
   // A translation is saved only with a usable description translation.
   let translated_description = match description_task {
@@ -570,8 +517,6 @@ pub async fn translate_skill_markdown(markdown: String, force: bool) -> Result<S
     ),
     None => None,
   };
-  let translated_body = accepted_body(body, body_result, translated_description.is_some())
-    .map_err(|failure| translation_failure_message(failure, "内容", &model, &target_language))?;
 
   let content = match &document {
     Some(document) => assemble_translation(
@@ -1010,83 +955,6 @@ mod tests {
       lookup_cached_translation(&config, dir.path(), "Run the demo."),
       None
     );
-  }
-
-  #[test]
-  fn accepted_body_keeps_unchanged_body_only_with_translated_description() {
-    let body = "```bash\nnpm run build\n```";
-    let unchanged = || {
-      Err(TranslationFailure::Unusable(
-        UnusableTranslation::Untranslated,
-      ))
-    };
-    assert_eq!(accepted_body(body, unchanged(), true).as_deref(), Ok(body));
-    assert_eq!(accepted_body(body, unchanged(), false), unchanged());
-    assert_eq!(
-      accepted_body(body, Ok("正文".to_string()), false).as_deref(),
-      Ok("正文")
-    );
-    for failure in [
-      TranslationFailure::Unusable(UnusableTranslation::Blank),
-      TranslationFailure::Unusable(UnusableTranslation::Reasoning),
-      TranslationFailure::Request("network".to_string()),
-    ] {
-      assert_eq!(
-        accepted_body(body, Err(failure.clone()), true),
-        Err(failure)
-      );
-    }
-  }
-
-  #[test]
-  fn assemble_with_unchanged_body_has_translated_description() {
-    let markdown = "---\nname: demo\ndescription: Build it.\n---\n\n```bash\nnpm run build\n```\n";
-    let body = split_document(markdown).unwrap().body.trim();
-    let kept = accepted_body(
-      body,
-      Err(TranslationFailure::Unusable(
-        UnusableTranslation::Untranslated,
-      )),
-      true,
-    )
-    .unwrap();
-    assert_eq!(
-      translated(markdown, "构建它。", &kept),
-      "---\nname: demo\ndescription: \"构建它。\"\n---\n\n```bash\nnpm run build\n```\n"
-    );
-  }
-
-  #[test]
-  fn accepted_body_rejects_unchanged_body_with_text() {
-    let unchanged = || {
-      Err(TranslationFailure::Unusable(
-        UnusableTranslation::Untranslated,
-      ))
-    };
-    for body in [
-      "# Usage\n\n```bash\nnpm run build\n```",
-      "Run `npm run build` first.",
-      "- Open https://example.com and sign in.",
-    ] {
-      assert_eq!(
-        accepted_body(body, unchanged(), true),
-        unchanged(),
-        "body {:?}",
-        body
-      );
-    }
-    for body in [
-      "```bash\nnpm run build\n```\n\n~~~\nmake\n~~~",
-      "`npm run build`\n\n    ./scripts/run.sh",
-      "https://example.com/docs\n\n- `src/main.rs`",
-    ] {
-      assert_eq!(
-        accepted_body(body, unchanged(), true).as_deref(),
-        Ok(body),
-        "body {:?}",
-        body
-      );
-    }
   }
 
   #[test]
