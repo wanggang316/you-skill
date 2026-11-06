@@ -283,6 +283,29 @@ Item scope and devices (ADR 0004, "Edits and scope changes" and "Devices"):
   becomes shared, goes to another device or is deleted, then its device file is deleted.
   This computer cannot remove itself.
 
+Auto sync ([ADR 0005](decisions/0005-library-auto-sync.md)): `auto_sync(options)` runs one
+cycle. It returns `not_connected` without a connection and `skipped` when another operation
+holds the file lock of `.ops.lock` (`ops_busy`, no wait). With auto restore on it plans
+`pull` on the head: `choose_mode` and `migration_required` end the cycle before any write;
+a `ready` plan goes through `decisions_for(plan, policy)`. That mapping never includes a
+deferred item; a `take_remote` item with `repositoryChange: ask`, a removal candidate (also
+`madeDeviceOnly`) with `removal: ask`, a conflict with `conflict: ask`, or a `keep_both` that
+cannot apply (a custom agent, a removal on one side) makes the whole restore wait
+(`needs_attention`, reason `ask`, the item keys in `ask`). Otherwise `apply_restore` runs
+with `applyInstalls` off; it is not called when the plan only holds local changes and
+deferred items on an unmoved head, so the checkpoint of a manual restore stays. A `stale`
+restore ends the cycle. With auto backup on, `backup` follows, also after an `ask`;
+`diverged`, `remote_not_empty` and `migration_required` give `needs_attention`. The settings
+(`auto_sync` in the app config: `enabled`, `backup`, `restore`, `interval` `15m | 1h | 6h |
+24h`, `policy`) are local to this computer and off by default. The app shell
+(`src-tauri/src/auto_sync.rs`) runs a cycle at start and then once per interval, also with
+the window hidden; a settings change restarts the timer (turning auto sync on runs at once).
+It skips the cycle while a library sync command runs or a library sync dialog is open
+(`library_sync_set_dialog_open`), keeps the last result in memory
+(`library_sync_auto_status`) and sends it as `library-sync://auto-synced`. A manual backup
+or restore that succeeds clears it. The frontend shows it in Settings > Backup & Sync and a
+badge on the Settings button and nav item when it needs attention or failed.
+
 ## Favorites (`favorites_service`, `favorite_sync_service`, `favorite_api_service`)
 
 A favorite is a marketplace skill, keyed by its marketplace id. `favorites.json` holds one
