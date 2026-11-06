@@ -62,18 +62,23 @@
       return;
     }
     error = "";
-    void setShortcut(action, binding);
+    setShortcut(action, binding).catch(showSaveError);
+  }
+
+  /** A failed save puts back the stored shortcuts; say why. */
+  function showSaveError(err: unknown) {
+    error = err instanceof Error ? err.message : String(err);
   }
 
   function reset(action: ShortcutAction) {
     error = "";
-    void setShortcut(action, null);
+    setShortcut(action, null).catch(showSaveError);
   }
 
   function resetAll() {
     error = "";
     recording = null;
-    void resetShortcuts();
+    resetShortcuts().catch(showSaveError);
   }
 </script>
 

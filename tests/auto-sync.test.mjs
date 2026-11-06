@@ -112,3 +112,32 @@ test("a restore read at start reloads the library", async () => {
   await settle();
   assert.ok(calls.includes("restored"));
 });
+
+test("a failed save rejects the callers whose value it wrote and keeps the queue going", async () => {
+  const gates = [];
+  const save = createLatestWriter((value) => {
+    const gate = deferred();
+    gates.push({ value, gate });
+    return gate.promise.then((ok) => {
+      if (!ok) throw new Error(`write ${value} failed`);
+    });
+  });
+  const first = save("a");
+  const second = save("b");
+  const third = save("c");
+  await settle();
+  gates[0].gate.resolve(true);
+  await assert.doesNotReject(first);
+  await settle();
+  assert.deepEqual(
+    gates.map((entry) => entry.value),
+    ["a", "c"]
+  );
+  gates[1].gate.resolve(false);
+  await assert.rejects(second, /write c failed/);
+  await assert.rejects(third, /write c failed/);
+  const fourth = save("d");
+  await settle();
+  gates[2].gate.resolve(true);
+  await assert.doesNotReject(fourth);
+});

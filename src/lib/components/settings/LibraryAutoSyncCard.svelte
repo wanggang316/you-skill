@@ -18,7 +18,8 @@
   const auto = $derived($settings.auto_sync);
 
   function save(patch: Partial<AutoSyncSettings>) {
-    void updateSettings({ auto_sync: { ...auto, ...patch } });
+    // A failed save puts back the stored settings.
+    updateSettings({ auto_sync: { ...auto, ...patch } }).catch(console.error);
   }
 
   function savePolicy(patch: Partial<SyncPolicy>) {
