@@ -2,6 +2,7 @@ import { derived, get, writable } from "svelte/store";
 import { getSettings as fetchSettings, updateSettings as persistSettings } from "../api";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { DEFAULT_AUTO_SYNC, type AppSettings, type EditableSettings } from "../api/settings";
+import { createLatestWriter } from "../utils/latest-writer";
 
 const defaultSettings: AppSettings = {
   language: "en",
@@ -139,17 +140,16 @@ export const loadSettings = async () => {
   }
 };
 
+/** Each save sends the whole settings; one at a time, so the last change is the one stored. */
+const saveSettings = createLatestWriter<AppSettings>(persistSettings);
+
 export const updateSettings = async (patch: Partial<EditableSettings>) => {
   const current = get(settings);
   const next = { ...current, ...patch };
   settings.set(next);
   applyTheme(next.theme);
   syncSystemTheme(next.theme);
-  try {
-    await persistSettings(next);
-  } catch (error) {
-    console.error(error);
-  }
+  await saveSettings(next);
 };
 
 export const language = derived(settings, ($settings) => $settings.language);
