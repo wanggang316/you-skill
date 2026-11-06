@@ -71,6 +71,30 @@ pub fn ops_guard_unless_held(root: &Path) -> Result<Option<OpsGuard>, String> {
   }
 }
 
+/// Whether an operation, in this process or another, holds the file lock of the hub `env`
+/// points at. A file lock taken through another handle conflicts also inside one process.
+/// The answer can be out of date at once; it only lets a background task skip a turn
+/// instead of waiting.
+pub fn ops_busy(env: &Env) -> Result<bool, String> {
+  let root = &env.youskill_root;
+  fs::create_dir_all(root).map_err(|e| format!("Failed to create {}: {}", root.display(), e))?;
+  let path = root.join(OPS_LOCK_FILE);
+  let file = OpenOptions::new()
+    .create(true)
+    .truncate(false)
+    .write(true)
+    .open(&path)
+    .map_err(|e| format!("Failed to open {}: {}", path.display(), e))?;
+  match file.try_lock() {
+    Ok(()) => {
+      let _ = file.unlock();
+      Ok(false)
+    },
+    Err(fs::TryLockError::WouldBlock) => Ok(true),
+    Err(fs::TryLockError::Error(e)) => Err(format!("Failed to lock {}: {}", path.display(), e)),
+  }
+}
+
 /// One store per lock path so concurrent commands share the same write mutex.
 pub fn store(env: &Env) -> Arc<LockStore> {
   let stores = STORES.get_or_init(|| Mutex::new(HashMap::new()));
