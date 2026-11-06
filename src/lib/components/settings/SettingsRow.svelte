@@ -21,8 +21,10 @@
     <div class="text-base-content text-[13.5px]">{label}</div>
     {#if description}
       <div
-        class={`mt-0.5 text-xs break-all ${
-          descriptionTone === "warning" ? "text-warning-content" : "text-base-content-muted"
+        class={`mt-0.5 text-xs ${
+          descriptionTone === "warning"
+            ? "text-warning-content [overflow-wrap:anywhere]"
+            : "text-base-content-muted break-all"
         }`}
       >
         {description}
