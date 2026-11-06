@@ -1,7 +1,7 @@
 import { derived, get, writable } from "svelte/store";
 import { getSettings as fetchSettings, updateSettings as persistSettings } from "../api";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { AppSettings, EditableSettings } from "../api/settings";
+import { DEFAULT_AUTO_SYNC, type AppSettings, type EditableSettings } from "../api/settings";
 
 const defaultSettings: AppSettings = {
   language: "en",
@@ -13,6 +13,7 @@ const defaultSettings: AppSettings = {
   translate_display_mode: "bilingual",
   translate_text_style: "none",
   shortcuts: {},
+  auto_sync: DEFAULT_AUTO_SYNC,
 };
 
 export const settings = writable<AppSettings>({ ...defaultSettings });
@@ -125,6 +126,7 @@ export const loadSettings = async () => {
         remote.translate_display_mode ?? defaultSettings.translate_display_mode,
       translate_text_style: remote.translate_text_style ?? defaultSettings.translate_text_style,
       shortcuts: remote.shortcuts ?? {},
+      auto_sync: remote.auto_sync ?? DEFAULT_AUTO_SYNC,
     };
     settings.set(merged);
     applyTheme(merged.theme);
