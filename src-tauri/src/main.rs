@@ -11,6 +11,7 @@ use tauri::{App, AppHandle, Manager, WebviewWindow, WebviewWindowBuilder};
 mod account;
 #[cfg(target_os = "macos")]
 mod app_menu;
+mod auto_sync;
 mod commands;
 mod favorite_sync;
 mod tray;
@@ -39,12 +40,13 @@ use commands::{
     write_instruction_file,
   },
   library_sync::{
-    library_sync_apply_pending, library_sync_apply_restore, library_sync_backup,
-    library_sync_connect, library_sync_copy_device_installs, library_sync_copy_device_item,
-    library_sync_devices, library_sync_disconnect, library_sync_history, library_sync_item_scope,
-    library_sync_migrate, library_sync_pending, library_sync_plan_restore,
-    library_sync_remove_device, library_sync_rename_device, library_sync_set_item_scope,
-    library_sync_status, library_sync_take_over_device, library_sync_undo_restore,
+    library_sync_apply_pending, library_sync_apply_restore, library_sync_auto_status,
+    library_sync_backup, library_sync_connect, library_sync_copy_device_installs,
+    library_sync_copy_device_item, library_sync_devices, library_sync_disconnect,
+    library_sync_history, library_sync_item_scope, library_sync_migrate, library_sync_pending,
+    library_sync_plan_restore, library_sync_remove_device, library_sync_rename_device,
+    library_sync_set_dialog_open, library_sync_set_item_scope, library_sync_status,
+    library_sync_take_over_device, library_sync_undo_restore,
   },
   remote::{
     fetch_hot_repositories, fetch_market_categories, fetch_remote_skill, fetch_remote_skills,
@@ -150,6 +152,7 @@ fn main() {
       let main_window = build_main_window(app)?;
       account::setup(app)?;
       favorite_sync::setup(app)?;
+      auto_sync::setup(app);
 
       // Fallback for a page load that never finishes, so the window cannot stay hidden.
       let handle = app.handle().clone();
@@ -257,6 +260,8 @@ fn main() {
       library_sync_take_over_device,
       library_sync_copy_device_installs,
       library_sync_remove_device,
+      library_sync_auto_status,
+      library_sync_set_dialog_open,
       list_openrouter_models,
       read_skill_file,
       list_skill_directory,

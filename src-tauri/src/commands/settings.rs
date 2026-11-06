@@ -1,10 +1,12 @@
+use crate::auto_sync;
 use crate::config::{
-  load_config, save_config, DEFAULT_TRANSLATE_DISPLAY_MODE, DEFAULT_TRANSLATE_TEXT_STYLE,
-  SHORTCUT_ACTIONS, TRANSLATE_DISPLAY_MODES, TRANSLATE_TEXT_STYLES,
+  load_config, save_config, AutoSyncSettings, DEFAULT_TRANSLATE_DISPLAY_MODE,
+  DEFAULT_TRANSLATE_TEXT_STYLE, SHORTCUT_ACTIONS, TRANSLATE_DISPLAY_MODES, TRANSLATE_TEXT_STYLES,
 };
 use crate::services::ai_service::{self, OpenRouterModelOption};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use tauri::AppHandle;
 
 /// Upper bound for one stored key combination, e.g. "Mod+Alt+Shift+ArrowDown".
 const MAX_SHORTCUT_LEN: usize = 64;
@@ -26,6 +28,9 @@ pub struct SettingsPayload {
   pub translate_text_style: String,
   #[serde(default)]
   pub shortcuts: BTreeMap<String, String>,
+  /// Library auto sync of this computer; the defaults when a caller leaves it out.
+  #[serde(default)]
+  pub auto_sync: AutoSyncSettings,
 }
 
 fn default_translate_target_language() -> String {
@@ -86,12 +91,17 @@ pub fn get_settings() -> Result<SettingsPayload, String> {
       DEFAULT_TRANSLATE_TEXT_STYLE,
     ),
     shortcuts: normalize_shortcuts(&config.shortcuts),
+    auto_sync: config.auto_sync,
   })
 }
 
 #[tauri::command]
-pub fn update_settings(settings: SettingsPayload) -> Result<SettingsPayload, String> {
+pub fn update_settings(
+  app: AppHandle,
+  settings: SettingsPayload,
+) -> Result<SettingsPayload, String> {
   let mut config = load_config()?;
+  let auto_sync_before = config.auto_sync;
   config.language = settings.language.clone();
   config.theme = settings.theme.clone();
   config.sync_mode = settings.sync_mode.clone();
@@ -121,7 +131,9 @@ pub fn update_settings(settings: SettingsPayload) -> Result<SettingsPayload, Str
     DEFAULT_TRANSLATE_TEXT_STYLE,
   );
   config.shortcuts = normalize_shortcuts(&settings.shortcuts);
+  config.auto_sync = settings.auto_sync;
   save_config(&config)?;
+  auto_sync::settings_changed(&app, &auto_sync_before, &config.auto_sync);
   Ok(SettingsPayload {
     language: config.language,
     theme: config.theme,
@@ -140,6 +152,7 @@ pub fn update_settings(settings: SettingsPayload) -> Result<SettingsPayload, Str
       DEFAULT_TRANSLATE_TEXT_STYLE,
     ),
     shortcuts: normalize_shortcuts(&config.shortcuts),
+    auto_sync: config.auto_sync,
   })
 }
 
@@ -200,6 +213,7 @@ mod tests {
     assert_eq!(payload.translate_display_mode, "bilingual");
     assert_eq!(payload.translate_text_style, "none");
     assert!(payload.shortcuts.is_empty());
+    assert_eq!(payload.auto_sync, AutoSyncSettings::default());
   }
 
   #[test]
