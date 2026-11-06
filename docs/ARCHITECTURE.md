@@ -302,7 +302,9 @@ restore ends the cycle. With auto backup on, `backup` follows, also after an `as
 (`src-tauri/src/auto_sync.rs`) runs a cycle at start and then once per interval, also with
 the window hidden; a settings change restarts the timer (turning auto sync on runs at once).
 It skips the cycle while a library sync command runs or a library sync dialog is open
-(`library_sync_set_dialog_open`), keeps the last result in memory
+(`library_sync_set_dialog_open`), and asks again just before the restore and the backup
+(`may_write`), so a cycle that was reading when the user started one ends without writing. It keeps
+the last result in memory
 (`library_sync_auto_status`) and sends it as `library-sync://auto-synced`. A manual sync clears it
 only when it resolves the report: any success resolves a failure, an applied restore
 of the head resolves everything, a backup or a restore of an earlier commit resolves
