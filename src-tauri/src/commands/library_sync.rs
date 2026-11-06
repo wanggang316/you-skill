@@ -76,8 +76,9 @@ pub async fn library_sync_plan_restore(
     .await
 }
 
-/// Installs use the default install mode from Settings > General. An applied restore also
-/// settles the last auto sync.
+/// Installs use the default install mode from Settings > General. An applied restore of
+/// the head also settles the items the last auto sync left for a decision; a restore of an
+/// earlier commit does not decide them.
 #[tauri::command]
 pub async fn library_sync_apply_restore(
   app: AppHandle,
@@ -85,6 +86,7 @@ pub async fn library_sync_apply_restore(
   decisions: RestoreDecisions,
   options: RestoreOptions,
 ) -> Result<RestoreOutcome, String> {
+  let action = ManualAction::restore(plan.target.as_deref(), plan.remote_head.as_deref());
   blocking(move || {
     let mode = InstallMode::from_setting(&load_config()?.sync_mode);
     let outcome =
@@ -97,7 +99,7 @@ pub async fn library_sync_apply_restore(
   .await
   .inspect(|outcome| {
     if outcome.result == RestoreResult::Applied {
-      auto_sync::resolved(&app, ManualAction::Restore);
+      auto_sync::resolved(&app, action);
     }
   })
 }

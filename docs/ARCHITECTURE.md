@@ -305,9 +305,10 @@ It skips the cycle while a library sync command runs or a library sync dialog is
 (`library_sync_set_dialog_open`), keeps the last result in memory
 (`library_sync_auto_status`) and sends it as `library-sync://auto-synced`. A manual sync clears it
 only when it resolves the report: any success resolves a failure, an applied restore
-resolves everything, a backup resolves `diverged`, `remote_not_empty` and
-`migration_required`, a migration resolves `migration_required`; items that wait for a
-decision and `choose_mode` keep the badge until a restore. The frontend shows it in Settings > Backup & Sync and a
+of the head resolves everything, a backup or a restore of an earlier commit resolves
+`diverged`, `remote_not_empty` and `migration_required`, a migration resolves
+`migration_required`; items that wait for a decision and `choose_mode` keep the badge until
+a restore of the head. The frontend shows it in Settings > Backup & Sync and a
 badge on the Settings button and nav item when it needs attention or failed.
 
 ## Favorites (`favorites_service`, `favorite_sync_service`, `favorite_api_service`)
