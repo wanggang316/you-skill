@@ -2,7 +2,7 @@
   import { AlertCircle, SkipForward } from "@lucide/svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import { t } from "$lib/i18n";
-  import type { GroupUpdateReport } from "$lib/repository-actions";
+  import type { GroupUpdateReport, SkipReason } from "$lib/repository-actions";
   import { skillLabel } from "$lib/stores/hub";
 
   let {
@@ -15,6 +15,12 @@
     repo?: string;
     report?: GroupUpdateReport | null;
   } = $props();
+
+  const skipReasonKeys: Record<SkipReason, string> = {
+    local_changes: "library.repoUpdate.skippedReason",
+    changed_after_confirmation: "library.repoUpdate.changedAfterConfirmation",
+    changed_after_check: "library.repoUpdate.changedAfterCheck",
+  };
 
   /** A removed skill has no label any more; fall back to the name of the report. */
   const labelOf = (item: { id: string; name: string }) =>
@@ -48,11 +54,7 @@
                   {labelOf(item)}
                 </span>
                 <span class="text-base-content-muted min-w-0 text-right">
-                  {$t(
-                    item.reason === "changed_after_confirmation"
-                      ? "library.repoUpdate.changedAfterConfirmation"
-                      : "library.repoUpdate.skippedReason"
-                  )}
+                  {$t(skipReasonKeys[item.reason])}
                 </span>
               </li>
             {/each}

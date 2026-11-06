@@ -1,5 +1,10 @@
 import { get } from "svelte/store";
-import { checkSourceUpdates, pullGithubSources, type SourcePullResult } from "../api/hub";
+import {
+  checkSourceUpdates,
+  pullGithubSources,
+  type SourcePull,
+  type SourcePullResult,
+} from "../api/hub";
 import { t } from "../i18n";
 import {
   localChangeIds,
@@ -41,22 +46,20 @@ export async function updateRepositoryGroup(ids: string[]): Promise<GroupUpdateR
     );
   }
 
-  const pullIds = check
+  // Each pull carries the hub state the update was decided on: a hub copy that changes
+  // before the write (an edit, a removed SKILL.md) is skipped, forced or not.
+  const hubHashes = new Map(groupSkills.map((skill) => [skill.id, skill.hubHash ?? null]));
+  const pulls: SourcePull[] = check
     .filter(needsPull)
     .map((item) => item.id)
-    .filter((id) => overwrite || !local.includes(id));
-  // The confirmed hub content: a skill edited again before the write is skipped.
-  const forced = overwrite
-    ? groupSkills
-        .filter((skill) => local.includes(skill.id) && skill.hubHash)
-        .map((skill) => ({ id: skill.id, hubHash: skill.hubHash as string }))
-    : [];
+    .filter((id) => overwrite || !local.includes(id))
+    .map((id) => ({ id, hubHash: hubHashes.get(id) ?? null, force: local.includes(id) }));
   let pulled: SourcePullResult[] = [];
-  if (pullIds.length > 0) {
+  if (pulls.length > 0) {
     try {
-      pulled = await pullGithubSources(pullIds, forced);
+      pulled = await pullGithubSources(pulls);
     } catch (error) {
-      pulled = pullIds.map((id) => failed(id, error));
+      pulled = pulls.map((pull) => failed(pull.id, error));
     }
     await refreshHub().catch(console.error);
   }
@@ -64,7 +67,7 @@ export async function updateRepositoryGroup(ids: string[]): Promise<GroupUpdateR
     check,
     overwrite ? [] : local,
     pulled,
-    forced.map((item) => item.id)
+    pulls.filter((pull) => pull.force).map((pull) => pull.id)
   );
 }
 

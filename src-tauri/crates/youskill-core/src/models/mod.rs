@@ -15,12 +15,12 @@ pub use instruction::{
 pub use scan_root::{ScanRoot, ScanRootSuggestion, ScanRootView};
 pub use skill::{
   is_skill_id, new_skill_id, ActionResult, AgentRootMatch, DetectedSkill, DiffAgainst, DiffHunk,
-  DiffLine, DiffLineKind, DiffStatus, FileDiff, ForcedPull, HubSkillView, HubState, ImportItem,
-  ImportOutcome, ImportPlan, InstallMode, InstallRecord, InstallRequest, InstallScope,
-  InstallTargetSpec, InstallView, LockFile, MigrationReport, RemoteSkill, RemoteSkillsResponse,
-  ScanDecision, ScanItem, ScanResolution, ScanStatus, SkillDiff, SkillDirectoryEntry, SkillMatch,
-  SkillRecord, SkillSource, SourcePullResult, SourcePullStatus, SourceState, SourceUpdate,
-  SyncAction, TargetState, UninstallRequest, LOCK_VERSION,
+  DiffLine, DiffLineKind, DiffStatus, FileDiff, HubSkillView, HubState, ImportItem, ImportOutcome,
+  ImportPlan, InstallMode, InstallRecord, InstallRequest, InstallScope, InstallTargetSpec,
+  InstallView, LockFile, MigrationReport, RemoteSkill, RemoteSkillsResponse, ScanDecision,
+  ScanItem, ScanResolution, ScanStatus, SkillDiff, SkillDirectoryEntry, SkillMatch, SkillRecord,
+  SkillSource, SourcePull, SourcePullResult, SourcePullStatus, SourceSkipReason, SourceState,
+  SourceUpdate, SyncAction, TargetState, UninstallRequest, LOCK_VERSION,
 };
 pub use user_project::{
   ProjectCandidate, ProjectRegistration, UserProject, UserProjectView, UserWorkspace,

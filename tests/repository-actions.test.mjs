@@ -145,27 +145,21 @@ test("an unknown installed version needs a pull; an error or a known equal versi
   assert.equal(report.upToDate, 0);
 });
 
-test("a forced skill skipped by the pull is reported as changed after the confirmation", () => {
+test("the report gives the reason of each skill that the pull skipped", () => {
   const report = actions.summarizeGroupUpdate(
-    [
-      { id: "a", name: "a", updateAvailable: true },
-      { id: "b", name: "b", updateAvailable: true },
-    ],
+    ["a", "b", "c"].map((id) => ({ id, name: id, updateAvailable: true })),
     [],
     [
-      {
-        id: "a",
-        name: "a",
-        status: "skipped",
-        message: "changed after the overwrite was confirmed",
-      },
-      { id: "b", name: "b", status: "skipped", message: "has local changes" },
+      { id: "a", name: "a", status: "skipped", reason: "changed_after_check" },
+      { id: "b", name: "b", status: "skipped", reason: "changed_after_check" },
+      { id: "c", name: "c", status: "skipped", reason: "local_changes" },
     ],
     ["a"]
   );
   assert.deepEqual(report.skipped, [
     { id: "a", name: "a", reason: "changed_after_confirmation" },
-    { id: "b", name: "b", reason: "local_changes" },
+    { id: "b", name: "b", reason: "changed_after_check" },
+    { id: "c", name: "c", reason: "local_changes" },
   ]);
 });
 

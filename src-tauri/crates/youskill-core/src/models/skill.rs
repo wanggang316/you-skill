@@ -636,14 +636,27 @@ pub enum SourcePullStatus {
   Failed,
 }
 
-/// A skill of a batch pull whose local changes the user confirmed to overwrite.
+/// One skill of a batch pull from GitHub.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct ForcedPull {
+pub struct SourcePull {
   pub id: String,
-  /// Hash of the hub copy at the confirmation. If the hub copy has another hash at the
-  /// write, or no hash because `SKILL.md` or the folder is gone, the skill is skipped.
-  pub hub_hash: String,
+  /// Hash of the hub copy when the update was decided. If the hub copy has another hash at
+  /// the write, or no hash because `SKILL.md` or the folder is gone, the skill is skipped.
+  #[serde(default)]
+  pub hub_hash: Option<String>,
+  /// The user confirmed to overwrite the local changes of the hub copy.
+  #[serde(default)]
+  pub force: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SourceSkipReason {
+  /// The hub copy has local changes and the pull is not forced.
+  LocalChanges,
+  /// The hub copy changed after the update was decided.
+  ChangedAfterCheck,
 }
 
 /// Result of one skill in a batch pull from GitHub.
@@ -656,6 +669,9 @@ pub struct SourcePullResult {
   /// The blocker of a skipped skill or the error of a failed one.
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub message: Option<String>,
+  /// Why a skipped skill was skipped.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub reason: Option<SourceSkipReason>,
 }
 
 // ---------------------------------------------------------------------------

@@ -164,14 +164,29 @@ export interface SourceUpdate {
 
 export type SourcePullStatus = "updated" | "skipped" | "failed";
 
+/**
+ * Why a batch pull skipped a skill: local changes without force, or a hub copy that changed
+ * after the update was decided.
+ */
+export type SourceSkipReason = "local_changes" | "changed_after_check";
+
+/** One skill of a batch pull from GitHub. */
+export interface SourcePull {
+  id: string;
+  /** Hub hash when the update was decided; another state at the write skips the skill. */
+  hubHash?: string | null;
+  /** The user confirmed to overwrite the local changes of the hub copy. */
+  force?: boolean;
+}
+
 /** Result of one skill in a batch pull from GitHub. */
 export interface SourcePullResult {
   id: string;
   name: string;
-  /** `skipped`: the hub copy has local changes and force was not given. */
   status: SourcePullStatus;
   /** The blocker of a skipped skill or the error of a failed one. */
   message?: string | null;
+  reason?: SourceSkipReason | null;
 }
 
 export type ScanStatus = "new" | "identical" | "different" | "linked" | "hub" | "invalid_name";
@@ -298,22 +313,12 @@ export async function checkSourceUpdates(ids?: string[] | null): Promise<SourceU
   return apiCall<SourceUpdate[]>("check_source_updates", { ids: ids ?? null });
 }
 
-/** A skill whose local changes the user confirmed to overwrite, with the confirmed hub hash. */
-export interface ForcedPull {
-  id: string;
-  hubHash: string;
-}
-
 /**
- * Pull the GitHub sources of `ids`, one download for each repository branch. Skills in
- * `forced` overwrite their local changes while the hub copy still has the confirmed hash.
- * Install targets are not pushed.
+ * Pull the GitHub sources of `pulls`, one download for each repository branch. Install
+ * targets are not pushed.
  */
-export async function pullGithubSources(
-  ids: string[],
-  forced: ForcedPull[] = []
-): Promise<SourcePullResult[]> {
-  return apiCall<SourcePullResult[]>("pull_github_sources", { ids, forced });
+export async function pullGithubSources(pulls: SourcePull[]): Promise<SourcePullResult[]> {
+  return apiCall<SourcePullResult[]>("pull_github_sources", { pulls });
 }
 
 export async function scanFolder(path: string, maxDepth?: number): Promise<ScanItem[]> {

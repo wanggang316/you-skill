@@ -3,7 +3,7 @@
 use crate::models::{
   is_skill_id, new_skill_id, ActionResult, HubSkillView, HubState, ImportItem, ImportOutcome,
   ImportPlan, InstallMode, InstallRecord, InstallScope, LockFile, SkillMatch, SkillRecord,
-  SkillSource, SyncAction,
+  SkillSource, SourceSkipReason, SyncAction,
 };
 use crate::services::drift_service::{build_view, probe_hub};
 use crate::services::env::Env;
@@ -475,34 +475,39 @@ pub fn pull_from_dir(
   force: bool,
 ) -> Result<ActionResult, String> {
   let _ops = ops_guard(env)?;
-  let force = if force { HubForce::Any } else { HubForce::No };
-  let result = replace_hub_from_dir(env, key, src_dir, updated_source, force)?;
+  let guard = HubGuard {
+    force,
+    expected_hash: None,
+  };
+  let (result, _) = replace_hub_from_dir(env, key, src_dir, updated_source, guard)?;
   match result.skill.as_ref().filter(|_| result.applied) {
     Some(view) => push_targets(env, &view.id, None, false),
     None => Ok(result),
   }
 }
 
-/// Whether a pull may overwrite local changes in the hub copy.
-#[derive(Debug, Clone, Copy)]
-pub enum HubForce<'a> {
-  No,
-  Any,
-  /// Only the hub content with this hash, which the user confirmed to overwrite. A hub copy
-  /// that changed after the confirmation is not overwritten.
-  Confirmed(&'a str),
+/// What a pull may replace in the hub copy.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct HubGuard<'a> {
+  /// Replace a hub copy with local changes.
+  pub force: bool,
+  /// The hub hash seen when the pull was decided (for a forced pull: the content the user
+  /// confirmed to overwrite). Any other state at the write, also no hash because `SKILL.md`
+  /// or the folder is gone, blocks the pull.
+  pub expected_hash: Option<&'a str>,
 }
 
 /// `pull_from_dir` without the push: targets that become outdated stay in the drift view.
+/// A blocked pull also returns why it was blocked.
 pub fn pull_hub_from_dir(
   env: &Env,
   key: &str,
   src_dir: &Path,
   updated_source: Option<SkillSource>,
-  force: HubForce,
-) -> Result<ActionResult, String> {
+  guard: HubGuard,
+) -> Result<(ActionResult, Option<SourceSkipReason>), String> {
   let _ops = ops_guard(env)?;
-  replace_hub_from_dir(env, key, src_dir, updated_source, force)
+  replace_hub_from_dir(env, key, src_dir, updated_source, guard)
 }
 
 /// Callers hold the operation lock.
@@ -511,8 +516,8 @@ fn replace_hub_from_dir(
   key: &str,
   src_dir: &Path,
   updated_source: Option<SkillSource>,
-  force: HubForce,
-) -> Result<ActionResult, String> {
+  guard: HubGuard,
+) -> Result<(ActionResult, Option<SourceSkipReason>), String> {
   let (id, record) = resolve_skill(env, key)?;
   let store = store(env);
   if let Some(source) = updated_source.as_ref().filter(|s| s.has_location()) {
@@ -535,24 +540,27 @@ fn replace_hub_from_dir(
       src_dir.to_string_lossy()
     ));
   }
-  if let HubForce::Confirmed(_) = force {
+  if guard.expected_hash.is_some() {
     invalidate_hash_cache(&env.hub_dir(&id, &record.name));
   }
   let probe = probe_hub(env, &id, &record);
   let local_changes = matches!(probe.state, HubState::Modified | HubState::NameMismatch);
-  let blocker = match force {
-    HubForce::No if local_changes => Some("has local changes"),
-    // Any change counts, also a removed SKILL.md or folder (no hash).
-    HubForce::Confirmed(hash) if probe.hash.as_deref() != Some(hash) => {
-      Some("changed after the overwrite was confirmed")
+  let blocked = match guard.expected_hash {
+    Some(expected) if probe.hash.as_deref() != Some(expected) => Some((
+      SourceSkipReason::ChangedAfterCheck,
+      "changed after the update was decided",
+    )),
+    _ if local_changes && !guard.force => {
+      Some((SourceSkipReason::LocalChanges, "has local changes"))
     },
     _ => None,
   };
-  if let Some(reason) = blocker {
-    return Ok(ActionResult::blocked(
-      vec![format!("Hub copy of '{}' {}", record.name, reason)],
+  if let Some((reason, text)) = blocked {
+    let result = ActionResult::blocked(
+      vec![format!("Hub copy of '{}' {}", record.name, text)],
       Some(build_view(env, &id, &record)),
-    ));
+    );
+    return Ok((result, Some(reason)));
   }
 
   let hub_dir = env.hub_dir(&id, &record.name);
@@ -578,7 +586,7 @@ fn replace_hub_from_dir(
     }
     Ok(record.clone())
   })?;
-  Ok(ActionResult::applied(build_view(env, &id, &record)))
+  Ok((ActionResult::applied(build_view(env, &id, &record)), None))
 }
 
 /// Mirror the hub copy back into a `folder` source.

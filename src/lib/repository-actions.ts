@@ -108,10 +108,11 @@ export function localChangeIds(check: CheckItem[], skills: SkillLike[]): string[
 }
 
 /**
- * Why a skill was not updated: the user chose to skip its local changes, or its hub copy
- * changed after the user confirmed the overwrite.
+ * Why a skill was not updated: it has local changes that were not overwritten, or its hub
+ * copy changed after the user confirmed the overwrite, or (without an overwrite) after the
+ * update check.
  */
-export type SkipReason = "local_changes" | "changed_after_confirmation";
+export type SkipReason = "local_changes" | "changed_after_confirmation" | "changed_after_check";
 
 export interface GroupUpdateReport {
   updated: number;
@@ -146,11 +147,10 @@ export function summarizeGroupUpdate(
         report.updated += 1;
         break;
       case "skipped":
-        // The pull skips a forced skill only when it changed after the confirmation.
         report.skipped.push({
           id: result.id,
           name: result.name,
-          reason: forcedIds.includes(result.id) ? "changed_after_confirmation" : "local_changes",
+          reason: skipReason(result, forcedIds),
         });
         break;
       default:
@@ -158,6 +158,11 @@ export function summarizeGroupUpdate(
     }
   }
   return report;
+}
+
+function skipReason(result: SourcePullResult, forcedIds: string[]): SkipReason {
+  if (result.reason !== "changed_after_check") return "local_changes";
+  return forcedIds.includes(result.id) ? "changed_after_confirmation" : "changed_after_check";
 }
 
 /** A clean update gets a toast; a skipped or failed skill needs the result dialog. */

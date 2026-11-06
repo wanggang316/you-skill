@@ -125,11 +125,13 @@ Sync actions (`sync_skill`): `pull_source`, `push_targets`, `adopt_target`, `acc
 `.trash` first.
 
 `pull_source` for a GitHub skill downloads the repository archive and then pushes the new
-hub copy to the outdated copy targets. `pull_github_sources(ids, forced)` pulls several
-GitHub skills for the Library repository group Update: it downloads each repository branch
-one time, takes the remote sha from the stored `latestRemoteSha`, and does not push to targets.
-A skill whose hub copy has local changes is skipped, unless `forced` has its id with the hub
-hash that the user confirmed and the hub copy still has that hash. The group Update also pulls
+hub copy to the outdated copy targets. `pull_github_sources(pulls)` pulls several GitHub
+skills for the Library repository group Update: it downloads each repository branch one time,
+takes the remote sha from the stored `latestRemoteSha`, and does not push to targets. Each pull
+gives the hub hash seen when the update was decided; a hub copy in another state at the write
+(an edit, a removed `SKILL.md` or folder) is skipped with the reason `changed_after_check`. A
+hub copy with local changes is skipped with `local_changes` unless the pull has `force`, which
+the user confirms one time for the group. The group Update also pulls
 a skill without `remoteSha`, because the check cannot tell whether it is current (see
 `docs/decisions/0005-library-repository-group-actions.md`).
 
