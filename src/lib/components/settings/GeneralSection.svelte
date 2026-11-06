@@ -1,12 +1,15 @@
 <script lang="ts">
   import SelectField from "$lib/components/ui/SelectField.svelte";
   import { t } from "$lib/i18n";
-  import type { AppSettings } from "$lib/api/settings";
+  import type { AppSettings, EditableSettings } from "$lib/api/settings";
   import { settings, updateSettings } from "$lib/stores/settings";
   import SettingsPane from "./SettingsPane.svelte";
   import SettingsRow from "./SettingsRow.svelte";
 
   const selectClass = "h-8 text-[13px]";
+
+  /** A failed save puts back the stored value. */
+  const save = (patch: Partial<EditableSettings>) => updateSettings(patch).catch(console.error);
 </script>
 
 <SettingsPane
@@ -20,7 +23,7 @@
         fit
         selectClassName={selectClass}
         onchange={(event) =>
-          updateSettings({ language: event.currentTarget.value as AppSettings["language"] })}
+          save({ language: event.currentTarget.value as AppSettings["language"] })}
       >
         <option value="en">English</option>
         <option value="zh">中文</option>
@@ -31,8 +34,7 @@
         value={$settings.theme}
         fit
         selectClassName={selectClass}
-        onchange={(event) =>
-          updateSettings({ theme: event.currentTarget.value as AppSettings["theme"] })}
+        onchange={(event) => save({ theme: event.currentTarget.value as AppSettings["theme"] })}
       >
         <option value="system">{$t("settings.theme.system")}</option>
         <option value="light">{$t("settings.theme.light")}</option>
@@ -48,7 +50,7 @@
         fit
         selectClassName={selectClass}
         onchange={(event) =>
-          updateSettings({ sync_mode: event.currentTarget.value as AppSettings["sync_mode"] })}
+          save({ sync_mode: event.currentTarget.value as AppSettings["sync_mode"] })}
       >
         <option value="copy">{$t("settings.syncMode.copy")}</option>
         <option value="symlink">{$t("settings.syncMode.symlink")}</option>
