@@ -276,3 +276,57 @@ export async function removeSyncDevice(
 ): Promise<void> {
   return apiCall<void>("library_sync_remove_device", { device, choices });
 }
+
+export type RepositoryChangePolicy = "apply" | "ask";
+export type RemovalPolicy = "remove" | "ask";
+export type ConflictPolicy = "ask" | "keep_local" | "take_remote" | "keep_both";
+
+/** What auto sync does with each kind of restore plan item. */
+export interface SyncPolicy {
+  repositoryChange: RepositoryChangePolicy;
+  removal: RemovalPolicy;
+  conflict: ConflictPolicy;
+}
+
+export type AutoSyncResult =
+  | "up_to_date"
+  | "synced"
+  | "needs_attention"
+  | "skipped"
+  | "not_connected";
+
+export type AutoSyncAttention =
+  | "ask"
+  | "choose_mode"
+  | "migration_required"
+  | "remote_not_empty"
+  | "diverged";
+
+export interface AutoSyncOutcome {
+  result: AutoSyncResult;
+  reason?: AutoSyncAttention;
+  /** Keys of the plan items that wait for a decision. */
+  ask: string[];
+  restored: boolean;
+  backedUp: boolean;
+  agentsChanged: boolean;
+}
+
+/** The last auto sync cycle of this app run: an outcome, or the error it failed with. */
+export interface AutoSyncStatus {
+  at: string;
+  outcome?: AutoSyncOutcome;
+  error?: string;
+}
+
+/** Sent after each auto sync cycle, with the `AutoSyncStatus` or `null`. */
+export const AUTO_SYNC_EVENT = "library-sync://auto-synced";
+
+export async function getAutoSyncStatus(): Promise<AutoSyncStatus | null> {
+  return apiCall<AutoSyncStatus | null>("library_sync_auto_status");
+}
+
+/** Auto sync skips its cycle while a library sync dialog is open. */
+export async function setLibrarySyncDialogOpen(open: boolean): Promise<void> {
+  return apiCall<void>("library_sync_set_dialog_open", { open });
+}
