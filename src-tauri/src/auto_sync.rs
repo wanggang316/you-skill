@@ -12,7 +12,7 @@ use youskill_core::config::{load_config, AutoSyncSettings};
 use youskill_core::services::agent_apps_service::refresh_local_agent_apps;
 use youskill_core::services::env::Env;
 use youskill_core::services::library_sync_service::{
-  self, AutoSyncOptions, AutoSyncOutcome, AutoSyncResult,
+  self, AttentionReason, AutoSyncOptions, AutoSyncOutcome, AutoSyncResult,
 };
 use youskill_core::utils::time::now_rfc3339;
 
@@ -77,17 +77,58 @@ pub fn set_dialog_open(app: &AppHandle, open: bool) {
     .store(open, Ordering::SeqCst);
 }
 
-/// Forget the last result after the user synced manually, so the badge goes away; the next
-/// cycle reports again.
-pub fn clear(app: &AppHandle) {
+/// A manual library sync that succeeded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ManualAction {
+  /// A backup that pushed or found the repository up to date.
+  Backup,
+  /// An applied restore: the user decided every plan item.
+  Restore,
+  Migrate,
+  Disconnect,
+}
+
+/// Whether `action` resolves what the last cycle reported, so its badge can go. A failure
+/// is resolved by any manual sync that succeeded. Items that wait for a decision and a
+/// first-connect choice are resolved only by a restore.
+fn resolved_by(status: &AutoSyncStatus, action: ManualAction) -> bool {
+  if status.error.is_some() || action == ManualAction::Disconnect {
+    return true;
+  }
+  let Some(reason) = status.outcome.as_ref().and_then(|outcome| outcome.reason) else {
+    return false;
+  };
+  match action {
+    ManualAction::Restore | ManualAction::Disconnect => true,
+    ManualAction::Backup => matches!(
+      reason,
+      AttentionReason::Diverged
+        | AttentionReason::RemoteNotEmpty
+        | AttentionReason::MigrationRequired
+    ),
+    ManualAction::Migrate => reason == AttentionReason::MigrationRequired,
+  }
+}
+
+/// Forget the last result when the manual `action` resolved it, so the badge goes away; the
+/// next cycle reports again.
+pub fn resolved(app: &AppHandle, action: ManualAction) {
   let state = app.state::<AutoSync>();
   let Ok(mut last) = state.last.lock() else {
     return;
   };
-  if last.take().is_some() {
+  if last
+    .as_ref()
+    .is_some_and(|status| resolved_by(status, action))
+  {
+    *last = None;
     drop(last);
     emit(app, None);
   }
+}
+
+fn clear(app: &AppHandle) {
+  resolved(app, ManualAction::Disconnect);
 }
 
 /// Settings changed from `before` to `after`: restart the timer when they differ. Turning
@@ -184,5 +225,73 @@ async fn run(app: &AppHandle) {
 fn emit(app: &AppHandle, status: Option<AutoSyncStatus>) {
   if let Err(error) = app.emit(CHANGED_EVENT, status) {
     tracing::warn!("Failed to send the auto sync result: {error}");
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn status(reason: Option<AttentionReason>) -> AutoSyncStatus {
+    AutoSyncStatus {
+      at: "2026-11-06T00:00:00Z".to_string(),
+      outcome: Some(AutoSyncOutcome {
+        result: if reason.is_some() {
+          AutoSyncResult::NeedsAttention
+        } else {
+          AutoSyncResult::Synced
+        },
+        reason,
+        ask: Vec::new(),
+        restored: false,
+        backed_up: false,
+        agents_changed: false,
+      }),
+      error: None,
+    }
+  }
+
+  #[test]
+  fn a_backup_keeps_items_that_wait_for_a_decision() {
+    let ask = status(Some(AttentionReason::Ask));
+    assert!(!resolved_by(&ask, ManualAction::Backup));
+    assert!(!resolved_by(&ask, ManualAction::Migrate));
+    assert!(resolved_by(&ask, ManualAction::Restore));
+    assert!(resolved_by(&ask, ManualAction::Disconnect));
+    let choose = status(Some(AttentionReason::ChooseMode));
+    assert!(!resolved_by(&choose, ManualAction::Backup));
+    assert!(resolved_by(&choose, ManualAction::Restore));
+  }
+
+  #[test]
+  fn a_backup_resolves_the_backup_stop_states() {
+    for reason in [
+      AttentionReason::Diverged,
+      AttentionReason::RemoteNotEmpty,
+      AttentionReason::MigrationRequired,
+    ] {
+      assert!(resolved_by(&status(Some(reason)), ManualAction::Backup));
+    }
+    assert!(resolved_by(
+      &status(Some(AttentionReason::MigrationRequired)),
+      ManualAction::Migrate
+    ));
+    assert!(!resolved_by(
+      &status(Some(AttentionReason::Diverged)),
+      ManualAction::Migrate
+    ));
+  }
+
+  #[test]
+  fn any_manual_sync_resolves_a_failure_and_keeps_a_result() {
+    let failed = AutoSyncStatus {
+      outcome: None,
+      error: Some("network down".to_string()),
+      ..status(None)
+    };
+    assert!(resolved_by(&failed, ManualAction::Migrate));
+    assert!(resolved_by(&failed, ManualAction::Backup));
+    assert!(!resolved_by(&status(None), ManualAction::Backup));
+    assert!(!resolved_by(&status(None), ManualAction::Restore));
   }
 }
