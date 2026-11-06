@@ -148,8 +148,8 @@ const saveSettings = createLatestWriter<AppSettings>(persistSettings);
 
 /**
  * Shows the change at once and saves it. A failed save rejects; when no later change came
- * meanwhile, the settings go back to what is stored, so the UI does not show a value that
- * was not saved.
+ * before or during the read of the stored settings, the settings go back to what is stored,
+ * so the UI does not show a value that was not saved.
  */
 export const updateSettings = async (patch: Partial<EditableSettings>) => {
   const next = { ...get(settings), ...patch };
@@ -159,7 +159,9 @@ export const updateSettings = async (patch: Partial<EditableSettings>) => {
   } catch (error) {
     if (get(settings) === next) {
       try {
-        showSettings(fromStored(await fetchSettings()));
+        const stored = fromStored(await fetchSettings());
+        // A change made during the read is newer than what it read; keep that change.
+        if (get(settings) === next) showSettings(stored);
       } catch (reloadError) {
         console.error(reloadError);
       }

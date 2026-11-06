@@ -79,3 +79,34 @@ test("a successful save keeps the change", async () => {
   assert.equal(get(store.settings).auto_sync.enabled, true);
   assert.equal(stored.auto_sync.enabled, true);
 });
+
+test("a change made while a failed save reloads the stored settings is kept", async () => {
+  let failNext = true;
+  let releaseReload;
+  const reloadGate = new Promise((resolve) => (releaseReload = resolve));
+  let reloads = 0;
+  handlers.update_settings = ({ settings }) => {
+    if (failNext) {
+      failNext = false;
+      return Promise.reject(new Error("disk full"));
+    }
+    stored = structuredClone(settings);
+    return stored;
+  };
+  handlers.get_settings = async () => {
+    reloads += 1;
+    const snapshot = structuredClone(stored);
+    await reloadGate;
+    return snapshot;
+  };
+  const auto = get(store.settings).auto_sync;
+  const failed = store.updateSettings({ auto_sync: { ...auto, interval: "6h" } });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(reloads, 1);
+  await store.updateSettings({ auto_sync: { ...auto, enabled: true, interval: "15m" } });
+  releaseReload();
+  await assert.rejects(failed, /disk full/);
+  assert.equal(stored.auto_sync.interval, "15m");
+  assert.equal(get(store.settings).auto_sync.interval, "15m");
+  assert.equal(get(store.settings).auto_sync.enabled, true);
+});
