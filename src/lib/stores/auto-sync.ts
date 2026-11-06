@@ -49,12 +49,16 @@ export function startAutoSyncStatus(deps: AutoSyncStatusDeps = defaultDeps): Unl
   let stopped = false;
   let eventSeen = false;
   let unlisten: Unlisten | null = null;
+  const apply = (status: AutoSyncStatus | null) => {
+    deps.status.set(status);
+    // The library may have loaded before the restore wrote, also for a status read at start.
+    if (status?.outcome?.restored) deps.onRestored(status.outcome.agentsChanged);
+  };
   deps
     .listen((status) => {
       if (stopped) return;
       eventSeen = true;
-      deps.status.set(status);
-      if (status?.outcome?.restored) deps.onRestored(status.outcome.agentsChanged);
+      apply(status);
     })
     .then((remove) => {
       if (stopped) {
@@ -63,7 +67,7 @@ export function startAutoSyncStatus(deps: AutoSyncStatusDeps = defaultDeps): Unl
       }
       unlisten = remove;
       return deps.getStatus().then((status) => {
-        if (!stopped && !eventSeen) deps.status.set(status);
+        if (!stopped && !eventSeen) apply(status);
       });
     })
     .catch(console.error);
