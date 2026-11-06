@@ -104,6 +104,17 @@ A library item with the scope of one device. Only that device gets it and only t
 can change its scope or remove it.
 _Avoid_: Local item, private item
 
+**Auto sync**:
+A library sync that the desktop app starts on a schedule on this computer: a restore with
+the sync policy, then a backup. It is a setting of this computer and is off by default (see
+`docs/decisions/0005-library-auto-sync.md`).
+_Avoid_: Background sync, scheduled backup
+
+**Sync policy**:
+For each kind of restore plan item (repository change, removal candidate, conflict), what
+auto sync does with it: one automatic action or "ask". One "ask" item stops the auto restore.
+_Avoid_: Sync rule, auto-merge setting
+
 ### Favorites
 
 **Favorite**:
