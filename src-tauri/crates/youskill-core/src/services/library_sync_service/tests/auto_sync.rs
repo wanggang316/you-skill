@@ -11,7 +11,7 @@ fn options(policy: SyncPolicy) -> AutoSyncOptions {
 }
 
 fn cycle(env: &Env, repo: &FakeRepo, options: AutoSyncOptions) -> AutoSyncOutcome {
-  auto_sync_with(env, repo, &options).unwrap()
+  auto_sync_with(env, repo, &options, &|| true).unwrap()
 }
 
 fn default_cycle(env: &Env, repo: &FakeRepo) -> AutoSyncOutcome {
@@ -482,4 +482,63 @@ fn a_first_connect_to_an_empty_repository_backs_up() {
   assert_eq!(outcome.result, AutoSyncResult::Synced, "{:?}", outcome);
   assert!(outcome.backed_up);
   assert!(library_at_head(&repo).skills.contains_key(FOO));
+}
+
+#[test]
+fn a_manual_sync_that_starts_during_the_plan_stops_the_restore() {
+  let tmp = tempfile::tempdir().unwrap();
+  let repo = FakeRepo::initialized();
+  let (a, b) = synced_pair(tmp.path(), &repo, |a| add_skill(a, FOO, "foo", "v1"));
+  edit_skill(&a, FOO, "foo", "v2");
+  backup_with(&a, &repo).unwrap();
+  let before = sync_files(&b);
+  let checkpoint = status(&b).unwrap().checkpoint;
+  let commits = repo.commit_count();
+
+  let asked = std::cell::Cell::new(0);
+  let outcome = auto_sync_with(&b, &repo, &options(SyncPolicy::default()), &|| {
+    asked.set(asked.get() + 1);
+    false
+  })
+  .unwrap();
+  assert_eq!(outcome.result, AutoSyncResult::Skipped, "{:?}", outcome);
+  assert_eq!(asked.get(), 1);
+  assert_eq!(sync_files(&b), before);
+  assert_eq!(status(&b).unwrap().checkpoint, checkpoint);
+  assert_eq!(repo.commit_count(), commits);
+}
+
+#[test]
+fn a_manual_sync_that_starts_during_the_cycle_stops_the_backup() {
+  let tmp = tempfile::tempdir().unwrap();
+  let repo = FakeRepo::initialized();
+  let (_a, b) = synced_pair(tmp.path(), &repo, |a| add_skill(a, FOO, "foo", "v1"));
+  edit_skill(&b, FOO, "foo", "from b");
+  let commits = repo.commit_count();
+
+  let outcome = auto_sync_with(&b, &repo, &options(SyncPolicy::default()), &|| false).unwrap();
+  assert_eq!(outcome.result, AutoSyncResult::Skipped, "{:?}", outcome);
+  assert_eq!(repo.commit_count(), commits);
+  assert_eq!(status(&b).unwrap().changes.len(), 1);
+}
+
+#[test]
+fn a_restore_that_ran_is_reported_when_the_backup_is_stopped() {
+  let tmp = tempfile::tempdir().unwrap();
+  let repo = FakeRepo::initialized();
+  let (a, b) = synced_pair(tmp.path(), &repo, |a| add_skill(a, FOO, "foo", "v1"));
+  edit_skill(&a, FOO, "foo", "v2");
+  backup_with(&a, &repo).unwrap();
+
+  // Yes before the restore, no before the backup.
+  let asked = std::cell::Cell::new(0);
+  let outcome = auto_sync_with(&b, &repo, &options(SyncPolicy::default()), &|| {
+    asked.set(asked.get() + 1);
+    asked.get() == 1
+  })
+  .unwrap();
+  assert_eq!(asked.get(), 2);
+  assert_eq!(outcome.result, AutoSyncResult::Synced, "{:?}", outcome);
+  assert!(outcome.restored && !outcome.backed_up);
+  assert!(skill_body(&b, FOO, "foo").contains("v2"));
 }

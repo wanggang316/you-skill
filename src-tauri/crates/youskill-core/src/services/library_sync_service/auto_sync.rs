@@ -191,22 +191,33 @@ pub fn decisions_for(
   }
 }
 
-pub fn auto_sync(env: &Env, options: &AutoSyncOptions) -> Result<AutoSyncOutcome, String> {
+pub fn auto_sync(
+  env: &Env,
+  options: &AutoSyncOptions,
+  may_write: &dyn Fn() -> bool,
+) -> Result<AutoSyncOutcome, String> {
   if read_state(env)?.connected().is_err() {
     return Ok(AutoSyncOutcome::new(AutoSyncResult::NotConnected));
   }
   let remote = github_remote(env)?;
-  auto_sync_with(env, &remote, options)
+  auto_sync_with(env, &remote, options, may_write)
 }
 
 /// Run one cycle: restore the branch head with the sync policy, then back up. A first
 /// connect to a repository that holds a library, or a plan that needs a migration, stops
 /// the cycle before it writes; plan items that need a person stop only the restore. A stale
 /// restore ends the cycle.
+///
+/// `may_write` is asked again just before the restore and before the backup: the user can
+/// start a manual sync or open a restore preview while the cycle reads the repository. When
+/// it says no, the cycle ends without that write (`skipped` when nothing happened yet). A
+/// write that starts anyway runs under the operation lock, and a preview planned before it
+/// is refused as stale when applied.
 pub fn auto_sync_with(
   env: &Env,
   remote: &dyn RemoteRepo,
   options: &AutoSyncOptions,
+  may_write: &dyn Fn() -> bool,
 ) -> Result<AutoSyncOutcome, String> {
   let state = read_state(env)?;
   if state.connected().is_err() {
@@ -248,7 +259,10 @@ pub fn auto_sync_with(
           // to become the base.
           let moved = read_state(env)?.last_synced_commit != plan.remote_head;
           if !writes && !moved {
-            return backup_step(env, remote, options, outcome);
+            return backup_step(env, remote, options, may_write, outcome);
+          }
+          if !may_write() {
+            return Ok(AutoSyncOutcome::new(AutoSyncResult::Skipped));
           }
           // No installs run, so the install mode is not used.
           let restored = apply_restore_with(
@@ -271,15 +285,22 @@ pub fn auto_sync_with(
       },
     }
   }
-  backup_step(env, remote, options, outcome)
+  backup_step(env, remote, options, may_write, outcome)
 }
 
 fn backup_step(
   env: &Env,
   remote: &dyn RemoteRepo,
   options: &AutoSyncOptions,
+  may_write: &dyn Fn() -> bool,
   mut outcome: AutoSyncOutcome,
 ) -> Result<AutoSyncOutcome, String> {
+  if options.backup && !may_write() {
+    if !outcome.restored && outcome.reason.is_none() {
+      return Ok(AutoSyncOutcome::new(AutoSyncResult::Skipped));
+    }
+    return Ok(outcome.finish());
+  }
   if options.backup {
     let backup = backup_with(env, remote)?;
     let reason = match backup.result {

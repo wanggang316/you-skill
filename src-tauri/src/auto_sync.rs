@@ -184,9 +184,15 @@ fn restart(app: &AppHandle, run_now: bool) {
   });
 }
 
+/// No manual library sync command runs and no library sync dialog is open. Asked at the
+/// start of a cycle and again before each of its writes.
+fn may_write(app: &AppHandle) -> bool {
+  MANUAL.load(Ordering::SeqCst) == 0 && !app.state::<AutoSync>().dialog_open.load(Ordering::SeqCst)
+}
+
 async fn run(app: &AppHandle) {
   let state = app.state::<AutoSync>();
-  if MANUAL.load(Ordering::SeqCst) > 0 || state.dialog_open.load(Ordering::SeqCst) {
+  if !may_write(app) {
     tracing::info!("Auto sync skipped: a manual library sync is in progress");
     return;
   }
@@ -199,8 +205,10 @@ async fn run(app: &AppHandle) {
     backup: settings.backup,
     policy: settings.policy,
   };
+  let handle = app.clone();
   let result = tokio::task::spawn_blocking(move || {
-    let outcome = library_sync_service::auto_sync(&Env::current()?, &options)?;
+    let outcome =
+      library_sync_service::auto_sync(&Env::current()?, &options, &|| may_write(&handle))?;
     if outcome.agents_changed {
       refresh_local_agent_apps();
     }
