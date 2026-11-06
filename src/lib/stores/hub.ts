@@ -68,9 +68,14 @@ export const agentsById = derived(
   ($agents) => new Map($agents.map((agent) => [agent.id, agent]))
 );
 
+/** The latest agent read; an earlier read that returns later must not overwrite it. */
+let agentsRequest = 0;
+
 export async function loadAgents(): Promise<void> {
+  const request = ++agentsRequest;
   try {
-    agents.set(await listLocalAgentApps());
+    const apps = await listLocalAgentApps();
+    if (request === agentsRequest) agents.set(apps);
   } catch (error) {
     console.error(error);
   }

@@ -200,3 +200,19 @@ test("a fresh refresh reads again after a run that started before it", async () 
     ["s1"]
   );
 });
+
+test("an earlier slow agent read does not overwrite a later one", async () => {
+  const reads = [deferred(), deferred()];
+  let calls = 0;
+  handlers.list_local_agent_apps = () => reads[calls++].promise;
+  const early = hub.loadAgents();
+  const late = hub.loadAgents();
+  reads[1].resolve([{ id: "new-agent" }]);
+  await late;
+  reads[0].resolve([{ id: "old-agent" }]);
+  await early;
+  assert.deepEqual(
+    get(hub.agents).map((agent) => agent.id),
+    ["new-agent"]
+  );
+});
