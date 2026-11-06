@@ -88,6 +88,21 @@ test("overwrite all pulls the skills with local changes with force", async () =>
   assert.deepEqual(report, { updated: 2, upToDate: 1, skipped: [], failed: [] });
 });
 
+test("a forced skill that the pull skips is reported as changed after the confirmation", async () => {
+  handlers.pull_github_sources = ({ ids }) =>
+    ids.map((id) =>
+      id === "a"
+        ? { id, name: id, status: "skipped", message: "changed after the overwrite was confirmed" }
+        : { id, name: id, status: "updated" }
+    );
+  const { unsubscribe } = answer(true);
+  const report = await updateRepositoryGroup(["a", "b", "c"]);
+  unsubscribe();
+
+  assert.deepEqual(report.skipped, [{ id: "a", name: "a", reason: "changed_after_confirmation" }]);
+  assert.equal(report.updated, 1);
+});
+
 test("skip all leaves the skills with local changes out of the pull", async () => {
   const { unsubscribe } = answer(false);
   const report = await updateRepositoryGroup(["a", "b", "c"]);
@@ -95,7 +110,7 @@ test("skip all leaves the skills with local changes out of the pull", async () =
 
   const pull = calls.find((c) => c.command === "pull_github_sources");
   assert.deepEqual(pull.args, { ids: ["b"], forced: [] });
-  assert.deepEqual(report.skipped, [{ id: "a", name: "a" }]);
+  assert.deepEqual(report.skipped, [{ id: "a", name: "a", reason: "local_changes" }]);
   assert.equal(report.updated, 1);
 });
 

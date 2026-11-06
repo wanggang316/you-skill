@@ -91,8 +91,8 @@ test("the report counts updated and up to date skills and lists skipped and fail
   assert.equal(report.updated, 1);
   assert.equal(report.upToDate, 1);
   assert.deepEqual(report.skipped, [
-    { id: "f", name: "f" },
-    { id: "b", name: "b" },
+    { id: "f", name: "f", reason: "local_changes" },
+    { id: "b", name: "b", reason: "local_changes" },
   ]);
   assert.deepEqual(report.failed, [
     { id: "d", name: "d", error: "rate limited" },
@@ -141,8 +141,32 @@ test("an unknown installed version needs a pull; an error or a known equal versi
     ["a"],
     []
   );
-  assert.deepEqual(report.skipped, [{ id: "a", name: "a" }]);
+  assert.deepEqual(report.skipped, [{ id: "a", name: "a", reason: "local_changes" }]);
   assert.equal(report.upToDate, 0);
+});
+
+test("a forced skill skipped by the pull is reported as changed after the confirmation", () => {
+  const report = actions.summarizeGroupUpdate(
+    [
+      { id: "a", name: "a", updateAvailable: true },
+      { id: "b", name: "b", updateAvailable: true },
+    ],
+    [],
+    [
+      {
+        id: "a",
+        name: "a",
+        status: "skipped",
+        message: "changed after the overwrite was confirmed",
+      },
+      { id: "b", name: "b", status: "skipped", message: "has local changes" },
+    ],
+    ["a"]
+  );
+  assert.deepEqual(report.skipped, [
+    { id: "a", name: "a", reason: "changed_after_confirmation" },
+    { id: "b", name: "b", reason: "local_changes" },
+  ]);
 });
 
 test("import detection passes a shared branch with a slash separately", () => {

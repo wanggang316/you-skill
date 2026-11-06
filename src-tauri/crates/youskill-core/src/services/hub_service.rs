@@ -542,7 +542,8 @@ fn replace_hub_from_dir(
   let local_changes = matches!(probe.state, HubState::Modified | HubState::NameMismatch);
   let blocker = match force {
     HubForce::No if local_changes => Some("has local changes"),
-    HubForce::Confirmed(hash) if local_changes && probe.hash.as_deref() != Some(hash) => {
+    // Any change counts, also a removed SKILL.md or folder (no hash).
+    HubForce::Confirmed(hash) if probe.hash.as_deref() != Some(hash) => {
       Some("changed after the overwrite was confirmed")
     },
     _ => None,

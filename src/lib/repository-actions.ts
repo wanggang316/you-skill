@@ -107,22 +107,28 @@ export function localChangeIds(check: CheckItem[], skills: SkillLike[]): string[
     .map((item) => item.id);
 }
 
+/**
+ * Why a skill was not updated: the user chose to skip its local changes, or its hub copy
+ * changed after the user confirmed the overwrite.
+ */
+export type SkipReason = "local_changes" | "changed_after_confirmation";
+
 export interface GroupUpdateReport {
   updated: number;
   upToDate: number;
-  /** Not updated because the hub copy has local changes. */
-  skipped: { id: string; name: string }[];
+  skipped: { id: string; name: string; reason: SkipReason }[];
   failed: { id: string; name: string; error: string }[];
 }
 
 /**
- * One report for a group update: the forced check, the skills the user chose to skip,
- * and the batch pull results.
+ * One report for a group update: the forced check, the skills the user chose to skip, the
+ * batch pull results, and the skills pulled with a confirmed overwrite.
  */
 export function summarizeGroupUpdate(
   check: (CheckItem & Pick<SourceUpdate, "name">)[],
   skippedIds: string[],
-  pulled: SourcePullResult[]
+  pulled: SourcePullResult[],
+  forcedIds: string[] = []
 ): GroupUpdateReport {
   const report: GroupUpdateReport = { updated: 0, upToDate: 0, skipped: [], failed: [] };
   for (const item of check) {
@@ -131,7 +137,7 @@ export function summarizeGroupUpdate(
     } else if (!needsPull(item)) {
       report.upToDate += 1;
     } else if (skippedIds.includes(item.id)) {
-      report.skipped.push({ id: item.id, name: item.name });
+      report.skipped.push({ id: item.id, name: item.name, reason: "local_changes" });
     }
   }
   for (const result of pulled) {
@@ -140,7 +146,12 @@ export function summarizeGroupUpdate(
         report.updated += 1;
         break;
       case "skipped":
-        report.skipped.push({ id: result.id, name: result.name });
+        // The pull skips a forced skill only when it changed after the confirmation.
+        report.skipped.push({
+          id: result.id,
+          name: result.name,
+          reason: forcedIds.includes(result.id) ? "changed_after_confirmation" : "local_changes",
+        });
         break;
       default:
         report.failed.push({ id: result.id, name: result.name, error: result.message ?? "" });

@@ -761,31 +761,64 @@ mod tests {
       assert!(hub_body(&env, &a, "a").ends_with("v2"));
     }
 
-    #[test]
-    fn a_forced_skill_edited_after_the_confirmation_is_skipped() {
+    /// Confirm the overwrite of a locally edited skill, run `change` on its hub copy, then
+    /// pull it with the confirmed hash.
+    fn pull_after_confirmed_change(
+      change: impl FnOnce(&Path),
+    ) -> (tempfile::TempDir, Env, String, SourcePullResult) {
       let tmp = tempfile::tempdir().unwrap();
       let env = Env::for_test(tmp.path(), vec![], vec![]);
       let a = add(&env, tmp.path(), "a", github("o/r", "skills/a", None, "s"));
       let hub = env.hub_dir(&a, "a");
       write(&hub, "SKILL.md", &skill_md("a", "local"));
+      write(&hub, "notes.md", "mine");
       let confirmed = vec![ForcedPull {
         id: a.clone(),
         hub_hash: hash_dir(&hub).unwrap(),
       }];
-      // A second edit between the question and the write.
-      write(&hub, "SKILL.md", &skill_md("a", "local again"));
+      change(&hub);
       let root = tree(tmp.path(), &["a"]);
 
       let (groups, _) = plan_batch_pull(&env, std::slice::from_ref(&a)).unwrap();
       let members = groups.into_values().next().unwrap();
-      let results = pull_group_from_tree(&env, &members, Ok((root, "main".into())), &confirmed);
-      assert_eq!(results[0].status, SourcePullStatus::Skipped);
-      assert!(results[0]
+      let mut results = pull_group_from_tree(&env, &members, Ok((root, "main".into())), &confirmed);
+      (tmp, env, a, results.remove(0))
+    }
+
+    fn assert_skipped_after_confirmation(result: &SourcePullResult) {
+      assert_eq!(result.status, SourcePullStatus::Skipped);
+      assert!(result
         .message
         .as_deref()
         .unwrap()
         .contains("changed after the overwrite was confirmed"));
+    }
+
+    #[test]
+    fn a_forced_skill_edited_after_the_confirmation_is_skipped() {
+      let (_tmp, env, a, result) = pull_after_confirmed_change(|hub| {
+        write(hub, "SKILL.md", &skill_md("a", "local again"));
+      });
+      assert_skipped_after_confirmation(&result);
       assert!(hub_body(&env, &a, "a").ends_with("local again"));
+    }
+
+    #[test]
+    fn a_forced_skill_whose_skill_md_was_removed_after_the_confirmation_is_skipped() {
+      let (_tmp, env, a, result) = pull_after_confirmed_change(|hub| {
+        fs::remove_file(hub.join("SKILL.md")).unwrap();
+      });
+      assert_skipped_after_confirmation(&result);
+      let hub = env.hub_dir(&a, "a");
+      assert!(!hub.join("SKILL.md").exists());
+      assert_eq!(fs::read_to_string(hub.join("notes.md")).unwrap(), "mine");
+    }
+
+    #[test]
+    fn a_forced_skill_unchanged_since_the_confirmation_is_overwritten() {
+      let (_tmp, env, a, result) = pull_after_confirmed_change(|_| {});
+      assert_eq!(result.status, SourcePullStatus::Updated);
+      assert!(hub_body(&env, &a, "a").ends_with("v2"));
     }
 
     #[test]

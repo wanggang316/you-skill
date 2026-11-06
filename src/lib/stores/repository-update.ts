@@ -60,7 +60,12 @@ export async function updateRepositoryGroup(ids: string[]): Promise<GroupUpdateR
     }
     await refreshHub().catch(console.error);
   }
-  return summarizeGroupUpdate(check, overwrite ? [] : local, pulled);
+  return summarizeGroupUpdate(
+    check,
+    overwrite ? [] : local,
+    pulled,
+    forced.map((item) => item.id)
+  );
 }
 
 function failed(id: string, error: unknown): SourcePullResult {

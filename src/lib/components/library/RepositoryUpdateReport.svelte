@@ -44,9 +44,15 @@
           <ul class="bg-base-200 max-h-40 space-y-1 overflow-y-auto rounded-xl p-3 text-xs">
             {#each report.skipped as item (item.id)}
               <li class="flex items-baseline justify-between gap-3">
-                <span class="text-base-content truncate">{labelOf(item)}</span>
-                <span class="text-base-content-muted shrink-0">
-                  {$t("library.repoUpdate.skippedReason")}
+                <span class="text-base-content max-w-[45%] shrink-0 truncate">
+                  {labelOf(item)}
+                </span>
+                <span class="text-base-content-muted min-w-0 text-right">
+                  {$t(
+                    item.reason === "changed_after_confirmation"
+                      ? "library.repoUpdate.changedAfterConfirmation"
+                      : "library.repoUpdate.skippedReason"
+                  )}
                 </span>
               </li>
             {/each}

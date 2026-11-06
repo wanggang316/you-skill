@@ -642,7 +642,7 @@ pub enum SourcePullStatus {
 pub struct ForcedPull {
   pub id: String,
   /// Hash of the hub copy at the confirmation. If the hub copy has another hash at the
-  /// write, the skill is skipped.
+  /// write, or no hash because `SKILL.md` or the folder is gone, the skill is skipped.
   pub hub_hash: String,
 }
 

@@ -300,6 +300,8 @@ const translations: Record<string, Dictionary> = {
     "library.repoUpdate.summary": "{updated} updated, {upToDate} up to date.",
     "library.repoUpdate.skipped": "Skipped ({count})",
     "library.repoUpdate.skippedReason": "The library copy has local changes",
+    "library.repoUpdate.changedAfterConfirmation":
+      "The library copy changed after you chose to overwrite it",
     "library.repoUpdate.failed": "Failed ({count})",
     "sidebar.instructions": "Instructions",
     "instructions.title": "Instructions",
@@ -1106,6 +1108,7 @@ const translations: Record<string, Dictionary> = {
     "library.repoUpdate.summary": "已更新 {updated} 个，{upToDate} 个已是最新。",
     "library.repoUpdate.skipped": "已跳过（{count}）",
     "library.repoUpdate.skippedReason": "中心库副本有本地修改",
+    "library.repoUpdate.changedAfterConfirmation": "确认覆盖后，中心库副本又有了修改",
     "library.repoUpdate.failed": "失败（{count}）",
     "sidebar.instructions": "指令",
     "instructions.title": "指令",
