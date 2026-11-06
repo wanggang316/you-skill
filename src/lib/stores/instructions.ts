@@ -27,8 +27,15 @@ export const instructionName = derived(
 
 let refreshPromise: Promise<void> | null = null;
 
-/** Reload templates and agent files together; both change with almost every action. */
-export async function refreshInstructions(): Promise<void> {
+/**
+ * Reload templates and agent files together; both change with almost every action. A call
+ * joins a running reload, unless `fresh` asks for a read that starts after the call (the
+ * running one may predate a change such as an auto restore).
+ */
+export async function refreshInstructions(options: { fresh?: boolean } = {}): Promise<void> {
+  if (refreshPromise && options.fresh) {
+    return refreshPromise.then(() => refreshInstructions());
+  }
   if (refreshPromise) return refreshPromise;
   instructionsLoading.set(true);
   instructionsError.set("");
