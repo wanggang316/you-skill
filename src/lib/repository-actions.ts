@@ -8,6 +8,34 @@ import type { DetectedSkill } from "./api/skills";
 
 type SkillLike = Pick<HubSkillView, "id" | "source" | "hubState">;
 
+/** What Import of a repository group detects: `owner/repo` and the shared branch. */
+export interface RepositoryImportTarget {
+  repo: string;
+  branch: string | null;
+  /** The address shown in the import dialog. */
+  url: string;
+}
+
+export function repositoryImportTarget(
+  repo: string,
+  branch: string | null
+): RepositoryImportTarget {
+  return { repo, branch, url: branch ? `https://github.com/${repo}/tree/${branch}` : repo };
+}
+
+/**
+ * Arguments for GitHub detection. While the input is the address that Import filled in,
+ * the branch goes separately: a branch with `/` cannot be read back from a `/tree/` URL.
+ */
+export function githubDetectArgs(
+  input: string,
+  target: RepositoryImportTarget | null
+): { path: string; branch: string | null } {
+  const path = input.trim();
+  if (target && path === target.url) return { path: target.repo, branch: target.branch };
+  return { path, branch: null };
+}
+
 /** The items of the "Repository actions" menu; each acts on the whole group. */
 export type RepositoryAction = "import" | "install" | "update" | "remove";
 
@@ -52,14 +80,26 @@ export function isImportedGithubSkill(
   });
 }
 
-/** Skills with an update whose hub copy has local changes; an update would overwrite them. */
-export function localChangeIds(
-  check: Pick<SourceUpdate, "id" | "updateAvailable">[],
-  skills: SkillLike[]
-): string[] {
+type CheckItem = Pick<
+  SourceUpdate,
+  "id" | "updateAvailable" | "remoteSha" | "latestRemoteSha" | "error"
+>;
+
+/**
+ * Whether a group update pulls the skill: it has an update, or its installed version is
+ * unknown (no `remoteSha`, e.g. when the lookup failed at import), so the check cannot
+ * tell. A pull records the version.
+ */
+export function needsPull(item: CheckItem): boolean {
+  if (item.error) return false;
+  return item.updateAvailable || (!item.remoteSha && !!item.latestRemoteSha);
+}
+
+/** Skills to pull whose hub copy has local changes; a pull would overwrite them. */
+export function localChangeIds(check: CheckItem[], skills: SkillLike[]): string[] {
   const states = new Map(skills.map((skill) => [skill.id, skill.hubState]));
   return check
-    .filter((item) => item.updateAvailable)
+    .filter(needsPull)
     .filter((item) => {
       const state = states.get(item.id);
       return state === "modified" || state === "name_mismatch";
@@ -80,7 +120,7 @@ export interface GroupUpdateReport {
  * and the batch pull results.
  */
 export function summarizeGroupUpdate(
-  check: Pick<SourceUpdate, "id" | "name" | "updateAvailable" | "error">[],
+  check: (CheckItem & Pick<SourceUpdate, "name">)[],
   skippedIds: string[],
   pulled: SourcePullResult[]
 ): GroupUpdateReport {
@@ -88,7 +128,7 @@ export function summarizeGroupUpdate(
   for (const item of check) {
     if (item.error) {
       report.failed.push({ id: item.id, name: item.name, error: item.error });
-    } else if (!item.updateAvailable) {
+    } else if (!needsPull(item)) {
       report.upToDate += 1;
     } else if (skippedIds.includes(item.id)) {
       report.skipped.push({ id: item.id, name: item.name });

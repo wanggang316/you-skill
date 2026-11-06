@@ -121,3 +121,43 @@ test("a report without skipped or failed skills needs only a toast", () => {
     true
   );
 });
+
+test("an unknown installed version needs a pull; an error or a known equal version does not", () => {
+  assert.equal(
+    actions.needsPull({ updateAvailable: false, remoteSha: null, latestRemoteSha: "x" }),
+    true
+  );
+  assert.equal(
+    actions.needsPull({ updateAvailable: false, remoteSha: "x", latestRemoteSha: "x" }),
+    false
+  );
+  assert.equal(
+    actions.needsPull({ updateAvailable: false, remoteSha: null, latestRemoteSha: null }),
+    false
+  );
+  assert.equal(actions.needsPull({ updateAvailable: true, error: "rate limited" }), false);
+  const report = actions.summarizeGroupUpdate(
+    [{ id: "a", name: "a", updateAvailable: false, remoteSha: null, latestRemoteSha: "x" }],
+    ["a"],
+    []
+  );
+  assert.deepEqual(report.skipped, [{ id: "a", name: "a" }]);
+  assert.equal(report.upToDate, 0);
+});
+
+test("import detection passes a shared branch with a slash separately", () => {
+  const target = actions.repositoryImportTarget("o/r", "feature/foo");
+  assert.equal(target.url, "https://github.com/o/r/tree/feature/foo");
+  assert.deepEqual(actions.githubDetectArgs(target.url, target), {
+    path: "o/r",
+    branch: "feature/foo",
+  });
+  // An address the user typed is parsed as before.
+  assert.deepEqual(actions.githubDetectArgs(" other/repo ", target), {
+    path: "other/repo",
+    branch: null,
+  });
+  const plain = actions.repositoryImportTarget("o/r", null);
+  assert.equal(plain.url, "o/r");
+  assert.deepEqual(actions.githubDetectArgs("o/r", plain), { path: "o/r", branch: null });
+});

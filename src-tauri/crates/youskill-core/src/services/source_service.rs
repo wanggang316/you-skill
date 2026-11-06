@@ -1,10 +1,11 @@
 //! Network checks against skill sources (GitHub) and the GitHub pull path.
 
 use crate::models::{
-  ActionResult, DetectedSkill, SkillSource, SourcePullResult, SourcePullStatus, SourceUpdate,
+  ActionResult, DetectedSkill, ForcedPull, SkillSource, SourcePullResult, SourcePullStatus,
+  SourceUpdate,
 };
 use crate::services::env::Env;
-use crate::services::hub_service::{pull_from_dir, pull_hub_from_dir, resolve_skill};
+use crate::services::hub_service::{pull_from_dir, pull_hub_from_dir, resolve_skill, HubForce};
 use crate::services::lock_service::store;
 use crate::services::migration_service::migrate_skill_ids;
 use crate::services::remote_service::fetch_skills_by_names;
@@ -20,7 +21,8 @@ struct Candidate {
   id: String,
   name: String,
   repo: String,
-  branch: String,
+  /// `None` when the source has no recorded branch.
+  branch: Option<String>,
   skill_path: String,
   remote_sha: Option<String>,
 }
@@ -53,7 +55,7 @@ pub async fn check_source_updates(
         id: id.clone(),
         name: record.name.clone(),
         repo: repo.trim().to_string(),
-        branch: branch.clone().unwrap_or_else(|| "main".to_string()),
+        branch: branch.clone().filter(|b| !b.trim().is_empty()),
         skill_path: skill_path.clone(),
         remote_sha: remote_sha.clone(),
       }),
@@ -87,7 +89,7 @@ pub async fn check_source_updates(
   }
 
   // 2. Everything else goes to the GitHub trees API, one request per (repo, branch).
-  let mut groups: BTreeMap<(String, String), Vec<&Candidate>> = BTreeMap::new();
+  let mut groups: BTreeMap<(String, Option<String>), Vec<&Candidate>> = BTreeMap::new();
   for candidate in &candidates {
     if latest.contains_key(&candidate.id) {
       continue;
@@ -112,7 +114,12 @@ pub async fn check_source_updates(
       continue;
     };
     let paths: Vec<String> = members.iter().map(|m| m.skill_path.clone()).collect();
-    match GithubHelper::get_tree_shas(&owner, &repo_name, &branch, &paths).await {
+    let (branch, shas) = on_first_branch(branch.as_deref(), |branch| {
+      let (owner, repo_name, paths) = (&owner, &repo_name, &paths);
+      async move { GithubHelper::get_tree_shas(owner, repo_name, &branch, paths).await }
+    })
+    .await;
+    match shas {
       Ok(shas) => {
         for member in members {
           match shas.get(&member.skill_path) {
@@ -175,6 +182,32 @@ pub async fn check_source_updates(
       })
       .collect(),
   )
+}
+
+/// Run `fetch` on the recorded branch. Without one, try the default branches in the order
+/// a download tries them, so the check and the pull look at the same branch. Returns the
+/// branch of the result.
+async fn on_first_branch<T, F, Fut>(
+  branch: Option<&str>,
+  mut fetch: F,
+) -> (String, Result<T, String>)
+where
+  F: FnMut(String) -> Fut,
+  Fut: std::future::Future<Output = Result<T, String>>,
+{
+  let branches = match branch {
+    Some(branch) => vec![branch.to_string()],
+    None => GithubHelper::default_branches(),
+  };
+  let mut last = (String::new(), Err("No branch to check".to_string()));
+  for branch in branches {
+    let result = fetch(branch.clone()).await;
+    if result.is_ok() {
+      return (branch, result);
+    }
+    last = (branch, result);
+  }
+  last
 }
 
 /// A marketplace sha is only a shortcut when it equals the installed sha.
@@ -268,21 +301,22 @@ type PullGroups = BTreeMap<(String, Option<String>), Vec<PullMember>>;
 
 /// Pull the GitHub sources of `ids` into the hub. Each `(repo, branch)` is downloaded one
 /// time. The remote sha comes from the `latest_remote_sha` that the last source check
-/// stored. Skills in `force_ids` overwrite local changes; the others with local changes are
+/// stored. Skills in `forced` overwrite the local changes that the user confirmed; the
+/// others with local changes, and forced skills changed after the confirmation, are
 /// skipped. Install targets are not pushed. Returns one result for each id, in order.
 pub async fn pull_github_sources(
   env: Env,
   ids: Vec<String>,
-  force_ids: Vec<String>,
+  forced: Vec<ForcedPull>,
 ) -> Result<Vec<SourcePullResult>, String> {
   migrate_skill_ids(&env)?;
   let (groups, mut results) = plan_batch_pull(&env, &ids)?;
   for ((_, branch), members) in groups {
     let tree = download_branch_tree(&members[0].repo, branch.as_deref()).await;
     let env = env.clone();
-    let force_ids = force_ids.clone();
+    let forced = forced.clone();
     let pulled =
-      tokio::task::spawn_blocking(move || pull_group_from_tree(&env, &members, tree, &force_ids))
+      tokio::task::spawn_blocking(move || pull_group_from_tree(&env, &members, tree, &forced))
         .await
         .map_err(|e| format!("pull join error: {}", e))?;
     results.extend(pulled);
@@ -380,7 +414,7 @@ fn pull_group_from_tree(
   env: &Env,
   members: &[PullMember],
   tree: Result<(PathBuf, String), String>,
-  force_ids: &[String],
+  forced: &[ForcedPull],
 ) -> Vec<SourcePullResult> {
   let (root, branch) = match tree {
     Ok(tree) => tree,
@@ -394,7 +428,10 @@ fn pull_group_from_tree(
   let results = members
     .iter()
     .map(|member| {
-      let force = force_ids.contains(&member.id);
+      let force = forced
+        .iter()
+        .find(|item| item.id == member.id)
+        .map_or(HubForce::No, |item| HubForce::Confirmed(&item.hub_hash));
       match pull_member(env, &root, &branch, member, force) {
         Ok(result) => result,
         Err(err) => pull_failed(&member.id, &member.name, err),
@@ -412,7 +449,7 @@ fn pull_member(
   root: &Path,
   branch: &str,
   member: &PullMember,
-  force: bool,
+  force: HubForce,
 ) -> Result<SourcePullResult, String> {
   let folder = GithubHelper::skill_folder_of(&member.skill_path)?;
   let src = root.join(&folder);
@@ -467,7 +504,7 @@ mod tests {
       id: "00000000-0000-4000-8000-000000000001".to_string(),
       name: "pdf".to_string(),
       repo: "anthropics/skills".to_string(),
-      branch: "main".to_string(),
+      branch: Some("main".to_string()),
       skill_path: "skills/pdf/SKILL.md".to_string(),
       remote_sha: remote_sha.map(str::to_string),
     }
@@ -488,12 +525,47 @@ mod tests {
     assert!(!marketplace_confirms(&candidate(None), "a"));
   }
 
+  fn tried_branches(branch: Option<&str>, ok_on: &str) -> (Vec<String>, String, bool) {
+    let mut tried = Vec::new();
+    let (used, result) = tokio::runtime::Builder::new_current_thread()
+      .build()
+      .unwrap()
+      .block_on(on_first_branch(branch, |b| {
+        tried.push(b.clone());
+        let ok = b == ok_on;
+        async move {
+          if ok {
+            Ok(())
+          } else {
+            Err(format!("HTTP error: 404 on {b}"))
+          }
+        }
+      }));
+    (tried, used, result.is_ok())
+  }
+
+  #[test]
+  fn a_check_without_branch_falls_back_to_master_like_the_download() {
+    let (tried, used, ok) = tried_branches(None, "master");
+    assert_eq!(tried, vec!["main", "master"]);
+    assert_eq!(used, "master");
+    assert!(ok);
+  }
+
+  #[test]
+  fn a_check_with_a_recorded_branch_uses_only_that_branch() {
+    let (tried, used, ok) = tried_branches(Some("feature/x"), "main");
+    assert_eq!(tried, vec!["feature/x"]);
+    assert_eq!(used, "feature/x");
+    assert!(!ok);
+  }
+
   mod batch_pull {
     use super::*;
     use crate::models::{ImportItem, InstallScope, InstallTargetSpec, TargetState};
     use crate::services::hub_service::{find_skill, import_skills};
     use crate::services::install_service::install_skill;
-    use crate::utils::hash::invalidate_hash_cache;
+    use crate::utils::hash::{hash_dir, invalidate_hash_cache};
     use std::fs;
 
     fn write(root: &Path, rel: &str, content: &str) {
@@ -680,9 +752,40 @@ mod tests {
         .contains("local changes"));
       assert!(hub_body(&env, &a, "a").ends_with("local"));
 
-      let forced = pull_group_from_tree(&env, &members, tree_of(), std::slice::from_ref(&a));
+      let confirmed = vec![ForcedPull {
+        id: a.clone(),
+        hub_hash: hash_dir(&hub).unwrap(),
+      }];
+      let forced = pull_group_from_tree(&env, &members, tree_of(), &confirmed);
       assert_eq!(forced[0].status, SourcePullStatus::Updated);
       assert!(hub_body(&env, &a, "a").ends_with("v2"));
+    }
+
+    #[test]
+    fn a_forced_skill_edited_after_the_confirmation_is_skipped() {
+      let tmp = tempfile::tempdir().unwrap();
+      let env = Env::for_test(tmp.path(), vec![], vec![]);
+      let a = add(&env, tmp.path(), "a", github("o/r", "skills/a", None, "s"));
+      let hub = env.hub_dir(&a, "a");
+      write(&hub, "SKILL.md", &skill_md("a", "local"));
+      let confirmed = vec![ForcedPull {
+        id: a.clone(),
+        hub_hash: hash_dir(&hub).unwrap(),
+      }];
+      // A second edit between the question and the write.
+      write(&hub, "SKILL.md", &skill_md("a", "local again"));
+      let root = tree(tmp.path(), &["a"]);
+
+      let (groups, _) = plan_batch_pull(&env, std::slice::from_ref(&a)).unwrap();
+      let members = groups.into_values().next().unwrap();
+      let results = pull_group_from_tree(&env, &members, Ok((root, "main".into())), &confirmed);
+      assert_eq!(results[0].status, SourcePullStatus::Skipped);
+      assert!(results[0]
+        .message
+        .as_deref()
+        .unwrap()
+        .contains("changed after the overwrite was confirmed"));
+      assert!(hub_body(&env, &a, "a").ends_with("local again"));
     }
 
     #[test]

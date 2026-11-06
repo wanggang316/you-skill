@@ -298,15 +298,22 @@ export async function checkSourceUpdates(ids?: string[] | null): Promise<SourceU
   return apiCall<SourceUpdate[]>("check_source_updates", { ids: ids ?? null });
 }
 
+/** A skill whose local changes the user confirmed to overwrite, with the confirmed hub hash. */
+export interface ForcedPull {
+  id: string;
+  hubHash: string;
+}
+
 /**
  * Pull the GitHub sources of `ids`, one download for each repository branch. Skills in
- * `forceIds` overwrite local changes. Install targets are not pushed.
+ * `forced` overwrite their local changes while the hub copy still has the confirmed hash.
+ * Install targets are not pushed.
  */
 export async function pullGithubSources(
   ids: string[],
-  forceIds: string[] = []
+  forced: ForcedPull[] = []
 ): Promise<SourcePullResult[]> {
-  return apiCall<SourcePullResult[]>("pull_github_sources", { ids, forceIds });
+  return apiCall<SourcePullResult[]>("pull_github_sources", { ids, forced });
 }
 
 export async function scanFolder(path: string, maxDepth?: number): Promise<ScanItem[]> {

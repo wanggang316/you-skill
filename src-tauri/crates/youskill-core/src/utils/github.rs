@@ -61,6 +61,11 @@ impl GithubHelper {
     })
   }
 
+  /// The branches tried, in order, when a source has no recorded branch.
+  pub fn default_branches() -> Vec<String> {
+    DEFAULT_BRANCHES.iter().map(|b| b.to_string()).collect()
+  }
+
   pub fn parse_github_url(url: &str) -> Result<(String, String), String> {
     let parsed = Self::parse_github_ref(url)?;
     Ok((parsed.owner, parsed.repo))
@@ -78,9 +83,9 @@ impl GithubHelper {
     if let Some(branch) = preferred_branch.map(str::trim).filter(|b| !b.is_empty()) {
       branches.push(branch.to_string());
     }
-    for branch in DEFAULT_BRANCHES {
-      if !branches.iter().any(|b| b == branch) {
-        branches.push(branch.to_string());
+    for branch in Self::default_branches() {
+      if !branches.contains(&branch) {
+        branches.push(branch);
       }
     }
 

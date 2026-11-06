@@ -33,6 +33,7 @@ function skill(id, hubState = "ok") {
     name: id,
     sourceKey: `github:o/r:skills/${id}`,
     hubState,
+    hubHash: `hash-${id}`,
     source: { type: "github", repo: "o/r", url: "", skillPath: `skills/${id}/SKILL.md` },
     installs: [],
   };
@@ -80,7 +81,10 @@ test("overwrite all pulls the skills with local changes with force", async () =>
   });
   const pulls = calls.filter((c) => c.command === "pull_github_sources");
   assert.equal(pulls.length, 1);
-  assert.deepEqual(pulls[0].args, { ids: ["a", "b"], forceIds: ["a"] });
+  assert.deepEqual(pulls[0].args, {
+    ids: ["a", "b"],
+    forced: [{ id: "a", hubHash: "hash-a" }],
+  });
   assert.deepEqual(report, { updated: 2, upToDate: 1, skipped: [], failed: [] });
 });
 
@@ -90,7 +94,7 @@ test("skip all leaves the skills with local changes out of the pull", async () =
   unsubscribe();
 
   const pull = calls.find((c) => c.command === "pull_github_sources");
-  assert.deepEqual(pull.args, { ids: ["b"], forceIds: [] });
+  assert.deepEqual(pull.args, { ids: ["b"], forced: [] });
   assert.deepEqual(report.skipped, [{ id: "a", name: "a" }]);
   assert.equal(report.updated, 1);
 });
@@ -119,4 +123,15 @@ test("a failed check reports every skill as failed", async () => {
     ["a", "b"]
   );
   assert.match(report.failed[0].error, /offline/);
+});
+
+test("a skill without a recorded version is pulled, not counted as up to date", async () => {
+  handlers.check_source_updates = () => [
+    { id: "b", name: "b", updateAvailable: false, remoteSha: null, latestRemoteSha: "new" },
+    { id: "c", name: "c", updateAvailable: false, remoteSha: "same", latestRemoteSha: "same" },
+  ];
+  const report = await updateRepositoryGroup(["b", "c"]);
+  const pull = calls.find((c) => c.command === "pull_github_sources");
+  assert.deepEqual(pull.args, { ids: ["b"], forced: [] });
+  assert.deepEqual(report, { updated: 1, upToDate: 1, skipped: [], failed: [] });
 });

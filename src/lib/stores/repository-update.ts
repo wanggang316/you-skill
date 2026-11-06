@@ -3,6 +3,7 @@ import { checkSourceUpdates, pullGithubSources, type SourcePullResult } from "..
 import { t } from "../i18n";
 import {
   localChangeIds,
+  needsPull,
   summarizeGroupUpdate,
   type GroupUpdateReport,
 } from "../repository-actions";
@@ -41,13 +42,19 @@ export async function updateRepositoryGroup(ids: string[]): Promise<GroupUpdateR
   }
 
   const pullIds = check
-    .filter((item) => item.updateAvailable && !item.error)
+    .filter(needsPull)
     .map((item) => item.id)
     .filter((id) => overwrite || !local.includes(id));
+  // The confirmed hub content: a skill edited again before the write is skipped.
+  const forced = overwrite
+    ? groupSkills
+        .filter((skill) => local.includes(skill.id) && skill.hubHash)
+        .map((skill) => ({ id: skill.id, hubHash: skill.hubHash as string }))
+    : [];
   let pulled: SourcePullResult[] = [];
   if (pullIds.length > 0) {
     try {
-      pulled = await pullGithubSources(pullIds, overwrite ? local : []);
+      pulled = await pullGithubSources(pullIds, forced);
     } catch (error) {
       pulled = pullIds.map((id) => failed(id, error));
     }

@@ -95,8 +95,12 @@ export async function recordInstall(skillId: string): Promise<void> {
 
 // ============ Detection ============
 
-export async function detectGithubManual(githubPath: string): Promise<DetectedSkill[]> {
-  return apiCall<DetectedSkill[]>("detect_github_manual", { githubPath });
+/** `branch` overrides a branch in `githubPath`; use it for branch names with `/`. */
+export async function detectGithubManual(
+  githubPath: string,
+  branch: string | null = null
+): Promise<DetectedSkill[]> {
+  return apiCall<DetectedSkill[]>("detect_github_manual", { githubPath, branch });
 }
 
 export async function detectZip(zipPath: string): Promise<DetectedSkill[]> {

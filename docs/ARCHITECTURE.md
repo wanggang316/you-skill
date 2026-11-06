@@ -107,7 +107,8 @@ A stat-only signature caches results in memory so listing stays cheap.
 Three nodes per skill: source S, hub H, targets T. `list_hub_skills` computes everything
 offline; `check_source_updates` is the only network call and stores its result in the lock.
 It batches: the marketplace answers for the skills it indexes, then one GitHub trees request
-per repository and branch covers the rest. The app runs it for all skills at startup and when
+per repository and branch covers the rest. A source without a recorded branch is checked on
+`main`, then `master`, the same order as the archive download. The app runs it for all skills at startup and when
 the library is opened from the sidebar (at most every five minutes), and on every library
 refresh (`checkAllSourceUpdates` in `stores/hub.ts`).
 
@@ -124,10 +125,12 @@ Sync actions (`sync_skill`): `pull_source`, `push_targets`, `adopt_target`, `acc
 `.trash` first.
 
 `pull_source` for a GitHub skill downloads the repository archive and then pushes the new
-hub copy to the outdated copy targets. `pull_github_sources(ids, force_ids)` pulls several
+hub copy to the outdated copy targets. `pull_github_sources(ids, forced)` pulls several
 GitHub skills for the Library repository group Update: it downloads each repository branch
-one time, takes the remote sha from the stored `latestRemoteSha`, skips a skill whose hub
-copy has local changes unless its id is in `force_ids`, and does not push to targets (see
+one time, takes the remote sha from the stored `latestRemoteSha`, and does not push to targets.
+A skill whose hub copy has local changes is skipped, unless `forced` has its id with the hub
+hash that the user confirmed and the hub copy still has that hash. The group Update also pulls
+a skill without `remoteSha`, because the check cannot tell whether it is current (see
 `docs/decisions/0005-library-repository-group-actions.md`).
 
 ## Instructions: templates and agent files

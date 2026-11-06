@@ -636,6 +636,16 @@ pub enum SourcePullStatus {
   Failed,
 }
 
+/// A skill of a batch pull whose local changes the user confirmed to overwrite.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ForcedPull {
+  pub id: String,
+  /// Hash of the hub copy at the confirmation. If the hub copy has another hash at the
+  /// write, the skill is skipped.
+  pub hub_hash: String,
+}
+
 /// Result of one skill in a batch pull from GitHub.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

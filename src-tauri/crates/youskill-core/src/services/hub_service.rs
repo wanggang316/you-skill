@@ -475,11 +475,22 @@ pub fn pull_from_dir(
   force: bool,
 ) -> Result<ActionResult, String> {
   let _ops = ops_guard(env)?;
+  let force = if force { HubForce::Any } else { HubForce::No };
   let result = replace_hub_from_dir(env, key, src_dir, updated_source, force)?;
   match result.skill.as_ref().filter(|_| result.applied) {
     Some(view) => push_targets(env, &view.id, None, false),
     None => Ok(result),
   }
+}
+
+/// Whether a pull may overwrite local changes in the hub copy.
+#[derive(Debug, Clone, Copy)]
+pub enum HubForce<'a> {
+  No,
+  Any,
+  /// Only the hub content with this hash, which the user confirmed to overwrite. A hub copy
+  /// that changed after the confirmation is not overwritten.
+  Confirmed(&'a str),
 }
 
 /// `pull_from_dir` without the push: targets that become outdated stay in the drift view.
@@ -488,7 +499,7 @@ pub fn pull_hub_from_dir(
   key: &str,
   src_dir: &Path,
   updated_source: Option<SkillSource>,
-  force: bool,
+  force: HubForce,
 ) -> Result<ActionResult, String> {
   let _ops = ops_guard(env)?;
   replace_hub_from_dir(env, key, src_dir, updated_source, force)
@@ -500,7 +511,7 @@ fn replace_hub_from_dir(
   key: &str,
   src_dir: &Path,
   updated_source: Option<SkillSource>,
-  force: bool,
+  force: HubForce,
 ) -> Result<ActionResult, String> {
   let (id, record) = resolve_skill(env, key)?;
   let store = store(env);
@@ -524,10 +535,21 @@ fn replace_hub_from_dir(
       src_dir.to_string_lossy()
     ));
   }
+  if let HubForce::Confirmed(_) = force {
+    invalidate_hash_cache(&env.hub_dir(&id, &record.name));
+  }
   let probe = probe_hub(env, &id, &record);
-  if matches!(probe.state, HubState::Modified | HubState::NameMismatch) && !force {
+  let local_changes = matches!(probe.state, HubState::Modified | HubState::NameMismatch);
+  let blocker = match force {
+    HubForce::No if local_changes => Some("has local changes"),
+    HubForce::Confirmed(hash) if local_changes && probe.hash.as_deref() != Some(hash) => {
+      Some("changed after the overwrite was confirmed")
+    },
+    _ => None,
+  };
+  if let Some(reason) = blocker {
     return Ok(ActionResult::blocked(
-      vec![format!("Hub copy of '{}' has local changes", record.name)],
+      vec![format!("Hub copy of '{}' {}", record.name, reason)],
       Some(build_view(env, &id, &record)),
     ));
   }

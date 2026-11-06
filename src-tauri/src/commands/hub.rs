@@ -1,7 +1,7 @@
 use crate::config::load_config;
 use crate::models::{
-  ActionResult, DiffAgainst, HubSkillView, ImportItem, ImportOutcome, ImportPlan, InstallMode,
-  InstallRequest, MigrationReport, ScanDecision, ScanItem, SkillDiff, SkillSource,
+  ActionResult, DiffAgainst, ForcedPull, HubSkillView, ImportItem, ImportOutcome, ImportPlan,
+  InstallMode, InstallRequest, MigrationReport, ScanDecision, ScanItem, SkillDiff, SkillSource,
   SourcePullResult, SourceUpdate, SyncAction, UninstallRequest,
 };
 use crate::services::env::Env;
@@ -206,10 +206,10 @@ pub async fn check_source_updates(ids: Option<Vec<String>>) -> Result<Vec<Source
 #[tauri::command]
 pub async fn pull_github_sources(
   ids: Vec<String>,
-  force_ids: Vec<String>,
+  forced: Vec<ForcedPull>,
 ) -> Result<Vec<SourcePullResult>, String> {
   let env = Env::current()?;
-  source_service::pull_github_sources(env, ids, force_ids).await
+  source_service::pull_github_sources(env, ids, forced).await
 }
 
 #[tauri::command]

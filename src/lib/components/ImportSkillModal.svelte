@@ -28,7 +28,12 @@
     type SkillSource,
   } from "../api/hub";
   import { detectGithubManual, detectZip, type DetectedSkill } from "../api/skills";
-  import { isImportedGithubSkill } from "../repository-actions";
+  import {
+    githubDetectArgs,
+    isImportedGithubSkill,
+    repositoryImportTarget,
+    type RepositoryImportTarget,
+  } from "../repository-actions";
   import { hubSkills, refreshHub, skillLabel } from "../stores/hub";
   import {
     closeImportModal,
@@ -42,6 +47,8 @@
 
   // GitHub
   let githubUrl = $state("");
+  /** The repository and branch that Import of a repository group filled in. */
+  let repositoryTarget = $state<RepositoryImportTarget | null>(null);
   let isDetectingGithub = $state(false);
   let detectedGithubSkills = $state<DetectedSkill[]>([]);
   let selectedGithubSkills = $state<DetectedSkill[]>([]);
@@ -110,9 +117,8 @@
         void applyFolderPath(state.initialFolder);
       }
       if (state.initialRepo) {
-        githubUrl = state.initialBranch
-          ? `https://github.com/${state.initialRepo}/tree/${state.initialBranch}`
-          : state.initialRepo;
+        repositoryTarget = repositoryImportTarget(state.initialRepo, state.initialBranch);
+        githubUrl = repositoryTarget.url;
         untrack(() => void handleDetectGithub());
       }
     }
@@ -122,6 +128,7 @@
   function resetState() {
     activeTab = "github";
     githubUrl = "";
+    repositoryTarget = null;
     isDetectingGithub = false;
     detectedGithubSkills = [];
     selectedGithubSkills = [];
@@ -372,7 +379,8 @@
     detectedGithubSkills = [];
     selectedGithubSkills = [];
     try {
-      const skills = await detectGithubManual(parsed.githubPath);
+      const args = githubDetectArgs(parsed.githubPath, repositoryTarget);
+      const skills = await detectGithubManual(args.path, args.branch);
       detectedGithubSkills = skills;
       // Skills already in the library start unselected, so they are not replaced by accident.
       selectedGithubSkills = skills.filter((skill) => !isImportedGithub(parsed.sourceUrl, skill));

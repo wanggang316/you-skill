@@ -16,8 +16,11 @@ pub async fn detect_folder(folder_path: String) -> Result<Vec<DetectedSkill>, St
 }
 
 #[tauri::command]
-pub async fn detect_github_manual(github_path: String) -> Result<Vec<DetectedSkill>, String> {
-  skill_service::detect_github_manual(github_path).await
+pub async fn detect_github_manual(
+  github_path: String,
+  branch: Option<String>,
+) -> Result<Vec<DetectedSkill>, String> {
+  skill_service::detect_github_manual(github_path, branch).await
 }
 
 #[tauri::command]
