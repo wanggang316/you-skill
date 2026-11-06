@@ -2,7 +2,7 @@
 //! `library_sync_service`; network calls run on the blocking pool. While a command runs,
 //! auto sync skips its cycle.
 
-use crate::auto_sync::{self, AutoSyncStatus, ManualSync};
+use crate::auto_sync::{self, AutoSyncStatus, ManualAction, ManualSync};
 use crate::config::load_config;
 use crate::models::InstallMode;
 use crate::services::agent_apps_service::refresh_local_agent_apps;
@@ -38,11 +38,12 @@ pub async fn library_sync_connect(repo: Option<String>) -> Result<SyncStatus, St
 #[tauri::command]
 pub async fn library_sync_disconnect(app: AppHandle) -> Result<(), String> {
   blocking(|| library_sync_service::disconnect(&Env::current()?)).await?;
-  auto_sync::clear(&app);
+  auto_sync::resolved(&app, ManualAction::Disconnect);
   Ok(())
 }
 
-/// A manual backup that leaves the library backed up also settles the last auto sync.
+/// A manual backup that leaves the library backed up settles a failed auto sync and the
+/// backup stop states; items that wait for a decision keep their badge.
 #[tauri::command]
 pub async fn library_sync_backup(app: AppHandle) -> Result<BackupOutcome, String> {
   let outcome = blocking(|| library_sync_service::backup(&Env::current()?)).await?;
@@ -50,7 +51,7 @@ pub async fn library_sync_backup(app: AppHandle) -> Result<BackupOutcome, String
     outcome.result,
     BackupResult::Pushed | BackupResult::UpToDate
   ) {
-    auto_sync::clear(&app);
+    auto_sync::resolved(&app, ManualAction::Backup);
   }
   Ok(outcome)
 }
@@ -58,8 +59,10 @@ pub async fn library_sync_backup(app: AppHandle) -> Result<BackupOutcome, String
 /// Migrate a version 1 repository to item scopes and device files, after the user
 /// confirmed it. Other computers must update the app before they sync again.
 #[tauri::command]
-pub async fn library_sync_migrate() -> Result<(), String> {
-  blocking(|| library_sync_service::migrate(&Env::current()?)).await
+pub async fn library_sync_migrate(app: AppHandle) -> Result<(), String> {
+  blocking(|| library_sync_service::migrate(&Env::current()?)).await?;
+  auto_sync::resolved(&app, ManualAction::Migrate);
+  Ok(())
 }
 
 /// Compare this computer's library with the branch head, or with `target`, an earlier
@@ -94,7 +97,7 @@ pub async fn library_sync_apply_restore(
   .await
   .inspect(|outcome| {
     if outcome.result == RestoreResult::Applied {
-      auto_sync::clear(&app);
+      auto_sync::resolved(&app, ManualAction::Restore);
     }
   })
 }

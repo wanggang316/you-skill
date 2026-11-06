@@ -303,8 +303,11 @@ restore ends the cycle. With auto backup on, `backup` follows, also after an `as
 the window hidden; a settings change restarts the timer (turning auto sync on runs at once).
 It skips the cycle while a library sync command runs or a library sync dialog is open
 (`library_sync_set_dialog_open`), keeps the last result in memory
-(`library_sync_auto_status`) and sends it as `library-sync://auto-synced`. A manual backup
-or restore that succeeds clears it. The frontend shows it in Settings > Backup & Sync and a
+(`library_sync_auto_status`) and sends it as `library-sync://auto-synced`. A manual sync clears it
+only when it resolves the report: any success resolves a failure, an applied restore
+resolves everything, a backup resolves `diverged`, `remote_not_empty` and
+`migration_required`, a migration resolves `migration_required`; items that wait for a
+decision and `choose_mode` keep the badge until a restore. The frontend shows it in Settings > Backup & Sync and a
 badge on the Settings button and nav item when it needs attention or failed.
 
 ## Favorites (`favorites_service`, `favorite_sync_service`, `favorite_api_service`)
