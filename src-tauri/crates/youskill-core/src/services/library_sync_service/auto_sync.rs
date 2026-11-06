@@ -199,17 +199,22 @@ pub fn auto_sync(env: &Env, options: &AutoSyncOptions) -> Result<AutoSyncOutcome
   auto_sync_with(env, &remote, options)
 }
 
-/// Run one cycle: restore the branch head with the sync policy, then back up. A plan that
-/// needs a first-connect choice or a migration stops the cycle before it writes; plan items
-/// that need a person stop only the restore. A stale restore ends the cycle.
+/// Run one cycle: restore the branch head with the sync policy, then back up. A first
+/// connect to a repository that holds a library, or a plan that needs a migration, stops
+/// the cycle before it writes; plan items that need a person stop only the restore. A stale
+/// restore ends the cycle.
 pub fn auto_sync_with(
   env: &Env,
   remote: &dyn RemoteRepo,
   options: &AutoSyncOptions,
 ) -> Result<AutoSyncOutcome, String> {
-  if read_state(env)?.connected().is_err() {
+  let state = read_state(env)?;
+  if state.connected().is_err() {
     return Ok(AutoSyncOutcome::new(AutoSyncResult::NotConnected));
   }
+  // Without a base, this is the first connect: how this computer joins the library is the
+  // user's decision, also when its library is empty.
+  let first_connect = state.last_synced_commit.is_none();
   // A cycle does not wait for a manual operation; the next interval tries again.
   if ops_busy(env)? {
     return Ok(AutoSyncOutcome::new(AutoSyncResult::Skipped));
@@ -226,6 +231,9 @@ pub fn auto_sync_with(
         ))
       },
       PlanState::UpToDate | PlanState::RemoteEmpty => {},
+      PlanState::Ready if first_connect => {
+        return Ok(AutoSyncOutcome::attention(AttentionReason::RemoteNotEmpty))
+      },
       PlanState::Ready => match decisions_for(&plan, &options.policy) {
         Err(ask) => {
           outcome.reason = Some(AttentionReason::Ask);

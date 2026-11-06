@@ -286,8 +286,9 @@ Item scope and devices (ADR 0004, "Edits and scope changes" and "Devices"):
 Auto sync ([ADR 0005](decisions/0005-library-auto-sync.md)): `auto_sync(options)` runs one
 cycle. It returns `not_connected` without a connection and `skipped` when another operation
 holds the file lock of `.ops.lock` (`ops_busy`, no wait). With auto restore on it plans
-`pull` on the head: `choose_mode` and `migration_required` end the cycle before any write;
-a `ready` plan goes through `decisions_for(plan, policy)`. That mapping never includes a
+`pull` on the head: `choose_mode`, `migration_required` and a `ready` plan without a base
+(a first connect, also with an empty local library; reason `remote_not_empty`) end the cycle
+before any write; another `ready` plan goes through `decisions_for(plan, policy)`. That mapping never includes a
 deferred item; a `take_remote` item with `repositoryChange: ask`, a removal candidate (also
 `madeDeviceOnly`) with `removal: ask`, a conflict with `conflict: ask`, or a `keep_both` that
 cannot apply (a custom agent, a removal on one side) makes the whole restore wait
