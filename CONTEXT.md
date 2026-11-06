@@ -27,6 +27,12 @@ The identity of where a hub skill came from, such as one GitHub repository folde
 source key gives at most one hub skill.
 _Avoid_: Source id
 
+**Repository group**:
+A group in the Library of the hub skills that came from one GitHub repository (`owner/repo`,
+for all branches). Its menu, "Repository actions" (仓库操作), runs import, install, update and
+remove on the whole group (see `docs/decisions/0005-library-repository-group-actions.md`).
+_Avoid_: Source group, repo folder
+
 **Instruction template**:
 A managed Markdown file in the instruction library that can be installed as an agent file.
 _Avoid_: Prompt, memory
