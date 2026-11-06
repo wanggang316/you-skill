@@ -8,6 +8,9 @@ import type { DetectedSkill } from "./api/skills";
 
 type SkillLike = Pick<HubSkillView, "id" | "source" | "hubState">;
 
+/** The items of the "Repository actions" menu; each acts on the whole group. */
+export type RepositoryAction = "import" | "install" | "update" | "remove";
+
 /** The branch that every skill of the group has, or `null` for the default branch. */
 export function repositoryImportBranch(skills: Pick<HubSkillView, "source">[]): string | null {
   let branch: string | null = null;

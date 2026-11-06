@@ -1,13 +1,24 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { ChevronRight, Folder, RefreshCw, ScanSearch, Search, Zap } from "@lucide/svelte";
+  import {
+    ChevronRight,
+    Folder,
+    Loader2,
+    RefreshCw,
+    ScanSearch,
+    Search,
+    Zap,
+  } from "@lucide/svelte";
   import GithubAvatar from "$lib/components/library/GithubAvatar.svelte";
+  import GroupActionsMenu from "$lib/components/library/GroupActionsMenu.svelte";
+  import type { MenuItem } from "$lib/components/ui/menu";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
   import SelectField from "$lib/components/ui/SelectField.svelte";
   import { t } from "$lib/i18n";
   import type { HubSkillView } from "$lib/api/hub";
-  import { groupLibrarySkills } from "$lib/library-groups";
+  import { groupLibrarySkills, type LibraryGroup } from "$lib/library-groups";
+  import type { RepositoryAction } from "$lib/repository-actions";
   import { skillLabel } from "$lib/stores/hub";
   import {
     buildSettingsHref,
@@ -23,6 +34,7 @@
     loading = false,
     checking = false,
     error = "",
+    updatingGroups = [],
     search = $bindable(""),
     filter = "all",
     source = "all",
@@ -35,6 +47,7 @@
     onScan,
     onFilterChange,
     onSourceChange,
+    onRepositoryAction,
   }: {
     skills?: HubSkillView[];
     totalCount?: number;
@@ -45,6 +58,8 @@
     /** Source update check in progress. */
     checking?: boolean;
     error?: string;
+    /** Keys of the repository groups that an Update runs on. */
+    updatingGroups?: string[];
     search?: string;
     filter?: LibraryFilter;
     source?: LibrarySource;
@@ -57,7 +72,17 @@
     onScan: () => void;
     onFilterChange: (filter: LibraryFilter) => void;
     onSourceChange: (source: LibrarySource) => void;
+    onRepositoryAction: (group: LibraryGroup, action: RepositoryAction) => void;
   } = $props();
+
+  const repositoryActions: RepositoryAction[] = ["import", "install", "update", "remove"];
+
+  const repositoryMenu = (group: LibraryGroup): MenuItem[] =>
+    repositoryActions.map((action) => ({
+      label: $t(`library.repoActions.${action}`),
+      danger: action === "remove",
+      onSelect: () => onRepositoryAction(group, action),
+    }));
 
   const filters: LibraryFilter[] = ["all", "changed", "uninstalled"];
   const sources: LibrarySource[] = ["all", "local", "github", "none"];
@@ -241,26 +266,48 @@
     {:else}
       {#each groups as group (group.key)}
         {@const open = !collapsed.includes(group.key)}
-        <button
-          class="text-base-content-subtle hover:text-base-content flex w-full items-center gap-1.5 px-4 pt-2 pb-1 text-left text-[11px] transition"
-          type="button"
-          onclick={() => toggleGroup(group.key)}
-          aria-expanded={open}
-          title={group.path ?? undefined}
-        >
-          <ChevronRight size={12} class={`shrink-0 transition ${open ? "rotate-90" : ""}`} />
-          {#if group.owner}
-            <GithubAvatar owner={group.owner} />
-          {:else if group.kind === "folder"}
-            <Folder size={13} class="shrink-0" />
-          {:else}
-            <Zap size={13} class="shrink-0" />
+        {@const repository = group.kind === "github"}
+        {@const updating = updatingGroups.includes(group.key)}
+        <div class="relative">
+          <button
+            class={`text-base-content-subtle hover:text-base-content flex w-full items-center gap-1.5 pt-2 pb-1 pl-4 text-left text-[11px] transition ${
+              repository ? "pr-10" : "pr-4"
+            }`}
+            type="button"
+            onclick={() => toggleGroup(group.key)}
+            aria-expanded={open}
+            title={group.path ?? undefined}
+          >
+            <ChevronRight size={12} class={`shrink-0 transition ${open ? "rotate-90" : ""}`} />
+            {#if group.owner}
+              <GithubAvatar owner={group.owner} />
+            {:else if group.kind === "folder"}
+              <Folder size={13} class="shrink-0" />
+            {:else}
+              <Zap size={13} class="shrink-0" />
+            {/if}
+            <span class="min-w-0 flex-1 truncate font-medium">
+              {group.kind === "none" ? $t("library.group.none") : group.label}
+            </span>
+            {#if updating}
+              <span class="text-base-content-muted flex shrink-0 items-center gap-1">
+                <Loader2 size={11} class="animate-spin" />
+                {$t("library.repoActions.updating")}
+              </span>
+            {:else}
+              <span class="text-base-content-faint shrink-0">{group.skills.length}</span>
+            {/if}
+          </button>
+          {#if repository}
+            <div class="absolute top-1/2 right-3.5 mt-0.5 -translate-y-1/2">
+              <GroupActionsMenu
+                items={repositoryMenu(group)}
+                label={$t("library.repoActions")}
+                disabled={updating}
+              />
+            </div>
           {/if}
-          <span class="min-w-0 flex-1 truncate font-medium">
-            {group.kind === "none" ? $t("library.group.none") : group.label}
-          </span>
-          <span class="text-base-content-faint shrink-0">{group.skills.length}</span>
-        </button>
+        </div>
         {#if open}
           {#each group.skills as skill (skill.id)}
             {@const selected = skill.id === selectedId}

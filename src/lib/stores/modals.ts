@@ -14,6 +14,10 @@ export interface ImportModalState {
   initialTab: ImportTab;
   /** Pre-selected folder for the scan tab. */
   initialFolder: string | null;
+  /** GitHub repository (`owner/repo`) to fill in and detect at once. */
+  initialRepo: string | null;
+  /** Branch of `initialRepo`; `null` uses the default branch. */
+  initialBranch: string | null;
 }
 
 export interface InstallModalState {
@@ -51,6 +55,15 @@ export interface ForceModalState {
   blockers: string[];
   onConfirm: (() => Promise<void>) | null;
   onCancel: (() => void) | null;
+  /** Texts that replace the default ones; `null` keeps the default. */
+  labels?: ForceModalLabels | null;
+}
+
+export interface ForceModalLabels {
+  title: string;
+  description: string;
+  confirm: string;
+  cancel: string;
 }
 
 export interface SkillPickerModalState {
@@ -92,6 +105,8 @@ export const importModal = writable<ImportModalState>({
   open: false,
   initialTab: "github",
   initialFolder: null,
+  initialRepo: null,
+  initialBranch: null,
 });
 
 export const installModal = writable<InstallModalState>({
@@ -163,11 +178,20 @@ export function closeScanRootsModal(): void {
   scanRootsModal.set({ open: false });
 }
 
-export function openImportModal(options?: { tab?: ImportTab; folder?: string | null }): void {
+export function openImportModal(options?: {
+  tab?: ImportTab;
+  folder?: string | null;
+  /** Opens the GitHub tab with this `owner/repo` and starts detection. */
+  repo?: string | null;
+  branch?: string | null;
+}): void {
+  const repo = options?.repo ?? null;
   importModal.set({
     open: true,
-    initialTab: options?.tab ?? "github",
+    initialTab: repo ? "github" : (options?.tab ?? "github"),
     initialFolder: options?.folder ?? null,
+    initialRepo: repo,
+    initialBranch: repo ? (options?.branch ?? null) : null,
   });
 }
 
@@ -274,7 +298,23 @@ export function performInstructionAction(
 }
 
 export function closeForceModal(): void {
-  forceModal.set({ open: false, blockers: [], onConfirm: null, onCancel: null });
+  forceModal.set({ open: false, blockers: [], onConfirm: null, onCancel: null, labels: null });
+}
+
+/**
+ * Ask one time whether to overwrite the local changes of `items`. Resolves `true` for
+ * overwrite and `false` for cancel or close.
+ */
+export function askForce(items: string[], labels: ForceModalLabels): Promise<boolean> {
+  return new Promise((resolve) => {
+    forceModal.set({
+      open: true,
+      blockers: items,
+      labels,
+      onConfirm: async () => resolve(true),
+      onCancel: () => resolve(false),
+    });
+  });
 }
 
 export function openDiffModal(id: string, against: DiffAgainst, kind: LibraryKind = "skill"): void {

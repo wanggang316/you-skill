@@ -28,7 +28,8 @@
     type SkillSource,
   } from "../api/hub";
   import { detectGithubManual, detectZip, type DetectedSkill } from "../api/skills";
-  import { refreshHub, skillLabel } from "../stores/hub";
+  import { isImportedGithubSkill } from "../repository-actions";
+  import { hubSkills, refreshHub, skillLabel } from "../stores/hub";
   import {
     closeImportModal,
     importModal,
@@ -107,6 +108,12 @@
       activeTab = state.initialTab;
       if (state.initialFolder) {
         void applyFolderPath(state.initialFolder);
+      }
+      if (state.initialRepo) {
+        githubUrl = state.initialBranch
+          ? `https://github.com/${state.initialRepo}/tree/${state.initialBranch}`
+          : state.initialRepo;
+        untrack(() => void handleDetectGithub());
       }
     }
     open = state.open;
@@ -333,6 +340,19 @@
     return null;
   }
 
+  function isImportedGithub(sourceUrl: string, skill: DetectedSkill): boolean {
+    return isImportedGithubSkill($hubSkills, repoSlug(sourceUrl), skill);
+  }
+
+  /** `skill_path` of detected skills that the library already has. */
+  const importedGithubPaths = $derived.by(() => {
+    const parsed = parseGithubInput(githubUrl);
+    if (!parsed) return [];
+    return detectedGithubSkills
+      .filter((skill) => isImportedGithub(parsed.sourceUrl, skill))
+      .map((skill) => skill.skill_path);
+  });
+
   function repoSlug(sourceUrl: string): string {
     const match = sourceUrl.match(/github\.com[/:]([^/]+)\/([^/#?]+)/);
     if (!match) return sourceUrl;
@@ -354,7 +374,8 @@
     try {
       const skills = await detectGithubManual(parsed.githubPath);
       detectedGithubSkills = skills;
-      selectedGithubSkills = [...skills];
+      // Skills already in the library start unselected, so they are not replaced by accident.
+      selectedGithubSkills = skills.filter((skill) => !isImportedGithub(parsed.sourceUrl, skill));
       if (skills.length === 0) githubError = $t("import.noSkillsFound");
     } catch (error) {
       githubError = String(error);
@@ -668,6 +689,7 @@
               <DetectedSkillList
                 skills={detectedGithubSkills}
                 selectedSkills={selectedGithubSkills}
+                importedPaths={importedGithubPaths}
                 onToggle={(skill) =>
                   (selectedGithubSkills = toggleSkill(selectedGithubSkills, skill))}
                 onToggleAll={() =>

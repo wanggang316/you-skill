@@ -2,7 +2,7 @@
   import { Check } from "@lucide/svelte";
   import { t } from "../i18n";
 
-  /** @type {{ skills?: import('../api/skills').DetectedSkill[]; selectedSkills?: import('../api/skills').DetectedSkill[]; onToggle?: (skill: import('../api/skills').DetectedSkill) => void; onToggleAll?: () => void; showHeader?: boolean; headerLabel?: string }} */
+  /** @type {{ skills?: import('../api/skills').DetectedSkill[]; selectedSkills?: import('../api/skills').DetectedSkill[]; onToggle?: (skill: import('../api/skills').DetectedSkill) => void; onToggleAll?: () => void; showHeader?: boolean; headerLabel?: string; importedPaths?: string[] }} */
   let {
     skills = [],
     selectedSkills = [],
@@ -10,6 +10,8 @@
     onToggleAll = () => {},
     showHeader = false,
     headerLabel = "",
+    /** `skill_path` of skills the library already has. */
+    importedPaths = [],
   } = $props();
 
   const allSelected = $derived(selectedSkills.length === skills.length && skills.length > 0);
@@ -58,6 +60,9 @@
             {skill.skill_path}
           </p>
         </div>
+        {#if importedPaths.includes(skill.skill_path)}
+          <span class="tag tag-neutral shrink-0">{$t("import.imported")}</span>
+        {/if}
         {#if isSelected(skill) && !isMulti}
           <Check size={16} />
         {/if}

@@ -8,6 +8,7 @@
   import SkillDetail from "$lib/components/library/SkillDetail.svelte";
   import type { TargetAction } from "$lib/components/library/DriftPanel.svelte";
   import RemoveSkillModal from "$lib/components/RemoveSkillModal.svelte";
+  import RepositoryUpdateReport from "$lib/components/library/RepositoryUpdateReport.svelte";
   import { t } from "$lib/i18n";
   import {
     buildLibraryHref,
@@ -41,11 +42,21 @@
   } from "$lib/stores/hub";
   import { homePath } from "$lib/stores/env";
   import {
+    openImportModal,
     openInstallModal,
     openLocationPickerModal,
     openScanRootsModal,
     performAction,
   } from "$lib/stores/modals";
+  import type { LibraryGroup } from "$lib/library-groups";
+  import {
+    repositoryImportBranch,
+    reportNeedsDialog,
+    type GroupUpdateReport,
+    type RepositoryAction,
+  } from "$lib/repository-actions";
+  import { updateRepositoryGroup } from "$lib/stores/repository-update";
+  import { showToast } from "$lib/stores/toast";
   import { userProjects } from "$lib/stores/user-projects";
   import { baseName } from "$lib/scopes";
 
@@ -58,6 +69,10 @@
   let checkedIds = $state<string[]>([]);
   /** Skills the remove modal acts on: the selected one or the checked batch. */
   let removeIds = $state<string[]>([]);
+  /** Keys of the repository groups that an Update runs on. */
+  let updatingGroups = $state<string[]>([]);
+  let updateReport = $state<{ repo: string; report: GroupUpdateReport } | null>(null);
+  let updateReportOpen = $state(false);
 
   const location = $derived(getAppLocation(page.url));
   const selectedId = $derived(location.skill);
@@ -169,6 +184,47 @@
 
   function handleBatchRemove() {
     openRemoveModal(checkedIds.filter((id) => $hubSkills.some((skill) => skill.id === id)));
+  }
+
+  /** The menu of a repository group acts on the skills that the group shows. */
+  function handleRepositoryAction(group: LibraryGroup, action: RepositoryAction) {
+    const ids = group.skills.map((skill) => skill.id);
+    switch (action) {
+      case "import":
+        openImportModal({ repo: group.label, branch: repositoryImportBranch(group.skills) });
+        break;
+      case "install":
+        openInstallModal(ids, { replace: true });
+        break;
+      case "update":
+        void runRepositoryUpdate(group, ids);
+        break;
+      case "remove":
+        openRemoveModal(ids);
+        break;
+    }
+  }
+
+  async function runRepositoryUpdate(group: LibraryGroup, ids: string[]) {
+    if (updatingGroups.includes(group.key)) return;
+    updatingGroups = [...updatingGroups, group.key];
+    try {
+      const report = await updateRepositoryGroup(ids);
+      if (reportNeedsDialog(report)) {
+        updateReport = { repo: group.label, report };
+        updateReportOpen = true;
+      } else {
+        showToast(
+          $t("library.repoUpdate.done", {
+            repo: group.label,
+            updated: report.updated,
+            upToDate: report.upToDate,
+          })
+        );
+      }
+    } finally {
+      updatingGroups = updatingGroups.filter((key) => key !== group.key);
+    }
   }
 
   function handleInstall(scope: InstallScope, projectPath: string | null, lockScope = false) {
@@ -363,6 +419,8 @@
       onScan={() => openScanRootsModal()}
       onFilterChange={(next) => navigate({ filter: next })}
       onSourceChange={(next) => navigate({ source: next })}
+      {updatingGroups}
+      onRepositoryAction={handleRepositoryAction}
     />
 
     <div class="surface-panel grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)]">
@@ -410,4 +468,10 @@
   installCount={removeInstallCount}
   remove={handleRemove}
   onRemoved={handleRemoved}
+/>
+
+<RepositoryUpdateReport
+  bind:open={updateReportOpen}
+  repo={updateReport?.repo ?? ""}
+  report={updateReport?.report ?? null}
 />
