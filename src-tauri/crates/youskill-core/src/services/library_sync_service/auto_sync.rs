@@ -170,11 +170,10 @@ pub fn decisions_for(
           ConflictPolicy::KeepLocal => Some(ConflictChoice::KeepLocal),
           ConflictPolicy::TakeRemote => Some(ConflictChoice::TakeRemote),
           // Only an item that exists on both sides, and not a custom agent, can be kept twice.
-          ConflictPolicy::KeepBoth => Some(ConflictChoice::KeepBoth).filter(|_| {
-            item.kind != ItemKind::Agent
-              && item.local_change != ItemChange::Removed
-              && item.remote_change != ItemChange::Removed
-          }),
+          ConflictPolicy::KeepBoth => (item.kind != ItemKind::Agent
+            && item.local_change != ItemChange::Removed
+            && item.remote_change != ItemChange::Removed)
+            .then_some(ConflictChoice::KeepBoth),
         };
         match choice {
           Some(choice) => {
