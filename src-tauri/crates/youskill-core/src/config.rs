@@ -1,7 +1,9 @@
+use crate::services::library_sync_service::SyncPolicy;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
+use std::time::Duration;
 
 pub const TRANSLATE_DISPLAY_MODES: [&str; 2] = ["bilingual", "translation"];
 pub const DEFAULT_TRANSLATE_DISPLAY_MODE: &str = TRANSLATE_DISPLAY_MODES[0];
@@ -17,6 +19,56 @@ pub const SHORTCUT_ACTIONS: [&str; 7] = [
   "search",
   "settings",
 ];
+
+/// Time between two auto sync cycles.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AutoSyncInterval {
+  #[serde(rename = "15m")]
+  Minutes15,
+  #[default]
+  #[serde(rename = "1h")]
+  Hour1,
+  #[serde(rename = "6h")]
+  Hours6,
+  #[serde(rename = "24h")]
+  Hours24,
+}
+
+impl AutoSyncInterval {
+  pub fn duration(self) -> Duration {
+    let minutes = match self {
+      Self::Minutes15 => 15,
+      Self::Hour1 => 60,
+      Self::Hours6 => 6 * 60,
+      Self::Hours24 => 24 * 60,
+    };
+    Duration::from_secs(minutes * 60)
+  }
+}
+
+/// Library auto sync of this computer (`docs/decisions/0005-library-auto-sync.md`). Not
+/// synced. Off by default, also for a config file from before auto sync.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(default)]
+pub struct AutoSyncSettings {
+  pub enabled: bool,
+  pub backup: bool,
+  pub restore: bool,
+  pub interval: AutoSyncInterval,
+  pub policy: SyncPolicy,
+}
+
+impl Default for AutoSyncSettings {
+  fn default() -> Self {
+    Self {
+      enabled: false,
+      backup: true,
+      restore: true,
+      interval: AutoSyncInterval::default(),
+      policy: SyncPolicy::default(),
+    }
+  }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
@@ -38,6 +90,7 @@ pub struct AppConfig {
   pub github_account: Option<String>,
   /// Shortcuts the user changed, by action. Actions not listed use their default key.
   pub shortcuts: BTreeMap<String, String>,
+  pub auto_sync: AutoSyncSettings,
 }
 
 impl Default for AppConfig {
@@ -55,6 +108,7 @@ impl Default for AppConfig {
       translate_text_style: DEFAULT_TRANSLATE_TEXT_STYLE.to_string(),
       github_account: None,
       shortcuts: BTreeMap::new(),
+      auto_sync: AutoSyncSettings::default(),
     }
   }
 }
@@ -80,4 +134,46 @@ pub fn save_config(config: &AppConfig) -> Result<(), String> {
   }
   let content = serde_json::to_string_pretty(config).map_err(|e| e.to_string())?;
   fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::services::library_sync_service::{
+    ConflictPolicy, RemovalPolicy, RepositoryChangePolicy,
+  };
+
+  #[test]
+  fn auto_sync_is_off_for_a_config_from_before_auto_sync() {
+    let config: AppConfig = serde_json::from_str(r#"{"language":"zh"}"#).unwrap();
+    assert_eq!(config.auto_sync, AutoSyncSettings::default());
+    assert!(!config.auto_sync.enabled);
+    assert!(config.auto_sync.backup && config.auto_sync.restore);
+    assert_eq!(config.auto_sync.interval, AutoSyncInterval::Hour1);
+    assert_eq!(
+      config.auto_sync.policy.repository_change,
+      RepositoryChangePolicy::Apply
+    );
+    assert_eq!(config.auto_sync.policy.removal, RemovalPolicy::Ask);
+    assert_eq!(config.auto_sync.policy.conflict, ConflictPolicy::Ask);
+  }
+
+  #[test]
+  fn auto_sync_settings_round_trip() {
+    let settings: AutoSyncSettings = serde_json::from_str(
+      r#"{"enabled":true,"backup":false,"interval":"15m","policy":{"conflict":"keep_both"}}"#,
+    )
+    .unwrap();
+    assert!(settings.enabled && !settings.backup && settings.restore);
+    assert_eq!(settings.interval.duration(), Duration::from_secs(15 * 60));
+    assert_eq!(settings.policy.conflict, ConflictPolicy::KeepBoth);
+    assert_eq!(settings.policy.removal, RemovalPolicy::Ask);
+    let value = serde_json::to_value(settings).unwrap();
+    assert_eq!(value["interval"], "15m");
+    assert_eq!(value["policy"]["repositoryChange"], "apply");
+    assert_eq!(
+      AutoSyncInterval::Hours24.duration(),
+      Duration::from_secs(86_400)
+    );
+  }
 }

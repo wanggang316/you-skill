@@ -40,6 +40,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
+mod auto_sync;
 mod checkpoint;
 mod devices;
 mod migrate;
@@ -47,6 +48,10 @@ mod restore;
 mod scope;
 
 pub use crate::utils::git_remote::RemoteCommit;
+pub use auto_sync::{
+  auto_sync, auto_sync_with, decisions_for, AttentionReason, AutoSyncOptions, AutoSyncOutcome,
+  AutoSyncResult, ConflictPolicy, RemovalPolicy, RepositoryChangePolicy, SyncPolicy,
+};
 pub use checkpoint::{undo_restore, CheckpointInfo};
 pub use devices::{
   copy_device_installs, copy_device_installs_with, devices, devices_with, remove_device,

@@ -3243,3 +3243,5 @@ fn an_unchanged_backup_removes_old_paths_once() {
   );
   assert_eq!(repo.commit_count(), commits);
 }
+
+mod auto_sync;
