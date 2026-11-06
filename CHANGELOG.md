@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Repository groups in the Library have a Repository actions menu (`...`) with Import, Install, Update and Remove for the whole group. Update downloads each repository branch one time, asks one time about local changes, and shows one report ([#88](https://github.com/wanggang316/youskill/issues/88)).
+- The GitHub import list marks the skills that are already in the Library as imported, and does not select them at first ([#88](https://github.com/wanggang316/youskill/issues/88)).
+
 ### Changed
 
 ### Fixed

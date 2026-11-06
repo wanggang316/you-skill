@@ -20,8 +20,9 @@ The app already has these flows: the import dialog with `planImport` (it replace
   3. A batch backend command pulls the selected skills. It downloads and extracts each `(repo, branch)` one time, and runs `pull_from_dir` for each skill from that extracted tree. The remote sha comes from the `latest_remote_sha` that step 1 stored, not from one request for each skill.
   4. Show a report: the number updated, the number already up to date, and each skipped or failed skill. If a file changes between step 2 and the write, `pull_from_dir` blocks that skill and the report shows it as skipped.
   - Do not call the single-skill `pull_source` in a loop. It downloads the full repository archive for each skill, so a group of N skills downloads the same repository N times.
-  - Update does not push to install targets, the same as `pull_source` for one skill. Targets that become `outdated` show in the drift panel.
+  - Update does not push to install targets. (`pull_source` for one skill pushes to the outdated copy targets.) Targets that become `outdated` show in the drift panel.
 - **Remove**: put all skills of the group in the existing remove dialog. It shows the count and keeps the option to also uninstall installed copies.
+- Each item acts on the skills that the group shows. A search or a filter of the Library makes the group smaller, so the menu never acts on a skill that the user cannot see.
 - To act on part of a group, the user continues to use Shift selection.
 
 ## Consequences

@@ -123,6 +123,13 @@ Sync actions (`sync_skill`): `pull_source`, `push_targets`, `adopt_target`, `acc
 `blockers`; the caller may retry with `force`. Hub replacements move the old copy to
 `.trash` first.
 
+`pull_source` for a GitHub skill downloads the repository archive and then pushes the new
+hub copy to the outdated copy targets. `pull_github_sources(ids, force_ids)` pulls several
+GitHub skills for the Library repository group Update: it downloads each repository branch
+one time, takes the remote sha from the stored `latestRemoteSha`, skips a skill whose hub
+copy has local changes unless its id is in `force_ids`, and does not push to targets (see
+`docs/decisions/0005-library-repository-group-actions.md`).
+
 ## Instructions: templates and agent files
 
 Agent instruction files (`AGENTS.md`, `CLAUDE.md`, ...) are handled in two layers. The
@@ -379,7 +386,7 @@ helpers of `navigation/app-shell.ts`.
 
 | Area         | Commands                                                                                                                                                                                                                                                                                                                                                                                               |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Hub          | `list_hub_skills`, `get_hub_skill`, `plan_import`, `import_skills`, `remove_hub_skill`, `sync_skill`, `diff_skill`, `check_source_updates`, `migrate_legacy`, `migration_status`                                                                                                                                                                                                                       |
+| Hub          | `list_hub_skills`, `get_hub_skill`, `plan_import`, `import_skills`, `remove_hub_skill`, `sync_skill`, `diff_skill`, `check_source_updates`, `pull_github_sources`, `migrate_legacy`, `migration_status`                                                                                                                                                                                                |
 | Install      | `install_skill`, `uninstall_skill`                                                                                                                                                                                                                                                                                                                                                                     |
 | Scan         | `scan_folder`, `import_scanned`                                                                                                                                                                                                                                                                                                                                                                        |
 | Instructions | `list_instructions`, `get_instruction`, `read_instruction`, `write_instruction`, `rename_instruction`, `import_instructions`, `create_instruction`, `detect_instruction_files`, `detect_instruction_github`, `install_instruction`, `uninstall_instruction`, `remove_instruction`, `sync_instruction`, `diff_instruction`, `list_instruction_files`, `read_instruction_file`, `write_instruction_file` |
