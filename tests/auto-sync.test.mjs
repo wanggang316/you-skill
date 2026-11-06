@@ -100,3 +100,15 @@ test("overlapping saves end with the latest value and never run at once", async 
   assert.deepEqual(writes, ["a", "c"]);
   assert.equal(maxActive, 1);
 });
+
+test("a restore read at start reloads the library", async () => {
+  const { registered, read, calls } = setup();
+  registered.resolve(() => {});
+  await settle();
+  read.resolve({
+    at: "t3",
+    outcome: { result: "synced", ask: [], restored: true, agentsChanged: true },
+  });
+  await settle();
+  assert.ok(calls.includes("restored"));
+});
