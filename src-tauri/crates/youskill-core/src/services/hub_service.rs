@@ -465,7 +465,8 @@ fn import_one(env: &Env, item: &ImportItem, overwrite: bool) -> Result<ImportOut
 }
 
 /// Replace the hub copy with fresh content from the source (already downloaded / located
-/// at `src_dir`). Refuses without `force` when the hub has local edits.
+/// at `src_dir`), then push it to the copy targets. Refuses without `force` when the hub
+/// has local edits.
 pub fn pull_from_dir(
   env: &Env,
   key: &str,
@@ -474,6 +475,33 @@ pub fn pull_from_dir(
   force: bool,
 ) -> Result<ActionResult, String> {
   let _ops = ops_guard(env)?;
+  let result = replace_hub_from_dir(env, key, src_dir, updated_source, force)?;
+  match result.skill.as_ref().filter(|_| result.applied) {
+    Some(view) => push_targets(env, &view.id, None, false),
+    None => Ok(result),
+  }
+}
+
+/// `pull_from_dir` without the push: targets that become outdated stay in the drift view.
+pub fn pull_hub_from_dir(
+  env: &Env,
+  key: &str,
+  src_dir: &Path,
+  updated_source: Option<SkillSource>,
+  force: bool,
+) -> Result<ActionResult, String> {
+  let _ops = ops_guard(env)?;
+  replace_hub_from_dir(env, key, src_dir, updated_source, force)
+}
+
+/// Callers hold the operation lock.
+fn replace_hub_from_dir(
+  env: &Env,
+  key: &str,
+  src_dir: &Path,
+  updated_source: Option<SkillSource>,
+  force: bool,
+) -> Result<ActionResult, String> {
   let (id, record) = resolve_skill(env, key)?;
   let store = store(env);
   if let Some(source) = updated_source.as_ref().filter(|s| s.has_location()) {
@@ -515,7 +543,7 @@ pub fn pull_from_dir(
     let _ = remove_path_any(src_dir);
   }
   let timestamp = now_rfc3339();
-  store.update(|lock| {
+  let record = store.update(|lock| {
     let record = lock
       .skills
       .get_mut(&id)
@@ -525,10 +553,9 @@ pub fn pull_from_dir(
     if let Some(source) = &updated_source {
       record.source = source.clone();
     }
-    Ok(())
+    Ok(record.clone())
   })?;
-  drop(store);
-  push_targets(env, &id, None, false)
+  Ok(ActionResult::applied(build_view(env, &id, &record)))
 }
 
 /// Mirror the hub copy back into a `folder` source.

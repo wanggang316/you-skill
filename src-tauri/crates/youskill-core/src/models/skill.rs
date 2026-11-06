@@ -627,6 +627,27 @@ pub struct SourceUpdate {
   pub error: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SourcePullStatus {
+  Updated,
+  /// Refused without force because the hub copy has local changes.
+  Skipped,
+  Failed,
+}
+
+/// Result of one skill in a batch pull from GitHub.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SourcePullResult {
+  pub id: String,
+  pub name: String,
+  pub status: SourcePullStatus,
+  /// The blocker of a skipped skill or the error of a failed one.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub message: Option<String>,
+}
+
 // ---------------------------------------------------------------------------
 // Diff
 // ---------------------------------------------------------------------------
