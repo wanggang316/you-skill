@@ -454,3 +454,32 @@ fn a_disconnected_library_does_not_sync() {
     AutoSyncResult::NotConnected
   );
 }
+
+#[test]
+fn a_first_connect_with_an_empty_library_waits_for_a_manual_restore() {
+  let tmp = tempfile::tempdir().unwrap();
+  let repo = FakeRepo::initialized();
+  let a = computer(tmp.path(), "a", &["claude-code"]);
+  add_skill(&a, FOO, "foo", "v1");
+  backup_with(&a, &repo).unwrap();
+  let b = computer(tmp.path(), "b", &["claude-code"]);
+  let before = sync_files(&b);
+  let commits = repo.commit_count();
+
+  assert_attention(&default_cycle(&b, &repo), AttentionReason::RemoteNotEmpty);
+  assert_eq!(sync_files(&b), before);
+  assert_eq!(repo.commit_count(), commits);
+  assert!(!store(&b).read().unwrap().skills.contains_key(FOO));
+}
+
+#[test]
+fn a_first_connect_to_an_empty_repository_backs_up() {
+  let tmp = tempfile::tempdir().unwrap();
+  let repo = FakeRepo::initialized();
+  let a = computer(tmp.path(), "a", &["claude-code"]);
+  add_skill(&a, FOO, "foo", "v1");
+  let outcome = default_cycle(&a, &repo);
+  assert_eq!(outcome.result, AutoSyncResult::Synced, "{:?}", outcome);
+  assert!(outcome.backed_up);
+  assert!(library_at_head(&repo).skills.contains_key(FOO));
+}
