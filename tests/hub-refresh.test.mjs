@@ -181,3 +181,22 @@ test("refresh button keeps the spinner from the hub refresh through the source c
   assert.ok(spinning.slice(0, -1).every(Boolean), `spinner dropped: ${spinning}`);
   assert.equal(listCalls, 2);
 });
+
+test("a fresh refresh reads again after a run that started before it", async () => {
+  hub.hubLoaded.set(true);
+  const reads = [deferred(), deferred()];
+  let calls = 0;
+  handlers.list_hub_skills = () => reads[calls++].promise;
+  const early = hub.refreshHub();
+  const fresh = hub.refreshHub({ fresh: true });
+  reads[0].resolve([]);
+  await early;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(calls, 2);
+  reads[1].resolve([githubSkill]);
+  await fresh;
+  assert.deepEqual(
+    get(hub.hubSkills).map((skill) => skill.id),
+    ["s1"]
+  );
+});

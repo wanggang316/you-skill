@@ -34,8 +34,9 @@ const defaultDeps: AutoSyncStatusDeps = {
   getStatus: getAutoSyncStatus,
   onRestored: (agentsChanged) => {
     if (agentsChanged) loadAgents().catch(console.error);
-    refreshHub().catch(console.error);
-    refreshInstructions().catch(console.error);
+    // A read that started before the restore wrote would show the old library.
+    refreshHub({ fresh: true }).catch(console.error);
+    refreshInstructions({ fresh: true }).catch(console.error);
   },
 };
 
