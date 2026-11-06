@@ -82,15 +82,29 @@ pub fn set_dialog_open(app: &AppHandle, open: bool) {
 pub enum ManualAction {
   /// A backup that pushed or found the repository up to date.
   Backup,
-  /// An applied restore: the user decided every plan item.
+  /// An applied restore of the branch head: the user decided every plan item.
   Restore,
+  /// An applied restore of an earlier commit. It commits on top of the head, but the items
+  /// of the head stay undecided.
+  RestoreEarlier,
   Migrate,
   Disconnect,
 }
 
+impl ManualAction {
+  /// The action of a restore of `target` (`None` is the head) planned on `head`.
+  pub fn restore(target: Option<&str>, head: Option<&str>) -> Self {
+    if target.is_none() || target == head {
+      Self::Restore
+    } else {
+      Self::RestoreEarlier
+    }
+  }
+}
+
 /// Whether `action` resolves what the last cycle reported, so its badge can go. A failure
 /// is resolved by any manual sync that succeeded. Items that wait for a decision and a
-/// first-connect choice are resolved only by a restore.
+/// first-connect choice are resolved only by a restore of the head.
 fn resolved_by(status: &AutoSyncStatus, action: ManualAction) -> bool {
   if status.error.is_some() || action == ManualAction::Disconnect {
     return true;
@@ -100,7 +114,7 @@ fn resolved_by(status: &AutoSyncStatus, action: ManualAction) -> bool {
   };
   match action {
     ManualAction::Restore | ManualAction::Disconnect => true,
-    ManualAction::Backup => matches!(
+    ManualAction::Backup | ManualAction::RestoreEarlier => matches!(
       reason,
       AttentionReason::Diverged
         | AttentionReason::RemoteNotEmpty
@@ -258,9 +272,26 @@ mod tests {
     assert!(!resolved_by(&ask, ManualAction::Migrate));
     assert!(resolved_by(&ask, ManualAction::Restore));
     assert!(resolved_by(&ask, ManualAction::Disconnect));
+    assert!(!resolved_by(&ask, ManualAction::RestoreEarlier));
     let choose = status(Some(AttentionReason::ChooseMode));
     assert!(!resolved_by(&choose, ManualAction::Backup));
     assert!(resolved_by(&choose, ManualAction::Restore));
+  }
+
+  #[test]
+  fn only_a_restore_of_the_head_is_a_full_restore() {
+    assert_eq!(
+      ManualAction::restore(None, Some("c2")),
+      ManualAction::Restore
+    );
+    assert_eq!(
+      ManualAction::restore(Some("c2"), Some("c2")),
+      ManualAction::Restore
+    );
+    assert_eq!(
+      ManualAction::restore(Some("c1"), Some("c2")),
+      ManualAction::RestoreEarlier
+    );
   }
 
   #[test]
@@ -291,6 +322,7 @@ mod tests {
     };
     assert!(resolved_by(&failed, ManualAction::Migrate));
     assert!(resolved_by(&failed, ManualAction::Backup));
+    assert!(resolved_by(&failed, ManualAction::RestoreEarlier));
     assert!(!resolved_by(&status(None), ManualAction::Backup));
     assert!(!resolved_by(&status(None), ManualAction::Restore));
   }
