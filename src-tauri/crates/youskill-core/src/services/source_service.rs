@@ -89,7 +89,7 @@ pub async fn check_source_updates(
   }
 
   // 2. Everything else goes to the GitHub trees API, one request per (repo, branch).
-  let mut groups: BTreeMap<(String, Option<String>), Vec<&Candidate>> = BTreeMap::new();
+  let mut to_request = Vec::new();
   for candidate in &candidates {
     if latest.contains_key(&candidate.id) {
       continue;
@@ -101,12 +101,11 @@ pub async fn check_source_updates(
       );
       continue;
     }
-    groups
-      .entry((candidate.repo.clone(), candidate.branch.clone()))
-      .or_default()
-      .push(candidate);
+    to_request.push(candidate);
   }
-  for ((repo, branch), members) in groups {
+  for ((_, branch), members) in group_by_repo_branch(to_request) {
+    // GitHub names are not case sensitive; the request uses the spelling of one record.
+    let repo = members[0].repo.clone();
     let Ok((owner, repo_name)) = GithubHelper::parse_github_url(&repo) else {
       for member in members {
         errors.insert(member.id.clone(), format!("Invalid repository: {}", repo));
@@ -182,6 +181,24 @@ pub async fn check_source_updates(
       })
       .collect(),
   )
+}
+
+/// Group check candidates for one tree request each. The key has the repository in
+/// lowercase, as the batch pull does, so `O/R` and `o/r` share one request.
+fn group_by_repo_branch<'a>(
+  candidates: impl IntoIterator<Item = &'a Candidate>,
+) -> BTreeMap<(String, Option<String>), Vec<&'a Candidate>> {
+  let mut groups: BTreeMap<(String, Option<String>), Vec<&Candidate>> = BTreeMap::new();
+  for candidate in candidates {
+    groups
+      .entry((
+        candidate.repo.to_ascii_lowercase(),
+        candidate.branch.clone(),
+      ))
+      .or_default()
+      .push(candidate);
+  }
+  groups
 }
 
 /// Run `fetch` on the recorded branch. Without one, try the default branches in the order
@@ -538,6 +555,34 @@ mod tests {
   #[test]
   fn marketplace_sha_without_installed_sha_needs_github() {
     assert!(!marketplace_confirms(&candidate(None), "a"));
+  }
+
+  #[test]
+  fn a_check_sends_one_request_for_a_repository_branch_in_any_case() {
+    let with = |id: &str, repo: &str, branch: Option<&str>| Candidate {
+      id: id.to_string(),
+      repo: repo.to_string(),
+      branch: branch.map(str::to_string),
+      ..candidate(None)
+    };
+    let candidates = [
+      with("1", "O/R", Some("main")),
+      with("2", "o/r", Some("main")),
+      with("3", "o/R", None),
+      with("4", "o/r", Some("next")),
+    ];
+    let groups = group_by_repo_branch(&candidates);
+    let keys: Vec<_> = groups.keys().cloned().collect();
+    assert_eq!(
+      keys,
+      vec![
+        ("o/r".to_string(), None),
+        ("o/r".to_string(), Some("main".to_string())),
+        ("o/r".to_string(), Some("next".to_string())),
+      ]
+    );
+    let main: Vec<_> = groups[&keys[1]].iter().map(|c| c.id.as_str()).collect();
+    assert_eq!(main, vec!["1", "2"]);
   }
 
   fn tried_branches(branch: Option<&str>, ok_on: &str) -> (Vec<String>, String, bool) {
