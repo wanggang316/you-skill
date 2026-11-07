@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ChevronDown, ChevronRight } from "@lucide/svelte";
+  import CollapsibleGroup from "$lib/components/ui/CollapsibleGroup.svelte";
   import { t } from "../i18n";
   import type { ScanItem } from "../api/hub";
   import {
@@ -149,30 +149,29 @@
     {/if}
 
     {#if sections.inert.length > 0}
-      <section class="space-y-1">
-        <button
-          class="text-base-content-muted hover:text-base-content flex w-full items-center gap-1 px-1 text-[12px] transition"
-          type="button"
-          onclick={() => (inertOpen = !inertOpen)}
+      <section>
+        <CollapsibleGroup
+          open={inertOpen}
+          onToggle={() => (inertOpen = !inertOpen)}
+          label={$t("scan.section.inert", { count: sections.inert.length })}
+          buttonClass="text-base-content-muted hover:text-base-content px-1 text-[12px]"
         >
-          {#if inertOpen}
-            <ChevronDown size={13} />
-          {:else}
-            <ChevronRight size={13} />
-          {/if}
-          {$t("scan.section.inert", { count: sections.inert.length })}
-        </button>
-        {#if inertOpen}
-          {#each sections.inert as item (item.path)}
-            <div class="flex items-center gap-2 px-2.5 py-1 opacity-70">
-              <span class="text-base-content min-w-0 flex-1 truncate text-[12px]" title={item.path}>
-                {item.name}
-                <span class="text-base-content-faint">· {relativePath(item.path)}</span>
-              </span>
-              <span class="tag tag-neutral shrink-0">{$t(`scan.status.${item.status}`)}</span>
-            </div>
-          {/each}
-        {/if}
+          <div class="space-y-1 pt-1">
+            {#each sections.inert as item (item.path)}
+              <!-- pl-4: one 12px step in from the header title (px-1). -->
+              <div class="flex items-center gap-2 py-1 pr-2.5 pl-4 opacity-70">
+                <span
+                  class="text-base-content min-w-0 flex-1 truncate text-[12px]"
+                  title={item.path}
+                >
+                  {item.name}
+                  <span class="text-base-content-faint">· {relativePath(item.path)}</span>
+                </span>
+                <span class="tag tag-neutral shrink-0">{$t(`scan.status.${item.status}`)}</span>
+              </div>
+            {/each}
+          </div>
+        </CollapsibleGroup>
       </section>
     {/if}
   </div>

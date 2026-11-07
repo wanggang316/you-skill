@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { ChevronRight, Search } from "@lucide/svelte";
+  import { Search } from "@lucide/svelte";
   import { confirm } from "@tauri-apps/plugin-dialog";
+  import CollapsibleGroup from "$lib/components/ui/CollapsibleGroup.svelte";
   import ContextMenu from "$lib/components/ui/ContextMenu.svelte";
   import Modal from "$lib/components/ui/Modal.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
@@ -229,6 +230,41 @@
   }
 </script>
 
+{#snippet locationRow(item: Location)}
+  {@const checked = selected.includes(item.key)}
+  <ContextMenu
+    items={[
+      { label: $t("scope.skill.manage"), onSelect: () => manage(item) },
+      {
+        label: $t("scope.uninstall"),
+        danger: true,
+        disabled: item.installs.length === 0,
+        onSelect: () => void uninstall(item),
+      },
+    ]}
+  >
+    {#snippet trigger({ props })}
+      <label
+        {...props}
+        class={`mb-1.5 flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 transition ${
+          checked
+            ? "border-primary/60 bg-primary/10"
+            : "border-base-300 bg-base-100 hover:bg-base-200"
+        }`}
+        title={item.path}
+      >
+        <input class="accent-primary" type="checkbox" {checked} onchange={() => toggle(item.key)} />
+        <span class="min-w-0 flex-1">
+          <span class="text-base-content block truncate text-[13px] font-medium">
+            {item.name}
+          </span>
+          <span class="text-base-content-faint block truncate text-[11px]">{item.path}</span>
+        </span>
+      </label>
+    {/snippet}
+  </ContextMenu>
+{/snippet}
+
 <Modal
   bind:open
   title={$t("locationPicker.title", { name: displayName })}
@@ -259,64 +295,26 @@
         </p>
       {:else}
         {#each groups as group (group.key)}
-          {@const groupOpen = isGroupOpen(group)}
           {#if group.label}
-            <button
-              class="text-base-content-subtle hover:text-base-content flex w-full items-center gap-1.5 px-2.5 pt-2 pb-1 text-left text-[11px] transition"
-              type="button"
-              onclick={() => toggleGroup(group.key)}
-              aria-expanded={groupOpen}
+            <CollapsibleGroup
+              open={isGroupOpen(group)}
+              onToggle={() => toggleGroup(group.key)}
+              label={group.label}
               title={group.key}
+              buttonClass="text-base-content-subtle hover:text-base-content px-2.5 pt-2 pb-1 text-[11px]"
             >
-              <ChevronRight
-                size={12}
-                class={`shrink-0 transition ${groupOpen ? "rotate-90" : ""}`}
-              />
-              <span class="min-w-0 flex-1 truncate">{group.label}</span>
-              <span class="text-base-content-faint shrink-0">{group.locations.length}</span>
-            </button>
-          {/if}
-          {#each groupOpen ? group.locations : [] as item (item.key)}
-            {@const checked = selected.includes(item.key)}
-            <ContextMenu
-              items={[
-                { label: $t("scope.skill.manage"), onSelect: () => manage(item) },
-                {
-                  label: $t("scope.uninstall"),
-                  danger: true,
-                  disabled: item.installs.length === 0,
-                  onSelect: () => void uninstall(item),
-                },
-              ]}
-            >
-              {#snippet trigger({ props })}
-                <label
-                  {...props}
-                  class={`mb-1.5 flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 transition ${
-                    checked
-                      ? "border-primary/60 bg-primary/10"
-                      : "border-base-300 bg-base-100 hover:bg-base-200"
-                  }`}
-                  title={item.path}
-                >
-                  <input
-                    class="accent-primary"
-                    type="checkbox"
-                    {checked}
-                    onchange={() => toggle(item.key)}
-                  />
-                  <span class="min-w-0 flex-1">
-                    <span class="text-base-content block truncate text-[13px] font-medium">
-                      {item.name}
-                    </span>
-                    <span class="text-base-content-faint block truncate text-[11px]"
-                      >{item.path}</span
-                    >
-                  </span>
-                </label>
+              {#snippet trailing()}
+                <span class="text-base-content-faint">{group.locations.length}</span>
               {/snippet}
-            </ContextMenu>
-          {/each}
+              {#each group.locations as item (item.key)}
+                {@render locationRow(item)}
+              {/each}
+            </CollapsibleGroup>
+          {:else}
+            {#each group.locations as item (item.key)}
+              {@render locationRow(item)}
+            {/each}
+          {/if}
         {/each}
       {/if}
     </div>
