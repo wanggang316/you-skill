@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Release builds do not show the native WebView context menu (Back / Reload, Save as, Print, Inspect) when you right-click a non-editable area. Text fields keep the Cut / Copy / Paste menu. Debug builds keep the native menu everywhere ([#94](https://github.com/wanggang316/youskill/issues/94)).
+
 ### Fixed
 
 ### Removed
