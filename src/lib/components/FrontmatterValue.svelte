@@ -20,6 +20,7 @@
   <button
     class="text-primary hover:text-primary-hover text-left break-all underline underline-offset-2"
     type="button"
+    data-link-href={node.href}
     onclick={() => onOpenExternalLink?.(node.href)}
   >
     {node.href}

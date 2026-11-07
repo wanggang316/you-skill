@@ -26,9 +26,10 @@
   import {
     parseMarkdown,
     renderBilingualMarkdown,
-    renderMarkdown,
     renderMarkdownBody,
+    renderTranslatedMarkdown,
   } from "$lib/utils/markdown";
+  import { linkAnchor, resolveSkillPath } from "$lib/utils/markdown-links";
   import { t } from "$lib/i18n";
   import { settings, updateSettings } from "$lib/stores/settings";
   import {
@@ -86,6 +87,8 @@
   let missingTranslationSettingsOpen = $state(false);
   let missingTranslationSettingsFields = $state<string[]>([]);
   let loadedKey = $state("");
+  /** Section to jump to after the file from a link like `other.md#section` renders. */
+  let pendingAnchor = $state("");
   let localImageObjectUrl: string | null = null;
   let directoryCloseTimer: ReturnType<typeof setTimeout> | null = null;
   const translationCache = new Map<string, string>();
@@ -184,25 +187,6 @@
     avif: "image/avif",
   };
 
-  const normalizeRelativePath = (baseFile: string, target: string): string | null => {
-    const withoutHash = target.split("#")[0]?.split("?")[0] ?? "";
-    if (!withoutHash) return null;
-    if (withoutHash.startsWith("/")) {
-      return withoutHash.replace(/^\/+/, "");
-    }
-    const resolved = baseFile.split("/").slice(0, -1);
-    for (const segment of withoutHash.split("/")) {
-      if (!segment || segment === ".") continue;
-      if (segment === "..") {
-        if (resolved.length === 0) return null;
-        resolved.pop();
-        continue;
-      }
-      resolved.push(segment);
-    }
-    return resolved.join("/");
-  };
-
   const formatDirectoryEntries = (entries: SkillDirectoryEntry[]): SkillDirectoryEntry[] =>
     [...entries].sort((a, b) => {
       const aParts = a.path.split("/");
@@ -239,7 +223,9 @@
   );
   const markdownHtml = $derived.by(() => {
     if (!translatedMarkdown || translationView === "original") return renderMarkdownBody(content);
-    if (translationView === "translation") return renderMarkdown(translatedMarkdown.content);
+    if (translationView === "translation") {
+      return renderTranslatedMarkdown(content, translatedMarkdown.content);
+    }
     return renderBilingualMarkdown(content, translatedMarkdown.content);
   });
   // In translated view the table shows the translated description; the other fields stay as written.
@@ -442,6 +428,7 @@
 
   const loadContent = async (filePath = "SKILL.md") => {
     activeFilePath = filePath;
+    pendingAnchor = "";
     fileViewMode = resolveFileViewMode(filePath);
     sourceLink = "";
     translating = false;
@@ -523,12 +510,13 @@
   };
 
   const handleMarkdownRelativeLink = async (href: string) => {
-    const targetPath = normalizeRelativePath(activeFilePath, href);
+    const targetPath = resolveSkillPath(activeFilePath, href);
     if (
       targetPath &&
       directoryEntries.some((entry) => !entry.is_directory && entry.path === targetPath)
     ) {
       await loadContent(targetPath);
+      if (activeFilePath === targetPath) pendingAnchor = linkAnchor(href);
       return;
     }
     if (source.kind === "hub") {
@@ -835,6 +823,9 @@
             translationStyle={translationView === "bilingual"
               ? $settings.translate_text_style
               : "none"}
+            filePath={activeFilePath}
+            anchor={pendingAnchor}
+            onAnchorHandled={() => (pendingAnchor = "")}
             onOpenExternalLink={(href) => openExternal(href)}
             onOpenRelativeLink={handleMarkdownRelativeLink}
           />
