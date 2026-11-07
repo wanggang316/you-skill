@@ -26,12 +26,22 @@ class HTMLTextAreaElement extends HTMLElement {
   }
 }
 
-/** Runs the init script and returns a function that dispatches `contextmenu` on a target. */
+/**
+ * Runs the init script in a fake window. `dispatch(type, init)` sends one event through the
+ * capture listeners and returns whether the default action was prevented and whether page
+ * handlers were cut off.
+ */
 function loadScript() {
-  const listeners = [];
+  const listeners = new Map();
   const window = {
-    addEventListener: (type, listener, capture) => listeners.push({ type, listener, capture }),
+    addEventListener: (type, listener, capture) => {
+      assert.equal(capture, true, `${type} listener must use the capture phase`);
+      listeners.set(type, [...registered(type), listener]);
+    },
   };
+  function registered(type) {
+    return listeners.get(type) ?? [];
+  }
   vm.runInNewContext(script, {
     window,
     Element,
@@ -39,21 +49,40 @@ function loadScript() {
     HTMLInputElement,
     HTMLTextAreaElement,
   });
-  assert.equal(listeners.length, 1);
-  assert.equal(listeners[0].type, "contextmenu");
-  assert.equal(listeners[0].capture, true);
-  return (target) => {
+  const dispatch = (type, { target = new HTMLElement(), button = 0 } = {}) => {
     let prevented = false;
     let stopped = false;
-    listeners[0].listener({
-      composedPath: () => [target],
-      preventDefault: () => (prevented = true),
-      stopPropagation: () => (stopped = true),
-      stopImmediatePropagation: () => (stopped = true),
-    });
-    assert.equal(stopped, false, "page handlers must still receive the event");
-    return prevented ? "blocked" : "native";
+    for (const listener of registered(type)) {
+      listener({
+        button,
+        composedPath: () => [target],
+        preventDefault: () => (prevented = true),
+        stopPropagation: () => (stopped = true),
+        stopImmediatePropagation: () => (stopped = true),
+      });
+    }
+    return { prevented, stopped };
   };
+  return dispatch;
+}
+
+/** Dispatches `contextmenu` on a target and returns which menu the WebView would show. */
+function menuFor(target) {
+  const { prevented, stopped } = loadScript()("contextmenu", { target, button: 2 });
+  assert.equal(stopped, false, "page handlers must still receive the event");
+  return prevented ? "blocked" : "native";
+}
+
+/**
+ * Sends a secondary press in the macOS WebKit order (contextmenu on mouse down) and returns
+ * what happens to the default action of its `auxclick`, which activates the control.
+ */
+function webKitRightClick(target) {
+  const dispatch = loadScript();
+  dispatch("mousedown", { target, button: 2 });
+  dispatch("contextmenu", { target, button: 2 });
+  dispatch("mouseup", { target, button: 2 });
+  return dispatch("auxclick", { target, button: 2 });
 }
 
 function editable() {
@@ -63,26 +92,52 @@ function editable() {
 }
 
 test("non-editable targets get no native menu", () => {
-  const dispatch = loadScript();
-  assert.equal(dispatch(new HTMLElement()), "blocked");
-  assert.equal(dispatch(new Element()), "blocked");
-  assert.equal(dispatch(null), "blocked");
+  assert.equal(menuFor(new HTMLElement()), "blocked");
+  assert.equal(menuFor(new Element()), "blocked");
+  assert.equal(menuFor(null), "blocked");
 });
 
 test("text inputs, textareas and contenteditable keep the native menu", () => {
-  const dispatch = loadScript();
   for (const type of ["text", "search", "email", "url", "tel", "password", "number"]) {
-    assert.equal(dispatch(new HTMLInputElement(type)), "native", type);
+    assert.equal(menuFor(new HTMLInputElement(type)), "native", type);
   }
-  assert.equal(dispatch(new HTMLTextAreaElement()), "native");
-  assert.equal(dispatch(editable()), "native");
+  assert.equal(menuFor(new HTMLTextAreaElement()), "native");
+  assert.equal(menuFor(editable()), "native");
 });
 
 test("non-text and disabled inputs get no native menu", () => {
-  const dispatch = loadScript();
   for (const type of ["checkbox", "radio", "button", "submit", "range", "color", "file"]) {
-    assert.equal(dispatch(new HTMLInputElement(type)), "blocked", type);
+    assert.equal(menuFor(new HTMLInputElement(type)), "blocked", type);
   }
-  assert.equal(dispatch(new HTMLInputElement("text", true)), "blocked");
-  assert.equal(dispatch(new HTMLTextAreaElement(true)), "blocked");
+  assert.equal(menuFor(new HTMLInputElement("text", true)), "blocked");
+  assert.equal(menuFor(new HTMLTextAreaElement(true)), "blocked");
+});
+
+test("a suppressed right-click does not activate the control under it", () => {
+  assert.deepEqual(webKitRightClick(new HTMLInputElement("checkbox")), {
+    prevented: true,
+    stopped: false,
+  });
+});
+
+test("auxclick keeps its default action when no menu was suppressed", () => {
+  // A right-click in a text field keeps the native menu.
+  assert.deepEqual(webKitRightClick(new HTMLInputElement("text")), {
+    prevented: false,
+    stopped: false,
+  });
+
+  // WebView2 order: auxclick comes before contextmenu.
+  const webView2 = loadScript();
+  webView2("mousedown", { button: 2 });
+  webView2("mouseup", { button: 2 });
+  assert.deepEqual(webView2("auxclick", { button: 2 }), { prevented: false, stopped: false });
+  webView2("contextmenu", { button: 2 });
+
+  // A later middle click after a keyboard menu (Shift+F10) or an earlier suppressed press.
+  const later = loadScript();
+  later("contextmenu");
+  later("mousedown", { button: 1 });
+  later("mouseup", { button: 1 });
+  assert.deepEqual(later("auxclick", { button: 1 }), { prevented: false, stopped: false });
 });
