@@ -1,8 +1,9 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { ChevronRight, Folder, Loader2, Plus, RefreshCw, Search, UserRound } from "@lucide/svelte";
+  import { Folder, Loader2, Plus, RefreshCw, Search, UserRound } from "@lucide/svelte";
   import ReferenceMarker from "$lib/components/ReferenceMarker.svelte";
   import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
+  import CollapsibleGroup from "$lib/components/ui/CollapsibleGroup.svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import SelectField from "$lib/components/ui/SelectField.svelte";
   import { t } from "$lib/i18n";
@@ -218,23 +219,23 @@
       {/if}
       {#each fileGroups as group (group.key)}
         {@const open = !collapsed.includes(group.key)}
-        <button
-          class="text-base-content-muted hover:text-base-content flex w-full items-center gap-1.5 px-4 pt-1.5 pb-1 text-left text-[11px] transition"
-          type="button"
-          onclick={() => toggleGroup(group.key)}
-          aria-expanded={open}
+        <CollapsibleGroup
+          {open}
+          onToggle={() => toggleGroup(group.key)}
+          label={group.label}
           title={group.path ?? undefined}
+          buttonClass="text-base-content-muted hover:text-base-content px-4 pt-1.5 pb-1 text-[11px]"
         >
-          <ChevronRight size={12} class={`shrink-0 transition ${open ? "rotate-90" : ""}`} />
-          {#if group.path}
-            <Folder size={11} class="shrink-0" />
-          {:else}
-            <UserRound size={11} class="shrink-0" />
-          {/if}
-          <span class="min-w-0 flex-1 truncate">{group.label}</span>
-          <span class="text-base-content-faint shrink-0">{group.files.length}</span>
-        </button>
-        {#if open}
+          {#snippet leading()}
+            {#if group.path}
+              <Folder size={11} class="shrink-0" />
+            {:else}
+              <UserRound size={11} class="shrink-0" />
+            {/if}
+          {/snippet}
+          {#snippet trailing()}
+            <span class="text-base-content-faint">{group.files.length}</span>
+          {/snippet}
           {#each group.files as file (file.path)}
             {@const selected = file.path === selectedFile}
             <button
@@ -244,8 +245,7 @@
               aria-current={selected ? "true" : undefined}
               title={file.path}
             >
-              <!-- Chevron (12px) + gap (6px): puts the file name under the group icon. -->
-              <div class="flex w-full items-center gap-2 pl-[1.125rem]">
+              <div class="flex w-full items-center gap-2">
                 <span class="text-base-content min-w-0 flex-1 truncate font-mono text-[12px]">
                   {file.fileName}
                 </span>
@@ -263,7 +263,7 @@
               </div>
             </button>
           {/each}
-        {/if}
+        </CollapsibleGroup>
       {/each}
     {/if}
   </div>

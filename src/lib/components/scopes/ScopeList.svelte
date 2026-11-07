@@ -2,7 +2,6 @@
   import { untrack } from "svelte";
   import {
     AlertTriangle,
-    ChevronRight,
     Folder,
     FolderOpen,
     FolderPlus,
@@ -10,6 +9,7 @@
     RefreshCw,
     UserRound,
   } from "@lucide/svelte";
+  import CollapsibleGroup from "$lib/components/ui/CollapsibleGroup.svelte";
   import DropdownMenu from "$lib/components/ui/DropdownMenu.svelte";
   import type { MenuItem } from "$lib/components/ui/menu";
   import IconButton from "$lib/components/ui/IconButton.svelte";
@@ -141,6 +141,17 @@
   });
 </script>
 
+{#snippet groupEntries(group: Group)}
+  {#each group.entries as entry (entry.key)}
+    {@render row(entry)}
+  {/each}
+  {#if group.entries.length === 0}
+    <p class="text-base-content-faint px-4 py-1.5 text-[11px]">
+      {$t("workspace.emptyGroup")}
+    </p>
+  {/if}
+{/snippet}
+
 {#snippet row(entry: ScopeEntry)}
   {@const selected = entry.key === selectedKey}
   {@const menu = projectMenu(entry)}
@@ -267,48 +278,42 @@
       {#each groups as group (group.key)}
         {@const open = !collapsed.includes(group.key)}
         {#if group.label}
-          <div class="flex items-center justify-between gap-2 px-4 pt-2 pb-1">
-            <button
-              class="text-base-content-subtle hover:text-base-content flex min-w-0 flex-1 items-center gap-1 text-left text-[11px] transition"
-              type="button"
-              onclick={() => toggleGroup(group.key)}
-              aria-expanded={open}
-              title={group.workspace?.path}
-            >
-              <ChevronRight size={12} class={`shrink-0 transition ${open ? "rotate-90" : ""}`} />
-              <span class="truncate">{group.label}</span>
+          <CollapsibleGroup
+            {open}
+            onToggle={() => toggleGroup(group.key)}
+            label={group.label}
+            title={group.workspace?.path}
+            class="gap-2 px-4 pt-2 pb-1"
+            buttonClass="text-base-content-subtle hover:text-base-content text-[11px]"
+          >
+            {#snippet trailing()}
               {#if !open}
-                <span class="text-base-content-faint shrink-0">{group.entries.length}</span>
+                <span class="text-base-content-faint">{group.entries.length}</span>
               {/if}
-            </button>
-            {#if group.workspace}
-              {@const workspace = group.workspace}
-              <DropdownMenu
-                label={$t("workspace.actions")}
-                items={[
-                  {
-                    label: $t("workspace.rescan"),
-                    onSelect: () => onRescanWorkspace(workspace),
-                  },
-                  {
-                    label: $t("workspace.remove"),
-                    danger: true,
-                    onSelect: () => onRemoveWorkspace(workspace),
-                  },
-                ]}
-              />
-            {/if}
-          </div>
-        {/if}
-        {#if open || !group.label}
-          {#each group.entries as entry (entry.key)}
-            {@render row(entry)}
-          {/each}
-          {#if group.entries.length === 0}
-            <p class="text-base-content-faint px-4 py-1.5 text-[11px]">
-              {$t("workspace.emptyGroup")}
-            </p>
-          {/if}
+            {/snippet}
+            {#snippet actions()}
+              {#if group.workspace}
+                {@const workspace = group.workspace}
+                <DropdownMenu
+                  label={$t("workspace.actions")}
+                  items={[
+                    {
+                      label: $t("workspace.rescan"),
+                      onSelect: () => onRescanWorkspace(workspace),
+                    },
+                    {
+                      label: $t("workspace.remove"),
+                      danger: true,
+                      onSelect: () => onRemoveWorkspace(workspace),
+                    },
+                  ]}
+                />
+              {/if}
+            {/snippet}
+            {@render groupEntries(group)}
+          </CollapsibleGroup>
+        {:else}
+          {@render groupEntries(group)}
         {/if}
       {/each}
     {/if}

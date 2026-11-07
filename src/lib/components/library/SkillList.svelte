@@ -1,16 +1,9 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import {
-    ChevronRight,
-    Folder,
-    Loader2,
-    RefreshCw,
-    ScanSearch,
-    Search,
-    Zap,
-  } from "@lucide/svelte";
+  import { Folder, Loader2, RefreshCw, ScanSearch, Search, Zap } from "@lucide/svelte";
   import GithubAvatar from "$lib/components/library/GithubAvatar.svelte";
   import GroupActionsMenu from "$lib/components/library/GroupActionsMenu.svelte";
+  import CollapsibleGroup from "$lib/components/ui/CollapsibleGroup.svelte";
   import type { MenuItem } from "$lib/components/ui/menu";
   import IconButton from "$lib/components/ui/IconButton.svelte";
   import PrimaryActionButton from "$lib/components/ui/PrimaryActionButton.svelte";
@@ -231,7 +224,6 @@
       <div role="status" aria-label={$t("library.loading")}>
         {#each skeletonGroups as group}
           <div class="flex items-center gap-1.5 px-4 pt-2 pb-1" aria-hidden="true">
-            <div class="bg-base-content/[0.06] size-3 animate-pulse rounded-full"></div>
             <div class="bg-base-content/[0.06] size-4 animate-pulse rounded-full"></div>
             <div
               class="bg-base-content/[0.06] h-[9px] animate-pulse rounded-full"
@@ -239,7 +231,7 @@
             ></div>
           </div>
           {#each group.rows as [name, description]}
-            <div class="mx-1.5 flex flex-col gap-1 py-2 pr-2.5 pl-7" aria-hidden="true">
+            <div class="mx-1.5 flex flex-col gap-1 px-2.5 py-2" aria-hidden="true">
               <div
                 class="bg-base-content/[0.09] my-[4.5px] h-[11px] animate-pulse rounded-full"
                 style={`width: ${name}%`}
@@ -268,17 +260,18 @@
         {@const open = !collapsed.includes(group.key)}
         {@const repository = group.kind === "github"}
         {@const updating = updatingGroups.includes(group.key)}
-        <div class="relative">
-          <button
-            class={`text-base-content-subtle hover:text-base-content flex w-full items-center gap-1.5 pt-2 pb-1 pl-4 text-left text-[11px] transition ${
-              repository ? "pr-10" : "pr-4"
-            }`}
-            type="button"
-            onclick={() => toggleGroup(group.key)}
-            aria-expanded={open}
-            title={group.path ?? undefined}
-          >
-            <ChevronRight size={12} class={`shrink-0 transition ${open ? "rotate-90" : ""}`} />
+        <CollapsibleGroup
+          {open}
+          onToggle={() => toggleGroup(group.key)}
+          label={group.kind === "none" ? $t("library.group.none") : group.label}
+          title={group.path ?? undefined}
+          class="relative"
+          buttonClass={`text-base-content-subtle hover:text-base-content pt-2 pb-1 pl-4 text-[11px] ${
+            repository ? "pr-10" : "pr-4"
+          }`}
+          labelClass="font-medium"
+        >
+          {#snippet leading()}
             {#if group.owner}
               <GithubAvatar owner={group.owner} />
             {:else if group.kind === "folder"}
@@ -286,35 +279,34 @@
             {:else}
               <Zap size={13} class="shrink-0" />
             {/if}
-            <span class="min-w-0 flex-1 truncate font-medium">
-              {group.kind === "none" ? $t("library.group.none") : group.label}
-            </span>
+          {/snippet}
+          {#snippet trailing()}
             {#if updating}
-              <span class="text-base-content-muted flex shrink-0 items-center gap-1">
+              <span class="text-base-content-muted flex items-center gap-1">
                 <Loader2 size={11} class="animate-spin" />
                 {$t("library.repoActions.updating")}
               </span>
             {:else}
-              <span class="text-base-content-faint shrink-0">{group.skills.length}</span>
+              <span class="text-base-content-faint">{group.skills.length}</span>
             {/if}
-          </button>
-          {#if repository}
-            <div class="absolute top-1/2 right-3.5 mt-0.5 -translate-y-1/2">
-              <GroupActionsMenu
-                items={repositoryMenu(group)}
-                label={$t("library.repoActions")}
-                disabled={updating}
-              />
-            </div>
-          {/if}
-        </div>
-        {#if open}
+          {/snippet}
+          {#snippet actions()}
+            {#if repository}
+              <div class="absolute top-1/2 right-3.5 mt-0.5 -translate-y-1/2">
+                <GroupActionsMenu
+                  items={repositoryMenu(group)}
+                  label={$t("library.repoActions")}
+                  disabled={updating}
+                />
+              </div>
+            {/if}
+          {/snippet}
           {#each group.skills as skill (skill.id)}
             {@const selected = skill.id === selectedId}
             {@const checked = checkedIds.includes(skill.id)}
-            <!-- pl-7 puts the text under the group header icon. -->
+            <!-- pl-2.5 puts the text under the group header icon. -->
             <button
-              class={`mx-1.5 flex w-[calc(100%-0.75rem)] flex-col gap-1 rounded-lg py-2 pr-2.5 pl-7 text-left transition select-none ${
+              class={`mx-1.5 flex w-[calc(100%-0.75rem)] flex-col gap-1 rounded-lg px-2.5 py-2 text-left transition select-none ${
                 checked
                   ? "bg-primary/10 ring-primary/40 ring-1 ring-inset"
                   : selected
@@ -343,7 +335,7 @@
               {/if}
             </button>
           {/each}
-        {/if}
+        </CollapsibleGroup>
       {/each}
     {/if}
   </div>
