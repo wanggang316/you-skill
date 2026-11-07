@@ -11,9 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Markdown preview: the pointer on a link shows the link target (Link preview) at the bottom left of the app window, as in a browser. This works in the skill file viewer, the Markdown editor preview and the update dialog ([#95](https://github.com/wanggang316/youskill/issues/95)).
+- Markdown headings get GitHub-style anchors. A click on a `#section` link scrolls to the section, and a link to `other.md#section` opens the file at the section ([#95](https://github.com/wanggang316/youskill/issues/95)).
+
 ### Changed
 
 - Collapsible group headers (Library groups, Projects workspaces, Instructions agent file groups, the location picker and the scan results) show the chevron after the title, only on hover or keyboard focus, and the group opens and closes with a short slide. The header icon and title move to the list edge, and child rows are indented under the header: under the title text when the header has an icon, otherwise one 12px step in. Location picker cards stay full width ([#93](https://github.com/wanggang316/youskill/issues/93)).
+- Release builds do not show the native WebView context menu (Back / Reload, Save as, Print, Inspect) when you right-click a non-editable area. Text fields keep the Cut / Copy / Paste menu. Debug builds keep the native menu everywhere ([#94](https://github.com/wanggang316/youskill/issues/94)).
 
 ### Fixed
 

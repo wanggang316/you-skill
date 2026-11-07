@@ -63,6 +63,17 @@ _Avoid_: Quick Open, command palette
 A narrowing of the list on the current page only, such as the Library source filter.
 _Avoid_: Search
 
+### Markdown preview
+
+**Link preview**:
+The small text at the bottom left of the app window that shows the target of the link under
+the pointer, as in a browser (see `docs/decisions/0007-markdown-links-and-heading-anchors.md`).
+_Avoid_: Tooltip, status bar
+
+**Heading anchor**:
+The `id` of a rendered heading, made with the GitHub slug rules, that a `#<slug>` link jumps to.
+_Avoid_: Bookmark, section id
+
 ### Library sync
 
 **Restore plan**:

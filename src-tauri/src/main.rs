@@ -13,6 +13,7 @@ mod account;
 mod app_menu;
 mod auto_sync;
 mod commands;
+mod context_menu;
 mod favorite_sync;
 mod tray;
 
@@ -97,7 +98,10 @@ fn build_main_window(app: &App) -> tauri::Result<WebviewWindow> {
     .find(|window| window.label == "main")
     .cloned()
     .expect("main window must be declared in tauri.conf.json");
-  let builder = WebviewWindowBuilder::from_config(app.handle(), &config)?;
+  let mut builder = WebviewWindowBuilder::from_config(app.handle(), &config)?;
+  if let Some(script) = context_menu::init_script() {
+    builder = builder.initialization_script(script);
+  }
   #[cfg(target_os = "macos")]
   let builder = builder.transparent(true).effects(
     EffectsBuilder::new()

@@ -38,6 +38,7 @@
     "highlight.js": "^11.11.1",
     "marked": "^17.0.6",
     "marked-cjk-friendly": "^0.1.2",
+    "marked-gfm-heading-id": "^4.1.4",
     "marked-highlight": "^2.2.3",
     "vite-plugin-node-polyfills": "^0.25.0"
   },
