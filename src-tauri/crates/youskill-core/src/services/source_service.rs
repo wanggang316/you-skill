@@ -2,7 +2,7 @@
 
 use crate::models::{
   ActionResult, DetectedSkill, SkillSource, SourcePull, SourcePullResult, SourcePullStatus,
-  SourceUpdate,
+  SourceSkipReason, SourceUpdate,
 };
 use crate::services::env::Env;
 use crate::services::hub_service::{pull_from_dir, pull_hub_from_dir, resolve_skill, HubGuard};
@@ -446,6 +446,20 @@ fn pull_member(
   branch: &str,
   member: &PullMember,
 ) -> Result<SourcePullResult, String> {
+  // Without the hub state of the decision a write cannot be guarded; a missing or invalid
+  // hub copy needs a decision of its own.
+  let Some(expected_hash) = member.hub_hash.as_deref() else {
+    return Ok(SourcePullResult {
+      id: member.id.clone(),
+      name: member.name.clone(),
+      status: SourcePullStatus::Skipped,
+      message: Some(format!(
+        "Hub copy of '{}' is missing or has no SKILL.md",
+        member.name
+      )),
+      reason: Some(SourceSkipReason::HubUnavailable),
+    });
+  };
   let folder = GithubHelper::skill_folder_of(&member.skill_path)?;
   let src = root.join(&folder);
   if !src.join(SKILL_MD).is_file() {
@@ -467,7 +481,7 @@ fn pull_member(
     };
     let guard = HubGuard {
       force: member.force,
-      expected_hash: member.hub_hash.as_deref(),
+      expected_hash: Some(expected_hash),
     };
     pull_hub_from_dir(env, &member.id, &staged, Some(source), guard)
   });
@@ -563,9 +577,7 @@ mod tests {
 
   mod batch_pull {
     use super::*;
-    use crate::models::{
-      ImportItem, InstallScope, InstallTargetSpec, SourceSkipReason, TargetState,
-    };
+    use crate::models::{ImportItem, InstallScope, InstallTargetSpec, TargetState};
     use crate::services::hub_service::{find_skill, import_skills};
     use crate::services::install_service::install_skill;
     use crate::utils::hash::{hash_dir, invalidate_hash_cache};
@@ -613,13 +625,15 @@ mod tests {
       .id
     }
 
-    /// Pulls without a recorded hub state and without force.
-    fn plain(ids: &[String]) -> Vec<SourcePull> {
+    /// Pulls without force, each with the current hub hash as the decided state.
+    fn plain(env: &Env, ids: &[String]) -> Vec<SourcePull> {
       ids
         .iter()
         .map(|id| SourcePull {
           id: id.clone(),
-          hub_hash: None,
+          hub_hash: find_skill(env, id)
+            .unwrap()
+            .and_then(|(id, record)| hash_dir(&env.hub_dir(&id, &record.name)).ok()),
           force: false,
         })
         .collect()
@@ -680,7 +694,7 @@ mod tests {
       );
 
       let ids = vec![a, b, c, d.clone(), "missing".to_string()];
-      let (groups, failed) = plan_batch_pull(&env, &plain(&ids)).unwrap();
+      let (groups, failed) = plan_batch_pull(&env, &plain(&env, &ids)).unwrap();
       let keys: Vec<_> = groups.keys().cloned().collect();
       assert_eq!(
         keys,
@@ -713,7 +727,7 @@ mod tests {
       );
       let root = tree(tmp.path(), &["a", "b"]);
 
-      let (groups, _) = plan_batch_pull(&env, &plain(&[a.clone(), b.clone()])).unwrap();
+      let (groups, _) = plan_batch_pull(&env, &plain(&env, &[a.clone(), b.clone()])).unwrap();
       assert_eq!(groups.len(), 1);
       let members = groups.into_values().next().unwrap();
       let results = pull_group_from_tree(&env, &members, Ok((root.clone(), "main".into())));
@@ -846,6 +860,36 @@ mod tests {
     }
 
     #[test]
+    fn a_skill_without_a_hub_hash_at_the_decision_is_skipped_before_any_write() {
+      let tmp = tempfile::tempdir().unwrap();
+      let env = Env::for_test(tmp.path(), vec![], vec![]);
+      let a = add(&env, tmp.path(), "a", github("o/r", "skills/a", None, "s"));
+      let hub = env.hub_dir(&a, "a");
+      // The hub copy is already invalid when the update is decided, so it has no hash.
+      fs::remove_file(hub.join("SKILL.md")).unwrap();
+      write(&hub, "notes.md", "mine");
+      let pulls = vec![SourcePull {
+        id: a.clone(),
+        hub_hash: None,
+        force: false,
+      }];
+      // Another edit while the question for another skill is open.
+      write(&hub, "notes.md", "mine, edited");
+      let root = tree(tmp.path(), &["a"]);
+
+      let (groups, _) = plan_batch_pull(&env, &pulls).unwrap();
+      let members = groups.into_values().next().unwrap();
+      let results = pull_group_from_tree(&env, &members, Ok((root, "main".into())));
+      assert_eq!(results[0].status, SourcePullStatus::Skipped);
+      assert_eq!(results[0].reason, Some(SourceSkipReason::HubUnavailable));
+      assert!(!hub.join("SKILL.md").exists());
+      assert_eq!(
+        fs::read_to_string(hub.join("notes.md")).unwrap(),
+        "mine, edited"
+      );
+    }
+
+    #[test]
     fn a_clean_skill_edited_after_the_check_is_skipped() {
       let (_tmp, env, a, result) = pull_after_change(false, |hub| {
         write(hub, "SKILL.md", &skill_md("a", "late edit"));
@@ -875,7 +919,7 @@ mod tests {
       let b = add(&env, tmp.path(), "b", github("o/r", "skills/b", None, "s"));
       let root = tree(tmp.path(), &["b"]);
 
-      let (groups, _) = plan_batch_pull(&env, &plain(&[a, b])).unwrap();
+      let (groups, _) = plan_batch_pull(&env, &plain(&env, &[a, b])).unwrap();
       let members = groups.into_values().next().unwrap();
       let results = pull_group_from_tree(&env, &members, Ok((root, "dev".into())));
       assert_eq!(results[0].status, SourcePullStatus::Failed);
@@ -894,7 +938,7 @@ mod tests {
       let a = add(&env, tmp.path(), "a", github("o/r", "skills/a", None, "s"));
       let b = add(&env, tmp.path(), "b", github("o/r", "skills/b", None, "s"));
 
-      let (groups, _) = plan_batch_pull(&env, &plain(&[a.clone(), b])).unwrap();
+      let (groups, _) = plan_batch_pull(&env, &plain(&env, &[a.clone(), b])).unwrap();
       let members = groups.into_values().next().unwrap();
       let results = pull_group_from_tree(&env, &members, Err("HTTP error: 404".into()));
       assert!(results
@@ -938,7 +982,7 @@ mod tests {
       .unwrap();
       let root = tree(tmp.path(), &["a"]);
 
-      let (groups, _) = plan_batch_pull(&env, &plain(std::slice::from_ref(&a))).unwrap();
+      let (groups, _) = plan_batch_pull(&env, &plain(&env, std::slice::from_ref(&a))).unwrap();
       let members = groups.into_values().next().unwrap();
       let results = pull_group_from_tree(&env, &members, Ok((root, "main".into())));
       assert_eq!(results[0].status, SourcePullStatus::Updated);

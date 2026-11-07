@@ -47,19 +47,31 @@ export async function updateRepositoryGroup(ids: string[]): Promise<GroupUpdateR
   }
 
   // Each pull carries the hub state the update was decided on: a hub copy that changes
-  // before the write (an edit, a removed SKILL.md) is skipped, forced or not.
+  // before the write (an edit, a removed SKILL.md) is skipped, forced or not. A hub copy
+  // without a hash (missing folder or SKILL.md) has no state to guard the write with, so
+  // it is not pulled.
   const hubHashes = new Map(groupSkills.map((skill) => [skill.id, skill.hubHash ?? null]));
-  const pulls: SourcePull[] = check
+  const pullIds = check
     .filter(needsPull)
     .map((item) => item.id)
-    .filter((id) => overwrite || !local.includes(id))
-    .map((id) => ({ id, hubHash: hubHashes.get(id) ?? null, force: local.includes(id) }));
-  let pulled: SourcePullResult[] = [];
+    .filter((id) => overwrite || !local.includes(id));
+  const unavailable: SourcePullResult[] = pullIds
+    .filter((id) => !hubHashes.get(id))
+    .map((id) => ({
+      id,
+      name: get(skillLabel)(id),
+      status: "skipped",
+      reason: "hub_unavailable",
+    }));
+  const pulls: SourcePull[] = pullIds
+    .filter((id) => hubHashes.get(id))
+    .map((id) => ({ id, hubHash: hubHashes.get(id), force: local.includes(id) }));
+  let pulled: SourcePullResult[] = [...unavailable];
   if (pulls.length > 0) {
     try {
-      pulled = await pullGithubSources(pulls);
+      pulled.push(...(await pullGithubSources(pulls)));
     } catch (error) {
-      pulled = pulls.map((pull) => failed(pull.id, error));
+      pulled.push(...pulls.map((pull) => failed(pull.id, error)));
     }
     await refreshHub().catch(console.error);
   }

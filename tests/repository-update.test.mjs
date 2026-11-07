@@ -152,3 +152,35 @@ test("a skill without a recorded version is pulled, not counted as up to date", 
   assert.deepEqual(pull.args, { pulls: [{ id: "b", hubHash: "hash-b", force: false }] });
   assert.deepEqual(report, { updated: 1, upToDate: 1, skipped: [], failed: [] });
 });
+
+test("a skill without a hub hash is not pulled and is reported as unavailable", async () => {
+  handlers.list_hub_skills = () =>
+    library.map((item) =>
+      item.id === "b" ? { ...item, hubState: "invalid", hubHash: null } : item
+    );
+  const { unsubscribe } = answer(true);
+  const report = await updateRepositoryGroup(["a", "b", "c"]);
+  unsubscribe();
+
+  const pull = calls.find((c) => c.command === "pull_github_sources");
+  assert.deepEqual(pull.args, { pulls: [{ id: "a", hubHash: "hash-a", force: true }] });
+  assert.deepEqual(report.skipped, [{ id: "b", name: "b", reason: "hub_unavailable" }]);
+  assert.equal(report.updated, 1);
+});
+
+test("a group whose only update has no hub hash pulls nothing", async () => {
+  handlers.list_hub_skills = () =>
+    library.map((item) => (item.id === "b" ? { ...item, hubHash: null } : item));
+  const { unsubscribe } = answer(false);
+  const report = await updateRepositoryGroup(["a", "b", "c"]);
+  unsubscribe();
+
+  assert.equal(
+    calls.some((c) => c.command === "pull_github_sources"),
+    false
+  );
+  assert.deepEqual(report.skipped, [
+    { id: "a", name: "a", reason: "local_changes" },
+    { id: "b", name: "b", reason: "hub_unavailable" },
+  ]);
+});

@@ -168,7 +168,7 @@ export type SourcePullStatus = "updated" | "skipped" | "failed";
  * Why a batch pull skipped a skill: local changes without force, or a hub copy that changed
  * after the update was decided.
  */
-export type SourceSkipReason = "local_changes" | "changed_after_check";
+export type SourceSkipReason = "local_changes" | "changed_after_check" | "hub_unavailable";
 
 /** One skill of a batch pull from GitHub. */
 export interface SourcePull {

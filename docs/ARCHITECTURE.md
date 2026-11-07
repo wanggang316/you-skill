@@ -131,7 +131,9 @@ takes the remote sha from the stored `latestRemoteSha`, and does not push to tar
 gives the hub hash seen when the update was decided; a hub copy in another state at the write
 (an edit, a removed `SKILL.md` or folder) is skipped with the reason `changed_after_check`. A
 hub copy with local changes is skipped with `local_changes` unless the pull has `force`, which
-the user confirms one time for the group. The group Update also pulls
+the user confirms one time for the group. A pull without a hub hash (the hub copy has no folder or no
+`SKILL.md`) is skipped with `hub_unavailable` before any write; the group Update does not send
+such a skill. The group Update also pulls
 a skill without `remoteSha`, because the check cannot tell whether it is current (see
 `docs/decisions/0005-library-repository-group-actions.md`).
 

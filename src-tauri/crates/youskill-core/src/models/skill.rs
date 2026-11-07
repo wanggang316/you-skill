@@ -643,6 +643,7 @@ pub struct SourcePull {
   pub id: String,
   /// Hash of the hub copy when the update was decided. If the hub copy has another hash at
   /// the write, or no hash because `SKILL.md` or the folder is gone, the skill is skipped.
+  /// Without a hash the skill is skipped before any write.
   #[serde(default)]
   pub hub_hash: Option<String>,
   /// The user confirmed to overwrite the local changes of the hub copy.
@@ -657,6 +658,9 @@ pub enum SourceSkipReason {
   LocalChanges,
   /// The hub copy changed after the update was decided.
   ChangedAfterCheck,
+  /// The hub copy had no hash when the update was decided (its folder or `SKILL.md` is
+  /// missing), so there is no state to guard the write with.
+  HubUnavailable,
 }
 
 /// Result of one skill in a batch pull from GitHub.

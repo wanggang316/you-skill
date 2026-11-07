@@ -20,6 +20,7 @@
     local_changes: "library.repoUpdate.skippedReason",
     changed_after_confirmation: "library.repoUpdate.changedAfterConfirmation",
     changed_after_check: "library.repoUpdate.changedAfterCheck",
+    hub_unavailable: "library.repoUpdate.hubUnavailable",
   };
 
   /** A removed skill has no label any more; fall back to the name of the report. */

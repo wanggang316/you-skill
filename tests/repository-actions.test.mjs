@@ -147,12 +147,13 @@ test("an unknown installed version needs a pull; an error or a known equal versi
 
 test("the report gives the reason of each skill that the pull skipped", () => {
   const report = actions.summarizeGroupUpdate(
-    ["a", "b", "c"].map((id) => ({ id, name: id, updateAvailable: true })),
+    ["a", "b", "c", "d"].map((id) => ({ id, name: id, updateAvailable: true })),
     [],
     [
       { id: "a", name: "a", status: "skipped", reason: "changed_after_check" },
       { id: "b", name: "b", status: "skipped", reason: "changed_after_check" },
       { id: "c", name: "c", status: "skipped", reason: "local_changes" },
+      { id: "d", name: "d", status: "skipped", reason: "hub_unavailable" },
     ],
     ["a"]
   );
@@ -160,6 +161,7 @@ test("the report gives the reason of each skill that the pull skipped", () => {
     { id: "a", name: "a", reason: "changed_after_confirmation" },
     { id: "b", name: "b", reason: "changed_after_check" },
     { id: "c", name: "c", reason: "local_changes" },
+    { id: "d", name: "d", reason: "hub_unavailable" },
   ]);
 });
 
