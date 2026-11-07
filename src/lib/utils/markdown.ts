@@ -1,6 +1,7 @@
 import { Marked } from "marked";
 import { markedHighlight } from "marked-highlight";
 import markedCjkFriendly from "marked-cjk-friendly";
+import { getHeadingList, gfmHeadingId, resetHeadings } from "marked-gfm-heading-id";
 import type { Token, Tokens } from "marked";
 import hljs from "highlight.js/lib/common";
 import matter from "gray-matter";
@@ -107,8 +108,23 @@ const markedRenderer = new Marked(
 // CommonMark does not close `**` next to CJK punctuation (e.g. `**“foo”**bar`); translations hit this often.
 markedRenderer.use(markedCjkFriendly());
 
+// Heading anchors follow the GitHub slug rules, as most skill documents are written on GitHub.
+markedRenderer.use(gfmHeadingId());
+
+/**
+ * A heading whose anchor is set before rendering: a string is the `id`, `null` means no `id`.
+ * Headings without `anchor` get their `id` from `gfmHeadingId`.
+ */
+type AnchoredHeading = Tokens.Heading & { anchor?: string | null };
+
 markedRenderer.use({
   renderer: {
+    heading(token: AnchoredHeading) {
+      if (token.anchor === undefined) return false;
+      const text = this.parser.parseInline(token.tokens);
+      const idAttr = token.anchor === null ? "" : ` id="${escapeHtml(token.anchor)}"`;
+      return `<h${token.depth}${idAttr}>${text}</h${token.depth}>\n`;
+    },
     code(token: Tokens.Code) {
       const language = resolveLanguage(token.lang ?? undefined);
       const languageLabel = formatLanguageLabel(language);
@@ -199,6 +215,26 @@ function renderBlocks(tokens: Token[]): string {
   return markedRenderer.parser(tokens);
 }
 
+/** Heading tokens in document order, also the ones inside lists and block quotes. */
+function headingTokens(tokens: Token[]): AnchoredHeading[] {
+  const headings: AnchoredHeading[] = [];
+  markedRenderer.walkTokens(tokens, (token) => {
+    if (token.type === "heading") headings.push(token as AnchoredHeading);
+  });
+  return headings;
+}
+
+/** Sets the `id` that `gfmHeadingId` gives each heading when `tokens` render as one document. */
+function anchorHeadings(tokens: Token[]): AnchoredHeading[] {
+  const headings = headingTokens(tokens);
+  for (const heading of headings) delete heading.anchor;
+  resetHeadings();
+  renderBlocks(tokens);
+  const ids = getHeadingList().map((heading) => heading.id);
+  headings.forEach((heading, index) => (heading.anchor = ids[index] ?? null));
+  return headings;
+}
+
 function translationHtml(innerHtml: string): string {
   return `<div class="markdown-translation">${innerHtml}</div>`;
 }
@@ -282,7 +318,12 @@ function renderBilingualHeading(original: Tokens.Heading, translated: Tokens.Hea
  * each original block is followed by its translation in a `.markdown-translation` element.
  */
 export function renderBilingualMarkdown(original: string, translated: string): string {
-  const pairs = alignBlocks(lexBlocks(original), lexBlocks(translated));
+  const originalBlocks = lexBlocks(original);
+  const translatedBlocks = lexBlocks(translated);
+  // Only the original heading of a pair is a jump target.
+  anchorHeadings(originalBlocks);
+  for (const heading of headingTokens(translatedBlocks)) heading.anchor = null;
+  const pairs = alignBlocks(originalBlocks, translatedBlocks);
   return pairs
     .map(({ original: source, translated: target }) => {
       if (!source) return target ? translationHtml(renderBlocks([target])) : "";
@@ -302,6 +343,23 @@ export function renderBilingualMarkdown(original: string, translated: string): s
       return renderBlocks([source]) + translationHtml(renderBlocks([target]));
     })
     .join("");
+}
+
+/**
+ * Render a translated markdown body (without frontmatter). When the translation keeps the
+ * heading count, heading N gets the `id` of original heading N, so links to the original
+ * anchors still work; otherwise the ids come from the translated text.
+ */
+export function renderTranslatedMarkdown(original: string, translated: string): string {
+  const translatedBlocks = lexBlocks(translated);
+  const translatedHeadings = anchorHeadings(translatedBlocks);
+  const originalHeadings = anchorHeadings(lexBlocks(original));
+  if (originalHeadings.length === translatedHeadings.length) {
+    translatedHeadings.forEach((heading, index) => {
+      heading.anchor = originalHeadings[index].anchor;
+    });
+  }
+  return renderBlocks(translatedBlocks);
 }
 
 // Parsed frontmatter data structure
