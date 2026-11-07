@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Collapsible group headers (Library groups, Projects workspaces, Instructions agent file groups, the location picker and the scan results) show the chevron after the title, only on hover or keyboard focus, and the group opens and closes with a short slide. The header icon and title move to the list edge, and child rows keep their alignment with the header ([#93](https://github.com/wanggang316/youskill/issues/93)).
+
 ### Fixed
 
 ### Removed
