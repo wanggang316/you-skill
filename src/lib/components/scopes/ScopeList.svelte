@@ -141,25 +141,26 @@
   });
 </script>
 
-{#snippet groupEntries(group: Group)}
+<!-- Entries under a workspace header are indented one step (12px) from the header title. -->
+{#snippet groupEntries(group: Group, nested: boolean)}
   {#each group.entries as entry (entry.key)}
-    {@render row(entry)}
+    {@render row(entry, nested)}
   {/each}
   {#if group.entries.length === 0}
-    <p class="text-base-content-faint px-4 py-1.5 text-[11px]">
+    <p class={`text-base-content-faint py-1.5 pr-4 text-[11px] ${nested ? "pl-7" : "pl-4"}`}>
       {$t("workspace.emptyGroup")}
     </p>
   {/if}
 {/snippet}
 
-{#snippet row(entry: ScopeEntry)}
+{#snippet row(entry: ScopeEntry, nested = false)}
   {@const selected = entry.key === selectedKey}
   {@const menu = projectMenu(entry)}
   <div class="group relative mx-1.5 mb-0.5">
     <button
-      class={`flex w-full items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition ${
+      class={`flex w-full items-start gap-2.5 rounded-xl py-2 text-left transition ${
         selected ? "bg-base-content/[0.07]" : "hover:bg-base-content/[0.045]"
-      } ${menu.length > 0 ? "pr-10" : ""}`}
+      } ${nested ? "pl-[1.375rem]" : "pl-2.5"} ${menu.length > 0 ? "pr-10" : "pr-2.5"}`}
       type="button"
       onclick={() => onSelect(entry)}
       aria-current={selected ? "true" : undefined}
@@ -310,10 +311,10 @@
                 />
               {/if}
             {/snippet}
-            {@render groupEntries(group)}
+            {@render groupEntries(group, true)}
           </CollapsibleGroup>
         {:else}
-          {@render groupEntries(group)}
+          {@render groupEntries(group, false)}
         {/if}
       {/each}
     {/if}

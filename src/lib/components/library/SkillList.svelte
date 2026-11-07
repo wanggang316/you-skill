@@ -231,7 +231,7 @@
             ></div>
           </div>
           {#each group.rows as [name, description]}
-            <div class="mx-1.5 flex flex-col gap-1 px-2.5 py-2" aria-hidden="true">
+            <div class="mx-1.5 flex flex-col gap-1 py-2 pr-2.5 pl-8" aria-hidden="true">
               <div
                 class="bg-base-content/[0.09] my-[4.5px] h-[11px] animate-pulse rounded-full"
                 style={`width: ${name}%`}
@@ -272,13 +272,16 @@
           labelClass="font-medium"
         >
           {#snippet leading()}
-            {#if group.owner}
-              <GithubAvatar owner={group.owner} />
-            {:else if group.kind === "folder"}
-              <Folder size={13} class="shrink-0" />
-            {:else}
-              <Zap size={13} class="shrink-0" />
-            {/if}
+            <!-- A fixed 16px slot keeps the title at one x for every icon kind. -->
+            <span class="flex size-4 shrink-0 items-center justify-center">
+              {#if group.owner}
+                <GithubAvatar owner={group.owner} />
+              {:else if group.kind === "folder"}
+                <Folder size={13} class="shrink-0" />
+              {:else}
+                <Zap size={13} class="shrink-0" />
+              {/if}
+            </span>
           {/snippet}
           {#snippet trailing()}
             {#if updating}
@@ -304,9 +307,9 @@
           {#each group.skills as skill (skill.id)}
             {@const selected = skill.id === selectedId}
             {@const checked = checkedIds.includes(skill.id)}
-            <!-- pl-2.5 puts the text under the group header icon. -->
+            <!-- mx-1.5 + pl-8 starts the text at the group title: pl-4 + 16px icon + gap-1.5. -->
             <button
-              class={`mx-1.5 flex w-[calc(100%-0.75rem)] flex-col gap-1 rounded-lg px-2.5 py-2 text-left transition select-none ${
+              class={`mx-1.5 flex w-[calc(100%-0.75rem)] flex-col gap-1 rounded-lg py-2 pr-2.5 pl-8 text-left transition select-none ${
                 checked
                   ? "bg-primary/10 ring-primary/40 ring-1 ring-inset"
                   : selected

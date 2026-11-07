@@ -230,7 +230,8 @@
   }
 </script>
 
-{#snippet locationRow(item: Location)}
+<!-- Rows under a group header are indented one step (12px) from the header title. -->
+{#snippet locationRow(item: Location, nested: boolean)}
   {@const checked = selected.includes(item.key)}
   <ContextMenu
     items={[
@@ -247,6 +248,8 @@
       <label
         {...props}
         class={`mb-1.5 flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2 transition ${
+          nested ? "ml-5.5" : ""
+        } ${
           checked
             ? "border-primary/60 bg-primary/10"
             : "border-base-300 bg-base-100 hover:bg-base-200"
@@ -307,12 +310,12 @@
                 <span class="text-base-content-faint">{group.locations.length}</span>
               {/snippet}
               {#each group.locations as item (item.key)}
-                {@render locationRow(item)}
+                {@render locationRow(item, true)}
               {/each}
             </CollapsibleGroup>
           {:else}
             {#each group.locations as item (item.key)}
-              {@render locationRow(item)}
+              {@render locationRow(item, false)}
             {/each}
           {/if}
         {/each}

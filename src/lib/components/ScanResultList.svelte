@@ -158,7 +158,8 @@
         >
           <div class="space-y-1 pt-1">
             {#each sections.inert as item (item.path)}
-              <div class="flex items-center gap-2 px-2.5 py-1 opacity-70">
+              <!-- pl-4: one 12px step in from the header title (px-1). -->
+              <div class="flex items-center gap-2 py-1 pr-2.5 pl-4 opacity-70">
                 <span
                   class="text-base-content min-w-0 flex-1 truncate text-[12px]"
                   title={item.path}

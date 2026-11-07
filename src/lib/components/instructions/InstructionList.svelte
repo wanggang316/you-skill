@@ -245,7 +245,8 @@
               aria-current={selected ? "true" : undefined}
               title={file.path}
             >
-              <div class="flex w-full items-center gap-2">
+              <!-- Icon (11px) + gap (6px): starts the file name at the group title. -->
+              <div class="flex w-full items-center gap-2 pl-[1.0625rem]">
                 <span class="text-base-content min-w-0 flex-1 truncate font-mono text-[12px]">
                   {file.fileName}
                 </span>
