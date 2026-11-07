@@ -30,7 +30,7 @@ _Avoid_: Source id
 **Repository group**:
 A group in the Library of the hub skills that came from one GitHub repository (`owner/repo`,
 for all branches). Its menu, "Repository actions" (仓库操作), runs import, install, update and
-remove on the whole group (see `docs/decisions/0005-library-repository-group-actions.md`).
+remove on the whole group (see `docs/decisions/0006-library-repository-group-actions.md`).
 _Avoid_: Source group, repo folder
 
 **Instruction template**:
@@ -109,6 +109,17 @@ _Avoid_: Common item, main item
 A library item with the scope of one device. Only that device gets it and only that device
 can change its scope or remove it.
 _Avoid_: Local item, private item
+
+**Auto sync**:
+A library sync that the desktop app starts on a schedule on this computer: a restore with
+the sync policy, then a backup. It is a setting of this computer and is off by default (see
+`docs/decisions/0005-library-auto-sync.md`).
+_Avoid_: Background sync, scheduled backup
+
+**Sync policy**:
+For each kind of restore plan item (repository change, removal candidate, conflict), what
+auto sync does with it: one automatic action or "ask". One "ask" item stops the auto restore.
+_Avoid_: Sync rule, auto-merge setting
 
 ### Favorites
 

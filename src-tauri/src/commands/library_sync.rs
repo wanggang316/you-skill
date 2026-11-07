@@ -1,20 +1,24 @@
 //! Back up the library to GitHub and bring it to other computers. Thin adapters over
-//! `library_sync_service`; network calls run on the blocking pool.
+//! `library_sync_service`; network calls run on the blocking pool. While a command runs,
+//! auto sync skips its cycle.
 
+use crate::auto_sync::{self, AutoSyncStatus, ManualAction, ManualSync};
 use crate::config::load_config;
 use crate::models::InstallMode;
 use crate::services::agent_apps_service::refresh_local_agent_apps;
 use crate::services::env::Env;
 use crate::services::library_sync_service::{
-  self, ApplyPendingOutcome, BackupOutcome, DeviceInfo, DeviceItemChoice, ItemScope, PendingItem,
-  RemoteCommit, RestoreDecisions, RestoreMode, RestoreOptions, RestoreOutcome, RestorePlan,
-  SyncStatus,
+  self, ApplyPendingOutcome, BackupOutcome, BackupResult, DeviceInfo, DeviceItemChoice, ItemScope,
+  PendingItem, RemoteCommit, RestoreDecisions, RestoreMode, RestoreOptions, RestoreOutcome,
+  RestorePlan, RestoreResult, SyncStatus,
 };
 use std::collections::BTreeMap;
+use tauri::AppHandle;
 
 async fn blocking<T: Send + 'static>(
   f: impl FnOnce() -> Result<T, String> + Send + 'static,
 ) -> Result<T, String> {
+  let _manual = ManualSync::start();
   tokio::task::spawn_blocking(f)
     .await
     .map_err(|e| e.to_string())?
@@ -32,20 +36,33 @@ pub async fn library_sync_connect(repo: Option<String>) -> Result<SyncStatus, St
 }
 
 #[tauri::command]
-pub async fn library_sync_disconnect() -> Result<(), String> {
-  blocking(|| library_sync_service::disconnect(&Env::current()?)).await
+pub async fn library_sync_disconnect(app: AppHandle) -> Result<(), String> {
+  blocking(|| library_sync_service::disconnect(&Env::current()?)).await?;
+  auto_sync::resolved(&app, ManualAction::Disconnect);
+  Ok(())
 }
 
+/// A manual backup that leaves the library backed up settles a failed auto sync and the
+/// backup stop states; items that wait for a decision keep their badge.
 #[tauri::command]
-pub async fn library_sync_backup() -> Result<BackupOutcome, String> {
-  blocking(|| library_sync_service::backup(&Env::current()?)).await
+pub async fn library_sync_backup(app: AppHandle) -> Result<BackupOutcome, String> {
+  let outcome = blocking(|| library_sync_service::backup(&Env::current()?)).await?;
+  if matches!(
+    outcome.result,
+    BackupResult::Pushed | BackupResult::UpToDate
+  ) {
+    auto_sync::resolved(&app, ManualAction::Backup);
+  }
+  Ok(outcome)
 }
 
 /// Migrate a version 1 repository to item scopes and device files, after the user
 /// confirmed it. Other computers must update the app before they sync again.
 #[tauri::command]
-pub async fn library_sync_migrate() -> Result<(), String> {
-  blocking(|| library_sync_service::migrate(&Env::current()?)).await
+pub async fn library_sync_migrate(app: AppHandle) -> Result<(), String> {
+  blocking(|| library_sync_service::migrate(&Env::current()?)).await?;
+  auto_sync::resolved(&app, ManualAction::Migrate);
+  Ok(())
 }
 
 /// Compare this computer's library with the branch head, or with `target`, an earlier
@@ -59,13 +76,17 @@ pub async fn library_sync_plan_restore(
     .await
 }
 
-/// Installs use the default install mode from Settings > General.
+/// Installs use the default install mode from Settings > General. An applied restore of
+/// the head also settles the items the last auto sync left for a decision; a restore of an
+/// earlier commit does not decide them.
 #[tauri::command]
 pub async fn library_sync_apply_restore(
+  app: AppHandle,
   plan: RestorePlan,
   decisions: RestoreDecisions,
   options: RestoreOptions,
 ) -> Result<RestoreOutcome, String> {
+  let action = ManualAction::restore(plan.target.as_deref(), plan.remote_head.as_deref());
   blocking(move || {
     let mode = InstallMode::from_setting(&load_config()?.sync_mode);
     let outcome =
@@ -76,6 +97,11 @@ pub async fn library_sync_apply_restore(
     Ok(outcome)
   })
   .await
+  .inspect(|outcome| {
+    if outcome.result == RestoreResult::Applied {
+      auto_sync::resolved(&app, action);
+    }
+  })
 }
 
 #[tauri::command]
@@ -166,4 +192,17 @@ pub async fn library_sync_remove_device(
   choices: BTreeMap<String, DeviceItemChoice>,
 ) -> Result<(), String> {
   blocking(move || library_sync_service::remove_device(&Env::current()?, &device, &choices)).await
+}
+
+/// The last auto sync of this app run; `null` before the first cycle or after a manual sync.
+#[tauri::command]
+pub fn library_sync_auto_status(app: AppHandle) -> Option<AutoSyncStatus> {
+  auto_sync::last(&app)
+}
+
+/// Auto sync skips its cycle while a library sync dialog (restore preview, first connect)
+/// is open.
+#[tauri::command]
+pub fn library_sync_set_dialog_open(app: AppHandle, open: bool) {
+  auto_sync::set_dialog_open(&app, open);
 }

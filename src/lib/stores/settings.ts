@@ -1,7 +1,8 @@
 import { derived, get, writable } from "svelte/store";
 import { getSettings as fetchSettings, updateSettings as persistSettings } from "../api";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import type { AppSettings, EditableSettings } from "../api/settings";
+import { DEFAULT_AUTO_SYNC, type AppSettings, type EditableSettings } from "../api/settings";
+import { createLatestWriter } from "../utils/latest-writer";
 
 const defaultSettings: AppSettings = {
   language: "en",
@@ -13,6 +14,7 @@ const defaultSettings: AppSettings = {
   translate_display_mode: "bilingual",
   translate_text_style: "none",
   shortcuts: {},
+  auto_sync: DEFAULT_AUTO_SYNC,
 };
 
 export const settings = writable<AppSettings>({ ...defaultSettings });
@@ -110,25 +112,29 @@ const syncSystemTheme = (theme: AppSettings["theme"]) => {
     });
 };
 
+const fromStored = (remote: AppSettings): AppSettings => ({
+  ...defaultSettings,
+  language: remote.language,
+  theme: remote.theme,
+  sync_mode: remote.sync_mode,
+  openrouter_api_key: remote.openrouter_api_key ?? null,
+  translate_target_language: remote.translate_target_language ?? "",
+  translate_model: remote.translate_model ?? "",
+  translate_display_mode: remote.translate_display_mode ?? defaultSettings.translate_display_mode,
+  translate_text_style: remote.translate_text_style ?? defaultSettings.translate_text_style,
+  shortcuts: remote.shortcuts ?? {},
+  auto_sync: remote.auto_sync ?? DEFAULT_AUTO_SYNC,
+});
+
+const showSettings = (next: AppSettings) => {
+  settings.set(next);
+  applyTheme(next.theme);
+  syncSystemTheme(next.theme);
+};
+
 export const loadSettings = async () => {
   try {
-    const remote = await fetchSettings();
-    const merged = {
-      ...defaultSettings,
-      language: remote.language,
-      theme: remote.theme,
-      sync_mode: remote.sync_mode,
-      openrouter_api_key: remote.openrouter_api_key ?? null,
-      translate_target_language: remote.translate_target_language ?? "",
-      translate_model: remote.translate_model ?? "",
-      translate_display_mode:
-        remote.translate_display_mode ?? defaultSettings.translate_display_mode,
-      translate_text_style: remote.translate_text_style ?? defaultSettings.translate_text_style,
-      shortcuts: remote.shortcuts ?? {},
-    };
-    settings.set(merged);
-    applyTheme(merged.theme);
-    syncSystemTheme(merged.theme);
+    showSettings(fromStored(await fetchSettings()));
   } catch (error) {
     console.error(error);
     settings.set({ ...defaultSettings });
@@ -137,16 +143,30 @@ export const loadSettings = async () => {
   }
 };
 
+/** Each save sends the whole settings; one at a time, so the last change is the one stored. */
+const saveSettings = createLatestWriter<AppSettings>(persistSettings);
+
+/**
+ * Shows the change at once and saves it. A failed save rejects; when no later change came
+ * before or during the read of the stored settings, the settings go back to what is stored,
+ * so the UI does not show a value that was not saved.
+ */
 export const updateSettings = async (patch: Partial<EditableSettings>) => {
-  const current = get(settings);
-  const next = { ...current, ...patch };
-  settings.set(next);
-  applyTheme(next.theme);
-  syncSystemTheme(next.theme);
+  const next = { ...get(settings), ...patch };
+  showSettings(next);
   try {
-    await persistSettings(next);
+    await saveSettings(next);
   } catch (error) {
-    console.error(error);
+    if (get(settings) === next) {
+      try {
+        const stored = fromStored(await fetchSettings());
+        // A change made during the read is newer than what it read; keep that change.
+        if (get(settings) === next) showSettings(stored);
+      } catch (reloadError) {
+        console.error(reloadError);
+      }
+    }
+    throw error;
   }
 };
 

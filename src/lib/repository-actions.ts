@@ -1,6 +1,6 @@
 /**
  * Pure logic of the "Repository actions" menu of a repository group in the Library
- * (see docs/decisions/0005-library-repository-group-actions.md).
+ * (see docs/decisions/0006-library-repository-group-actions.md).
  */
 
 import type { HubSkillView, SourcePullResult, SourceUpdate } from "./api/hub";

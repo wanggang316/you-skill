@@ -22,6 +22,7 @@
   import ShortcutsSection from "$lib/components/settings/ShortcutsSection.svelte";
   import TranslationSection from "$lib/components/settings/TranslationSection.svelte";
   import { t } from "$lib/i18n";
+  import { autoSyncNeedsAttention } from "$lib/stores/auto-sync";
   import {
     buildSettingsHref,
     parseSettingsSection,
@@ -70,6 +71,12 @@
           >
             <Icon size={15} />
             <span class="truncate">{item.label}</span>
+            {#if item.key === "backup" && $autoSyncNeedsAttention}
+              <span
+                class="bg-warning ml-auto size-2 flex-none rounded-full"
+                title={$t("settings.sync.auto.attentionBadge")}
+              ></span>
+            {/if}
           </a>
         {/each}
       </nav>

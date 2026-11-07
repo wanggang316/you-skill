@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Library auto sync: Settings > Backup & Sync can back up and restore the library on a schedule (every 15 minutes, hour, 6 hours or 24 hours), with a sync policy for changes from GitHub, removals and conflicts. It is off by default. A cycle that needs a decision stops the restore and shows a badge on Settings; an auto restore can be undone ([#89](https://github.com/wanggang316/youskill/issues/89)).
 - Repository groups in the Library have a Repository actions menu (`...`) with Import, Install, Update and Remove for the whole group. Update downloads each repository branch one time, asks one time about local changes, and shows one report ([#88](https://github.com/wanggang316/youskill/issues/88)).
 - The GitHub import list marks the skills that are already in the Library as imported, and does not select them at first ([#88](https://github.com/wanggang316/youskill/issues/88)).
 

@@ -35,6 +35,7 @@
   let {
     activeKey,
     hasUpdate,
+    settingsBadge = false,
     updateLoading,
     latestVersion = "",
     onImport,
@@ -44,6 +45,8 @@
   }: {
     activeKey: SidebarActiveKey;
     hasUpdate: boolean;
+    /** Something in Settings needs the user, such as a library auto sync. */
+    settingsBadge?: boolean;
     updateLoading: boolean;
     latestVersion?: string;
     onImport: () => void;
@@ -382,7 +385,7 @@
         {#snippet child({ props })}
           <a
             {...props}
-            class={`flex size-9 items-center justify-center rounded-full transition-[background-color,color,transform] duration-200 active:scale-95 ${
+            class={`relative flex size-9 items-center justify-center rounded-full transition-[background-color,color,transform] duration-200 active:scale-95 ${
               settingsActive
                 ? "bg-base-content/[0.07] text-base-content"
                 : "text-base-content-muted hover:bg-base-content/[0.06] hover:text-base-content"
@@ -396,6 +399,12 @@
           >
             {#snippet icon()}<Settings size={17} strokeWidth={1.7} />{/snippet}
             {@render shortcutSlot("settings", icon)}
+            {#if settingsBadge}
+              <span
+                class="bg-warning ring-chrome pointer-events-none absolute top-1.5 right-1.5 size-2 rounded-full ring-2"
+                aria-hidden="true"
+              ></span>
+            {/if}
           </a>
         {/snippet}
       </Tooltip.Trigger>

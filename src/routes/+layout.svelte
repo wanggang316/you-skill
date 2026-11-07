@@ -23,6 +23,7 @@
   import { getAppLocation } from "$lib/navigation/app-shell";
   import { goBack, goForward } from "$lib/navigation/history";
   import { account } from "$lib/stores/account";
+  import { autoSyncNeedsAttention, startAutoSyncStatus } from "$lib/stores/auto-sync";
   import { loadHomePath } from "$lib/stores/env";
   import {
     checkAllSourceUpdates,
@@ -127,6 +128,7 @@
     refreshInstructions().catch(console.error);
     // Follows sign-in callbacks from the start, also while Settings is closed.
     void account.load();
+    const stopAutoSyncStatus = startAutoSyncStatus();
     ensureUpdateChecked().catch(console.error);
     const stopAutomaticUpdateChecks = startAutomaticUpdateChecks({
       onFocus: (listener) =>
@@ -165,6 +167,7 @@
       unlistenCheckForUpdates?.();
       unlistenFocus?.();
       stopAutomaticUpdateChecks();
+      stopAutoSyncStatus();
       document.removeEventListener("mousedown", handleWindowDrag);
       document.removeEventListener("keydown", handleHistoryKeys);
     };
@@ -176,6 +179,7 @@
     <AppTopBar
       activeKey={location.activeKey}
       hasUpdate={$updaterState.hasUpdate}
+      settingsBadge={$autoSyncNeedsAttention}
       updateLoading={$updaterState.installing}
       latestVersion={$updaterState.latestVersion}
       onImport={() => openImportModal()}

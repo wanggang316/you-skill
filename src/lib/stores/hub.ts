@@ -68,9 +68,14 @@ export const agentsById = derived(
   ($agents) => new Map($agents.map((agent) => [agent.id, agent]))
 );
 
+/** The latest agent read; an earlier read that returns later must not overwrite it. */
+let agentsRequest = 0;
+
 export async function loadAgents(): Promise<void> {
+  const request = ++agentsRequest;
   try {
-    agents.set(await listLocalAgentApps());
+    const apps = await listLocalAgentApps();
+    if (request === agentsRequest) agents.set(apps);
   } catch (error) {
     console.error(error);
   }
@@ -82,6 +87,11 @@ export async function loadAgents(): Promise<void> {
  */
 export interface RefreshOptions {
   manual?: boolean;
+  /**
+   * Read again even when a run is in flight: that run may have read before a change the
+   * caller knows about (an auto restore), so wait for it and start a new one.
+   */
+  fresh?: boolean;
 }
 
 /** An in-flight run that every caller shares; any foreground caller makes it foreground. */
@@ -108,6 +118,9 @@ function releaseHubLoading(): void {
 export function refreshHub(options: RefreshOptions = {}): Promise<void> {
   const foreground = options.manual === true || !get(hubLoaded);
   if (foreground) hubError.set("");
+  if (hubRun && options.fresh) {
+    return hubRun.promise.then(() => refreshHub({ ...options, fresh: false }));
+  }
   if (hubRun) {
     if (foreground && !hubRun.foreground) {
       hubRun.foreground = true;

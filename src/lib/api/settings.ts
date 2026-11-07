@@ -5,9 +5,29 @@
  */
 
 import { apiCall } from "./index";
+import type { SyncPolicy } from "./library-sync";
 
 export type TranslateDisplayMode = "bilingual" | "translation";
 export type TranslateTextStyle = "none" | "dashed_underline";
+
+export type AutoSyncInterval = "15m" | "1h" | "6h" | "24h";
+
+/** Library auto sync of this computer; not synced to other computers. */
+export interface AutoSyncSettings {
+  enabled: boolean;
+  backup: boolean;
+  restore: boolean;
+  interval: AutoSyncInterval;
+  policy: SyncPolicy;
+}
+
+export const DEFAULT_AUTO_SYNC: AutoSyncSettings = {
+  enabled: false,
+  backup: true,
+  restore: true,
+  interval: "1h",
+  policy: { repositoryChange: "apply", removal: "ask", conflict: "ask" },
+};
 
 export interface AppSettings {
   language: "en" | "zh";
@@ -21,6 +41,7 @@ export interface AppSettings {
   translate_text_style: TranslateTextStyle;
   /** Changed key combinations by action; actions not listed use their default. */
   shortcuts: Record<string, string>;
+  auto_sync: AutoSyncSettings;
 }
 
 export type EditableSettings = Pick<
@@ -34,6 +55,7 @@ export type EditableSettings = Pick<
   | "translate_display_mode"
   | "translate_text_style"
   | "shortcuts"
+  | "auto_sync"
 >;
 
 /**

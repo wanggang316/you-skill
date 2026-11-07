@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onDestroy, onMount, untrack } from "svelte";
   import { open as openExternal } from "@tauri-apps/plugin-shell";
   import { ExternalLink, Loader2, RefreshCw } from "@lucide/svelte";
   import {
@@ -16,6 +16,7 @@
     listSyncDevices,
     migrateLibrarySync,
     planLibraryRestore,
+    setLibrarySyncDialogOpen,
     takeOverSyncDevice,
     undoLibraryRestore,
     type DeviceInfo,
@@ -38,8 +39,10 @@
   import SelectField from "$lib/components/ui/SelectField.svelte";
   import { t } from "$lib/i18n";
   import { buildSettingsHref } from "$lib/navigation/app-shell";
+  import { autoSyncStatus } from "$lib/stores/auto-sync";
   import { agentsById, loadAgents, refreshHub } from "$lib/stores/hub";
   import { refreshInstructions } from "$lib/stores/instructions";
+  import LibraryAutoSyncCard from "./LibraryAutoSyncCard.svelte";
   import LibraryDevicesDialog from "./LibraryDevicesDialog.svelte";
   import LibraryInstallFailures from "./LibraryInstallFailures.svelte";
   import LibraryRestorePanel from "./LibraryRestorePanel.svelte";
@@ -119,6 +122,36 @@
   onMount(() => {
     load();
   });
+
+  // Auto sync skips its cycle while a dialog here is open, so a cycle cannot change the
+  // library under a restore preview or a first-connect choice.
+  $effect(() => {
+    setLibrarySyncDialogOpen(dialog !== null).catch(console.error);
+  });
+
+  onDestroy(() => {
+    setLibrarySyncDialogOpen(false).catch(console.error);
+  });
+
+  // An auto sync that wrote changes the status shown here. Only a new result runs this.
+  $effect(() => {
+    const outcome = $autoSyncStatus?.outcome;
+    if (!outcome?.restored && !outcome?.backedUp) return;
+    untrack(() => {
+      if (busy !== null || dialog !== null || !status?.connected) return;
+      void refreshStatus();
+    });
+  });
+
+  async function refreshStatus() {
+    try {
+      status = await getLibrarySyncStatus();
+      plan = null;
+      if (status.connected && status.hasSynced) await loadPending();
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
   const itemKey = (item: PendingItem) =>
     `${item.kind}:${item.id}:${item.action}:${item.agentId}:${item.path ?? ""}`;
@@ -674,6 +707,8 @@
         </button>
       </SettingsRow>
     </div>
+
+    <LibraryAutoSyncCard {formatTime} />
 
     {#if status.libraryEmpty && !status.hasSynced}
       <p class="text-base-content-muted px-1 text-xs">{$t("settings.sync.emptyLibraryHint")}</p>

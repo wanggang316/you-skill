@@ -135,7 +135,7 @@ the user confirms one time for the group. A pull without a hub hash (the hub cop
 `SKILL.md`) is skipped with `hub_unavailable` before any write; the group Update does not send
 such a skill. The group Update also pulls
 a skill without `remoteSha`, because the check cannot tell whether it is current (see
-`docs/decisions/0005-library-repository-group-actions.md`).
+`docs/decisions/0006-library-repository-group-actions.md`).
 
 ## Instructions: templates and agent files
 
@@ -296,6 +296,36 @@ Item scope and devices (ADR 0004, "Edits and scope changes" and "Devices"):
 - `remove_device(id, choices)` writes one commit: each device-only item of the device
   becomes shared, goes to another device or is deleted, then its device file is deleted.
   This computer cannot remove itself.
+
+Auto sync ([ADR 0005](decisions/0005-library-auto-sync.md)): `auto_sync(options)` runs one
+cycle. It returns `not_connected` without a connection and `skipped` when another operation
+holds the file lock of `.ops.lock` (`ops_busy`, no wait). With auto restore on it plans
+`pull` on the head: `choose_mode`, `migration_required` and a `ready` plan without a base
+(a first connect, also with an empty local library; reason `remote_not_empty`) end the cycle
+before any write; another `ready` plan goes through `decisions_for(plan, policy)`. That mapping never includes a
+deferred item; a `take_remote` item with `repositoryChange: ask`, a removal candidate (also
+`madeDeviceOnly`) with `removal: ask`, a conflict with `conflict: ask`, or a `keep_both` that
+cannot apply (a custom agent, a removal on one side) makes the whole restore wait
+(`needs_attention`, reason `ask`, the item keys in `ask`). Otherwise `apply_restore` runs
+with `applyInstalls` off; it is not called when the plan only holds local changes and
+deferred items on an unmoved head, so the checkpoint of a manual restore stays. A `stale`
+restore ends the cycle. With auto backup on, `backup` follows, also after an `ask`;
+`diverged`, `remote_not_empty` and `migration_required` give `needs_attention`. The settings
+(`auto_sync` in the app config: `enabled`, `backup`, `restore`, `interval` `15m | 1h | 6h |
+24h`, `policy`) are local to this computer and off by default. The app shell
+(`src-tauri/src/auto_sync.rs`) runs a cycle at start and then once per interval, also with
+the window hidden; a settings change restarts the timer (turning auto sync on runs at once).
+It skips the cycle while a library sync command runs or a library sync dialog is open
+(`library_sync_set_dialog_open`), and asks again just before the restore and the backup
+(`may_write`), so a cycle that was reading when the user started one ends without writing. It keeps
+the last result in memory
+(`library_sync_auto_status`) and sends it as `library-sync://auto-synced`. A manual sync clears it
+only when it resolves the report: any success resolves a failure, an applied restore
+of the head resolves everything, a backup or a restore of an earlier commit resolves
+`diverged`, `remote_not_empty` and `migration_required`, a migration resolves
+`migration_required`; items that wait for a decision and `choose_mode` keep the badge until
+a restore of the head. The frontend shows it in Settings > Backup & Sync and a
+badge on the Settings button and nav item when it needs attention or failed.
 
 ## Favorites (`favorites_service`, `favorite_sync_service`, `favorite_api_service`)
 
