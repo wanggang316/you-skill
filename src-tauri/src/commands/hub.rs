@@ -1,8 +1,8 @@
 use crate::config::load_config;
 use crate::models::{
   ActionResult, DiffAgainst, HubSkillView, ImportItem, ImportOutcome, ImportPlan, InstallMode,
-  InstallRequest, MigrationReport, ScanDecision, ScanItem, SkillDiff, SkillSource, SourceUpdate,
-  SyncAction, UninstallRequest,
+  InstallRequest, MigrationReport, ScanDecision, ScanItem, SkillDiff, SkillSource, SourcePull,
+  SourcePullResult, SourceUpdate, SyncAction, UninstallRequest,
 };
 use crate::services::env::Env;
 use crate::services::scan_service::DEFAULT_SCAN_DEPTH;
@@ -200,6 +200,13 @@ pub async fn diff_skill(id: String, against: DiffAgainst) -> Result<SkillDiff, S
 pub async fn check_source_updates(ids: Option<Vec<String>>) -> Result<Vec<SourceUpdate>, String> {
   let env = Env::current()?;
   source_service::check_source_updates(env, ids).await
+}
+
+/// Pull the GitHub sources of several skills, downloading each `(repo, branch)` one time.
+#[tauri::command]
+pub async fn pull_github_sources(pulls: Vec<SourcePull>) -> Result<Vec<SourcePullResult>, String> {
+  let env = Env::current()?;
+  source_service::pull_github_sources(env, pulls).await
 }
 
 #[tauri::command]

@@ -36,8 +36,17 @@ pub fn detect_zip(zip_path: String) -> Result<Vec<DetectedSkill>, String> {
   detect_folder(temp_extract_dir.to_string_lossy().to_string())
 }
 
-pub async fn detect_github_manual(github_path: String) -> Result<Vec<DetectedSkill>, String> {
-  let reference = GithubHelper::parse_github_ref(&github_path)?;
+/// `branch` overrides a branch in `github_path`. Pass it for a branch name with `/`, which a
+/// `/tree/<branch>/<path>` URL cannot tell apart from a path.
+pub async fn detect_github_manual(
+  github_path: String,
+  branch: Option<String>,
+) -> Result<Vec<DetectedSkill>, String> {
+  let mut reference = GithubHelper::parse_github_ref(&github_path)?;
+  if let Some(branch) = branch.filter(|b| !b.trim().is_empty()) {
+    reference.branch = Some(branch);
+    reference.subpath = None;
+  }
   let clone_dir = create_temp_dir(&format!(
     "detect-github-{}-{}",
     reference.owner, reference.repo

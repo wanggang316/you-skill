@@ -627,6 +627,57 @@ pub struct SourceUpdate {
   pub error: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SourcePullStatus {
+  Updated,
+  /// Refused without force because the hub copy has local changes.
+  Skipped,
+  Failed,
+}
+
+/// One skill of a batch pull from GitHub.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SourcePull {
+  pub id: String,
+  /// Hash of the hub copy when the update was decided. If the hub copy has another hash at
+  /// the write, or no hash because `SKILL.md` or the folder is gone, the skill is skipped.
+  /// Without a hash the skill is skipped before any write.
+  #[serde(default)]
+  pub hub_hash: Option<String>,
+  /// The user confirmed to overwrite the local changes of the hub copy.
+  #[serde(default)]
+  pub force: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SourceSkipReason {
+  /// The hub copy has local changes and the pull is not forced.
+  LocalChanges,
+  /// The hub copy changed after the update was decided.
+  ChangedAfterCheck,
+  /// The hub copy had no hash when the update was decided (its folder or `SKILL.md` is
+  /// missing), so there is no state to guard the write with.
+  HubUnavailable,
+}
+
+/// Result of one skill in a batch pull from GitHub.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SourcePullResult {
+  pub id: String,
+  pub name: String,
+  pub status: SourcePullStatus,
+  /// The blocker of a skipped skill or the error of a failed one.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub message: Option<String>,
+  /// Why a skipped skill was skipped.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub reason: Option<SourceSkipReason>,
+}
+
 // ---------------------------------------------------------------------------
 // Diff
 // ---------------------------------------------------------------------------

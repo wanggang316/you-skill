@@ -107,7 +107,8 @@ A stat-only signature caches results in memory so listing stays cheap.
 Three nodes per skill: source S, hub H, targets T. `list_hub_skills` computes everything
 offline; `check_source_updates` is the only network call and stores its result in the lock.
 It batches: the marketplace answers for the skills it indexes, then one GitHub trees request
-per repository and branch covers the rest. The app runs it for all skills at startup and when
+per repository and branch covers the rest. A source without a recorded branch is checked on
+`main`, then `master`, the same order as the archive download. The app runs it for all skills at startup and when
 the library is opened from the sidebar (at most every five minutes), and on every library
 refresh (`checkAllSourceUpdates` in `stores/hub.ts`).
 
@@ -122,6 +123,19 @@ Sync actions (`sync_skill`): `pull_source`, `push_targets`, `adopt_target`, `acc
 `push_source`. Any action that would discard local edits returns `applied: false` with
 `blockers`; the caller may retry with `force`. Hub replacements move the old copy to
 `.trash` first.
+
+`pull_source` for a GitHub skill downloads the repository archive and then pushes the new
+hub copy to the outdated copy targets. `pull_github_sources(pulls)` pulls several GitHub
+skills for the Library repository group Update: it downloads each repository branch one time,
+takes the remote sha from the stored `latestRemoteSha`, and does not push to targets. Each pull
+gives the hub hash seen when the update was decided; a hub copy in another state at the write
+(an edit, a removed `SKILL.md` or folder) is skipped with the reason `changed_after_check`. A
+hub copy with local changes is skipped with `local_changes` unless the pull has `force`, which
+the user confirms one time for the group. A pull without a hub hash (the hub copy has no folder or no
+`SKILL.md`) is skipped with `hub_unavailable` before any write; the group Update does not send
+such a skill. The group Update also pulls
+a skill without `remoteSha`, because the check cannot tell whether it is current (see
+`docs/decisions/0006-library-repository-group-actions.md`).
 
 ## Instructions: templates and agent files
 
@@ -409,7 +423,7 @@ helpers of `navigation/app-shell.ts`.
 
 | Area         | Commands                                                                                                                                                                                                                                                                                                                                                                                               |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Hub          | `list_hub_skills`, `get_hub_skill`, `plan_import`, `import_skills`, `remove_hub_skill`, `sync_skill`, `diff_skill`, `check_source_updates`, `migrate_legacy`, `migration_status`                                                                                                                                                                                                                       |
+| Hub          | `list_hub_skills`, `get_hub_skill`, `plan_import`, `import_skills`, `remove_hub_skill`, `sync_skill`, `diff_skill`, `check_source_updates`, `pull_github_sources`, `migrate_legacy`, `migration_status`                                                                                                                                                                                                |
 | Install      | `install_skill`, `uninstall_skill`                                                                                                                                                                                                                                                                                                                                                                     |
 | Scan         | `scan_folder`, `import_scanned`                                                                                                                                                                                                                                                                                                                                                                        |
 | Instructions | `list_instructions`, `get_instruction`, `read_instruction`, `write_instruction`, `rename_instruction`, `import_instructions`, `create_instruction`, `detect_instruction_files`, `detect_instruction_github`, `install_instruction`, `uninstall_instruction`, `remove_instruction`, `sync_instruction`, `diff_instruction`, `list_instruction_files`, `read_instruction_file`, `write_instruction_file` |

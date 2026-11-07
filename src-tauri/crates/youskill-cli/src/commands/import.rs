@@ -125,8 +125,10 @@ fn detect(source: &str) -> Result<Vec<ImportItem>, String> {
   let reference = GithubHelper::parse_github_ref(source)
     .map_err(|_| format!("Not a folder, archive or GitHub reference: {}", source))?;
   let repo = format!("{}/{}", reference.owner, reference.repo);
-  let found: Vec<DetectedSkill> =
-    super::block_on(skill_service::detect_github_manual(source.to_string()))??;
+  let found: Vec<DetectedSkill> = super::block_on(skill_service::detect_github_manual(
+    source.to_string(),
+    None,
+  ))??;
   Ok(
     found
       .into_iter()

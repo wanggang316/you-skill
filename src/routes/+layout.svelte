@@ -17,6 +17,7 @@
   import ScanRootsModal from "$lib/components/ScanRootsModal.svelte";
   import ScopeAgentModal from "$lib/components/ScopeAgentModal.svelte";
   import SkillPickerModal from "$lib/components/SkillPickerModal.svelte";
+  import Toasts from "$lib/components/ui/Toasts.svelte";
   import UpdateDialog from "$lib/components/UpdateDialog.svelte";
   import WorkspaceModal from "$lib/components/WorkspaceModal.svelte";
   import { getAppLocation } from "$lib/navigation/app-shell";
@@ -204,4 +205,5 @@
   <ScanRootsModal />
   <GlobalSearchModal />
   <UpdateDialog />
+  <Toasts />
 </Tooltip.Provider>

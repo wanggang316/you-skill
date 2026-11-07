@@ -162,6 +162,33 @@ export interface SourceUpdate {
   error?: string | null;
 }
 
+export type SourcePullStatus = "updated" | "skipped" | "failed";
+
+/**
+ * Why a batch pull skipped a skill: local changes without force, or a hub copy that changed
+ * after the update was decided.
+ */
+export type SourceSkipReason = "local_changes" | "changed_after_check" | "hub_unavailable";
+
+/** One skill of a batch pull from GitHub. */
+export interface SourcePull {
+  id: string;
+  /** Hub hash when the update was decided; another state at the write skips the skill. */
+  hubHash?: string | null;
+  /** The user confirmed to overwrite the local changes of the hub copy. */
+  force?: boolean;
+}
+
+/** Result of one skill in a batch pull from GitHub. */
+export interface SourcePullResult {
+  id: string;
+  name: string;
+  status: SourcePullStatus;
+  /** The blocker of a skipped skill or the error of a failed one. */
+  message?: string | null;
+  reason?: SourceSkipReason | null;
+}
+
 export type ScanStatus = "new" | "identical" | "different" | "linked" | "hub" | "invalid_name";
 
 export interface AgentRootMatch {
@@ -284,6 +311,14 @@ export async function syncSkill(id: string, action: SyncAction): Promise<ActionR
 
 export async function checkSourceUpdates(ids?: string[] | null): Promise<SourceUpdate[]> {
   return apiCall<SourceUpdate[]>("check_source_updates", { ids: ids ?? null });
+}
+
+/**
+ * Pull the GitHub sources of `pulls`, one download for each repository branch. Install
+ * targets are not pushed.
+ */
+export async function pullGithubSources(pulls: SourcePull[]): Promise<SourcePullResult[]> {
+  return apiCall<SourcePullResult[]>("pull_github_sources", { pulls });
 }
 
 export async function scanFolder(path: string, maxDepth?: number): Promise<ScanItem[]> {

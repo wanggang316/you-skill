@@ -32,11 +32,18 @@
   }
 </script>
 
-<Modal bind:open title={$t("drift.force.title")} onClose={handleCancel} containerClass="max-w-md">
+<Modal
+  bind:open
+  title={$forceModal.labels?.title ?? $t("drift.force.title")}
+  onClose={handleCancel}
+  containerClass="max-w-md"
+>
   <div class="space-y-3 px-6 pt-2 pb-6 text-sm">
     <div class="text-warning-content flex items-start gap-2">
       <AlertTriangle size={18} class="mt-0.5 shrink-0" />
-      <p class="text-base-content">{$t("drift.force.description")}</p>
+      <p class="text-base-content">
+        {$forceModal.labels?.description ?? $t("drift.force.description")}
+      </p>
     </div>
     <ul class="bg-base-200 space-y-1 rounded-xl p-3 text-xs">
       {#each $forceModal.blockers as blocker}
@@ -51,10 +58,10 @@
       onclick={handleCancel}
       disabled={busy}
     >
-      {$t("common.cancel")}
+      {$forceModal.labels?.cancel ?? $t("common.cancel")}
     </button>
     <PrimaryActionButton onclick={handleConfirm} loading={busy} variant="danger">
-      {$t("drift.force.confirm")}
+      {$forceModal.labels?.confirm ?? $t("drift.force.confirm")}
     </PrimaryActionButton>
   {/snippet}
 </Modal>

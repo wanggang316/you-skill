@@ -28,7 +28,13 @@
     type SkillSource,
   } from "../api/hub";
   import { detectGithubManual, detectZip, type DetectedSkill } from "../api/skills";
-  import { refreshHub, skillLabel } from "../stores/hub";
+  import {
+    githubDetectArgs,
+    isImportedGithubSkill,
+    repositoryImportTarget,
+    type RepositoryImportTarget,
+  } from "../repository-actions";
+  import { hubSkills, refreshHub, skillLabel } from "../stores/hub";
   import {
     closeImportModal,
     importModal,
@@ -41,6 +47,8 @@
 
   // GitHub
   let githubUrl = $state("");
+  /** The repository and branch that Import of a repository group filled in. */
+  let repositoryTarget = $state<RepositoryImportTarget | null>(null);
   let isDetectingGithub = $state(false);
   let detectedGithubSkills = $state<DetectedSkill[]>([]);
   let selectedGithubSkills = $state<DetectedSkill[]>([]);
@@ -108,6 +116,11 @@
       if (state.initialFolder) {
         void applyFolderPath(state.initialFolder);
       }
+      if (state.initialRepo) {
+        repositoryTarget = repositoryImportTarget(state.initialRepo, state.initialBranch);
+        githubUrl = repositoryTarget.url;
+        untrack(() => void handleDetectGithub());
+      }
     }
     open = state.open;
   });
@@ -115,6 +128,7 @@
   function resetState() {
     activeTab = "github";
     githubUrl = "";
+    repositoryTarget = null;
     isDetectingGithub = false;
     detectedGithubSkills = [];
     selectedGithubSkills = [];
@@ -333,6 +347,19 @@
     return null;
   }
 
+  function isImportedGithub(sourceUrl: string, skill: DetectedSkill): boolean {
+    return isImportedGithubSkill($hubSkills, repoSlug(sourceUrl), skill);
+  }
+
+  /** `skill_path` of detected skills that the library already has. */
+  const importedGithubPaths = $derived.by(() => {
+    const parsed = parseGithubInput(githubUrl);
+    if (!parsed) return [];
+    return detectedGithubSkills
+      .filter((skill) => isImportedGithub(parsed.sourceUrl, skill))
+      .map((skill) => skill.skill_path);
+  });
+
   function repoSlug(sourceUrl: string): string {
     const match = sourceUrl.match(/github\.com[/:]([^/]+)\/([^/#?]+)/);
     if (!match) return sourceUrl;
@@ -352,9 +379,11 @@
     detectedGithubSkills = [];
     selectedGithubSkills = [];
     try {
-      const skills = await detectGithubManual(parsed.githubPath);
+      const args = githubDetectArgs(parsed.githubPath, repositoryTarget);
+      const skills = await detectGithubManual(args.path, args.branch);
       detectedGithubSkills = skills;
-      selectedGithubSkills = [...skills];
+      // Skills already in the library start unselected, so they are not replaced by accident.
+      selectedGithubSkills = skills.filter((skill) => !isImportedGithub(parsed.sourceUrl, skill));
       if (skills.length === 0) githubError = $t("import.noSkillsFound");
     } catch (error) {
       githubError = String(error);
@@ -668,6 +697,7 @@
               <DetectedSkillList
                 skills={detectedGithubSkills}
                 selectedSkills={selectedGithubSkills}
+                importedPaths={importedGithubPaths}
                 onToggle={(skill) =>
                   (selectedGithubSkills = toggleSkill(selectedGithubSkills, skill))}
                 onToggleAll={() =>

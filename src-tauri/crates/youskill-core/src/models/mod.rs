@@ -19,7 +19,8 @@ pub use skill::{
   ImportPlan, InstallMode, InstallRecord, InstallRequest, InstallScope, InstallTargetSpec,
   InstallView, LockFile, MigrationReport, RemoteSkill, RemoteSkillsResponse, ScanDecision,
   ScanItem, ScanResolution, ScanStatus, SkillDiff, SkillDirectoryEntry, SkillMatch, SkillRecord,
-  SkillSource, SourceState, SourceUpdate, SyncAction, TargetState, UninstallRequest, LOCK_VERSION,
+  SkillSource, SourcePull, SourcePullResult, SourcePullStatus, SourceSkipReason, SourceState,
+  SourceUpdate, SyncAction, TargetState, UninstallRequest, LOCK_VERSION,
 };
 pub use user_project::{
   ProjectCandidate, ProjectRegistration, UserProject, UserProjectView, UserWorkspace,
