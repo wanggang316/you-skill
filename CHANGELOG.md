@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Markdown preview: the pointer on a link shows the link target (Link preview) at the bottom left of the app window, as in a browser. This works in the skill file viewer, the Markdown editor preview and the update dialog ([#95](https://github.com/wanggang316/youskill/issues/95)).
+- Markdown headings get GitHub-style anchors. A click on a `#section` link scrolls to the section, and a link to `other.md#section` opens the file at the section ([#95](https://github.com/wanggang316/youskill/issues/95)).
+
 ### Changed
 
 ### Fixed
