@@ -20,6 +20,7 @@ test("linkPreviewText shows the full URL of an external link", () => {
 
 test("linkPreviewText shows a link to a section of the same file as #<slug>", () => {
   assert.equal(linkPreviewText("#setup", "references/api.md"), "#setup");
+  assert.equal(linkPreviewText("#%E5%AE%89%E8%A3%85", "SKILL.md"), "#安装");
 });
 
 test("linkPreviewText shows a relative file link as the resolved path in the skill", () => {
@@ -27,6 +28,7 @@ test("linkPreviewText shows a relative file link as the resolved path in the ski
   assert.equal(linkPreviewText("./api.md", "references/guide.md"), "references/api.md");
   assert.equal(linkPreviewText("../SKILL.md#usage", "references/guide.md"), "SKILL.md#usage");
   assert.equal(linkPreviewText("/scripts/run.sh?x=1", "references/guide.md"), "scripts/run.sh");
+  assert.equal(linkPreviewText("api.md#%E8%AE%A4%E8%AF%81", "SKILL.md"), "api.md#认证");
 });
 
 test("linkPreviewText shows the link as written when the path cannot be resolved", () => {

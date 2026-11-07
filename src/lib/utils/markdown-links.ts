@@ -40,9 +40,11 @@ export function linkAnchor(href: string): string {
  * Without `baseFile`, a relative link shows as written.
  */
 export function linkPreviewText(href: string, baseFile?: string): string {
-  if (href.startsWith("#") || URL_SCHEME_PATTERN.test(href) || baseFile === undefined) return href;
+  if (URL_SCHEME_PATTERN.test(href)) return href;
+  // The renderer URL-encodes the section, e.g. a CJK heading slug.
+  const section = href.includes("#") ? `#${linkAnchor(href)}` : "";
+  if (href.startsWith("#")) return section;
+  if (baseFile === undefined) return href;
   const path = resolveSkillPath(baseFile, href);
-  if (path === null) return href;
-  const index = href.indexOf("#");
-  return index < 0 ? path : `${path}${href.slice(index)}`;
+  return path === null ? href : `${path}${section}`;
 }
