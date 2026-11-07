@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.12.1] - 2026-11-07
+
+### Added
+
 - Markdown preview: the pointer on a link shows the link target (Link preview) at the bottom left of the app window, as in a browser. This works in the skill file viewer, the Markdown editor preview and the update dialog ([#95](https://github.com/wanggang316/youskill/issues/95)).
 - Markdown headings get GitHub-style anchors. A click on a `#section` link scrolls to the section, and a link to `other.md#section` opens the file at the section ([#95](https://github.com/wanggang316/youskill/issues/95)).
 
@@ -22,8 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Skill file viewer: a click on a relative link to a file with a non-ASCII name, such as `references/参考.md#用法`, opens the file. The Link preview shows the decoded path ([#99](https://github.com/wanggang316/youskill/issues/99)).
-
-### Removed
 
 ## [0.12.0] - 2026-11-07
 
