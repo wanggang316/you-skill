@@ -48,3 +48,21 @@ test("linkAnchor returns the decoded section of a link", () => {
   assert.equal(linkAnchor("#bad%E5"), "bad%E5");
   assert.equal(linkAnchor("other.md"), "");
 });
+
+test("resolveSkillPath decodes a percent-encoded non-ASCII path", () => {
+  const encoded = "references/%E5%8F%82%E8%80%83.md#%E7%94%A8%E6%B3%95";
+  assert.equal(resolveSkillPath("SKILL.md", encoded), "references/参考.md");
+  assert.equal(resolveSkillPath("references/guide.md", "%E5%8F%82%E8%80%83.md"), "references/参考.md");
+  assert.equal(resolveSkillPath("SKILL.md", "/a%20b.md"), "a b.md");
+});
+
+test("resolveSkillPath keeps a segment with invalid percent-encoding as written", () => {
+  assert.equal(resolveSkillPath("SKILL.md", "docs/100%.md"), "docs/100%.md");
+  assert.equal(resolveSkillPath("SKILL.md", "bad%E5.md#x"), "bad%E5.md");
+});
+
+test("linkPreviewText shows the decoded path of an encoded non-ASCII link", () => {
+  const encoded = "references/%E5%8F%82%E8%80%83.md#%E7%94%A8%E6%B3%95";
+  assert.equal(linkPreviewText(encoded, "SKILL.md"), "references/参考.md#用法");
+  assert.equal(linkPreviewText("docs/100%.md", "SKILL.md"), "docs/100%.md");
+});
