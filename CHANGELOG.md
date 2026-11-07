@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Skill file viewer: a click on a relative link to a file with a non-ASCII name, such as `references/参考.md#用法`, opens the file. The Link preview shows the decoded path ([#99](https://github.com/wanggang316/youskill/issues/99)).
+
 ### Removed
 
 ## [0.12.0] - 2026-11-07
