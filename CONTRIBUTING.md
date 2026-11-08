@@ -22,6 +22,21 @@ We use an approval gate for new contributors:
 
 This exists because AI makes it trivial to generate plausible-looking but low-quality contributions. The issue step lets us filter early.
 
+## Running the App in Development
+
+```bash
+npm install
+npm run tauri dev
+```
+
+The Vite dev server uses port 5173 by default, and fails if the port is in use. To run a second copy at the same time, for example from another git worktree, set `YOUSKILL_DEV_PORT` for that run:
+
+```bash
+YOUSKILL_DEV_PORT=5180 npm run tauri dev
+```
+
+Vite serves on that port and the Tauri dev window loads from it. No config file changes.
+
 ## Before Submitting a PR
 
 ```bash
