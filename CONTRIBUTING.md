@@ -22,6 +22,20 @@ We use an approval gate for new contributors:
 
 This exists because AI makes it trivial to generate plausible-looking but low-quality contributions. The issue step lets us filter early.
 
+## Development Setup
+
+`npm run tauri dev` runs the app under the identifier `com.gumpw.youskill.dev`. The release app uses `com.gumpw.youskill`. The single-instance lock follows the identifier, so the dev build runs while the installed YouSkill.app is open. A second launch of the dev build focuses the running dev instance. Bundled builds (`npm run tauri build`, also with `--debug`) keep `com.gumpw.youskill`.
+
+The dev build uses the same app data as the release app:
+
+- The hub in `~/.youskill` (skills, instructions, lock file) is shared. The `youskill` CLI uses the same hub.
+- The settings file `youskill/youskill.config` in the system config directory (`~/Library/Application Support` on macOS) is shared.
+- The signed-in account in the keychain (service `com.gumpw.youskill.account`) is shared.
+
+These locations are fixed. They do not depend on the identifier. We keep one data set on purpose: a separate dev data set needs a second hub root in the app and the CLI. The cross-process lock on `~/.youskill/.ops.lock` keeps operations from the dev app, the release app, and the CLI safe.
+
+Thus the dev build shows your real data. Changes you make in the dev build change the data of the installed app. Back up `~/.youskill` before you test destructive flows.
+
 ## Before Submitting a PR
 
 ```bash
