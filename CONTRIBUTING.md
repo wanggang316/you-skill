@@ -26,15 +26,15 @@ This exists because AI makes it trivial to generate plausible-looking but low-qu
 
 `npm run tauri dev` runs the app under the identifier `com.gumpw.youskill.dev`. The release app uses `com.gumpw.youskill`. The single-instance lock follows the identifier, so the dev build runs while the installed YouSkill.app is open. A second launch of the dev build focuses the running dev instance. Bundled builds (`npm run tauri build`, also with `--debug`) keep `com.gumpw.youskill`.
 
-The dev build uses the same app data as the release app:
+The dev build shares the hub with the release app, but keeps its own app data:
 
-- The hub in `~/.youskill` (skills, instructions, lock file) is shared. The `youskill` CLI uses the same hub.
-- The settings file `youskill/youskill.config` in the system config directory (`~/Library/Application Support` on macOS) is shared.
-- The signed-in account in the keychain (service `com.gumpw.youskill.account`) is shared.
+- Shared: the hub in `~/.youskill` (skills, instructions, lock files). The `youskill` CLI uses the same hub. The cross-process lock on `~/.youskill/.ops.lock` keeps hub operations from the dev app, the release app, and the CLI safe.
+- Dev only: the app data directory `youskill-dev` in the system config directory (`~/Library/Application Support` on macOS). It holds settings, favorites, projects, workspaces, scan folders, custom agent apps, and caches. The release app and the CLI use `youskill`.
+- Dev only: the signed-in account, in the keychain service `com.gumpw.youskill.dev.account`. The release app uses `com.gumpw.youskill.account`.
 
-These locations are fixed. They do not depend on the identifier. We keep one data set on purpose: a separate dev data set needs a second hub root in the app and the CLI. The cross-process lock on `~/.youskill/.ops.lock` keeps operations from the dev app, the release app, and the CLI safe.
+Why: the app data stores are locked only inside one process, and the account rotates its refresh token on each refresh. If two running apps shared them, one app could overwrite the changes of the other or make the other app's session invalid.
 
-Thus the dev build shows your real data. Changes you make in the dev build change the data of the installed app. Back up `~/.youskill` before you test destructive flows.
+Thus a new dev build starts with default settings, no projects, no favorites, and no account. Hub changes you make in the dev build change the hub of the installed app. Back up `~/.youskill` before you test destructive flows.
 
 ## Before Submitting a PR
 
