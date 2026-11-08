@@ -30,6 +30,17 @@ export class ClickMotion {
     if (this.#isOpen() === before) this.#target = null;
   }
 
+  /**
+   * Call when an open or close transition starts. Returns whether it may animate. A transition
+   * that the click did not cause ends the click intent, so a later return to the clicked state
+   * (for example, a search cleared during that transition) stays instant.
+   */
+  start() {
+    const animate = this.animate;
+    if (!animate) this.#target = null;
+    return animate;
+  }
+
   /** Call when the open or close transition ends. */
   done() {
     this.#target = null;
