@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Global Search shows only the search field until the first results arrive, and keeps the current results on screen while the next search runs. The busy indicator shows only for searches that take longer than 250 ms.
+
 ### Fixed
 
 - Fixed the window not being draggable from the top bar while a modal or drawer is open.
