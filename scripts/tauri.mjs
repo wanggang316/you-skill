@@ -4,8 +4,16 @@
 import cli from "@tauri-apps/cli";
 import { tauriArgs } from "./dev-port.mjs";
 
+let args;
 try {
-  await cli.run(tauriArgs(process.argv.slice(2)), "npm run tauri");
+  args = tauriArgs(process.argv.slice(2));
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
+
+try {
+  await cli.run(args, "npm run tauri");
 } catch (error) {
   cli.logError(error.message);
   process.exit(1);
