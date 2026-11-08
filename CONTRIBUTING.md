@@ -34,7 +34,9 @@ The dev build shares the hub with the release app, but keeps its own app data:
 
 Why: the app data stores are locked only inside one process, and the account rotates its refresh token on each refresh. If two running apps shared them, one app could overwrite the changes of the other or make the other app's session invalid.
 
-Thus a new dev build starts with default settings, no projects, no favorites, and no account. Hub changes you make in the dev build change the hub of the installed app. Back up `~/.youskill` before you test destructive flows.
+Thus a new dev build starts with default settings, no projects, no favorites, and no account.
+
+On macOS, a dev build cannot complete sign-in. macOS gives the `youskill://auth/callback` link only to a bundled app that registers the scheme, which is the installed YouSkill.app, not the `tauri dev` binary. The installed app has no pending sign-in in its own keychain service, so it ignores the link. The account server accepts only this redirect URI. To test sign-in on macOS, build a bundle (`npm run tauri build`) and run it in place of the installed app. On Windows and Linux, the dev build registers the scheme at run time and receives the link. Hub changes you make in the dev build change the hub of the installed app. Back up `~/.youskill` before you test destructive flows.
 
 ## Before Submitting a PR
 

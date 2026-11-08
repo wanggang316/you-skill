@@ -22,6 +22,11 @@ Code is the source of truth; when this document and the code disagree, fix the d
   favorites.json          # local favorites of marketplace skills, cursor and synced account
 ```
 
+Dev builds (`npm run tauri dev`) use `<config_dir>/youskill-dev/` instead of
+`<config_dir>/youskill/` (`utils::path::app_data_dir`), so a dev build and a release app
+that run at the same time never write the same app data store. The hub `~/.youskill` is
+shared; `.ops.lock` locks it across processes. See `CONTRIBUTING.md`.
+
 Agent apps are defined in `src-tauri/crates/youskill-core/src/services/agent_apps_service.rs`. Each app has a
 user-level skills directory and a project-level one. Apps that natively read the shared
 directories (`~/.agents/skills` and `.agents/skills`: Codex, Cursor, GitHub Copilot, VS
@@ -377,14 +382,15 @@ as the pending sign-in, and returns the start URL
 `redirect_uri=youskill://auth/callback`) for the frontend to open. The server redirects to
 the deep link. The deep link plugin delivers it to the running app; on Windows and Linux
 the single instance plugin forwards it from the second process, which then exits; a link
-that starts the app is read with `get_current`. A callback with another state is an error
+that starts the app is read with `get_current`. On macOS only a bundled app receives the
+link, so the callback never reaches an unbundled `tauri dev` build there. A callback with another state is an error
 and keeps the pending sign-in; a callback without a pending sign-in is ignored, so a second
 delivery does nothing. `error=access_denied` returns to signed out without a message.
 A code exchanges once for a session (`POST /api/account/token`).
 
 The session (access token, refresh token, expiry, provider, account) and the pending
-sign-in are items of the OS keychain (service `com.gumpw.youskill.account`, through the
-`SecretStore` trait); they are never in a config file or the frontend. The frontend gets
+sign-in are items of the OS keychain (service `com.gumpw.youskill.account`, in dev builds
+`com.gumpw.youskill.dev.account`, through the `SecretStore` trait); they are never in a config file or the frontend. The frontend gets
 only `AccountStatus` (account id, provider, display name) and the `account://changed`
 event after a callback or a revoked session. `AccountManager::access_token` refreshes
 when the token expires within 60 seconds, and `refresh_rejected` after a `401`; one async
