@@ -37,6 +37,14 @@ YOUSKILL_DEV_PORT=5180 npm run tauri dev
 
 Vite serves on that port and the Tauri dev window loads from it. No config file changes.
 
+The app is single instance per bundle identifier. A second app with the same identifier (another dev run, or the installed YouSkill.app) hands the launch to the running one and exits. Until the dev build gets its own identifier, give the second run a different identifier for that run only:
+
+```bash
+YOUSKILL_DEV_PORT=5180 npm run tauri dev -- --config '{"identifier":"com.gumpw.youskill.dev5180"}'
+```
+
+Skill data stays in the home directory, so both runs use the same data.
+
 ## Before Submitting a PR
 
 ```bash
