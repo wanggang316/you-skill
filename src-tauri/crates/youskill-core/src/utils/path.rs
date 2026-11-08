@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::sync::OnceLock;
 
 pub const YOUSKILL_DIR: &str = ".youskill";
 pub const HUB_DIR: &str = "skills";
@@ -9,7 +10,32 @@ pub const INSTRUCTION_LOCK_FILE: &str = ".instruction-lock.json";
 pub const TRASH_DIR: &str = ".trash";
 /// Advisory lock file that serializes hub operations across processes.
 pub const OPS_LOCK_FILE: &str = ".ops.lock";
+/// Directory of the app's own data (settings, favorites, projects, ...) in the system config
+/// directory. The CLI and release builds use it.
+pub const APP_DATA_DIR: &str = "youskill";
+/// The app data directory of dev builds, so a dev build never writes the stores of a release
+/// app that runs at the same time. The hub in `~/.youskill` stays shared.
+pub const DEV_APP_DATA_DIR: &str = "youskill-dev";
 const MAX_SKILL_NAME_LEN: usize = 64;
+
+static APP_DATA_DIR_NAME: OnceLock<&'static str> = OnceLock::new();
+
+/// Select the app data directory name for this process. Call it once at startup, before any
+/// store is read; later calls are ignored.
+pub fn use_app_data_dir(name: &'static str) {
+  let _ = APP_DATA_DIR_NAME.set(name);
+}
+
+/// `<config_dir>/<name>`, where `name` is [`APP_DATA_DIR`] unless [`use_app_data_dir`]
+/// selected another one.
+pub fn app_data_dir() -> Result<PathBuf, String> {
+  let config_dir = dirs_next::config_dir().ok_or("Could not find config directory")?;
+  Ok(app_data_dir_in(&config_dir))
+}
+
+fn app_data_dir_in(config_dir: &Path) -> PathBuf {
+  config_dir.join(APP_DATA_DIR_NAME.get().copied().unwrap_or(APP_DATA_DIR))
+}
 
 pub fn youskill_root(home: &Path) -> PathBuf {
   home.join(YOUSKILL_DIR)
@@ -276,6 +302,15 @@ pub fn remove_path_any(path: &Path) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn app_data_dir_defaults_to_the_release_directory() {
+    // No test in this crate selects another name, as the CLI never does.
+    assert_eq!(
+      app_data_dir_in(Path::new("/config")),
+      Path::new("/config/youskill")
+    );
+  }
 
   #[test]
   fn skill_name_validation_table() {

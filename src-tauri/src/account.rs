@@ -16,7 +16,12 @@ pub type Account = AccountManager<HttpAccountServer, Keychain>;
 /// the server revoked.
 pub const CHANGED_EVENT: &str = "account://changed";
 
+#[cfg(not(dev))]
 const KEYCHAIN_SERVICE: &str = "com.gumpw.youskill.account";
+/// Dev builds keep their own session: a release app that runs at the same time rotates the
+/// refresh token, and the shared token would then be a reused one.
+#[cfg(dev)]
+pub(crate) const KEYCHAIN_SERVICE: &str = "com.gumpw.youskill.dev.account";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

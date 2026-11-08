@@ -112,6 +112,48 @@ fn build_main_window(app: &App) -> tauri::Result<WebviewWindow> {
   builder.build()
 }
 
+/// Suffix of the identifier that dev builds (`tauri dev`, no bundled frontend) run under. A
+/// different identifier makes the dev build its own single instance (the plugin keys its
+/// socket on it), so `tauri dev` runs while the installed release app is open.
+#[cfg(dev)]
+const DEV_IDENTIFIER_SUFFIX: &str = ".dev";
+
+/// The identifier with the dev suffix. An identifier that already ends with `.dev` or
+/// `.dev<port>` (set by `YOUSKILL_DEV_PORT`, see `scripts/dev-port.mjs`) stays as it is.
+#[cfg(dev)]
+fn dev_identifier(identifier: &str) -> String {
+  let last = identifier.rsplit('.').next().unwrap_or_default();
+  let is_dev = last
+    .strip_prefix("dev")
+    .is_some_and(|port| port.chars().all(|ch| ch.is_ascii_digit()));
+  if is_dev {
+    identifier.to_string()
+  } else {
+    format!("{identifier}{DEV_IDENTIFIER_SUFFIX}")
+  }
+}
+
+/// The generated context, with the dev identifier in dev builds. Bundled builds
+/// (`tauri build`, also with `--debug`) keep the identifier from `tauri.conf.json`.
+fn app_context() -> tauri::Context<tauri::Wry> {
+  #[allow(unused_mut)]
+  let mut context = tauri::generate_context!();
+  #[cfg(dev)]
+  {
+    let config = context.config_mut();
+    config.identifier = dev_identifier(&config.identifier);
+  }
+  context
+}
+
+/// Dev builds keep their app data apart from the release app's, as both can run at the same
+/// time and the app data stores are only locked inside one process. Must run before any
+/// store is read.
+fn select_app_data_dir() {
+  #[cfg(dev)]
+  utils::path::use_app_data_dir(utils::path::DEV_APP_DATA_DIR);
+}
+
 #[tauri::command]
 fn ping() -> String {
   "pong".to_string()
@@ -131,6 +173,8 @@ fn main() {
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level)),
     )
     .init();
+
+  select_app_data_dir();
 
   tauri::Builder::default()
     // First, so a second instance only forwards its deep link to this one and exits.
@@ -302,7 +346,7 @@ fn main() {
       detect_instruction_github,
       global_search
     ])
-    .build(tauri::generate_context!())
+    .build(app_context())
     .expect("error while building tauri application")
     .run(|_app_handle, _event| {
       // RunEvent::Reopen only exists on macOS, where clicking the Dock icon
@@ -315,4 +359,48 @@ fn main() {
         }
       }
     });
+}
+
+#[cfg(all(test, dev))]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn dev_identifier_differs_from_release_identifier() {
+    assert_eq!(
+      dev_identifier("com.gumpw.youskill"),
+      "com.gumpw.youskill.dev"
+    );
+  }
+
+  #[test]
+  fn a_port_run_keeps_its_per_port_dev_identifier() {
+    // `YOUSKILL_DEV_PORT` runs pass `<identifier>.dev<port>` (scripts/dev-port.mjs).
+    assert_eq!(
+      dev_identifier("com.gumpw.youskill.dev5180"),
+      "com.gumpw.youskill.dev5180"
+    );
+    assert_eq!(
+      dev_identifier("com.gumpw.youskill.dev"),
+      "com.gumpw.youskill.dev"
+    );
+    // Only a last segment of `dev` plus digits counts.
+    assert_eq!(
+      dev_identifier("com.gumpw.devtools"),
+      "com.gumpw.devtools.dev"
+    );
+  }
+
+  #[test]
+  fn dev_build_uses_its_own_app_data_and_session() {
+    select_app_data_dir();
+    let dir = utils::path::app_data_dir().unwrap();
+    assert_eq!(dir.file_name().unwrap(), "youskill-dev");
+    assert_eq!(account::KEYCHAIN_SERVICE, "com.gumpw.youskill.dev.account");
+  }
+
+  #[test]
+  fn dev_context_uses_dev_identifier() {
+    assert_eq!(app_context().config().identifier, "com.gumpw.youskill.dev");
+  }
 }

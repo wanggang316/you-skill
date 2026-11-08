@@ -37,9 +37,31 @@ YOUSKILL_DEV_PORT=5180 npm run tauri dev
 
 Vite serves on that port and the Tauri dev window loads from it. No config file changes.
 
-The app is single instance per bundle identifier: a second app with the same identifier hands the launch to the running one and exits. So with `YOUSKILL_DEV_PORT` set, the run also uses the identifier `com.gumpw.youskill.dev<port>`, and runs on different ports do not block each other. A run without the variable keeps the identifier from `tauri.conf.json`, so it still hands off to an open YouSkill.app.
+### App identifier and single instance
 
-Skill data and the account token stay in the home directory and the keychain, so all runs share them. WebView local storage (for example the theme) is per origin, and the origin includes the port, so each port has its own UI settings.
+The app is single instance per bundle identifier: a second app with the same identifier hands the launch to the running one and exits.
+
+- `npm run tauri dev` runs under `com.gumpw.youskill.dev`, so it runs while the installed YouSkill.app (`com.gumpw.youskill`) is open.
+- With `YOUSKILL_DEV_PORT` set, the run uses `com.gumpw.youskill.dev<port>`, so runs on different ports do not block each other or the installed app.
+- A second launch of a dev run with the same identifier focuses the running one.
+- Bundled builds (`npm run tauri build`, also with `--debug`) keep `com.gumpw.youskill`.
+
+### Dev data
+
+Dev runs share the hub with the release app, but keep their own app data:
+
+- Shared by all runs: the hub in `~/.youskill` (skills, instructions, lock files). The `youskill` CLI uses the same hub. The cross-process lock on `~/.youskill/.ops.lock` keeps hub operations from dev runs, the release app, and the CLI safe.
+- Dev only: the app data directory `youskill-dev` in the system config directory (`~/Library/Application Support` on macOS). It holds settings, favorites, projects, workspaces, scan folders, custom agent apps, and caches. The release app and the CLI use `youskill`.
+- Dev only: the signed-in account, in the keychain service `com.gumpw.youskill.dev.account`. The release app uses `com.gumpw.youskill.account`.
+- Per port: WebView local storage (for example the theme) is per origin, and the origin includes the port.
+
+Why: the app data stores are locked only inside one process, and the account rotates its refresh token on each refresh. If the release app and a dev run shared them, one app could overwrite the changes of the other or make the other app's session invalid.
+
+All dev runs, on any port, share `youskill-dev` and the dev session. Do not change the same settings, favorites, projects, or account from two dev runs at the same time. Only dev data is at risk; the release app data is not.
+
+A new dev setup starts with default settings, no projects, no favorites, and no account. Hub changes you make in a dev run change the hub of the installed app. Back up `~/.youskill` before you test destructive flows.
+
+On macOS, a dev run cannot complete sign-in. macOS gives the `youskill://auth/callback` link only to a bundled app that registers the scheme, which is the installed YouSkill.app, not the `tauri dev` binary. The installed app has no pending sign-in in its own keychain service, so it ignores the link. The account server accepts only this redirect URI. To test sign-in on macOS, build a bundle (`npm run tauri build`) and run it in place of the installed app. On Windows and Linux, the dev build registers the scheme at run time and receives the link.
 
 ## Before Submitting a PR
 

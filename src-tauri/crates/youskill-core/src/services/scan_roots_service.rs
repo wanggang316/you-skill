@@ -3,7 +3,7 @@
 
 use crate::models::{InstallScope, ScanRoot, ScanRootSuggestion, ScanRootView};
 use crate::services::env::Env;
-use crate::utils::path::{normalize_dir_path, path_to_string, same_path};
+use crate::utils::path::{app_data_dir, normalize_dir_path, path_to_string, same_path};
 use crate::utils::time::now_rfc3339;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -148,8 +148,7 @@ fn unique_name(name: &str, existing: &[ScanRoot]) -> String {
 }
 
 fn scan_roots_path() -> Result<PathBuf, String> {
-  let config_dir = dirs_next::config_dir().ok_or("Unable to get config directory")?;
-  Ok(config_dir.join("youskill").join("scan_roots.json"))
+  Ok(app_data_dir()?.join("scan_roots.json"))
 }
 
 fn load_roots() -> Result<Vec<ScanRoot>, String> {

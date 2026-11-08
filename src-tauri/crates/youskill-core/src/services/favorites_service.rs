@@ -3,6 +3,7 @@
 //! `favorite_sync_service`.
 
 use crate::models::{FavoriteSnapshot, FavoriteStore, LocalFavorite};
+use crate::utils::path::app_data_dir;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -84,8 +85,7 @@ pub(crate) fn clear_store(path: &Path) -> Result<(), String> {
 
 /// Path of the favorite store in the app config directory.
 pub fn store_path() -> Result<PathBuf, String> {
-  let config_dir = dirs_next::config_dir().ok_or("Unable to get config directory")?;
-  Ok(config_dir.join("youskill").join("favorites.json"))
+  Ok(app_data_dir()?.join("favorites.json"))
 }
 
 fn clears(guard: &BTreeMap<PathBuf, u64>, path: &Path) -> u64 {

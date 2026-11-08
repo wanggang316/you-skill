@@ -2,6 +2,7 @@
 //! two folders with the same name in different places can both be registered.
 
 use crate::models::UserProject;
+use crate::utils::path::app_data_dir;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -119,8 +120,7 @@ fn folder_name(path: &str) -> String {
 }
 
 fn user_projects_path() -> Result<PathBuf, String> {
-  let config_dir = dirs_next::config_dir().ok_or("Unable to get config directory")?;
-  Ok(config_dir.join("youskill").join("user_projects.json"))
+  Ok(app_data_dir()?.join("user_projects.json"))
 }
 
 fn load_user_projects() -> Result<Vec<UserProject>, String> {

@@ -2,8 +2,8 @@ use crate::models::{AgentApp, InstallScope, UserProject};
 use crate::services::agent_apps_service::local_agent_apps;
 use crate::services::user_projects_service::list_user_projects;
 use crate::utils::path::{
-  expand_home_with, youskill_root, HUB_DIR, INSTRUCTIONS_DIR, INSTRUCTION_LOCK_FILE, LOCK_FILE,
-  TRASH_DIR,
+  app_data_dir, expand_home_with, youskill_root, HUB_DIR, INSTRUCTIONS_DIR, INSTRUCTION_LOCK_FILE,
+  LOCK_FILE, TRASH_DIR,
 };
 use std::path::{Path, PathBuf};
 
@@ -28,9 +28,7 @@ pub struct Env {
 impl Env {
   pub fn current() -> Result<Env, String> {
     let home = dirs_next::home_dir().ok_or("Could not find home directory")?;
-    let config_dir = dirs_next::config_dir()
-      .ok_or("Could not find config directory")?
-      .join("youskill");
+    let config_dir = app_data_dir()?;
     let projects = list_user_projects().unwrap_or_default();
     Ok(Self::with_home(
       home,

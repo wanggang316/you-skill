@@ -1,4 +1,5 @@
 use crate::services::library_sync_service::SyncPolicy;
+use crate::utils::path::app_data_dir;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
@@ -114,8 +115,7 @@ impl Default for AppConfig {
 }
 
 pub fn config_path() -> Result<PathBuf, String> {
-  let config_dir = dirs_next::config_dir().ok_or("无法获取配置目录")?;
-  Ok(config_dir.join("youskill").join("youskill.config"))
+  Ok(app_data_dir()?.join("youskill.config"))
 }
 
 pub fn load_config() -> Result<AppConfig, String> {
