@@ -136,6 +136,14 @@ fn app_context() -> tauri::Context<tauri::Wry> {
   context
 }
 
+/// Dev builds keep their app data apart from the release app's, as both can run at the same
+/// time and the app data stores are only locked inside one process. Must run before any
+/// store is read.
+fn select_app_data_dir() {
+  #[cfg(dev)]
+  utils::path::use_app_data_dir(utils::path::DEV_APP_DATA_DIR);
+}
+
 #[tauri::command]
 fn ping() -> String {
   "pong".to_string()
@@ -155,6 +163,8 @@ fn main() {
         .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level)),
     )
     .init();
+
+  select_app_data_dir();
 
   tauri::Builder::default()
     // First, so a second instance only forwards its deep link to this one and exits.
@@ -351,6 +361,14 @@ mod tests {
       dev_identifier("com.gumpw.youskill"),
       "com.gumpw.youskill.dev"
     );
+  }
+
+  #[test]
+  fn dev_build_uses_its_own_app_data_and_session() {
+    select_app_data_dir();
+    let dir = utils::path::app_data_dir().unwrap();
+    assert_eq!(dir.file_name().unwrap(), "youskill-dev");
+    assert_eq!(account::KEYCHAIN_SERVICE, "com.gumpw.youskill.dev.account");
   }
 
   #[test]

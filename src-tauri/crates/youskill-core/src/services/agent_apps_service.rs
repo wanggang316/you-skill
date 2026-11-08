@@ -1,5 +1,5 @@
 use crate::models::AgentApp;
-use crate::utils::path::{expand_home, is_within, youskill_root};
+use crate::utils::path::{app_data_dir, expand_home, is_within, youskill_root};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::RwLock;
@@ -625,8 +625,7 @@ fn internal_agent_apps() -> Vec<AgentApp> {
 }
 
 fn user_agent_apps_path() -> Result<PathBuf, String> {
-  let config_dir = dirs_next::config_dir().ok_or("无法获取配置目录")?;
-  Ok(config_dir.join("youskill").join("user_agent_apps.json"))
+  Ok(app_data_dir()?.join("user_agent_apps.json"))
 }
 
 fn load_user_agent_apps() -> Result<Vec<AgentApp>, String> {

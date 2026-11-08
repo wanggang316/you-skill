@@ -12,8 +12,8 @@ use crate::services::user_projects_service::{
 use crate::utils::folder::SKILL_MD;
 use crate::utils::hash::is_excluded_component;
 use crate::utils::path::{
-  expand_home_with, import_references, normalize_dir_path, path_to_string, same_entry, same_path,
-  symlink_target_string,
+  app_data_dir, expand_home_with, import_references, normalize_dir_path, path_to_string,
+  same_entry, same_path, symlink_target_string,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -253,8 +253,7 @@ fn count_skills(dir: &Path) -> usize {
 }
 
 fn workspaces_path() -> Result<PathBuf, String> {
-  let config_dir = dirs_next::config_dir().ok_or("Unable to get config directory")?;
-  Ok(config_dir.join("youskill").join("user_workspaces.json"))
+  Ok(app_data_dir()?.join("user_workspaces.json"))
 }
 
 fn load_workspaces() -> Result<Vec<UserWorkspace>, String> {
