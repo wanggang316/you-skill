@@ -14,9 +14,17 @@ export function devPort(env = process.env) {
   return port;
 }
 
-/** Adds a `build.devUrl` override to `tauri dev` when YOUSKILL_DEV_PORT is set. */
-export function tauriArgs(args, env = process.env) {
+/**
+ * Adds config overrides to `tauri dev` when YOUSKILL_DEV_PORT is set: `build.devUrl`
+ * for the port, and a per-port identifier. The single-instance plugin is keyed on the
+ * identifier, so without it a second dev run hands its launch to the first and exits.
+ */
+export function tauriArgs(args, env, identifier) {
   if (args[0] !== "dev" || !env.YOUSKILL_DEV_PORT?.trim()) return args;
-  const config = { build: { devUrl: `http://localhost:${devPort(env)}` } };
+  const port = devPort(env);
+  const config = {
+    identifier: `${identifier}.dev${port}`,
+    build: { devUrl: `http://localhost:${port}` },
+  };
   return ["dev", "--config", JSON.stringify(config), ...args.slice(1)];
 }
