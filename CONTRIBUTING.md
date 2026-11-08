@@ -65,10 +65,16 @@ On macOS, a dev run cannot complete sign-in. macOS gives the `youskill://auth/ca
 
 ## Before Submitting a PR
 
+Run these commands from the repository root:
+
 ```bash
-cargo check  # must pass with no errors
-cargo test   # must pass
+npm run build:cli      # once per fresh clone or worktree
+npm run check          # must pass with no errors or warnings
+npm run test           # must pass
+npm run test:frontend  # must pass
 ```
+
+The Rust workspace is `src-tauri/Cargo.toml`, so bare `cargo` commands fail from the repository root. `npm run check` builds the Tauri crate, which needs the CLI sidecar `src-tauri/binaries/youskill-<target-triple>` (`bundle.externalBin`). In a fresh clone or worktree, run `npm run build:cli` once to build it. Without it, the check fails with ``resource path `binaries/youskill-<target-triple>` doesn't exist``.
 
 Do not edit `CHANGELOG.md`. Changelog entries are added by maintainers.
 
