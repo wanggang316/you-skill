@@ -112,15 +112,25 @@ fn build_main_window(app: &App) -> tauri::Result<WebviewWindow> {
   builder.build()
 }
 
-/// Suffix of the identifier that dev builds (`tauri dev`, no bundled frontend) run under. A different identifier makes the
-/// dev build its own single instance (the plugin keys its socket on it), so `tauri dev`
-/// runs while the installed release app is open.
+/// Suffix of the identifier that dev builds (`tauri dev`, no bundled frontend) run under. A
+/// different identifier makes the dev build its own single instance (the plugin keys its
+/// socket on it), so `tauri dev` runs while the installed release app is open.
 #[cfg(dev)]
 const DEV_IDENTIFIER_SUFFIX: &str = ".dev";
 
+/// The identifier with the dev suffix. An identifier that already ends with `.dev` or
+/// `.dev<port>` (set by `YOUSKILL_DEV_PORT`, see `scripts/dev-port.mjs`) stays as it is.
 #[cfg(dev)]
 fn dev_identifier(identifier: &str) -> String {
-  format!("{identifier}{DEV_IDENTIFIER_SUFFIX}")
+  let last = identifier.rsplit('.').next().unwrap_or_default();
+  let is_dev = last
+    .strip_prefix("dev")
+    .is_some_and(|port| port.chars().all(|ch| ch.is_ascii_digit()));
+  if is_dev {
+    identifier.to_string()
+  } else {
+    format!("{identifier}{DEV_IDENTIFIER_SUFFIX}")
+  }
 }
 
 /// The generated context, with the dev identifier in dev builds. Bundled builds
@@ -360,6 +370,24 @@ mod tests {
     assert_eq!(
       dev_identifier("com.gumpw.youskill"),
       "com.gumpw.youskill.dev"
+    );
+  }
+
+  #[test]
+  fn a_port_run_keeps_its_per_port_dev_identifier() {
+    // `YOUSKILL_DEV_PORT` runs pass `<identifier>.dev<port>` (scripts/dev-port.mjs).
+    assert_eq!(
+      dev_identifier("com.gumpw.youskill.dev5180"),
+      "com.gumpw.youskill.dev5180"
+    );
+    assert_eq!(
+      dev_identifier("com.gumpw.youskill.dev"),
+      "com.gumpw.youskill.dev"
+    );
+    // Only a last segment of `dev` plus digits counts.
+    assert_eq!(
+      dev_identifier("com.gumpw.devtools"),
+      "com.gumpw.devtools.dev"
     );
   }
 
