@@ -3,6 +3,7 @@
   import { ChevronRight } from "@lucide/svelte";
   import { prefersReducedMotion } from "svelte/motion";
   import { slide } from "svelte/transition";
+  import { ClickMotion } from "./collapsible.svelte";
 
   /**
    * A group header that toggles its content. The chevron follows the title and shows only on
@@ -39,22 +40,15 @@
     children: Snippet;
   } = $props();
 
-  // Only a click on this header animates. A first render, a search, or a selection that opens
-  // the group changes it instantly.
-  let animate = $state(false);
-  const duration = $derived(animate && !prefersReducedMotion.current ? 150 : 0);
-
-  function toggle() {
-    animate = true;
-    onToggle();
-  }
+  const motion = new ClickMotion(() => open);
+  const duration = $derived(motion.animate && !prefersReducedMotion.current ? 150 : 0);
 </script>
 
 <div class={`group/header flex items-center ${className}`}>
   <button
     class={`group/toggle flex min-w-0 flex-1 items-center gap-1.5 text-left transition ${buttonClass}`}
     type="button"
-    onclick={toggle}
+    onclick={() => motion.click(onToggle)}
     aria-expanded={open}
     {title}
   >
@@ -78,8 +72,8 @@
 {#if open}
   <div
     transition:slide={{ duration }}
-    onintroend={() => (animate = false)}
-    onoutroend={() => (animate = false)}
+    onintroend={() => motion.done()}
+    onoutroend={() => motion.done()}
   >
     {@render children()}
   </div>
