@@ -773,8 +773,6 @@ const translations: Record<string, Dictionary> = {
 
     "search.title": "Search",
     "search.placeholder": "Search skills, instructions and projects",
-    "search.hint":
-      "Find library skills by name, description or SKILL.md text, instruction templates by name or text, and projects by name or path.",
     "search.empty": "No results for “{query}”.",
     "search.group.skills": "Skills",
     "search.group.instructions": "Instructions",
@@ -1607,8 +1605,6 @@ const translations: Record<string, Dictionary> = {
 
     "search.title": "搜索",
     "search.placeholder": "搜索 Skill、指令和项目",
-    "search.hint":
-      "按名称、描述或 SKILL.md 内容查找 Skill 库中的 Skill，按名称或内容查找指令模板，按名称或路径查找项目。",
     "search.empty": "没有与“{query}”匹配的结果。",
     "search.group.skills": "Skill",
     "search.group.instructions": "指令",

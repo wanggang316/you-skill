@@ -2,6 +2,7 @@
   import { tick } from "svelte";
   import { X } from "@lucide/svelte";
   import IconButton from "./IconButton.svelte";
+  import WindowDragStrip from "./WindowDragStrip.svelte";
 
   interface Props {
     open?: boolean;
@@ -70,6 +71,7 @@
       if (e.key === "Escape") handleClose();
     }}
   >
+    <WindowDragStrip />
     <div
       class={`animate-modal bg-base-100 border-base-200 relative flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl border shadow-2xl ${resolvedContainerClass}`}
       class:animate-modal-close={closing}

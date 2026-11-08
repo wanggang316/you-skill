@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Folder, Loader2, X } from "@lucide/svelte";
   import IconButton from "$lib/components/ui/IconButton.svelte";
+  import WindowDragStrip from "$lib/components/ui/WindowDragStrip.svelte";
   import SymlinkMarker from "$lib/components/SymlinkMarker.svelte";
   import { t } from "../i18n";
   import type { SkillDirectoryEntry } from "../api/skills";
@@ -46,6 +47,7 @@
     type="button"
     aria-label={$t("detail.closeCatalog")}
   ></button>
+  <WindowDragStrip class="z-(--z-drawer)" />
   <aside
     class="border-base-300 bg-base-100 animate-drawer-panel fixed top-0 right-0 z-(--z-drawer-panel) h-full w-80 border-l shadow-2xl"
     class:animate-drawer-panel-close={closing}
