@@ -112,6 +112,30 @@ fn build_main_window(app: &App) -> tauri::Result<WebviewWindow> {
   builder.build()
 }
 
+/// Suffix of the identifier that dev builds (`tauri dev`, no bundled frontend) run under. A different identifier makes the
+/// dev build its own single instance (the plugin keys its socket on it), so `tauri dev`
+/// runs while the installed release app is open.
+#[cfg(dev)]
+const DEV_IDENTIFIER_SUFFIX: &str = ".dev";
+
+#[cfg(dev)]
+fn dev_identifier(identifier: &str) -> String {
+  format!("{identifier}{DEV_IDENTIFIER_SUFFIX}")
+}
+
+/// The generated context, with the dev identifier in dev builds. Bundled builds
+/// (`tauri build`, also with `--debug`) keep the identifier from `tauri.conf.json`.
+fn app_context() -> tauri::Context<tauri::Wry> {
+  #[allow(unused_mut)]
+  let mut context = tauri::generate_context!();
+  #[cfg(dev)]
+  {
+    let config = context.config_mut();
+    config.identifier = dev_identifier(&config.identifier);
+  }
+  context
+}
+
 #[tauri::command]
 fn ping() -> String {
   "pong".to_string()
@@ -302,7 +326,7 @@ fn main() {
       detect_instruction_github,
       global_search
     ])
-    .build(tauri::generate_context!())
+    .build(app_context())
     .expect("error while building tauri application")
     .run(|_app_handle, _event| {
       // RunEvent::Reopen only exists on macOS, where clicking the Dock icon
@@ -315,4 +339,22 @@ fn main() {
         }
       }
     });
+}
+
+#[cfg(all(test, dev))]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn dev_identifier_differs_from_release_identifier() {
+    assert_eq!(
+      dev_identifier("com.gumpw.youskill"),
+      "com.gumpw.youskill.dev"
+    );
+  }
+
+  #[test]
+  fn dev_context_uses_dev_identifier() {
+    assert_eq!(app_context().config().identifier, "com.gumpw.youskill.dev");
+  }
 }
