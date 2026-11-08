@@ -23,10 +23,11 @@ the relevant docs in parallel.
 ### Check Methods
 
 - Frontend: `npm run build`
-- Tauri: `npm run tauri:build`
+- Tauri: `npm run tauri build`
 
 ## Commands
 
+- `npm run build:cli`: Build the `youskill` CLI sidecar into `src-tauri/binaries/youskill-<target-triple>` (`bundle.externalBin`). In a fresh clone or worktree, run it once before `npm run check`, `npm run test`, or `npm run tauri build`. The Tauri crate does not build without the sidecar.
 - `npm run format`: Apply frontend and backend formatting.
 - `npm run check`: Run frontend checks and backend strict checks (`cargo fmt --check` + `clippy -D warnings`).
 - `npm run test`: Run backend unit tests (`cargo test --manifest-path src-tauri/Cargo.toml --workspace`).
