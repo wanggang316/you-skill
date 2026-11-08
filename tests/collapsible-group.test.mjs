@@ -66,3 +66,16 @@ test("a search during a click transition does not animate", async () => {
   group.search = "";
   assert.equal(motion.animate, false);
 });
+
+test("clearing a search before a reversal ends does not animate the next change", async () => {
+  const { group, isOpen, motion, click } = pickerGroup();
+  await click();
+  assert.equal(motion.start(), true);
+
+  // A search reverses the collapse, and is cleared before that reversal ends.
+  group.search = "app";
+  assert.equal(motion.start(), false);
+  group.search = "";
+  assert.equal(isOpen(), false);
+  assert.equal(motion.start(), false);
+});

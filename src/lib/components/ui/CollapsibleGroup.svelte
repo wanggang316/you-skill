@@ -51,7 +51,7 @@
   // the running transition, which then keeps its end styles.
   function collapse(node: Element) {
     return () => {
-      const duration = motion.animate && !prefersReducedMotion.current ? 150 : running ? 1 : 0;
+      const duration = motion.start() && !prefersReducedMotion.current ? 150 : running ? 1 : 0;
       running = duration > 0;
       return slide(node, { duration });
     };
