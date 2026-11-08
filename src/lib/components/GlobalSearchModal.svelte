@@ -23,6 +23,8 @@
   import { globalSearchOpen } from "$lib/stores/modals";
 
   const DEBOUNCE_MS = 80;
+  /** Searches faster than this show no busy state, so that typing does not flicker. */
+  const SLOW_MS = 250;
 
   const GROUP_LABEL_KEYS: Record<SearchGroupKind, string> = {
     skills: "search.group.skills",
@@ -43,6 +45,8 @@
   let query = $state("");
   let groups = $state<SearchGroup[]>([]);
   let loading = $state(false);
+  /** A search has been running for longer than `SLOW_MS`. */
+  let slow = $state(false);
   let error = $state("");
   let selected = $state(0);
   /** Query whose results are shown; differs from `query` while a search is pending. */
@@ -54,6 +58,11 @@
 
   /** The hits belong to an older query until the search for this one returns. */
   const stale = $derived(loading || shownQuery !== query);
+  /**
+   * The results panel opens on the first answer and then keeps the last answer until the next
+   * one replaces it, so that it does not collapse and grow again while the user types.
+   */
+  const expanded = $derived(query.trim() !== "" && (shownQuery !== "" || error !== ""));
 
   /** Hits in display order, with their index into it. */
   const hits = $derived(groups.flatMap((group) => group.hits));
@@ -63,6 +72,15 @@
       return acc;
     }, [])
   );
+
+  $effect(() => {
+    if (!loading) {
+      slow = false;
+      return;
+    }
+    const id = setTimeout(() => (slow = true), SLOW_MS);
+    return () => clearTimeout(id);
+  });
 
   $effect(() => {
     if (!$globalSearchOpen) return;
@@ -208,8 +226,8 @@
 >
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="flex max-h-[min(70vh,560px)] flex-col" onkeydown={handleKeydown}>
-    <div class="border-base-200 flex items-center gap-2.5 border-b px-4">
-      {#if loading}
+    <div class="flex items-center gap-2.5 px-4">
+      {#if slow}
         <Loader2 size={16} class="text-base-content-faint flex-none animate-spin" />
       {:else}
         <Search size={16} class="text-base-content-faint flex-none" />
@@ -223,100 +241,102 @@
         placeholder={$t("search.placeholder")}
         aria-label={$t("search.title")}
         role="combobox"
-        aria-expanded={hits.length > 0}
-        aria-controls="global-search-results"
-        aria-activedescendant={hits.length > 0 ? `global-search-hit-${selected}` : undefined}
+        aria-expanded={expanded && hits.length > 0}
+        aria-controls={expanded ? "global-search-results" : undefined}
+        aria-activedescendant={expanded && hits.length > 0
+          ? `global-search-hit-${selected}`
+          : undefined}
         autocomplete="off"
         spellcheck="false"
       />
     </div>
 
-    <div
-      bind:this={list}
-      id="global-search-results"
-      class={`min-h-0 flex-1 overflow-y-auto p-2 transition-opacity ${stale && hits.length > 0 ? "opacity-60" : ""}`}
-      role="listbox"
-      aria-busy={stale}
-      aria-label={$t("search.title")}
-    >
-      {#if error}
-        <p class="text-error px-3 py-6 text-center text-[13px]">{error}</p>
-      {:else if !query.trim()}
-        <p class="text-base-content-muted px-3 py-6 text-center text-[13px] leading-relaxed">
-          {$t("search.hint")}
-        </p>
-      {:else if hits.length === 0 && !loading && shownQuery}
-        <p class="text-base-content-muted px-3 py-6 text-center text-[13px]">
-          {$t("search.empty", { query: shownQuery })}
-        </p>
-      {:else}
-        {#each groups as group, groupIndex (group.kind)}
-          <div class="mb-1 last:mb-0" role="group" aria-label={$t(GROUP_LABEL_KEYS[group.kind])}>
-            <div
-              class="text-base-content-faint px-3 pt-2 pb-1 text-[11px] font-medium tracking-wide uppercase"
-            >
-              {$t(GROUP_LABEL_KEYS[group.kind])}
-            </div>
-            {#each group.hits as hit, hitIndex (`${hit.kind}:${hit.id}`)}
-              {@const index = offsets[groupIndex] + hitIndex}
-              {@const active = index === selected}
-              {@const Icon = ICONS[hit.kind]}
-              {@const suffix = nameSuffix(hit)}
-              <button
-                id={`global-search-hit-${index}`}
-                data-hit-index={index}
-                class={`flex w-full cursor-pointer items-start gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
-                  active ? "bg-base-content/[0.06]" : ""
-                } ${hit.missing ? "opacity-60" : ""}`}
-                type="button"
-                role="option"
-                aria-selected={active}
-                tabindex="-1"
-                onmousemove={() => (selected = index)}
-                onclick={() => openHit(hit)}
+    {#if expanded}
+      <div
+        bind:this={list}
+        id="global-search-results"
+        class={`border-base-200 min-h-0 flex-1 overflow-y-auto border-t p-2 transition-opacity ${slow && hits.length > 0 ? "opacity-60" : ""}`}
+        role="listbox"
+        aria-busy={stale}
+        aria-label={$t("search.title")}
+      >
+        {#if error}
+          <p class="text-error px-3 py-6 text-center text-[13px]">{error}</p>
+        {:else if hits.length === 0}
+          <p class="text-base-content-muted px-3 py-6 text-center text-[13px]">
+            {$t("search.empty", { query: shownQuery })}
+          </p>
+        {:else}
+          {#each groups as group, groupIndex (group.kind)}
+            <div class="mb-1 last:mb-0" role="group" aria-label={$t(GROUP_LABEL_KEYS[group.kind])}>
+              <div
+                class="text-base-content-faint px-3 pt-2 pb-1 text-[11px] font-medium tracking-wide uppercase"
               >
-                <span class="text-base-content-muted mt-0.5 flex-none">
-                  <Icon size={15} strokeWidth={1.8} />
-                </span>
-                <span class="min-w-0 flex-1">
-                  <span class="flex min-w-0 items-center gap-2">
-                    <span class="text-base-content truncate text-[13px]">
-                      {#each parts(hit.name, hit.nameRanges) as part, partIndex (partIndex)}
-                        {#if part.marked}<strong class="font-semibold">{part.text}</strong
-                          >{:else}{part.text}{/if}
-                      {/each}{#if suffix}<span class="text-base-content-muted">{suffix}</span>{/if}
+                {$t(GROUP_LABEL_KEYS[group.kind])}
+              </div>
+              {#each group.hits as hit, hitIndex (`${hit.kind}:${hit.id}`)}
+                {@const index = offsets[groupIndex] + hitIndex}
+                {@const active = index === selected}
+                {@const Icon = ICONS[hit.kind]}
+                {@const suffix = nameSuffix(hit)}
+                <button
+                  id={`global-search-hit-${index}`}
+                  data-hit-index={index}
+                  class={`flex w-full cursor-pointer items-start gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
+                    active ? "bg-base-content/[0.06]" : ""
+                  } ${hit.missing ? "opacity-60" : ""}`}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  tabindex="-1"
+                  onmousemove={() => (selected = index)}
+                  onclick={() => openHit(hit)}
+                >
+                  <span class="text-base-content-muted mt-0.5 flex-none">
+                    <Icon size={15} strokeWidth={1.8} />
+                  </span>
+                  <span class="min-w-0 flex-1">
+                    <span class="flex min-w-0 items-center gap-2">
+                      <span class="text-base-content truncate text-[13px]">
+                        {#each parts(hit.name, hit.nameRanges) as part, partIndex (partIndex)}
+                          {#if part.marked}<strong class="font-semibold">{part.text}</strong
+                            >{:else}{part.text}{/if}
+                        {/each}{#if suffix}<span class="text-base-content-muted">{suffix}</span
+                          >{/if}
+                      </span>
+                      {#if hit.missing}
+                        <span class="text-error flex-none text-[11px]">{$t("search.missing")}</span>
+                      {/if}
                     </span>
-                    {#if hit.missing}
-                      <span class="text-error flex-none text-[11px]">{$t("search.missing")}</span>
+                    {#if hit.snippet}
+                      <span class="text-base-content-muted mt-0.5 block truncate text-[12px]">
+                        {#each parts( hit.snippet.text, [hit.snippet.range] ) as part, partIndex (partIndex)}
+                          {#if part.marked}<mark class="bg-primary/15 text-base-content rounded-sm"
+                              >{part.text}</mark
+                            >{:else}{part.text}{/if}
+                        {/each}
+                      </span>
+                    {:else if hit.detail}
+                      <span class="text-base-content-muted mt-0.5 block truncate text-[12px]">
+                        {hit.detail}
+                      </span>
                     {/if}
                   </span>
-                  {#if hit.snippet}
-                    <span class="text-base-content-muted mt-0.5 block truncate text-[12px]">
-                      {#each parts( hit.snippet.text, [hit.snippet.range] ) as part, partIndex (partIndex)}
-                        {#if part.marked}<mark class="bg-primary/15 text-base-content rounded-sm"
-                            >{part.text}</mark
-                          >{:else}{part.text}{/if}
-                      {/each}
-                    </span>
-                  {:else if hit.detail}
-                    <span class="text-base-content-muted mt-0.5 block truncate text-[12px]">
-                      {hit.detail}
-                    </span>
-                  {/if}
-                </span>
-              </button>
-            {/each}
-          </div>
-        {/each}
-      {/if}
-    </div>
+                </button>
+              {/each}
+            </div>
+          {/each}
+        {/if}
+      </div>
 
-    <div
-      class="border-base-200 text-base-content-faint flex items-center gap-4 border-t px-4 py-2 text-[11px]"
-    >
-      <span class="flex items-center gap-1"><kbd>↑</kbd><kbd>↓</kbd> {$t("search.navigate")}</span>
-      <span class="flex items-center gap-1"><kbd>↩</kbd> {$t("search.open")}</span>
-      <span class="flex items-center gap-1"><kbd>Esc</kbd> {$t("search.close")}</span>
-    </div>
+      <div
+        class="border-base-200 text-base-content-faint flex items-center gap-4 border-t px-4 py-2 text-[11px]"
+      >
+        <span class="flex items-center gap-1"><kbd>↑</kbd><kbd>↓</kbd> {$t("search.navigate")}</span
+        >
+        <span class="flex items-center gap-1"><kbd>↩</kbd> {$t("search.open")}</span>
+        <span class="flex items-center gap-1"><kbd>Esc</kbd> {$t("search.close")}</span>
+      </div>
+    {/if}
   </div>
 </Modal>
