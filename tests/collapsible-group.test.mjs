@@ -50,3 +50,19 @@ test("a transition that ends before the click settles stays instant afterwards",
   await motion.click(() => (group.collapsed = true));
   assert.equal(motion.animate, false);
 });
+
+test("a search during a click transition does not animate", async () => {
+  const { group, isOpen, motion, click } = pickerGroup();
+  await click();
+  assert.equal(isOpen(), false);
+  assert.equal(motion.animate, true);
+
+  // The search forces the group open before the collapse ends.
+  group.search = "app";
+  assert.equal(isOpen(), true);
+  assert.equal(motion.animate, false);
+  motion.done();
+
+  group.search = "";
+  assert.equal(motion.animate, false);
+});
