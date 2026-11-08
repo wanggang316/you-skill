@@ -15,7 +15,7 @@
     "test:frontend": "node --test tests/*.test.mjs",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml --workspace",
     "release": "bash ./scripts/release.sh",
-    "tauri": "tauri",
+    "tauri": "node scripts/tauri.mjs",
     "format": "npm run format:frontend && npm run format:backend",
     "format:frontend": "prettier --write \"**/*.{svelte,js,ts,css,scss,json}\"",
     "format:backend": "cargo fmt --manifest-path src-tauri/Cargo.toml --all",
