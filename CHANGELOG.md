@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed the window not being draggable from the top bar while a modal or drawer is open.
+
 ### Removed
 
 ## [0.12.1] - 2026-11-07
