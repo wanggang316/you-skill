@@ -1,12 +1,13 @@
 import { tick } from "svelte";
 
 /**
- * Decides whether the next open change of a collapsible group animates. Only a header click
- * that changes the visible open state animates. Any other change (first render, search,
- * selection, clearing a search) is instant.
+ * Decides whether an open change of a collapsible group animates. Only the change that a
+ * header click causes animates. Any other change (first render, search, selection, clearing a
+ * search) is instant, also while a click transition is still running.
  */
 export class ClickMotion {
-  animate = $state(false);
+  /** The open state that the last header click requested, until its transition ends. */
+  #target = $state<boolean | null>(null);
   #isOpen: () => boolean;
   #settle: () => Promise<void>;
 
@@ -15,18 +16,22 @@ export class ClickMotion {
     this.#settle = settle;
   }
 
+  get animate() {
+    return this.#target !== null && this.#isOpen() === this.#target;
+  }
+
   async click(toggle: () => void) {
     const before = this.#isOpen();
-    this.animate = true;
+    this.#target = !before;
     toggle();
     await this.#settle();
     // The parent can keep the state, for example a search that forces the group open. The
     // request must not carry over to a later change that no click caused.
-    if (this.#isOpen() === before) this.animate = false;
+    if (this.#isOpen() === before) this.#target = null;
   }
 
   /** Call when the open or close transition ends. */
   done() {
-    this.animate = false;
+    this.#target = null;
   }
 }

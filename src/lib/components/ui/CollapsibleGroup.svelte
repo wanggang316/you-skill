@@ -41,7 +41,14 @@
   } = $props();
 
   const motion = new ClickMotion(() => open);
-  const duration = $derived(motion.animate && !prefersReducedMotion.current ? 150 : 0);
+
+  // Svelte keeps the options of a running transition, and reuses them when a change reverses
+  // it. A deferred config reads the duration each time a transition starts, so a search during
+  // a click transition stays instant.
+  function collapse(node: Element) {
+    return () =>
+      slide(node, { duration: motion.animate && !prefersReducedMotion.current ? 150 : 0 });
+  }
 </script>
 
 <div class={`group/header flex items-center ${className}`}>
@@ -70,11 +77,7 @@
   {@render actions?.()}
 </div>
 {#if open}
-  <div
-    transition:slide={{ duration }}
-    onintroend={() => motion.done()}
-    onoutroend={() => motion.done()}
-  >
+  <div transition:collapse onintroend={() => motion.done()} onoutroend={() => motion.done()}>
     {@render children()}
   </div>
 {/if}
