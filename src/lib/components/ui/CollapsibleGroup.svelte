@@ -42,12 +42,24 @@
 
   const motion = new ClickMotion(() => open);
 
+  // Whether a transition with a duration runs on the content.
+  let running = false;
+
   // Svelte keeps the options of a running transition, and reuses them when a change reverses
   // it. A deferred config reads the duration each time a transition starts, so a search during
-  // a click transition stays instant.
+  // a click transition stays instant. A reversal uses 1 ms, not 0: with 0, Svelte does not stop
+  // the running transition, which then keeps its end styles.
   function collapse(node: Element) {
-    return () =>
-      slide(node, { duration: motion.animate && !prefersReducedMotion.current ? 150 : 0 });
+    return () => {
+      const duration = motion.animate && !prefersReducedMotion.current ? 150 : running ? 1 : 0;
+      running = duration > 0;
+      return slide(node, { duration });
+    };
+  }
+
+  function ended() {
+    running = false;
+    motion.done();
   }
 </script>
 
@@ -77,7 +89,7 @@
   {@render actions?.()}
 </div>
 {#if open}
-  <div transition:collapse onintroend={() => motion.done()} onoutroend={() => motion.done()}>
+  <div transition:collapse onintroend={ended} onoutroend={ended}>
     {@render children()}
   </div>
 {/if}
