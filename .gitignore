@@ -47,7 +47,6 @@ vite.config.ts.timestamp-*
 .cline/
 .opencode/
 .openhands/
-.github/
 .gemini/
 .trae/
 .trae-cn/
@@ -71,5 +70,4 @@ vite.config.ts.timestamp-*
 .agent/
 .myapp/
 
-.agents/
 skills-lock.json
