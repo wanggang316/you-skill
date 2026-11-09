@@ -34,7 +34,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # Pin to the tag: when release-pr.yml is the caller, the event ref is the
+      # pull request merge ref, not the release commit.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
 
       - name: Resolve version
         id: meta

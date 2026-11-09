@@ -114,12 +114,15 @@ npm run tauri -- build
 
 ### Release
 
-1. Edit the `[Unreleased]` section in [CHANGELOG.md](CHANGELOG.md) with the changes for this release
-2. Run the release script:
-   ```bash
-   npm run release <version>
-   ```
-   Example: `npm run release 0.9.0`
+A release is a pull request from the branch `release/vX.Y.Z` to `main`.
+
+1. On the release branch, move the `[Unreleased]` notes in [CHANGELOG.md](CHANGELOG.md)
+   into a `## [X.Y.Z] - YYYY-MM-DD` section, and set `X.Y.Z` in `package.json`,
+   `package-lock.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` and `src-tauri/Cargo.lock`.
+2. Check the versions: `scripts/check-release-version.sh X.Y.Z`
+3. Open the pull request. The `Release PR` workflow checks the versions on each push.
+4. Merge the pull request. The workflow tags the merged commit `vX.Y.Z`, then builds, signs and
+   publishes the release, and updates the Homebrew tap.
 
 ### Development Rules
 

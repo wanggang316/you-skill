@@ -93,10 +93,7 @@ npm run build
 参考 [README → Release](../README.md#release) 发布一个测试版本，验证更新检测与升级流程是否正常：
 
 1. 在 `CHANGELOG.md` 的 `[Unreleased]` 部分填写测试更新内容
-2. 发布新版本：
-   ```bash
-   npm run release <新版本号>
-   ```
+2. 创建并合并 `release/v<新版本号>` 发布 PR，等待 `Release PR` 工作流发布完成
 3. 在已安装**旧版本**应用的设备上触发更新检查，确认：
    - 能检测到新版本
    - 点击升级后下载并安装成功

@@ -1,0 +1,115 @@
+name: Release PR
+
+# Ships a release when its release PR merges. The release PR (head branch
+# `release/vX.Y.Z`, opened by the `release` skill) is the only human gate:
+#
+#   verify   on every push to the PR, and again on the merged commit: the
+#            version files and CHANGELOG.md match the branch version
+#   tag      push the annotated tag vX.Y.Z on the merged commit
+#   release  release.yml (workflow_call): build, sign, notarize, publish,
+#            update the Homebrew tap
+#
+# The tag push uses GITHUB_TOKEN, which starts no other workflow, so the tag
+# push trigger of release.yml does not start a second run.
+#
+# Recovery: re-run the failed jobs of this run. The tag job accepts a tag
+# that already points at the merged commit.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event.action != 'closed' }}
+
+jobs:
+  verify:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'release/v') &&
+      (github.event.action != 'closed' || github.event.pull_request.merged)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      sha: ${{ steps.meta.outputs.sha }}
+    steps:
+      - name: Resolve the release commit
+        id: meta
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          SHA: ${{ github.event.pull_request.merged && github.event.pull_request.merge_commit_sha || github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          TAG="${HEAD_REF#release/}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::head branch '$HEAD_REF' is not release/vX.Y.Z" >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.meta.outputs.sha }}
+
+      - name: Verify the release contract
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: scripts/check-release-version.sh "${TAG#v}"
+
+      - name: Verify the tag is free
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+          SHA: ${{ steps.meta.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # The last line is the peeled commit of an annotated tag.
+          EXISTING=$(git ls-remote origin "refs/tags/$TAG" "refs/tags/$TAG^{}" | tail -1 | awk '{print $1}')
+          if [[ -n "$EXISTING" && "$EXISTING" != "$SHA" ]]; then
+            echo "::error::tag $TAG already exists at $EXISTING, not at $SHA" >&2
+            exit 1
+          fi
+
+  tag:
+    needs: verify
+    if: github.event.action == 'closed' && github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.sha }}
+
+      - name: Push the release tag
+        env:
+          TAG: ${{ needs.verify.outputs.tag }}
+          SHA: ${{ needs.verify.outputs.sha }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$(git ls-remote origin "refs/tags/$TAG")" ]]; then
+            echo "tag $TAG already exists at $SHA"
+            exit 0
+          fi
+          NOTES="$RUNNER_TEMP/tag.md"
+          { echo "Release $TAG"; echo; scripts/release-notes.sh "${TAG#v}"; } > "$NOTES"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag --cleanup=verbatim -a "$TAG" -F "$NOTES" "$SHA"
+          git push origin "refs/tags/$TAG"
+
+  release:
+    needs: [verify, tag]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.verify.outputs.tag }}
+    secrets: inherit

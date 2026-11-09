@@ -112,12 +112,13 @@ npm run tauri -- build
 
 ### 发布
 
-1. 在 [CHANGELOG.md](CHANGELOG.md) 的 `[Unreleased]` 部分填写本次更新内容
-2. 执行发布脚本：
-   ```bash
-   npm run release <version>
-   ```
-   示例：`npm run release 0.9.0`
+发布通过从 `release/vX.Y.Z` 分支到 `main` 的 Pull Request 完成。
+
+1. 在发布分支上，把 [CHANGELOG.md](CHANGELOG.md) 中 `[Unreleased]` 的内容移到 `## [X.Y.Z] - YYYY-MM-DD` 段落，
+   并把 `package.json`、`package-lock.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 和 `src-tauri/Cargo.lock` 的版本改为 `X.Y.Z`。
+2. 检查版本：`scripts/check-release-version.sh X.Y.Z`
+3. 创建 Pull Request。`Release PR` 工作流在每次推送时检查版本。
+4. 合并 Pull Request。工作流给合并后的提交打 `vX.Y.Z` 标签，然后构建、签名、发布 Release，并更新 Homebrew tap。
 
 ### 开发规则
 
