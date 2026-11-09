@@ -1,10 +1,29 @@
 name: Release
 
+# Builds, signs and publishes the GitHub Release for one tag vX.Y.Z.
+# release-pr.yml calls this after it tags the merged release PR. The tag push
+# trigger stays as a manual fallback. The release body is the CHANGELOG.md
+# section of the version.
+
 on:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag (vX.Y.Z)"
+        required: true
+        type: string
   push:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (vX.Y.Z); empty uses the selected tag ref"
+        required: false
+        type: string
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   create-release:
@@ -15,18 +34,29 @@ jobs:
       release_id: ${{ steps.create-release.outputs.result }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Extract release notes
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          scripts/check-release-version.sh "$VERSION"
+          scripts/release-notes.sh "$VERSION" > "$RUNNER_TEMP/notes.md"
 
       - name: Create Release
         id: create-release
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs')
+            const tag = process.env.TAG
             const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: '${{ github.ref_name }}',
-              name: 'YouSkill ${{ github.ref_name }}',
-              body: 'Release ${{ github.ref_name }}',
+              tag_name: tag,
+              name: `YouSkill ${tag}`,
+              body: fs.readFileSync(`${process.env.RUNNER_TEMP}/notes.md`, 'utf8').trim(),
               draft: true,
               prerelease: false
             })
@@ -53,6 +83,8 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -143,6 +175,8 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -163,7 +197,7 @@ jobs:
         if: matrix.archive == 'tar.gz'
         shell: bash
         run: |
-          ASSET="youskill-${{ github.ref_name }}-${{ matrix.target }}.tar.gz"
+          ASSET="youskill-${TAG}-${{ matrix.target }}.tar.gz"
           tar -C "src-tauri/target/${{ matrix.target }}/release" -czf "$ASSET" youskill
           echo "ASSET=$ASSET" >> "$GITHUB_ENV"
 
@@ -171,7 +205,7 @@ jobs:
         if: matrix.archive == 'zip'
         shell: pwsh
         run: |
-          $asset = "youskill-${{ github.ref_name }}-${{ matrix.target }}.zip"
+          $asset = "youskill-$($env:TAG)-${{ matrix.target }}.zip"
           Compress-Archive -Path "src-tauri/target/${{ matrix.target }}/release/youskill.exe" -DestinationPath $asset
           "ASSET=$asset" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -179,7 +213,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.ref_name }}" "$ASSET" --clobber
+        run: gh release upload "$TAG" "$ASSET" --clobber
 
   publish-release:
     needs: [create-release, build-tauri, build-cli]
@@ -202,5 +236,5 @@ jobs:
     needs: publish-release
     uses: ./.github/workflows/homebrew.yml
     with:
-      tag: ${{ github.ref_name }}
+      tag: ${{ inputs.tag || github.ref_name }}
     secrets: inherit
