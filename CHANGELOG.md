@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The macOS app menu has a "Settings…" item below "Check for Updates…". It brings the main window to the front and opens Settings at the General section ([#112](https://github.com/wanggang316/youskill/issues/112)).
+
 ### Changed
 
 - Global Search shows only the search field until the first results arrive, and keeps the current results on screen while the next search runs. The busy indicator shows only for searches that take longer than 250 ms.
