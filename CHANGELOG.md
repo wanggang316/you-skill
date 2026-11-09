@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Removed
+
+## [0.13.0] - 2026-11-09
+
+### Added
+
 - The macOS app menu has a "Settings…" item below "Check for Updates…". It brings the main window to the front and opens Settings at the General section ([#112](https://github.com/wanggang316/youskill/issues/112)).
 
 ### Changed
@@ -20,8 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed the window not being draggable from the top bar while a modal or drawer is open.
-
-### Removed
+- Collapsible groups slide open and closed only when you click their header. A search that opens or closes groups shows the result at once, also while a slide is still running.
 
 ## [0.12.1] - 2026-11-07
 
