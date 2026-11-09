@@ -2,6 +2,7 @@
   import "../app.css";
   import { onMount } from "svelte";
   import { browser } from "$app/environment";
+  import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { Tooltip } from "bits-ui";
@@ -20,7 +21,7 @@
   import Toasts from "$lib/components/ui/Toasts.svelte";
   import UpdateDialog from "$lib/components/UpdateDialog.svelte";
   import WorkspaceModal from "$lib/components/WorkspaceModal.svelte";
-  import { getAppLocation } from "$lib/navigation/app-shell";
+  import { buildSettingsHref, getAppLocation } from "$lib/navigation/app-shell";
   import { goBack, goForward } from "$lib/navigation/history";
   import { account } from "$lib/stores/account";
   import { autoSyncNeedsAttention, startAutoSyncStatus } from "$lib/stores/auto-sync";
@@ -100,6 +101,7 @@
 
     let unlistenOpenInstallModal: UnlistenFn | null = null;
     let unlistenCheckForUpdates: UnlistenFn | null = null;
+    let unlistenOpenSettings: UnlistenFn | null = null;
     let unlistenFocus: UnlistenFn | null = null;
     let lastFocusRefresh = 0;
 
@@ -151,6 +153,14 @@
         unlistenCheckForUpdates = unlisten;
       })
       .catch(console.error);
+    // Sent by the "Settings…" item in the macOS app menu.
+    listen("open-settings", () => {
+      void goto(buildSettingsHref());
+    })
+      .then((unlisten) => {
+        unlistenOpenSettings = unlisten;
+      })
+      .catch(console.error);
     getCurrentWindow()
       .onFocusChanged(({ payload: focused }) => {
         if (focused) refreshOnFocus();
@@ -165,6 +175,7 @@
     return () => {
       unlistenOpenInstallModal?.();
       unlistenCheckForUpdates?.();
+      unlistenOpenSettings?.();
       unlistenFocus?.();
       stopAutomaticUpdateChecks();
       stopAutoSyncStatus();
